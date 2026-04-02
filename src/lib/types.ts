@@ -9,6 +9,7 @@ export interface Question {
   explanation: string;
   subject: string;
   grade_level: string;
+  image_url: string | null;
 }
 
 export interface QuizSession {

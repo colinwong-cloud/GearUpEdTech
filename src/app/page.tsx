@@ -1,16 +1,76 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
 
 const QUESTION_COUNT = 10;
+const MAX_SHORT_ANSWER = 2;
+const MAX_IMAGE = 1;
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
 const SUPABASE_PAGE_SIZE = 1000;
 
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
+}
+
+function hasImage(q: Question): boolean {
+  return q.image_url != null && q.image_url.trim() !== "";
+}
+
+function selectQuestions(all: Question[]): Question[] {
+  const shuffled = fisherYatesShuffle(all);
+
+  const imagePool: Question[] = [];
+  const shortAnswerPool: Question[] = [];
+  const regularPool: Question[] = [];
+
+  for (const q of shuffled) {
+    if (hasImage(q)) {
+      imagePool.push(q);
+    } else if (isShortAnswer(q)) {
+      shortAnswerPool.push(q);
+    } else {
+      regularPool.push(q);
+    }
+  }
+
+  const selected: Question[] = [];
+  const usedIds = new Set<string>();
+
+  const pickFrom = (pool: Question[], max: number) => {
+    let picked = 0;
+    for (const q of pool) {
+      if (picked >= max) break;
+      if (!usedIds.has(q.id)) {
+        selected.push(q);
+        usedIds.add(q.id);
+        picked++;
+      }
+    }
+  };
+
+  pickFrom(imagePool, MAX_IMAGE);
+  pickFrom(shortAnswerPool, MAX_SHORT_ANSWER);
+
+  const remaining = QUESTION_COUNT - selected.length;
+  pickFrom(regularPool, remaining);
+
+  if (selected.length < QUESTION_COUNT) {
+    for (const pool of [shortAnswerPool, imagePool]) {
+      for (const q of pool) {
+        if (selected.length >= QUESTION_COUNT) break;
+        if (!usedIds.has(q.id)) {
+          selected.push(q);
+          usedIds.add(q.id);
+        }
+      }
+    }
+  }
+
+  return fisherYatesShuffle(selected);
 }
 
 async function fetchAllQuestions(): Promise<Question[]> {
@@ -76,8 +136,7 @@ export default function QuizPage() {
       const allQuestions = await fetchAllQuestions();
       if (allQuestions.length === 0) throw new Error("No questions found in the database.");
 
-      const shuffled = fisherYatesShuffle(allQuestions);
-      const selected = shuffled.slice(0, Math.min(QUESTION_COUNT, shuffled.length));
+      const selected = selectQuestions(allQuestions);
 
       const { data: session, error: sessionError } = await supabase
         .from("quiz_sessions")
@@ -195,6 +254,19 @@ export default function QuizPage() {
               <h2 className="mt-2 text-lg sm:text-xl font-semibold text-white leading-relaxed">
                 {currentQuestion.content}
               </h2>
+              {hasImage(currentQuestion) && (
+                <div className="mt-4 relative w-full">
+                  <Image
+                    src={currentQuestion.image_url!}
+                    alt="Question image"
+                    width={600}
+                    height={400}
+                    unoptimized
+                    draggable={false}
+                    className="max-w-full h-auto rounded-lg border-2 border-white/20 shadow-md"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="p-6 sm:p-8 space-y-3">
