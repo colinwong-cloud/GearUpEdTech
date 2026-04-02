@@ -82,7 +82,6 @@ export default function QuizPage() {
       const { data: session, error: sessionError } = await supabase
         .from("quiz_sessions")
         .insert({
-          student_id: "anonymous",
           subject: selected[0]?.subject ?? "general",
           questions_attempted: 0,
           score: 0,
