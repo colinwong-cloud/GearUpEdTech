@@ -2,6 +2,12 @@
 
 Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
+## Deployment
+
+The app is deployed on Vercel:
+
+**Production URL:** https://quiz-deploy-rosy.vercel.app
+
 ## Setup
 
 1. Install dependencies:
