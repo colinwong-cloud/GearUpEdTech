@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
 
@@ -255,17 +254,7 @@ export default function QuizPage() {
                 {currentQuestion.content}
               </h2>
               {hasImage(currentQuestion) && (
-                <div className="mt-4 relative w-full">
-                  <Image
-                    src={currentQuestion.image_url!}
-                    alt="Question image"
-                    width={600}
-                    height={400}
-                    unoptimized
-                    draggable={false}
-                    className="max-w-full h-auto rounded-lg border-2 border-white/20 shadow-md"
-                  />
-                </div>
+                <QuestionImage src={currentQuestion.image_url!} />
               )}
             </div>
 
@@ -533,6 +522,34 @@ function ErrorScreen({ error, onRetry }: { error: string; onRetry: () => void })
           Try Again
         </button>
       </div>
+    </div>
+  );
+}
+
+function QuestionImage({ src }: { src: string }) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  return (
+    <div className="mt-4">
+      {status === "loading" && (
+        <div className="flex items-center justify-center py-4">
+          <Spinner />
+          <span className="ml-2 text-indigo-200 text-sm">Loading image...</span>
+        </div>
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="Question image"
+        draggable={false}
+        onLoad={() => setStatus("loaded")}
+        onError={() => setStatus("error")}
+        className={`max-w-full rounded-lg border-2 border-white/20 shadow-md ${
+          status === "loaded" ? "" : "hidden"
+        }`}
+      />
+      {status === "error" && (
+        <p className="text-indigo-200 text-sm italic py-2">Image could not be loaded.</p>
+      )}
     </div>
   );
 }
