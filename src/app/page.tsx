@@ -19,6 +19,17 @@ function hasImage(q: Question): boolean {
   return q.image_url != null && q.image_url.trim() !== "";
 }
 
+const STORAGE_BUCKET = "question-images";
+const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
+
+function getImagePublicUrl(q: Question): string | null {
+  if (!q.image_url) return null;
+  const match = q.image_url.match(STORAGE_PATH_RE);
+  const path = match ? match[1] : q.image_url;
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 function selectQuestions(all: Question[]): Question[] {
   const shuffled = fisherYatesShuffle(all);
 
@@ -254,7 +265,7 @@ export default function QuizPage() {
                 {currentQuestion.content}
               </h2>
               {hasImage(currentQuestion) && (
-                <QuestionImage src={currentQuestion.image_url!} />
+                <QuestionImage src={getImagePublicUrl(currentQuestion)!} />
               )}
             </div>
 
