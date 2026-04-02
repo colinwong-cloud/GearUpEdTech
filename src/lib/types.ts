@@ -1,10 +1,10 @@
 export interface Question {
   id: string;
   content: string;
-  opt_a: string;
-  opt_b: string;
-  opt_c: string;
-  opt_d: string;
+  opt_a: string | null;
+  opt_b: string | null;
+  opt_c: string | null;
+  opt_d: string | null;
   correct_answer: string;
   explanation: string;
   subject: string;

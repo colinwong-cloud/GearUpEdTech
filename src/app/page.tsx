@@ -7,12 +7,52 @@ import type { Question, AnswerRecord } from "@/lib/types";
 const QUESTION_COUNT = 10;
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
+const SUPABASE_PAGE_SIZE = 1000;
+
+function isShortAnswer(q: Question): boolean {
+  return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
+}
+
+async function fetchAllQuestions(): Promise<Question[]> {
+  const all: Question[] = [];
+  let from = 0;
+  let keepGoing = true;
+  while (keepGoing) {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("*")
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...(data as Question[]));
+    if (data.length < SUPABASE_PAGE_SIZE) {
+      keepGoing = false;
+    } else {
+      from += SUPABASE_PAGE_SIZE;
+    }
+  }
+  return all;
+}
+
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function preventContextMenu(e: React.MouseEvent) {
+  e.preventDefault();
+}
 
 export default function QuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [textAnswer, setTextAnswer] = useState("");
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -27,30 +67,17 @@ export default function QuizPage() {
     setSessionId(null);
     setCurrentIndex(0);
     setSelectedAnswer(null);
+    setTextAnswer("");
     setAnswers([]);
     setQuizComplete(false);
     startTimeRef.current = Date.now();
 
     try {
-      const { count, error: countError } = await supabase
-        .from("questions")
-        .select("*", { count: "exact", head: true });
+      const allQuestions = await fetchAllQuestions();
+      if (allQuestions.length === 0) throw new Error("No questions found in the database.");
 
-      if (countError) throw countError;
-      if (!count || count === 0) throw new Error("No questions found in the database.");
-
-      const { data: allQuestions, error: fetchError } = await supabase
-        .from("questions")
-        .select("*")
-        .limit(QUESTION_COUNT * 3);
-
-      if (fetchError) throw fetchError;
-      if (!allQuestions || allQuestions.length === 0) {
-        throw new Error("Failed to fetch questions.");
-      }
-
-      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, Math.min(QUESTION_COUNT, shuffled.length)) as Question[];
+      const shuffled = fisherYatesShuffle(allQuestions);
+      const selected = shuffled.slice(0, Math.min(QUESTION_COUNT, shuffled.length));
 
       const { data: session, error: sessionError } = await supabase
         .from("quiz_sessions")
@@ -80,17 +107,22 @@ export default function QuizPage() {
   }, [initializeQuiz]);
 
   const handleSubmitAnswer = async () => {
-    if (!selectedAnswer || !sessionId || submitting) return;
-
     const currentQuestion = questions[currentIndex];
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer;
+    const shortAnswer = isShortAnswer(currentQuestion);
+    const answer = shortAnswer ? textAnswer.trim() : selectedAnswer;
+
+    if (!answer || !sessionId || submitting) return;
+
+    const isCorrect = shortAnswer
+      ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
+      : answer === currentQuestion.correct_answer;
 
     setSubmitting(true);
     try {
       const { error: answerError } = await supabase.from("session_answers").insert({
         session_id: sessionId,
         question_id: currentQuestion.id,
-        student_answer: selectedAnswer,
+        student_answer: answer,
         is_correct: isCorrect,
       });
 
@@ -98,7 +130,7 @@ export default function QuizPage() {
 
       const newAnswer: AnswerRecord = {
         question: currentQuestion,
-        studentAnswer: selectedAnswer,
+        studentAnswer: answer,
         isCorrect,
       };
       const updatedAnswers = [...answers, newAnswer];
@@ -121,6 +153,7 @@ export default function QuizPage() {
       } else {
         setCurrentIndex(currentIndex + 1);
         setSelectedAnswer(null);
+        setTextAnswer("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit answer.");
@@ -146,8 +179,11 @@ export default function QuizPage() {
     return <ErrorScreen error="No question available." onRetry={initializeQuiz} />;
   }
 
+  const shortAnswer = isShortAnswer(currentQuestion);
+  const canSubmit = shortAnswer ? textAnswer.trim().length > 0 : selectedAnswer != null;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col" onContextMenu={preventContextMenu}>
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl">
           <ProgressBar current={currentIndex + 1} total={questions.length} />
@@ -163,43 +199,63 @@ export default function QuizPage() {
             </div>
 
             <div className="p-6 sm:p-8 space-y-3">
-              {OPTION_LABELS.map((label, i) => {
-                const optionText = currentQuestion[OPTION_KEYS[i]];
-                const isSelected = selectedAnswer === label;
-                return (
-                  <button
-                    key={label}
-                    onClick={() => setSelectedAnswer(label)}
+              {shortAnswer ? (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    請輸入答案
+                  </label>
+                  <input
+                    type="text"
+                    value={textAnswer}
+                    onChange={(e) => setTextAnswer(e.target.value)}
                     disabled={submitting}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group ${
-                      isSelected
-                        ? "border-indigo-500 bg-indigo-50 shadow-md"
-                        : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
-                    } ${submitting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                  >
-                    <span
-                      className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
+                    placeholder=""
+                    className={`w-full p-4 rounded-xl border-2 text-base transition-all duration-200 outline-none ${
+                      textAnswer.trim()
+                        ? "border-indigo-500 bg-indigo-50"
+                        : "border-gray-200 focus:border-indigo-400"
+                    } ${submitting ? "opacity-60 cursor-not-allowed" : ""}`}
+                  />
+                </div>
+              ) : (
+                OPTION_LABELS.map((label, i) => {
+                  const optionText = currentQuestion[OPTION_KEYS[i]];
+                  const isSelected = selectedAnswer === label;
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => setSelectedAnswer(label)}
+                      disabled={submitting}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group ${
                         isSelected
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
-                      }`}
+                          ? "border-indigo-500 bg-indigo-50 shadow-md"
+                          : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+                      } ${submitting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                      {label}
-                    </span>
-                    <span className={`text-base ${isSelected ? "text-indigo-900 font-medium" : "text-gray-700"}`}>
-                      {optionText}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span
+                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
+                          isSelected
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                      <span className={`text-base ${isSelected ? "text-indigo-900 font-medium" : "text-gray-700"}`}>
+                        {optionText}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             <div className="px-6 pb-6 sm:px-8 sm:pb-8">
               <button
                 onClick={handleSubmitAnswer}
-                disabled={!selectedAnswer || submitting}
+                disabled={!canSubmit || submitting}
                 className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-                  selectedAnswer && !submitting
+                  canSubmit && !submitting
                     ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-[0.98]"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
@@ -259,7 +315,7 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" onContextMenu={preventContextMenu}>
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className={`text-center p-6 sm:p-8 rounded-2xl border-2 ${scoreBg} mb-8`}>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quiz Complete!</h1>
@@ -289,46 +345,60 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {answers.map((answer, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                    <td className="px-4 py-4 text-sm text-gray-700 sm:px-6 max-w-xs">
-                      <span className="font-medium text-gray-500 mr-1">{i + 1}.</span>
-                      {answer.question.content.length > 100
-                        ? answer.question.content.slice(0, 100) + "..."
-                        : answer.question.content}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">
-                        {answer.studentAnswer}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center whitespace-nowrap">
-                      {answer.isCorrect ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
-                          ✓ Correct
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
-                          ✗ Wrong
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600 sm:px-6 max-w-sm">
-                      {!answer.isCorrect && answer.question.explanation ? (
-                        <div>
-                          <p className="text-xs text-red-500 font-medium mb-1">
-                            Correct: {answer.question.correct_answer}
-                          </p>
-                          <p>{answer.question.explanation}</p>
-                        </div>
-                      ) : answer.isCorrect ? (
-                        <span className="text-gray-400 italic">—</span>
-                      ) : (
-                        <span className="text-gray-400 italic">No explanation available</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {answers.map((answer, i) => {
+                  const shortAns = isShortAnswer(answer.question);
+                  return (
+                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                      <td className="px-4 py-4 text-sm text-gray-700 sm:px-6 max-w-xs">
+                        <span className="font-medium text-gray-500 mr-1">{i + 1}.</span>
+                        {answer.question.content.length > 100
+                          ? answer.question.content.slice(0, 100) + "..."
+                          : answer.question.content}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {shortAns ? (
+                          <span className="inline-block px-3 py-1 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[200px] truncate">
+                            {answer.studentAnswer}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">
+                            {answer.studentAnswer}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center whitespace-nowrap">
+                        {answer.isCorrect ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
+                            ✓ Correct
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
+                            ✗ Wrong
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-600 sm:px-6 max-w-sm">
+                        {!answer.isCorrect && answer.question.explanation ? (
+                          <div>
+                            <p className="text-xs text-red-500 font-medium mb-1">
+                              Correct: {answer.question.correct_answer}
+                            </p>
+                            <p>{answer.question.explanation}</p>
+                          </div>
+                        ) : answer.isCorrect ? (
+                          <span className="text-gray-400 italic">—</span>
+                        ) : (
+                          <div>
+                            <p className="text-xs text-red-500 font-medium mb-1">
+                              Correct: {answer.question.correct_answer}
+                            </p>
+                            <span className="text-gray-400 italic">No explanation available</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -357,7 +427,7 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center" onContextMenu={preventContextMenu}>
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 mb-4">
           <Spinner size="lg" />
@@ -371,7 +441,7 @@ function LoadingScreen() {
 
 function ErrorScreen({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
       <div className="text-center max-w-md">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
           <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
