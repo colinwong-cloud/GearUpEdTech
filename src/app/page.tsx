@@ -233,39 +233,16 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        let parentId: string;
-        const { data: existingParent } = await supabase
-          .from("parents")
-          .select("id")
-          .eq("mobile_number", mobileNumber.trim())
-          .maybeSingle();
+        const { data, error: rpcErr } = await supabase.rpc("register_student", {
+          p_mobile_number: mobileNumber.trim(),
+          p_student_name: form.studentName,
+          p_pin_code: form.pinCode,
+          p_avatar_style: form.avatarStyle,
+          p_grade_level: form.gradeLevel,
+        });
+        if (rpcErr) throw rpcErr;
 
-        if (existingParent) {
-          parentId = (existingParent as { id: string }).id;
-        } else {
-          const { data: newParent, error: pErr } = await supabase
-            .from("parents")
-            .insert({ mobile_number: mobileNumber.trim() })
-            .select()
-            .single();
-          if (pErr) throw pErr;
-          parentId = (newParent as { id: string }).id;
-        }
-
-        const { data: newStudent, error: sErr } = await supabase
-          .from("students")
-          .insert({
-            parent_id: parentId,
-            student_name: form.studentName,
-            pin_code: form.pinCode,
-            avatar_style: form.avatarStyle,
-            grade_level: form.gradeLevel,
-          })
-          .select()
-          .single();
-        if (sErr) throw sErr;
-
-        setSelectedStudent(newStudent as Student);
+        setSelectedStudent(data as Student);
         setScreen("subject_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
@@ -348,17 +325,10 @@ export default function QuizApp() {
         (weights as ParentWeight[]) || []
       );
 
-      const { data: session, error: sessErr } = await supabase
-        .from("quiz_sessions")
-        .insert({
-          student_id: student.id,
-          subject,
-          questions_attempted: 0,
-          score: 0,
-          time_spent_seconds: 0,
-        })
-        .select()
-        .single();
+      const { data: session, error: sessErr } = await supabase.rpc(
+        "create_quiz_session",
+        { p_student_id: student.id, p_subject: subject }
+      );
       if (sessErr) throw sessErr;
 
       setQuestions(selected);
@@ -383,12 +353,12 @@ export default function QuizApp() {
 
     setSubmitting(true);
     try {
-      const { error: ansErr } = await supabase.from("session_answers").insert({
-        session_id: sessionId,
-        question_id: currentQuestion.id,
-        student_answer: answer,
-        is_correct: isCorrect,
-        question_order: currentIndex + 1,
+      const { error: ansErr } = await supabase.rpc("submit_answer", {
+        p_session_id: sessionId,
+        p_question_id: currentQuestion.id,
+        p_student_answer: answer,
+        p_is_correct: isCorrect,
+        p_question_order: currentIndex + 1,
       });
       if (ansErr) throw ansErr;
 
@@ -405,14 +375,12 @@ export default function QuizApp() {
         (Date.now() - startTimeRef.current) / 1000
       );
 
-      await supabase
-        .from("quiz_sessions")
-        .update({
-          questions_attempted: updatedAnswers.length,
-          score: newScore,
-          time_spent_seconds: timeSpent,
-        })
-        .eq("id", sessionId);
+      await supabase.rpc("update_quiz_session", {
+        p_session_id: sessionId,
+        p_questions_attempted: updatedAnswers.length,
+        p_score: newScore,
+        p_time_spent_seconds: timeSpent,
+      });
 
       if (currentIndex + 1 >= questions.length) {
         await finalizeQuiz(updatedAnswers);
@@ -433,15 +401,14 @@ export default function QuizApp() {
     if (!selectedStudent || !selectedSubject) return;
     try {
       if (balance) {
-        const newRemaining = Math.max(
-          0,
-          balance.remaining_questions - finalAnswers.length
-        );
-        await supabase
-          .from("student_balances")
-          .update({ remaining_questions: newRemaining })
-          .eq("id", balance.id);
-        setBalance({ ...balance, remaining_questions: newRemaining });
+        await supabase.rpc("deduct_student_balance", {
+          p_balance_id: balance.id,
+          p_amount: finalAnswers.length,
+        });
+        setBalance({
+          ...balance,
+          remaining_questions: Math.max(0, balance.remaining_questions - finalAnswers.length),
+        });
       }
 
       const rankGroups: Record<string, { attempted: number; correct: number }> =
@@ -455,36 +422,13 @@ export default function QuizApp() {
       }
 
       for (const [rank, stats] of Object.entries(rankGroups)) {
-        const { data: existing } = await supabase
-          .from("student_rank_performance")
-          .select("*")
-          .eq("student_id", selectedStudent.id)
-          .ilike("subject", selectedSubject)
-          .eq("paper_rank", rank)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from("student_rank_performance")
-            .update({
-              questions_attempted:
-                (existing as { questions_attempted: number }).questions_attempted +
-                stats.attempted,
-              questions_correct:
-                (existing as { questions_correct: number }).questions_correct +
-                stats.correct,
-              last_updated: new Date().toISOString(),
-            })
-            .eq("id", (existing as { id: string }).id);
-        } else {
-          await supabase.from("student_rank_performance").insert({
-            student_id: selectedStudent.id,
-            subject: selectedSubject,
-            paper_rank: rank,
-            questions_attempted: stats.attempted,
-            questions_correct: stats.correct,
-          });
-        }
+        await supabase.rpc("upsert_rank_performance", {
+          p_student_id: selectedStudent.id,
+          p_subject: selectedSubject,
+          p_paper_rank: rank,
+          p_attempted: stats.attempted,
+          p_correct: stats.correct,
+        });
       }
     } catch {
       // non-critical: don't block results
