@@ -526,6 +526,8 @@ export default function QuizApp() {
       <ResultsView
         answers={answers}
         studentName={selectedStudent?.student_name || ""}
+        studentId={selectedStudent?.id || null}
+        sessionId={sessionId}
         onRestart={handleRestart}
         onLogout={handleLogout}
         balance={balance}
@@ -1156,12 +1158,16 @@ function ProgressBar({
 function ResultsView({
   answers,
   studentName,
+  studentId,
+  sessionId,
   onRestart,
   onLogout,
   balance,
 }: {
   answers: AnswerRecord[];
   studentName: string;
+  studentId: string | null;
+  sessionId: string | null;
   onRestart: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
@@ -1173,6 +1179,28 @@ function ResultsView({
   const wrongAnswers = answers
     .map((answer, index) => ({ answer, index }))
     .filter(({ answer }) => !answer.isCorrect);
+
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [reportingId, setReportingId] = useState<string | null>(null);
+
+  const handleReport = async (answer: AnswerRecord) => {
+    if (reportedIds.has(answer.question.id) || reportingId) return;
+    setReportingId(answer.question.id);
+    try {
+      const { error } = await supabase.rpc("report_question", {
+        p_question_id: answer.question.id,
+        p_student_id: studentId,
+        p_session_id: sessionId,
+        p_student_answer: answer.studentAnswer,
+      });
+      if (error) throw error;
+      setReportedIds((prev) => new Set(prev).add(answer.question.id));
+    } catch {
+      // silent fail — non-critical
+    } finally {
+      setReportingId(null);
+    }
+  };
 
   let scoreColor = "text-red-600";
   let scoreBg = "bg-red-50 border-red-200";
@@ -1296,6 +1324,25 @@ function ResultsView({
                     ) : (
                       <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
+                    <div className="pt-1">
+                      <button
+                        onClick={() => handleReport(answer)}
+                        disabled={reportedIds.has(answer.question.id) || reportingId === answer.question.id}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                          reportedIds.has(answer.question.id)
+                            ? "bg-gray-100 text-gray-400 cursor-default"
+                            : reportingId === answer.question.id
+                              ? "bg-amber-50 text-amber-400 cursor-wait"
+                              : "bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-[0.97]"
+                        }`}
+                      >
+                        {reportedIds.has(answer.question.id)
+                          ? "已反映"
+                          : reportingId === answer.question.id
+                            ? "提交中..."
+                            : "反映這題目"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -178,3 +178,48 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- ============================================================
+-- Table: question_reports
+-- Run this to create the table for student question reports.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS question_reports (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question_id    UUID NOT NULL REFERENCES questions(id),
+  student_id     UUID REFERENCES students(id),
+  session_id     UUID REFERENCES quiz_sessions(id),
+  student_answer TEXT,
+  status         TEXT NOT NULL DEFAULT 'pending',
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  resolved_at    TIMESTAMPTZ,
+  admin_notes    TEXT
+);
+
+ALTER TABLE question_reports ENABLE ROW LEVEL SECURITY;
+
+-- 7. Report a question
+CREATE OR REPLACE FUNCTION report_question(
+  p_question_id UUID,
+  p_student_id UUID,
+  p_session_id UUID,
+  p_student_answer TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM question_reports
+    WHERE question_id = p_question_id
+      AND session_id = p_session_id
+  ) THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO question_reports (question_id, student_id, session_id, student_answer)
+  VALUES (p_question_id, p_student_id, p_session_id, p_student_answer);
+END;
+$$;
