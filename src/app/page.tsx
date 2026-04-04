@@ -535,6 +535,7 @@ export default function QuizApp() {
     return (
       <RegisterScreen
         mobileNumber={mobileNumber}
+        setMobileNumber={setMobileNumber}
         onSubmit={handleRegister}
         onBack={() => {
           setError(null);
@@ -814,12 +815,14 @@ function LoginMobileScreen({
 
 function RegisterScreen({
   mobileNumber,
+  setMobileNumber,
   onSubmit,
   onBack,
   error,
   setError,
 }: {
   mobileNumber: string;
+  setMobileNumber: (v: string) => void;
   onSubmit: (form: {
     studentName: string;
     pinCode: string;
@@ -838,6 +841,7 @@ function RegisterScreen({
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pinCode);
   const canSubmit =
+    mobileNumber.trim().length > 0 &&
     studentName.trim().length > 0 &&
     pinValid &&
     avatarStyle !== "" &&
@@ -858,10 +862,26 @@ function RegisterScreen({
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">新用戶註冊</h1>
           <p className="mt-1 text-sm text-gray-500">
-            電話號碼：{mobileNumber}
+            請填寫以下資料完成註冊
           </p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              家長電話號碼
+            </label>
+            <input
+              type="tel"
+              value={mobileNumber}
+              onChange={(e) => {
+                setMobileNumber(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="例如：91234567"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               學生姓名
