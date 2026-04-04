@@ -21,6 +21,7 @@ const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 
 type AppScreen =
   | "login_mobile"
+  | "register"
   | "login_student"
   | "login_pin"
   | "subject_select"
@@ -202,7 +203,7 @@ export default function QuizApp() {
         .eq("mobile_number", mobileNumber.trim())
         .maybeSingle();
       if (pErr) throw pErr;
-      if (!parent) throw new Error("找不到此電話號碼的帳戶。");
+      if (!parent) throw new Error("找不到此電話號碼的帳戶，請先註冊。");
 
       const { data: studs, error: sErr } = await supabase
         .from("students")
@@ -210,7 +211,7 @@ export default function QuizApp() {
         .eq("parent_id", parent.id);
       if (sErr) throw sErr;
       if (!studs || studs.length === 0)
-        throw new Error("此帳戶下沒有學生。");
+        throw new Error("此帳戶下沒有學生，請先註冊。");
 
       setStudents(studs as Student[]);
       setScreen("login_student");
@@ -220,6 +221,60 @@ export default function QuizApp() {
       setLoading(false);
     }
   }, [mobileNumber]);
+
+  const handleRegister = useCallback(
+    async (form: {
+      studentName: string;
+      pinCode: string;
+      avatarStyle: string;
+      gradeLevel: string;
+    }) => {
+      if (!mobileNumber.trim()) return;
+      setLoading(true);
+      setError(null);
+      try {
+        let parentId: string;
+        const { data: existingParent } = await supabase
+          .from("parents")
+          .select("id")
+          .eq("mobile_number", mobileNumber.trim())
+          .maybeSingle();
+
+        if (existingParent) {
+          parentId = (existingParent as { id: string }).id;
+        } else {
+          const { data: newParent, error: pErr } = await supabase
+            .from("parents")
+            .insert({ mobile_number: mobileNumber.trim() })
+            .select()
+            .single();
+          if (pErr) throw pErr;
+          parentId = (newParent as { id: string }).id;
+        }
+
+        const { data: newStudent, error: sErr } = await supabase
+          .from("students")
+          .insert({
+            parent_id: parentId,
+            student_name: form.studentName,
+            pin_code: form.pinCode,
+            avatar_style: form.avatarStyle,
+            grade_level: form.gradeLevel,
+          })
+          .select()
+          .single();
+        if (sErr) throw sErr;
+
+        setSelectedStudent(newStudent as Student);
+        setScreen("subject_select");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [mobileNumber]
+  );
 
   const handleStudentSelect = useCallback((student: Student) => {
     setSelectedStudent(student);
@@ -466,6 +521,25 @@ export default function QuizApp() {
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
         onSubmit={handleMobileSubmit}
+        onRegister={() => {
+          setError(null);
+          setScreen("register");
+        }}
+        error={error}
+        setError={setError}
+      />
+    );
+  }
+
+  if (screen === "register") {
+    return (
+      <RegisterScreen
+        mobileNumber={mobileNumber}
+        onSubmit={handleRegister}
+        onBack={() => {
+          setError(null);
+          setScreen("login_mobile");
+        }}
         error={error}
         setError={setError}
       />
@@ -669,12 +743,14 @@ function LoginMobileScreen({
   mobileNumber,
   setMobileNumber,
   onSubmit,
+  onRegister,
   error,
   setError,
 }: {
   mobileNumber: string;
   setMobileNumber: (v: string) => void;
   onSubmit: () => void;
+  onRegister: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
@@ -717,7 +793,189 @@ function LoginMobileScreen({
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            下一步
+            登入
+          </button>
+          <div className="text-center pt-2 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              還沒有帳戶？{" "}
+              <button
+                onClick={onRegister}
+                className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
+              >
+                新用戶註冊
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegisterScreen({
+  mobileNumber,
+  onSubmit,
+  onBack,
+  error,
+  setError,
+}: {
+  mobileNumber: string;
+  onSubmit: (form: {
+    studentName: string;
+    pinCode: string;
+    avatarStyle: string;
+    gradeLevel: string;
+  }) => void;
+  onBack: () => void;
+  error: string | null;
+  setError: (v: string | null) => void;
+}) {
+  const [studentName, setStudentName] = useState("");
+  const [pinCode, setPinCode] = useState("");
+  const [avatarStyle, setAvatarStyle] = useState<string>("");
+  const [gradeLevel, setGradeLevel] = useState<string>("");
+
+  const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const pinValid = PIN_RE.test(pinCode);
+  const canSubmit =
+    studentName.trim().length > 0 &&
+    pinValid &&
+    avatarStyle !== "" &&
+    gradeLevel !== "";
+
+  const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const avatars: { value: string; label: string; gradient: string }[] = [
+    { value: "Boy", label: "男生", gradient: "from-blue-400 to-indigo-500" },
+    { value: "Girl", label: "女生", gradient: "from-pink-400 to-rose-500" },
+  ];
+
+  return (
+    <div
+      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4 py-8"
+      onContextMenu={preventContextMenu}
+    >
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">新用戶註冊</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            電話號碼：{mobileNumber}
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              學生姓名
+            </label>
+            <input
+              type="text"
+              value={studentName}
+              onChange={(e) => {
+                setStudentName(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="輸入學生姓名"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              PIN 碼（6位英數字混合）
+            </label>
+            <input
+              type="text"
+              value={pinCode}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6);
+                setPinCode(v);
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="例如：abc123"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                pinCode.length > 0 && !pinValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {pinCode.length > 0 && !pinValid && (
+              <p className="mt-1 text-xs text-red-500">
+                請輸入6位英文字母或數字
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              頭像
+            </label>
+            <div className="flex gap-3">
+              {avatars.map((a) => (
+                <button
+                  key={a.value}
+                  onClick={() => {
+                    setAvatarStyle(a.value);
+                    if (error) setError(null);
+                  }}
+                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                    avatarStyle === a.value
+                      ? `border-indigo-500 bg-gradient-to-br ${a.gradient} text-white shadow-md`
+                      : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              年級
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {grades.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => {
+                    setGradeLevel(g);
+                    if (error) setError(null);
+                  }}
+                  className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
+                    gradeLevel === g
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm"
+                      : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-500 font-medium">{error}</p>
+          )}
+
+          <button
+            onClick={() =>
+              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel })
+            }
+            disabled={!canSubmit}
+            className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
+              canSubmit
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            完成註冊
+          </button>
+
+          <button
+            onClick={onBack}
+            className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            返回登入
           </button>
         </div>
       </div>
