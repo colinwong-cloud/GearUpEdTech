@@ -197,23 +197,18 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const { data: parent, error: pErr } = await supabase
-        .from("parents")
-        .select("id")
-        .eq("mobile_number", mobileNumber.trim())
-        .maybeSingle();
-      if (pErr) throw pErr;
-      if (!parent) throw new Error("找不到此電話號碼的帳戶，請先註冊。");
+      const { data, error: rpcErr } = await supabase.rpc("login_by_mobile", {
+        p_mobile_number: mobileNumber.trim(),
+      });
+      if (rpcErr) throw rpcErr;
 
-      const { data: studs, error: sErr } = await supabase
-        .from("students")
-        .select("*")
-        .eq("parent_id", parent.id);
-      if (sErr) throw sErr;
-      if (!studs || studs.length === 0)
+      const result = data as { parent_found: boolean; students: Student[] };
+      if (!result.parent_found)
+        throw new Error("找不到此電話號碼的帳戶，請先註冊。");
+      if (!result.students || result.students.length === 0)
         throw new Error("此帳戶下沒有學生，請先註冊。");
 
-      setStudents(studs as Student[]);
+      setStudents(result.students);
       setScreen("login_student");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登入失敗，請重試。");
