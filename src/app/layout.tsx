@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Interactive quiz platform for students",
 };
 
-const bgUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/bkground.png`;
+const bgUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/bk.png`;
 
 export default function RootLayout({
   children,

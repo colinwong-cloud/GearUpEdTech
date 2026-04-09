@@ -868,7 +868,7 @@ function LoginMobileScreen({
           <img
             src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`}
             alt="GearUp Quiz"
-            className="mx-auto h-20 w-auto mb-4"
+            className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
             draggable={false}
           />
           <p className="mt-2 text-gray-500">請輸入家長電話號碼登入</p>
