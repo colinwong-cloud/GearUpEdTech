@@ -22,11 +22,31 @@ const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 type AppScreen =
   | "login_mobile"
   | "register"
+  | "login_role"
   | "login_student"
   | "login_pin"
   | "subject_select"
   | "quiz"
-  | "results";
+  | "results"
+  | "parent_pin"
+  | "parent_dashboard"
+  | "parent_session_detail";
+
+interface SessionSummary {
+  id: string;
+  subject: string;
+  questions_attempted: number;
+  score: number;
+  time_spent_seconds: number;
+  created_at: string;
+}
+
+interface SessionDetailAnswer {
+  student_answer: string;
+  is_correct: boolean;
+  question_order: number | null;
+  question: Question;
+}
 
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
@@ -192,6 +212,15 @@ export default function QuizApp() {
   const [error, setError] = useState<string | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
+  const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
+  const [parentMonth, setParentMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
+  const [parentSubject, setParentSubject] = useState("數學");
+  const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
+  const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
+
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim()) return;
     setLoading(true);
@@ -209,7 +238,7 @@ export default function QuizApp() {
         throw new Error("此帳戶下沒有學生，請先註冊。");
 
       setStudents(result.students);
-      setScreen("login_student");
+      setScreen("login_role");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登入失敗，請重試。");
     } finally {
@@ -269,6 +298,67 @@ export default function QuizApp() {
       setError("PIN 碼不正確，請重試。");
     }
   }, [pinInput, selectedStudent]);
+
+  const handleParentPinSubmit = useCallback(() => {
+    const firstStudent = students[0];
+    if (!firstStudent) return;
+    if (pinInput === firstStudent.pin_code) {
+      setError(null);
+      setSelectedStudent(firstStudent);
+      loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
+    } else {
+      setError("PIN 碼不正確，請重試。");
+    }
+  }, [pinInput, students, parentSubject, parentMonth]);
+
+  const loadParentSessions = async (
+    studentId: string,
+    subject: string,
+    year: number,
+    month: number
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("get_parent_sessions", {
+        p_student_id: studentId,
+        p_subject: subject,
+        p_year: year,
+        p_month: month,
+      });
+      if (rpcErr) throw rpcErr;
+      setParentSessions((data as SessionSummary[]) || []);
+      setScreen("parent_dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "無法載入練習記錄。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleParentMonthChange = (year: number, month: number) => {
+    if (!selectedStudent) return;
+    setParentMonth({ year, month });
+    loadParentSessions(selectedStudent.id, parentSubject, year, month);
+  };
+
+  const handleViewSessionDetail = async (session: SessionSummary) => {
+    setLoading(true);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("get_session_detail", {
+        p_session_id: session.id,
+      });
+      if (rpcErr) throw rpcErr;
+      const result = data as { session: SessionSummary; answers: SessionDetailAnswer[] };
+      setParentDetailSession(session);
+      setParentDetailAnswers(result.answers || []);
+      setScreen("parent_session_detail");
+    } catch {
+      setError("無法載入練習詳情。");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubjectSelect = useCallback(
     async (subject: string) => {
@@ -477,6 +567,65 @@ export default function QuizApp() {
         }}
         error={error}
         setError={setError}
+      />
+    );
+  }
+
+  if (screen === "login_role") {
+    return (
+      <RoleSelectScreen
+        onStudent={() => setScreen("login_student")}
+        onParent={() => {
+          setPinInput("");
+          setError(null);
+          setScreen("parent_pin");
+        }}
+        onBack={handleLogout}
+      />
+    );
+  }
+
+  if (screen === "parent_pin") {
+    return (
+      <PinScreen
+        studentName="家長"
+        pin={pinInput}
+        setPin={setPinInput}
+        onSubmit={handleParentPinSubmit}
+        error={error}
+        setError={setError}
+        onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
+  if (screen === "parent_dashboard") {
+    return (
+      <ParentDashboard
+        studentName={selectedStudent?.student_name || ""}
+        sessions={parentSessions}
+        year={parentMonth.year}
+        month={parentMonth.month}
+        subject={parentSubject}
+        onMonthChange={handleParentMonthChange}
+        onSubjectChange={(s) => {
+          setParentSubject(s);
+          if (selectedStudent) loadParentSessions(selectedStudent.id, s, parentMonth.year, parentMonth.month);
+        }}
+        onViewDetail={handleViewSessionDetail}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (screen === "parent_session_detail") {
+    return (
+      <ParentSessionDetail
+        session={parentDetailSession!}
+        answers={parentDetailAnswers}
+        studentName={selectedStudent?.student_name || ""}
+        onBack={() => setScreen("parent_dashboard")}
+        onLogout={handleLogout}
       />
     );
   }
@@ -1496,6 +1645,353 @@ function ErrorScreen({
         >
           重試
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ContactFooter() {
+  return (
+    <div className="mt-8 py-4 border-t border-gray-200 text-center">
+      <p className="text-xs text-gray-400">
+        有問題或意見？請聯絡{" "}
+        <a href="mailto:colin.wong@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
+          colin.wong@hkedutech.com
+        </a>
+      </p>
+    </div>
+  );
+}
+
+function RoleSelectScreen({
+  onStudent,
+  onParent,
+  onBack,
+}: {
+  onStudent: () => void;
+  onParent: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      onContextMenu={preventContextMenu}
+    >
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">選擇身份</h1>
+          <p className="mt-2 text-gray-500">請選擇登入身份</p>
+        </div>
+        <div className="space-y-3">
+          <button
+            onClick={onStudent}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xl">
+              📝
+            </div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">學生</p>
+              <p className="text-sm text-gray-500">開始練習</p>
+            </div>
+          </button>
+          <button
+            onClick={onParent}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+              📊
+            </div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">家長</p>
+              <p className="text-sm text-gray-500">查看練習報告</p>
+            </div>
+          </button>
+        </div>
+        <button
+          onClick={onBack}
+          className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+        >
+          返回
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ParentDashboard({
+  studentName,
+  sessions,
+  year,
+  month,
+  subject,
+  onMonthChange,
+  onSubjectChange,
+  onViewDetail,
+  onLogout,
+}: {
+  studentName: string;
+  sessions: SessionSummary[];
+  year: number;
+  month: number;
+  subject: string;
+  onMonthChange: (y: number, m: number) => void;
+  onSubjectChange: (s: string) => void;
+  onViewDetail: (s: SessionSummary) => void;
+  onLogout: () => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const subjects = [{ key: "數學", label: "數學" }];
+  const monthLabel = `${year} 年 ${month} 月`;
+
+  const prevMonth = () => {
+    const m = month === 1 ? 12 : month - 1;
+    const y = month === 1 ? year - 1 : year;
+    onMonthChange(y, m);
+    setSelectedId(null);
+  };
+  const nextMonth = () => {
+    const m = month === 12 ? 1 : month + 1;
+    const y = month === 12 ? year + 1 : year;
+    onMonthChange(y, m);
+    setSelectedId(null);
+  };
+
+  const totalQuestions = sessions.reduce((s, x) => s + x.questions_attempted, 0);
+  const totalCorrect = sessions.reduce((s, x) => s + x.score, 0);
+  const avgPct = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" onContextMenu={preventContextMenu}>
+      <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {subjects.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => { onSubjectChange(s.key); setSelectedId(null); }}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                subject === s.key
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <span className="text-base font-semibold text-gray-800">{monthLabel}</span>
+          <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+        {sessions.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 mb-4 flex justify-around text-center">
+            <div>
+              <p className="text-2xl font-bold text-indigo-600">{sessions.length}</p>
+              <p className="text-xs text-gray-500">練習次數</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-emerald-600">{avgPct}%</p>
+              <p className="text-xs text-gray-500">平均正確率</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-700">{totalQuestions}</p>
+              <p className="text-xs text-gray-500">總題數</p>
+            </div>
+          </div>
+        )}
+
+        {sessions.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-400 text-base">本月暫無練習記錄</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              {sessions.map((s) => {
+                const pct = s.questions_attempted > 0 ? Math.round((s.score / s.questions_attempted) * 100) : 0;
+                const isSelected = selectedId === s.id;
+                let borderColor = "border-gray-100";
+                let scoreColor = "text-red-600";
+                if (pct >= 80) { scoreColor = "text-emerald-600"; borderColor = isSelected ? "border-emerald-400" : "border-gray-100"; }
+                else if (pct >= 60) { scoreColor = "text-amber-600"; borderColor = isSelected ? "border-amber-400" : "border-gray-100"; }
+                else { borderColor = isSelected ? "border-red-400" : "border-gray-100"; }
+
+                const d = new Date(s.created_at);
+                const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedId(isSelected ? null : s.id)}
+                    className={`bg-white rounded-xl shadow-sm border-2 p-3 text-center transition-all duration-200 hover:shadow-md ${
+                      isSelected ? borderColor + " shadow-md" : "border-gray-100"
+                    }`}
+                  >
+                    <p className="text-xs text-gray-400">{dateStr} {timeStr}</p>
+                    <p className={`text-xl font-bold mt-1 ${scoreColor}`}>{s.score}/{s.questions_attempted}</p>
+                    <p className="text-xs text-gray-500">{pct}%</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedId && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => {
+                    const s = sessions.find((x) => x.id === selectedId);
+                    if (s) onViewDetail(s);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+                >
+                  查看詳情
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
+function ParentSessionDetail({
+  session,
+  answers,
+  studentName,
+  onBack,
+  onLogout,
+}: {
+  session: SessionSummary;
+  answers: SessionDetailAnswer[];
+  studentName: string;
+  onBack: () => void;
+  onLogout: () => void;
+}) {
+  const score = answers.filter((a) => a.is_correct).length;
+  const total = answers.length;
+  const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+  const incorrect = total - score;
+
+  const d = new Date(session.created_at);
+  const dateStr = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const mins = Math.floor(session.time_spent_seconds / 60);
+  const secs = session.time_spent_seconds % 60;
+  const timeStr = mins > 0 ? `${mins} 分 ${secs} 秒` : `${secs} 秒`;
+
+  let scoreColor = "text-red-600";
+  let scoreBg = "bg-red-50 border-red-200";
+  if (percentage >= 80) { scoreColor = "text-emerald-600"; scoreBg = "bg-emerald-50 border-emerald-200"; }
+  else if (percentage >= 60) { scoreColor = "text-amber-600"; scoreBg = "bg-amber-50 border-amber-200"; }
+
+  const wrongAnswers = answers
+    .map((a, i) => ({ answer: a, index: i }))
+    .filter(({ answer }) => !answer.is_correct);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" onContextMenu={preventContextMenu}>
+      <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <button
+          onClick={onBack}
+          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          返回列表
+        </button>
+
+        <div className={`text-center p-5 rounded-2xl border-2 ${scoreBg} mb-6`}>
+          <p className="text-sm text-gray-500">{dateStr} · {session.subject} · 用時 {timeStr}</p>
+          <p className={`mt-2 text-4xl font-extrabold ${scoreColor}`}>{score} / {total}</p>
+          <p className="mt-1 text-base text-gray-600">{percentage}% 正確 · 答對 {score} 題 · 答錯 {incorrect} 題</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-12">#</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">答案</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">結果</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {answers.map((a, i) => {
+                const sa = a.question.opt_a == null && a.question.opt_b == null && a.question.opt_c == null && a.question.opt_d == null;
+                return (
+                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                    <td className="px-3 py-3 text-center text-sm font-medium text-gray-500">{i + 1}</td>
+                    <td className="px-3 py-3 text-center">
+                      {sa ? (
+                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[120px] truncate">{a.student_answer}</span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">{a.student_answer}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {a.is_correct ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">✓ 正確</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">✗ 錯誤</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {wrongAnswers.length > 0 && (
+          <div>
+            <h2 className="text-lg font-bold text-gray-800 mb-3">錯題解析</h2>
+            <div className="space-y-4">
+              {wrongAnswers.map(({ answer, index }) => (
+                <div key={index} className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden">
+                  <div className="bg-red-50 px-4 py-3 border-b border-red-100">
+                    <p className="text-sm font-semibold text-gray-800">
+                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
+                      <span className="text-gray-400 mx-1">|</span>
+                      <span className="text-xs text-gray-500">答案：{answer.student_answer}</span>
+                      <span className="text-gray-400 mx-1">|</span>
+                      <span className="text-xs text-emerald-600">正確：{answer.question.correct_answer}</span>
+                    </p>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    <p className="text-sm text-gray-700">{answer.question.content}</p>
+                    {answer.question.explanation ? (
+                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{answer.question.explanation}</p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md"
+          >
+            返回列表
+          </button>
+        </div>
+
+        <ContactFooter />
       </div>
     </div>
   );

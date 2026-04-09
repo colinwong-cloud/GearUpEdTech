@@ -255,7 +255,84 @@ BEGIN
 END;
 $$;
 
--- 8. Report a question
+-- 8. Get parent dashboard sessions (monthly summaries)
+CREATE OR REPLACE FUNCTION get_parent_sessions(
+  p_student_id UUID,
+  p_subject TEXT,
+  p_year INTEGER,
+  p_month INTEGER
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_sessions JSON;
+  v_start DATE;
+  v_end DATE;
+BEGIN
+  v_start := make_date(p_year, p_month, 1);
+  v_end := (v_start + INTERVAL '1 month')::DATE;
+
+  SELECT COALESCE(json_agg(row_to_json(s) ORDER BY s.created_at DESC), '[]'::json)
+  INTO v_sessions
+  FROM (
+    SELECT
+      qs.id,
+      qs.subject,
+      qs.questions_attempted,
+      qs.score,
+      qs.time_spent_seconds,
+      qs.created_at
+    FROM quiz_sessions qs
+    WHERE qs.student_id = p_student_id
+      AND lower(qs.subject) = lower(p_subject)
+      AND qs.created_at >= v_start
+      AND qs.created_at < v_end
+      AND qs.questions_attempted > 0
+  ) s;
+
+  RETURN v_sessions;
+END;
+$$;
+
+-- 9. Get session detail (answers + questions for a specific session)
+CREATE OR REPLACE FUNCTION get_session_detail(
+  p_session_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_build_object(
+    'session', row_to_json(qs),
+    'answers', COALESCE((
+      SELECT json_agg(
+        json_build_object(
+          'student_answer', sa.student_answer,
+          'is_correct', sa.is_correct,
+          'question_order', sa.question_order,
+          'question', row_to_json(q)
+        ) ORDER BY sa.question_order NULLS LAST, sa.created_at
+      )
+      FROM session_answers sa
+      JOIN questions q ON q.id = sa.question_id
+      WHERE sa.session_id = p_session_id
+    ), '[]'::json)
+  ) INTO v_result
+  FROM quiz_sessions qs
+  WHERE qs.id = p_session_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- 10. Report a question
 CREATE OR REPLACE FUNCTION report_question(
   p_question_id UUID,
   p_student_id UUID,
