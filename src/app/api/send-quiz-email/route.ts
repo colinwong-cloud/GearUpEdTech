@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
     const html = buildEmailHtml(emailData);
 
     const { error: sendErr } = await getResend().emails.send({
-      from: "GearUp Quiz <onboarding@resend.dev>",
+      from: "GearUp Quiz <noreply@hkedutech.com>",
       to: emailData.parent_email,
       subject: `${emailData.student_name} 完成了一次練習 — ${emailData.session.score}/${emailData.session.questions_attempted} 正確`,
       html,
