@@ -427,6 +427,15 @@ export default function QuizApp() {
           p_correct: stats.correct,
         });
       }
+
+      fetch("/api/send-quiz-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: selectedStudent.id,
+          session_id: sessionId,
+        }),
+      }).catch(() => {});
     } catch {
       // non-critical: don't block results
     }

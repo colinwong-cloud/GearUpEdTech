@@ -201,7 +201,61 @@ CREATE TABLE IF NOT EXISTS question_reports (
 
 ALTER TABLE question_reports ENABLE ROW LEVEL SECURITY;
 
--- 7. Report a question
+-- 7. Get quiz email data (for server-side email sending)
+CREATE OR REPLACE FUNCTION get_quiz_email_data(
+  p_student_id UUID,
+  p_session_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  SELECT json_build_object(
+    'parent_name', p.parent_name,
+    'parent_email', p.email,
+    'student_name', s.student_name,
+    'session', json_build_object(
+      'id', qs.id,
+      'subject', qs.subject,
+      'questions_attempted', qs.questions_attempted,
+      'score', qs.score,
+      'time_spent_seconds', qs.time_spent_seconds,
+      'created_at', qs.created_at
+    ),
+    'weekly_count', (
+      SELECT COUNT(*)::int FROM quiz_sessions
+      WHERE student_id = p_student_id
+        AND created_at >= date_trunc('week', NOW())
+    ),
+    'type_breakdown', COALESCE((
+      SELECT json_agg(row_to_json(tb))
+      FROM (
+        SELECT
+          q.question_type,
+          COUNT(*)::int AS total,
+          SUM(CASE WHEN sa.is_correct THEN 1 ELSE 0 END)::int AS correct
+        FROM session_answers sa
+        JOIN questions q ON q.id = sa.question_id
+        WHERE sa.session_id = p_session_id
+        GROUP BY q.question_type
+        ORDER BY q.question_type
+      ) tb
+    ), '[]'::json)
+  ) INTO v_result
+  FROM students s
+  JOIN parents p ON p.id = s.parent_id
+  JOIN quiz_sessions qs ON qs.id = p_session_id AND qs.student_id = p_student_id
+  WHERE s.id = p_student_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- 8. Report a question
 CREATE OR REPLACE FUNCTION report_question(
   p_question_id UUID,
   p_student_id UUID,
