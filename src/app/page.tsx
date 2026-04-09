@@ -953,7 +953,7 @@ function RegisterScreen({
   const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
-    mobileNumber.trim().length > 0 &&
+    /^\d{8}$/.test(mobileNumber.trim()) &&
     studentName.trim().length > 0 &&
     pinValid &&
     avatarStyle !== "" &&
@@ -981,18 +981,27 @@ function RegisterScreen({
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              家長電話號碼
+              家長電話號碼（香港手提電話號碼）
             </label>
             <input
               type="tel"
               value={mobileNumber}
               onChange={(e) => {
-                setMobileNumber(e.target.value);
+                const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                setMobileNumber(v);
                 if (error) setError(null);
               }}
+              maxLength={8}
               placeholder="例如：91234567"
-              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                mobileNumber.length > 0 && mobileNumber.length !== 8
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
             />
+            {mobileNumber.length > 0 && mobileNumber.length !== 8 && (
+              <p className="mt-1 text-xs text-red-500">請輸入8位數字電話號碼</p>
+            )}
           </div>
 
           <div>
@@ -1013,7 +1022,7 @@ function RegisterScreen({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              PIN 碼（6位英數字混合）
+              6 位英文或數字組合密碼（用於學生及家長登入）
             </label>
             <input
               type="text"
@@ -1040,7 +1049,7 @@ function RegisterScreen({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              頭像
+              姓別
             </label>
             <div className="flex gap-3">
               {avatars.map((a) => (
