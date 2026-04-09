@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Interactive quiz platform for students",
 };
 
-const bgUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/bk.png`;
+const bgUrl = `${(process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim()}/storage/v1/object/public/question-images/Banana%20images/bk.png`;
 
 export default function RootLayout({
   children,
@@ -29,10 +29,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body
-        className="min-h-full flex flex-col"
-        style={{ backgroundImage: `url(${bgUrl})` }}
-      >
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `body{background-image:url(${bgUrl});}` }} />
+      </head>
+      <body className="min-h-full flex flex-col">
         {children}
       </body>
     </html>
