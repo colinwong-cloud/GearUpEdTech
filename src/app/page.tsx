@@ -712,7 +712,7 @@ export default function QuizApp() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col"
       onContextMenu={preventContextMenu}
     >
       <Header
@@ -859,12 +859,18 @@ function LoginMobileScreen({
 }) {
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">GearUp Quiz</h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`}
+            alt="GearUp Quiz"
+            className="mx-auto h-20 w-auto mb-4"
+            draggable={false}
+          />
           <p className="mt-2 text-gray-500">請輸入家長電話號碼登入</p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
@@ -962,7 +968,7 @@ function RegisterScreen({
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4 py-8"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4 py-8"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -1156,7 +1162,7 @@ function StudentSelectScreen({
   ];
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
@@ -1215,7 +1221,7 @@ function PinScreen({
 }) {
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -1283,7 +1289,7 @@ function SubjectSelectScreen({
   ];
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
@@ -1408,7 +1414,7 @@ function ResultsView({
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+      className="min-h-screen bg-white/60 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
       <Header studentName={studentName} onLogout={onLogout} />
@@ -1611,7 +1617,7 @@ function QuestionImage({ src }: { src: string }) {
 function LoadingScreen() {
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center"
       onContextMenu={preventContextMenu}
     >
       <div className="text-center">
@@ -1634,7 +1640,7 @@ function ErrorScreen({
 }) {
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="text-center max-w-md">
@@ -1690,7 +1696,7 @@ function RoleSelectScreen({
 }) {
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -1778,7 +1784,7 @@ function ParentDashboard({
   const avgPct = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" onContextMenu={preventContextMenu}>
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
       <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-wrap gap-2 mb-4">
@@ -1916,7 +1922,7 @@ function ParentSessionDetail({
     .filter(({ answer }) => !answer.is_correct);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" onContextMenu={preventContextMenu}>
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
       <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <button
