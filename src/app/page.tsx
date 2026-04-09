@@ -1114,7 +1114,7 @@ function SubjectSelectScreen({
   error: string | null;
 }) {
   const subjects = [
-    { key: "Math", label: "數學", icon: "🔢" },
+    { key: "數學", label: "數學", icon: "🔢" },
   ];
   return (
     <div
