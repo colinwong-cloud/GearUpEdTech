@@ -2,6 +2,7 @@ export interface Parent {
   id: string;
   mobile_number: string;
   parent_name: string | null;
+  email: string | null;
   created_at: string;
 }
 

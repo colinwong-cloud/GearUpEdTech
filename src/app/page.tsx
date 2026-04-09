@@ -223,6 +223,7 @@ export default function QuizApp() {
       pinCode: string;
       avatarStyle: string;
       gradeLevel: string;
+      email: string;
     }) => {
       if (!mobileNumber.trim()) return;
       setLoading(true);
@@ -234,6 +235,7 @@ export default function QuizApp() {
           p_pin_code: form.pinCode,
           p_avatar_style: form.avatarStyle,
           p_grade_level: form.gradeLevel,
+          p_email: form.email || null,
         });
         if (rpcErr) throw rpcErr;
 
@@ -769,6 +771,7 @@ function RegisterScreen({
     pinCode: string;
     avatarStyle: string;
     gradeLevel: string;
+    email: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -778,6 +781,7 @@ function RegisterScreen({
   const [pinCode, setPinCode] = useState("");
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
+  const [email, setEmail] = useState("");
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pinCode);
@@ -914,13 +918,29 @@ function RegisterScreen({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              家長電郵（用於接收練習通知）
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="例如：parent@example.com"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+            />
+          </div>
+
           {error && (
             <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
 
           <button
             onClick={() =>
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel })
+              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim() })
             }
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${

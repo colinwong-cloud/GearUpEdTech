@@ -34,13 +34,14 @@ BEGIN
 END;
 $$;
 
--- 1. Register a new user: find-or-create parent, create student
+-- 1. Register a new user: find-or-create parent (with email), create student
 CREATE OR REPLACE FUNCTION register_student(
   p_mobile_number TEXT,
   p_student_name TEXT,
   p_pin_code TEXT,
   p_avatar_style TEXT,
-  p_grade_level TEXT
+  p_grade_level TEXT,
+  p_email TEXT DEFAULT NULL
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -51,13 +52,15 @@ DECLARE
   v_parent_id UUID;
   v_student RECORD;
 BEGIN
-  -- Find or create parent
   SELECT id INTO v_parent_id FROM parents WHERE mobile_number = p_mobile_number;
   IF v_parent_id IS NULL THEN
-    INSERT INTO parents (mobile_number) VALUES (p_mobile_number) RETURNING id INTO v_parent_id;
+    INSERT INTO parents (mobile_number, email) VALUES (p_mobile_number, p_email) RETURNING id INTO v_parent_id;
+  ELSE
+    IF p_email IS NOT NULL AND p_email <> '' THEN
+      UPDATE parents SET email = p_email WHERE id = v_parent_id AND (email IS NULL OR email = '');
+    END IF;
   END IF;
 
-  -- Create student
   INSERT INTO students (parent_id, student_name, pin_code, avatar_style, grade_level)
   VALUES (v_parent_id, p_student_name, p_pin_code, p_avatar_style, p_grade_level)
   RETURNING * INTO v_student;
