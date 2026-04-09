@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
 import type {
   Student,
@@ -940,15 +941,18 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
     mobileNumber.trim().length > 0 &&
     studentName.trim().length > 0 &&
     pinValid &&
     avatarStyle !== "" &&
-    gradeLevel !== "";
+    gradeLevel !== "" &&
+    (siteKey ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -1091,6 +1095,18 @@ function RegisterScreen({
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
+
+          {siteKey && (
+            <div className="flex justify-center">
+              <Turnstile
+                siteKey={siteKey}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => setTurnstileToken(null)}
+                onExpire={() => setTurnstileToken(null)}
+                options={{ theme: "light", size: "normal" }}
+              />
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-500 font-medium">{error}</p>
