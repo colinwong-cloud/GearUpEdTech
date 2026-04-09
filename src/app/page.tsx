@@ -244,6 +244,10 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 }
 
 function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestart: () => void }) {
+  const [email, setEmail] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [emailError, setEmailError] = useState("");
+
   const score = answers.filter((a) => a.isCorrect).length;
   const total = answers.length;
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
@@ -257,6 +261,39 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
     scoreColor = "text-amber-600";
     scoreBg = "bg-amber-50 border-amber-200";
   }
+
+  const handleSendEmail = async () => {
+    if (!email) return;
+    setEmailStatus("sending");
+    setEmailError("");
+
+    try {
+      const res = await fetch("/api/send-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          score,
+          total,
+          percentage,
+          results: answers.map((a) => ({
+            questionContent: a.question.content,
+            studentAnswer: a.studentAnswer,
+            correctAnswer: a.question.correct_answer,
+            isCorrect: a.isCorrect,
+            explanation: a.question.explanation,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send email");
+      setEmailStatus("sent");
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Failed to send email");
+      setEmailStatus("error");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -334,7 +371,53 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Email Your Results</h3>
+          <p className="text-sm text-gray-500 mb-4">Get a copy of your quiz results sent to your inbox.</p>
+
+          {emailStatus === "sent" ? (
+            <div className="flex items-center gap-2 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-sm font-medium text-emerald-700">Results sent to {email}!</span>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={emailStatus === "sending"}
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-0 focus:outline-none transition-colors disabled:opacity-60"
+              />
+              <button
+                onClick={handleSendEmail}
+                disabled={!email || emailStatus === "sending"}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
+                  email && emailStatus !== "sending"
+                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {emailStatus === "sending" ? (
+                  <span className="flex items-center gap-2">
+                    <Spinner /> Sending...
+                  </span>
+                ) : (
+                  "Send Results"
+                )}
+              </button>
+            </div>
+          )}
+
+          {emailStatus === "error" && (
+            <p className="mt-3 text-sm text-red-600">{emailError}</p>
+          )}
+        </div>
+
+        <div className="mt-6 text-center">
           <button
             onClick={onRestart}
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
