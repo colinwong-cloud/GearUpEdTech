@@ -49,6 +49,21 @@ interface SessionDetailAnswer {
   question: Question;
 }
 
+interface BalanceTransaction {
+  id: string;
+  change_amount: number;
+  balance_after: number;
+  description: string;
+  session_id: string | null;
+  created_at: string;
+}
+
+interface BalanceTransactionData {
+  opening_balance: number;
+  current_balance: number;
+  transactions: BalanceTransaction[];
+}
+
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
 }
@@ -221,6 +236,7 @@ export default function QuizApp() {
   const [parentSubject, setParentSubject] = useState("數學");
   const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
+  const [parentBalanceData, setParentBalanceData] = useState<BalanceTransactionData | null>(null);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim()) return;
@@ -321,14 +337,23 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcErr } = await supabase.rpc("get_parent_sessions", {
-        p_student_id: studentId,
-        p_subject: subject,
-        p_year: year,
-        p_month: month,
-      });
-      if (rpcErr) throw rpcErr;
-      setParentSessions((data as SessionSummary[]) || []);
+      const [sessRes, balRes] = await Promise.all([
+        supabase.rpc("get_parent_sessions", {
+          p_student_id: studentId,
+          p_subject: subject,
+          p_year: year,
+          p_month: month,
+        }),
+        supabase.rpc("get_balance_transactions", {
+          p_student_id: studentId,
+          p_subject: subject,
+          p_year: year,
+          p_month: month,
+        }),
+      ]);
+      if (sessRes.error) throw sessRes.error;
+      setParentSessions((sessRes.data as SessionSummary[]) || []);
+      setParentBalanceData(balRes.data as BalanceTransactionData | null);
       setScreen("parent_dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入練習記錄。");
@@ -367,18 +392,17 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data: bal } = await supabase
-          .from("student_balances")
-          .select("*")
-          .eq("student_id", selectedStudent.id)
-          .ilike("subject", subject)
-          .maybeSingle();
+        const { data: bal } = await supabase.rpc("get_student_balance", {
+          p_student_id: selectedStudent.id,
+          p_subject: subject,
+        });
 
-        if (bal && (bal as StudentBalance).remaining_questions <= 0) {
+        const balRecord = bal as StudentBalance | null;
+        if (balRecord && balRecord.remaining_questions <= 0) {
           throw new Error("你的練習題目已用完，請聯絡家長充值。");
         }
 
-        setBalance(bal as StudentBalance | null);
+        setBalance(balRecord);
         setSelectedSubject(subject);
         await startQuiz(selectedStudent, subject);
       } catch (err) {
@@ -489,14 +513,14 @@ export default function QuizApp() {
     if (!selectedStudent || !selectedSubject) return;
     try {
       if (balance) {
-        await supabase.rpc("deduct_student_balance", {
+        const { data: deductResult } = await supabase.rpc("deduct_student_balance", {
           p_balance_id: balance.id,
           p_amount: finalAnswers.length,
+          p_session_id: sessionId,
         });
-        setBalance({
-          ...balance,
-          remaining_questions: Math.max(0, balance.remaining_questions - finalAnswers.length),
-        });
+        const newBal = (deductResult as { remaining_questions: number } | null)?.remaining_questions
+          ?? Math.max(0, balance.remaining_questions - finalAnswers.length);
+        setBalance({ ...balance, remaining_questions: newBal });
       }
 
       const rankGroups: Record<string, { attempted: number; correct: number }> =
@@ -608,6 +632,7 @@ export default function QuizApp() {
         year={parentMonth.year}
         month={parentMonth.month}
         subject={parentSubject}
+        balanceData={parentBalanceData}
         onMonthChange={handleParentMonthChange}
         onSubjectChange={(s) => {
           setParentSubject(s);
@@ -1756,6 +1781,7 @@ function ParentDashboard({
   year,
   month,
   subject,
+  balanceData,
   onMonthChange,
   onSubjectChange,
   onViewDetail,
@@ -1766,12 +1792,14 @@ function ParentDashboard({
   year: number;
   month: number;
   subject: string;
+  balanceData: BalanceTransactionData | null;
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
   onViewDetail: (s: SessionSummary) => void;
   onLogout: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [txExpanded, setTxExpanded] = useState(false);
   const subjects = [{ key: "數學", label: "數學" }];
   const monthLabel = `${year} 年 ${month} 月`;
 
@@ -1796,6 +1824,18 @@ function ParentDashboard({
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
       <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {balanceData && (
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5 mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-indigo-100 text-xs font-medium">題目餘額</p>
+              <p className="text-white text-3xl font-extrabold">{balanceData.current_balance}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-indigo-200 text-xs">剩餘可用題目</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 mb-4">
           {subjects.map((s) => (
             <button
@@ -1889,6 +1929,60 @@ function ParentDashboard({
               </div>
             )}
           </>
+        )}
+
+        {balanceData && balanceData.transactions.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setTxExpanded(!txExpanded)}
+              className="w-full flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 hover:shadow-md transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-700">題目餘額變動記錄</span>
+              <svg
+                className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${txExpanded ? "rotate-180" : ""}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {txExpanded && (
+              <div className="mt-2 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr className="bg-gray-50/50">
+                      <td className="px-3 py-2 text-xs text-gray-400">{month}/1</td>
+                      <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
+                      <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{balanceData.opening_balance}</td>
+                    </tr>
+                    {balanceData.transactions.map((tx) => {
+                      const d = new Date(tx.created_at);
+                      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                      const isPositive = tx.change_amount > 0;
+                      return (
+                        <tr key={tx.id}>
+                          <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
+                          <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
+                          <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
+                            {isPositive ? "+" : ""}{tx.change_amount}
+                          </td>
+                          <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{tx.balance_after}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
 
         <ContactFooter />
