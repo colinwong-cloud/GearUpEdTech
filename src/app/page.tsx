@@ -11,7 +11,6 @@ import type {
   StudentBalance,
 } from "@/lib/types";
 
-const QUESTION_COUNT = 10;
 const MAX_SHORT_ANSWER = 2;
 const MAX_IMAGE = 1;
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
@@ -27,11 +26,14 @@ type AppScreen =
   | "login_student"
   | "login_pin"
   | "subject_select"
+  | "question_count_select"
   | "quiz"
   | "results"
   | "parent_pin"
   | "parent_dashboard"
   | "parent_session_detail";
+
+const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
 interface SessionSummary {
   id: string;
@@ -113,7 +115,8 @@ function fisherYatesShuffle<T>(arr: T[]): T[] {
 
 function selectQuestions(
   all: Question[],
-  weights: ParentWeight[]
+  weights: ParentWeight[],
+  count: number
 ): Question[] {
   let pool = all;
 
@@ -138,12 +141,12 @@ function selectQuestions(
         const quota = Math.max(
           1,
           Math.round(
-            (activeTypes[wi].weight_percentage / totalWeight) * QUESTION_COUNT
+            (activeTypes[wi].weight_percentage / totalWeight) * count
           )
         );
         let picked = 0;
         for (const q of buckets[wi]) {
-          if (picked >= quota || selected.length >= QUESTION_COUNT) break;
+          if (picked >= quota || selected.length >= count) break;
           if (!usedIds.has(q.id)) {
             selected.push(q);
             usedIds.add(q.id);
@@ -152,32 +155,32 @@ function selectQuestions(
         }
       }
 
-      if (selected.length < QUESTION_COUNT) {
+      if (selected.length < count) {
         const remainder = fisherYatesShuffle(
           all.filter((q) => !usedIds.has(q.id))
         );
         for (const q of remainder) {
-          if (selected.length >= QUESTION_COUNT) break;
+          if (selected.length >= count) break;
           selected.push(q);
         }
       }
 
-      pool = selected.slice(0, QUESTION_COUNT);
-      return applySpecialLimits(pool, all);
+      pool = selected.slice(0, count);
+      return applySpecialLimits(pool, all, count);
     }
   }
 
-  return applySpecialLimits(fisherYatesShuffle(pool), all);
+  return applySpecialLimits(fisherYatesShuffle(pool), all, count);
 }
 
-function applySpecialLimits(candidates: Question[], fullPool: Question[]): Question[] {
+function applySpecialLimits(candidates: Question[], fullPool: Question[], count: number): Question[] {
   const result: Question[] = [];
   const usedIds = new Set<string>();
   let shortCount = 0;
   let imageCount = 0;
 
   for (const q of candidates) {
-    if (result.length >= QUESTION_COUNT) break;
+    if (result.length >= count) break;
     const sa = isShortAnswer(q);
     const img = hasImage(q);
     if (sa && shortCount >= MAX_SHORT_ANSWER) continue;
@@ -188,7 +191,7 @@ function applySpecialLimits(candidates: Question[], fullPool: Question[]): Quest
     if (img) imageCount++;
   }
 
-  if (result.length < QUESTION_COUNT) {
+  if (result.length < count) {
     const extras = fisherYatesShuffle(
       fullPool.filter(
         (q) =>
@@ -196,7 +199,7 @@ function applySpecialLimits(candidates: Question[], fullPool: Question[]): Quest
       )
     );
     for (const q of extras) {
-      if (result.length >= QUESTION_COUNT) break;
+      if (result.length >= count) break;
       result.push(q);
     }
   }
@@ -404,16 +407,27 @@ export default function QuizApp() {
 
         setBalance(balRecord);
         setSelectedSubject(subject);
-        await startQuiz(selectedStudent, subject);
+        setScreen("question_count_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "無法開始測驗。");
+      } finally {
         setLoading(false);
       }
     },
     [selectedStudent]
   );
 
-  const startQuiz = async (student: Student, subject: string) => {
+  const handleQuestionCountSelect = async (count: number) => {
+    if (!selectedStudent || !selectedSubject) return;
+    if (balance && balance.remaining_questions < count) {
+      setError(`餘額不足，你只剩 ${balance.remaining_questions} 題，請選擇較少的題數。`);
+      return;
+    }
+    setError(null);
+    await startQuiz(selectedStudent, selectedSubject, count);
+  };
+
+  const startQuiz = async (student: Student, subject: string, count: number = 10) => {
     setLoading(true);
     setCurrentIndex(0);
     setSelectedAnswer(null);
@@ -434,7 +448,8 @@ export default function QuizApp() {
 
       const selected = selectQuestions(
         allQuestions,
-        (weights as ParentWeight[]) || []
+        (weights as ParentWeight[]) || [],
+        count
       );
 
       const { data: session, error: sessErr } = await supabase.rpc(
@@ -702,6 +717,19 @@ export default function QuizApp() {
         studentName={selectedStudent?.student_name || ""}
         onSelect={handleSubjectSelect}
         onLogout={handleLogout}
+        error={error}
+      />
+    );
+  }
+
+  if (screen === "question_count_select") {
+    return (
+      <QuestionCountScreen
+        studentName={selectedStudent?.student_name || ""}
+        subject={selectedSubject || ""}
+        balance={balance?.remaining_questions ?? null}
+        onSelect={handleQuestionCountSelect}
+        onBack={() => { setError(null); setScreen("subject_select"); }}
         error={error}
       />
     );
@@ -1357,6 +1385,89 @@ function SubjectSelectScreen({
           className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
         >
           登出
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QuestionCountScreen({
+  studentName,
+  subject,
+  balance,
+  onSelect,
+  onBack,
+  error,
+}: {
+  studentName: string;
+  subject: string;
+  balance: number | null;
+  onSelect: (count: number) => void;
+  onBack: () => void;
+  error: string | null;
+}) {
+  return (
+    <div
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      onContextMenu={preventContextMenu}
+    >
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {studentName}，選擇題數
+          </h1>
+          <p className="mt-2 text-gray-500">
+            {subject} — 請選擇本次練習的題目數量
+          </p>
+          {balance !== null && (
+            <p className="mt-1 text-sm text-indigo-600 font-medium">
+              目前餘額：{balance} 題
+            </p>
+          )}
+        </div>
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600 text-center">
+            {error}
+          </div>
+        )}
+        <div className="space-y-3">
+          {QUESTION_COUNT_OPTIONS.map((count) => {
+            const disabled = balance !== null && balance < count;
+            return (
+              <button
+                key={count}
+                onClick={() => !disabled && onSelect(count)}
+                disabled={disabled}
+                className={`w-full bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center justify-between transition-all duration-200 ${
+                  disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:border-indigo-300 hover:shadow-lg active:scale-[0.98]"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                    disabled
+                      ? "bg-gray-100 text-gray-400"
+                      : "bg-gradient-to-br from-indigo-400 to-purple-500 text-white"
+                  }`}>
+                    {count}
+                  </div>
+                  <span className={`text-base font-semibold ${disabled ? "text-gray-400" : "text-gray-900"}`}>
+                    {count} 題
+                  </span>
+                </div>
+                {disabled && (
+                  <span className="text-xs text-red-400">餘額不足</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={onBack}
+          className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+        >
+          返回
         </button>
       </div>
     </div>
