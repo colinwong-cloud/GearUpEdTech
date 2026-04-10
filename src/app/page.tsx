@@ -1380,7 +1380,6 @@ function PinScreen({
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
           <input
             type="password"
-            inputMode="numeric"
             maxLength={6}
             value={pin}
             onChange={(e) => {
