@@ -273,6 +273,7 @@ export default function QuizApp() {
       avatarStyle: string;
       gradeLevel: string;
       email: string;
+      schoolId: string | null;
     }) => {
       if (!mobileNumber.trim()) return;
       setLoading(true);
@@ -285,6 +286,7 @@ export default function QuizApp() {
           p_avatar_style: form.avatarStyle,
           p_grade_level: form.gradeLevel,
           p_email: form.email || null,
+          p_school_id: form.schoolId,
         });
         if (rpcErr) throw rpcErr;
 
@@ -974,6 +976,14 @@ function LoginMobileScreen({
   );
 }
 
+interface SchoolOption {
+  id: string;
+  area: string;
+  district: string;
+  name_zh: string | null;
+  name_en: string;
+}
+
 function RegisterScreen({
   mobileNumber,
   setMobileNumber,
@@ -990,6 +1000,7 @@ function RegisterScreen({
     avatarStyle: string;
     gradeLevel: string;
     email: string;
+    schoolId: string | null;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -1002,6 +1013,23 @@ function RegisterScreen({
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schoolsLoaded, setSchoolsLoaded] = useState(false);
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+
+  useState(() => {
+    supabase.rpc("get_schools").then(({ data }) => {
+      if (data) setSchools(data as SchoolOption[]);
+      setSchoolsLoaded(true);
+    });
+  });
+
+  const areas = [...new Set(schools.map((s) => s.area))];
+  const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
+  const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
+
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -1011,6 +1039,7 @@ function RegisterScreen({
     pinValid &&
     avatarStyle !== "" &&
     gradeLevel !== "" &&
+    selectedSchoolId !== null &&
     (siteKey ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
@@ -1149,6 +1178,61 @@ function RegisterScreen({
           </div>
 
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              學校
+            </label>
+            {!schoolsLoaded ? (
+              <p className="text-sm text-gray-400">載入學校列表中...</p>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={selectedArea}
+                  onChange={(e) => {
+                    setSelectedArea(e.target.value);
+                    setSelectedDistrict("");
+                    setSelectedSchoolId(null);
+                  }}
+                  className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                >
+                  <option value="">選擇區域</option>
+                  {areas.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+                {selectedArea && (
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => {
+                      setSelectedDistrict(e.target.value);
+                      setSelectedSchoolId(null);
+                    }}
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                  >
+                    <option value="">選擇地區</option>
+                    {districts.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                )}
+                {selectedDistrict && (
+                  <select
+                    value={selectedSchoolId || ""}
+                    onChange={(e) => setSelectedSchoolId(e.target.value || null)}
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                  >
+                    <option value="">選擇學校</option>
+                    {filteredSchools.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name_zh || s.name_en}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               家長電郵（用於接收練習通知）
             </label>
@@ -1182,7 +1266,7 @@ function RegisterScreen({
 
           <button
             onClick={() =>
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim() })
+              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId })
             }
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
