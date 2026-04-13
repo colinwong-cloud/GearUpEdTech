@@ -656,6 +656,7 @@ export default function QuizApp() {
           if (selectedStudent) loadParentSessions(selectedStudent.id, s, parentMonth.year, parentMonth.month);
         }}
         onViewDetail={handleViewSessionDetail}
+        onBack={() => setScreen("login_role")}
         onLogout={handleLogout}
       />
     );
@@ -1979,6 +1980,7 @@ function ParentDashboard({
   onMonthChange,
   onSubjectChange,
   onViewDetail,
+  onBack,
   onLogout,
 }: {
   studentName: string;
@@ -1990,6 +1992,7 @@ function ParentDashboard({
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
   onViewDetail: (s: SessionSummary) => void;
+  onBack: () => void;
   onLogout: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -2016,7 +2019,13 @@ function ParentDashboard({
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-      <Header studentName={`${studentName} 的練習報告`} onLogout={onLogout} />
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">{studentName} 的練習報告</span>
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600 transition-colors">返回</button>
+          <button onClick={onLogout} className="text-sm text-gray-500 hover:text-red-500 transition-colors">登出</button>
+        </div>
+      </div>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {balanceData && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5 mb-4 flex items-center justify-between">
