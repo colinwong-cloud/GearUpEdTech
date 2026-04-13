@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -1020,12 +1020,12 @@ function RegisterScreen({
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
 
-  useState(() => {
+  useEffect(() => {
     supabase.rpc("get_schools").then(({ data }) => {
       if (data) setSchools(data as SchoolOption[]);
       setSchoolsLoaded(true);
     });
-  });
+  }, []);
 
   const areas = [...new Set(schools.map((s) => s.area))];
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
