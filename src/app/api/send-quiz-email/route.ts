@@ -20,6 +20,7 @@ interface TypeBreakdown {
 interface QuizEmailData {
   parent_name: string | null;
   parent_email: string | null;
+  email_notifications_enabled: boolean;
   student_name: string;
   session: {
     id: string;
@@ -190,8 +191,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (!emailData.parent_email) {
-      console.log(`No parent email for student ${student_id}, skipping email`);
       return NextResponse.json({ skipped: true, reason: "no_parent_email" });
+    }
+
+    if (emailData.email_notifications_enabled === false) {
+      return NextResponse.json({ skipped: true, reason: "parent_notifications_disabled" });
+    }
+
+    const { data: settings } = await supabase.rpc("admin_get_settings");
+    if (settings && (settings as Record<string, string>).email_notifications_enabled === "false") {
+      return NextResponse.json({ skipped: true, reason: "global_notifications_disabled" });
     }
 
     if (!process.env.RESEND_API_KEY) {
