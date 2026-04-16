@@ -75,10 +75,10 @@ BEGIN
   RETURNING * INTO v_student;
 
   INSERT INTO student_balances (student_id, subject, remaining_questions)
-  VALUES (v_student.id, '數學', 30);
+  VALUES (v_student.id, '數學', 300);
 
   INSERT INTO balance_transactions (student_id, subject, change_amount, balance_after, description)
-  VALUES (v_student.id, '數學', 30, 30, '新用戶註冊贈送');
+  VALUES (v_student.id, '數學', 300, 300, '新用戶註冊贈送');
 
   RETURN row_to_json(v_student);
 END;
