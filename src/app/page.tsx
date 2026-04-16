@@ -36,7 +36,8 @@ type AppScreen =
   | "profile_edit"
   | "add_student_pin"
   | "add_student_form"
-  | "parent_student_select";
+  | "parent_student_select"
+  | "forgot_password";
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
@@ -706,6 +707,7 @@ export default function QuizApp() {
         error={error}
         setError={setError}
         onBack={() => setScreen("login_role")}
+        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -732,6 +734,7 @@ export default function QuizApp() {
         error={error}
         setError={setError}
         onBack={() => setScreen("login_role")}
+        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -764,6 +767,14 @@ export default function QuizApp() {
     );
   }
 
+  if (screen === "forgot_password") {
+    return (
+      <ForgotPasswordScreen
+        onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
   if (screen === "parent_pin") {
     return (
       <PinScreen
@@ -774,6 +785,7 @@ export default function QuizApp() {
         error={error}
         setError={setError}
         onBack={() => setScreen("login_role")}
+        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -847,6 +859,7 @@ export default function QuizApp() {
         error={error}
         setError={setError}
         onBack={() => setScreen("login_student")}
+        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -1499,6 +1512,7 @@ function PinScreen({
   error,
   setError,
   onBack,
+  onForgotPassword,
 }: {
   studentName: string;
   pin: string;
@@ -1507,6 +1521,7 @@ function PinScreen({
   error: string | null;
   setError: (v: string | null) => void;
   onBack: () => void;
+  onForgotPassword?: () => void;
 }) {
   return (
     <div
@@ -1555,6 +1570,14 @@ function PinScreen({
           >
             返回
           </button>
+          {onForgotPassword && (
+            <button
+              onClick={onForgotPassword}
+              className="w-full text-center text-xs text-indigo-500 hover:text-indigo-700"
+            >
+              忘記密碼？
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -2432,6 +2455,92 @@ function ProfileEditScreen({
             className="flex-1 py-3.5 rounded-xl bg-white text-gray-700 font-semibold border border-gray-300 hover:bg-gray-50 transition-all">
             返回
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/send-reset-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+      if (data.found === false) {
+        setMsg("此電郵地址不在系統記錄中，請重新輸入。");
+      } else if (data.sent) {
+        setSent(true);
+      } else {
+        setMsg("發送失敗，請重試。");
+      }
+    } catch {
+      setMsg("發送失敗，請重試。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
+        <div className="w-full max-w-sm text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 mb-4">
+            <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">電郵已發送</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            密碼重設連結已發送到 <strong>{email}</strong>，請檢查你的電郵（包括垃圾郵件資料夾）。連結將於 1 小時後失效。
+          </p>
+          <button onClick={onBack}
+            className="px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-md">
+            返回
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">忘記密碼</h1>
+          <p className="mt-2 text-gray-500">請輸入你註冊時使用的電郵地址</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setMsg(""); }}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="輸入電郵地址"
+            className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+          />
+          {msg && <p className="text-sm text-red-500">{msg}</p>}
+          <button
+            onClick={handleSubmit}
+            disabled={!email.trim() || loading}
+            className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
+              email.trim() && !loading ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {loading ? "發送中..." : "發送重設連結"}
+          </button>
+          <button onClick={onBack} className="w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
         </div>
       </div>
     </div>
