@@ -12,9 +12,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const faviconUrl = `${(process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim()}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+
 export const metadata: Metadata = {
   title: "GearUp Quiz",
   description: "Interactive quiz platform for students",
+  icons: { icon: faviconUrl },
 };
 
 const bgUrl = `${(process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim()}/storage/v1/object/public/question-images/Banana%20images/bk.png`;
