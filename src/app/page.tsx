@@ -740,6 +740,7 @@ export default function QuizApp() {
     return (
       <AddStudentScreen
         mobileNumber={mobileNumber}
+        existingPinCode={students[0]?.pin_code || ""}
         onSubmit={handleAddStudentSubmit}
         onBack={() => setScreen("login_role")}
         error={error}
@@ -2043,19 +2044,20 @@ function ErrorScreen({
 
 function AddStudentScreen({
   mobileNumber,
+  existingPinCode,
   onSubmit,
   onBack,
   error,
   setError,
 }: {
   mobileNumber: string;
+  existingPinCode: string;
   onSubmit: (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
   onBack: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
   const [studentName, setStudentName] = useState("");
-  const [pinCode, setPinCode] = useState("");
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -2077,12 +2079,9 @@ function AddStudentScreen({
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
-  const PIN_RE = /^[A-Za-z0-9]{6}$/;
-  const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
     studentName.trim().length > 0 &&
-    pinValid &&
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
@@ -2107,13 +2106,6 @@ function AddStudentScreen({
             <input value={studentName} onChange={(e) => { setStudentName(e.target.value); if (error) setError(null); }}
               placeholder="輸入學生姓名"
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">6 位英文或數字組合密碼（用於學生及家長登入）</label>
-            <input value={pinCode} onChange={(e) => { const v = e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6); setPinCode(v); if (error) setError(null); }}
-              maxLength={6} placeholder="例如：abc123"
-              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${pinCode.length > 0 && !pinValid ? "border-red-300" : "border-gray-200 focus:border-indigo-400"}`} />
-            {pinCode.length > 0 && !pinValid && <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
@@ -2176,7 +2168,7 @@ function AddStudentScreen({
 
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
-          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
+          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode: existingPinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             新增學生
