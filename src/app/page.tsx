@@ -31,7 +31,9 @@ type AppScreen =
   | "results"
   | "parent_pin"
   | "parent_dashboard"
-  | "parent_session_detail";
+  | "parent_session_detail"
+  | "profile_pin"
+  | "profile_edit";
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
@@ -333,6 +335,17 @@ export default function QuizApp() {
     }
   }, [pinInput, students, parentSubject, parentMonth]);
 
+  const handleProfilePinSubmit = useCallback(() => {
+    const firstStudent = students[0];
+    if (!firstStudent) return;
+    if (pinInput === firstStudent.pin_code) {
+      setError(null);
+      setScreen("profile_edit");
+    } else {
+      setError("PIN 碼不正確，請重試。");
+    }
+  }, [pinInput, students]);
+
   const loadParentSessions = async (
     studentId: string,
     subject: string,
@@ -622,7 +635,38 @@ export default function QuizApp() {
           setError(null);
           setScreen("parent_pin");
         }}
+        onProfile={() => {
+          setPinInput("");
+          setError(null);
+          setScreen("profile_pin");
+        }}
         onBack={handleLogout}
+      />
+    );
+  }
+
+  if (screen === "profile_pin") {
+    return (
+      <PinScreen
+        studentName="更新資料"
+        pin={pinInput}
+        setPin={setPinInput}
+        onSubmit={handleProfilePinSubmit}
+        error={error}
+        setError={setError}
+        onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
+  if (screen === "profile_edit") {
+    return (
+      <ProfileEditScreen
+        mobileNumber={mobileNumber}
+        onSaved={() => {
+          setScreen("login_role");
+        }}
+        onBack={() => setScreen("login_role")}
       />
     );
   }
@@ -1901,6 +1945,263 @@ function ErrorScreen({
   );
 }
 
+function ProfileEditScreen({
+  mobileNumber,
+  onSaved,
+  onBack,
+}: {
+  mobileNumber: string;
+  onSaved: () => void;
+  onBack: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const [parentId, setParentId] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [studentEdits, setStudentEdits] = useState<{
+    id: string;
+    student_name: string;
+    pin_code: string;
+    avatar_style: string;
+    grade_level: string;
+    school_id: string | null;
+  }[]>([]);
+
+  const [schools, setSchools] = useState<{ id: string; area: string; district: string; name_zh: string | null; name_en: string }[]>([]);
+  const [schoolAreas, setSchoolAreas] = useState<Record<string, string>>({});
+  const [schoolDistricts, setSchoolDistricts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      const [profileRes, schoolsRes] = await Promise.all([
+        supabase.rpc("get_parent_profile", { p_mobile: mobileNumber.trim() }),
+        supabase.rpc("get_schools"),
+      ]);
+
+      if (schoolsRes.data) {
+        const s = schoolsRes.data as typeof schools;
+        setSchools(s);
+        const areaMap: Record<string, string> = {};
+        const distMap: Record<string, string> = {};
+        s.forEach((sc) => { areaMap[sc.id] = sc.area; distMap[sc.id] = sc.district; });
+        setSchoolAreas(areaMap);
+        setSchoolDistricts(distMap);
+      }
+
+      if (profileRes.data) {
+        const d = profileRes.data as {
+          parent: { id: string; mobile_number: string; parent_name: string | null; email: string | null };
+          students: { id: string; student_name: string; pin_code: string; avatar_style: string; grade_level: string; school_id: string | null }[];
+        };
+        setParentId(d.parent.id);
+        setParentName(d.parent.parent_name || "");
+        setParentEmail(d.parent.email || "");
+        setStudentEdits(d.students.map((s) => ({ ...s, pin_code: s.pin_code || "" })));
+      }
+      setLoading(false);
+    })();
+  }, [mobileNumber]);
+
+  const updateStudent = (idx: number, field: string, value: string | null) => {
+    setStudentEdits((prev) => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg("");
+    try {
+      await supabase.rpc("update_parent_profile", {
+        p_parent_id: parentId,
+        p_parent_name: parentName || null,
+        p_email: parentEmail || null,
+      });
+
+      for (const s of studentEdits) {
+        await supabase.rpc("update_student_profile", {
+          p_student_id: s.id,
+          p_student_name: s.student_name,
+          p_pin_code: s.pin_code,
+          p_avatar_style: s.avatar_style,
+          p_grade_level: s.grade_level,
+          p_school_id: s.school_id,
+        });
+      }
+
+      setMsg("資料已更新");
+      setTimeout(onSaved, 1000);
+    } catch {
+      setMsg("儲存失敗，請重試");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const avatars = [
+    { value: "Boy", label: "男生" },
+    { value: "Girl", label: "女生" },
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center">
+        <div className="text-center">
+          <Spinner size="lg" />
+          <p className="mt-2 text-gray-500">載入資料中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getSchoolSelector = (idx: number) => {
+    const s = studentEdits[idx];
+    const currentSchool = schools.find((sc) => sc.id === s.school_id);
+    const selectedArea = currentSchool ? schoolAreas[currentSchool.id] || "" : (s as unknown as Record<string, string>).__area || "";
+    const selectedDistrict = currentSchool ? schoolDistricts[currentSchool.id] || "" : (s as unknown as Record<string, string>).__district || "";
+
+    const areas = [...new Set(schools.map((sc) => sc.area))];
+    const districts = [...new Set(schools.filter((sc) => sc.area === selectedArea).map((sc) => sc.district))];
+    const filtered = schools.filter((sc) => sc.area === selectedArea && sc.district === selectedDistrict);
+
+    return (
+      <div className="space-y-2">
+        <select
+          value={selectedArea}
+          onChange={(e) => {
+            updateStudent(idx, "school_id", null);
+            updateStudent(idx, "__area" as string, e.target.value);
+            updateStudent(idx, "__district" as string, "");
+          }}
+          className="w-full p-2 rounded-lg border border-gray-200 text-sm bg-white outline-none focus:border-indigo-400"
+        >
+          <option value="">選擇區域</option>
+          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+        {selectedArea && (
+          <select
+            value={selectedDistrict}
+            onChange={(e) => {
+              updateStudent(idx, "school_id", null);
+              updateStudent(idx, "__district" as string, e.target.value);
+            }}
+            className="w-full p-2 rounded-lg border border-gray-200 text-sm bg-white outline-none focus:border-indigo-400"
+          >
+            <option value="">選擇地區</option>
+            {districts.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
+        {selectedDistrict && (
+          <select
+            value={s.school_id || ""}
+            onChange={(e) => updateStudent(idx, "school_id", e.target.value || null)}
+            className="w-full p-2 rounded-lg border border-gray-200 text-sm bg-white outline-none focus:border-indigo-400"
+          >
+            <option value="">選擇學校</option>
+            {filtered.map((sc) => (
+              <option key={sc.id} value={sc.id}>{sc.name_zh || sc.name_en}</option>
+            ))}
+          </select>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">更新資料</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+        <p className="text-sm text-gray-400">電話號碼：{mobileNumber}</p>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 space-y-4">
+          <h2 className="text-base font-bold text-gray-800">家長資料</h2>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">家長姓名</label>
+            <input value={parentName} onChange={(e) => setParentName(e.target.value)}
+              placeholder="輸入家長姓名"
+              className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">電郵地址</label>
+            <input type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)}
+              placeholder="輸入電郵地址"
+              className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+          </div>
+        </div>
+
+        {studentEdits.map((s, idx) => (
+          <div key={s.id} className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 space-y-4">
+            <h2 className="text-base font-bold text-gray-800">學生資料 {studentEdits.length > 1 ? `(${idx + 1})` : ""}</h2>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">學生姓名</label>
+              <input value={s.student_name} onChange={(e) => updateStudent(idx, "student_name", e.target.value)}
+                className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">密碼（6 位英文或數字）</label>
+              <input value={s.pin_code} onChange={(e) => updateStudent(idx, "pin_code", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+                maxLength={6}
+                className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">姓別</label>
+              <div className="flex gap-2">
+                {avatars.map((a) => (
+                  <button key={a.value} onClick={() => updateStudent(idx, "avatar_style", a.value)}
+                    className={`flex-1 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                      s.avatar_style === a.value
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                    }`}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">年級</label>
+              <div className="grid grid-cols-3 gap-2">
+                {grades.map((g) => (
+                  <button key={g} onClick={() => updateStudent(idx, "grade_level", g)}
+                    className={`py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                      s.grade_level === g
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                    }`}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">學校</label>
+              {getSchoolSelector(idx)}
+            </div>
+          </div>
+        ))}
+
+        {msg && <p className={`text-sm text-center ${msg.includes("已更新") ? "text-emerald-600" : "text-red-500"}`}>{msg}</p>}
+
+        <div className="flex gap-3">
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 py-3.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50">
+            {saving ? "儲存中..." : "儲存"}
+          </button>
+          <button onClick={onBack}
+            className="flex-1 py-3.5 rounded-xl bg-white text-gray-700 font-semibold border border-gray-300 hover:bg-gray-50 transition-all">
+            返回
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ContactFooter() {
   return (
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
@@ -1917,10 +2218,12 @@ function ContactFooter() {
 function RoleSelectScreen({
   onStudent,
   onParent,
+  onProfile,
   onBack,
 }: {
   onStudent: () => void;
   onParent: () => void;
+  onProfile: () => void;
   onBack: () => void;
 }) {
   return (
@@ -1956,6 +2259,18 @@ function RoleSelectScreen({
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">家長</p>
               <p className="text-sm text-gray-500">查看練習報告</p>
+            </div>
+          </button>
+          <button
+            onClick={onProfile}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
+              ⚙️
+            </div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">更新資料</p>
+              <p className="text-sm text-gray-500">修改個人及學生資料</p>
             </div>
           </button>
         </div>
