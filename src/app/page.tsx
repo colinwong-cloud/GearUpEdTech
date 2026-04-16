@@ -1178,6 +1178,7 @@ function RegisterScreen({
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
+    email.trim().length > 0 &&
     (siteKey ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
