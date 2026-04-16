@@ -33,7 +33,10 @@ type AppScreen =
   | "parent_dashboard"
   | "parent_session_detail"
   | "profile_pin"
-  | "profile_edit";
+  | "profile_edit"
+  | "add_student_pin"
+  | "add_student_form"
+  | "parent_student_select";
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
@@ -328,8 +331,12 @@ export default function QuizApp() {
     if (!firstStudent) return;
     if (pinInput === firstStudent.pin_code) {
       setError(null);
-      setSelectedStudent(firstStudent);
-      loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
+      if (students.length > 1) {
+        setScreen("parent_student_select");
+      } else {
+        setSelectedStudent(firstStudent);
+        loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
+      }
     } else {
       setError("PIN 碼不正確，請重試。");
     }
@@ -345,6 +352,45 @@ export default function QuizApp() {
       setError("PIN 碼不正確，請重試。");
     }
   }, [pinInput, students]);
+
+  const handleAddStudentPinSubmit = useCallback(() => {
+    const firstStudent = students[0];
+    if (!firstStudent) return;
+    if (pinInput === firstStudent.pin_code) {
+      setError(null);
+      setScreen("add_student_form");
+    } else {
+      setError("PIN 碼不正確，請重試。");
+    }
+  }, [pinInput, students]);
+
+  const handleAddStudentSubmit = useCallback(
+    async (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
+      if (!mobileNumber.trim()) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
+          p_mobile_number: mobileNumber.trim(),
+          p_student_name: form.studentName,
+          p_pin_code: form.pinCode,
+          p_avatar_style: form.avatarStyle,
+          p_grade_level: form.gradeLevel,
+          p_school_id: form.schoolId,
+        });
+        if (rpcErr) throw rpcErr;
+        if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
+        const newStudent = data as Student;
+        setStudents((prev) => [...prev, newStudent]);
+        setScreen("login_role");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "新增學生失敗，請重試。");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [mobileNumber]
+  );
 
   const loadParentSessions = async (
     studentId: string,
@@ -640,6 +686,11 @@ export default function QuizApp() {
           setError(null);
           setScreen("profile_pin");
         }}
+        onAddStudent={() => {
+          setPinInput("");
+          setError(null);
+          setScreen("add_student_pin");
+        }}
         onBack={handleLogout}
       />
     );
@@ -667,6 +718,47 @@ export default function QuizApp() {
           setScreen("login_role");
         }}
         onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
+  if (screen === "add_student_pin") {
+    return (
+      <PinScreen
+        studentName="新增學生"
+        pin={pinInput}
+        setPin={setPinInput}
+        onSubmit={handleAddStudentPinSubmit}
+        error={error}
+        setError={setError}
+        onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
+  if (screen === "add_student_form") {
+    return (
+      <AddStudentScreen
+        mobileNumber={mobileNumber}
+        onSubmit={handleAddStudentSubmit}
+        onBack={() => setScreen("login_role")}
+        error={error}
+        setError={setError}
+      />
+    );
+  }
+
+  if (screen === "parent_student_select") {
+    return (
+      <StudentSelectScreen
+        students={students}
+        onSelect={(student) => {
+          setSelectedStudent(student);
+          loadParentSessions(student.id, parentSubject, parentMonth.year, parentMonth.month);
+        }}
+        onBack={() => setScreen("login_role")}
+        title="選擇學生"
+        subtitle="請選擇要查看報告的學生"
       />
     );
   }
@@ -1339,10 +1431,14 @@ function StudentSelectScreen({
   students,
   onSelect,
   onBack,
+  title,
+  subtitle,
 }: {
   students: Student[];
   onSelect: (s: Student) => void;
   onBack: () => void;
+  title?: string;
+  subtitle?: string;
 }) {
   const avatarColors = [
     "from-indigo-400 to-purple-500",
@@ -1358,8 +1454,8 @@ function StudentSelectScreen({
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">選擇學生</h1>
-          <p className="mt-2 text-gray-500">請選擇你的名字</p>
+          <h1 className="text-2xl font-bold text-gray-900">{title || "選擇學生"}</h1>
+          <p className="mt-2 text-gray-500">{subtitle || "請選擇你的名字"}</p>
         </div>
         <div className="space-y-3">
           {students.map((s, i) => (
@@ -1945,6 +2041,153 @@ function ErrorScreen({
   );
 }
 
+function AddStudentScreen({
+  mobileNumber,
+  onSubmit,
+  onBack,
+  error,
+  setError,
+}: {
+  mobileNumber: string;
+  onSubmit: (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
+  onBack: () => void;
+  error: string | null;
+  setError: (v: string | null) => void;
+}) {
+  const [studentName, setStudentName] = useState("");
+  const [pinCode, setPinCode] = useState("");
+  const [avatarStyle, setAvatarStyle] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schoolsLoaded, setSchoolsLoaded] = useState(false);
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.rpc("get_schools").then(({ data }) => {
+      if (data) setSchools(data as SchoolOption[]);
+      setSchoolsLoaded(true);
+    });
+  }, []);
+
+  const areas = [...new Set(schools.map((s) => s.area))];
+  const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
+  const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
+
+  const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const pinValid = PIN_RE.test(pinCode);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const canSubmit =
+    studentName.trim().length > 0 &&
+    pinValid &&
+    avatarStyle !== "" &&
+    gradeLevel !== "" &&
+    selectedSchoolId !== null &&
+    (siteKey ? turnstileToken !== null : true);
+
+  const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const avatars: { value: string; label: string; gradient: string }[] = [
+    { value: "Boy", label: "男生", gradient: "from-blue-400 to-indigo-500" },
+    { value: "Girl", label: "女生", gradient: "from-pink-400 to-rose-500" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4 py-8" onContextMenu={preventContextMenu}>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">新增學生</h1>
+          <p className="mt-1 text-sm text-gray-400">電話號碼：{mobileNumber}</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">學生姓名</label>
+            <input value={studentName} onChange={(e) => { setStudentName(e.target.value); if (error) setError(null); }}
+              placeholder="輸入學生姓名"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">6 位英文或數字組合密碼（用於學生及家長登入）</label>
+            <input value={pinCode} onChange={(e) => { const v = e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6); setPinCode(v); if (error) setError(null); }}
+              maxLength={6} placeholder="例如：abc123"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${pinCode.length > 0 && !pinValid ? "border-red-300" : "border-gray-200 focus:border-indigo-400"}`} />
+            {pinCode.length > 0 && !pinValid && <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
+            <div className="flex gap-3">
+              {avatars.map((a) => (
+                <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}
+                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                    avatarStyle === a.value ? `border-indigo-500 bg-gradient-to-br ${a.gradient} text-white shadow-md` : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                  }`}>{a.label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">年級</label>
+            <div className="grid grid-cols-3 gap-2">
+              {grades.map((g) => (
+                <button key={g} onClick={() => { setGradeLevel(g); if (error) setError(null); }}
+                  className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
+                    gradeLevel === g ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm" : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                  }`}>{g}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">學校</label>
+            {!schoolsLoaded ? <p className="text-sm text-gray-400">載入學校列表中...</p> : (
+              <div className="space-y-2">
+                <select value={selectedArea} onChange={(e) => { setSelectedArea(e.target.value); setSelectedDistrict(""); setSelectedSchoolId(null); }}
+                  className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white">
+                  <option value="">選擇區域</option>
+                  {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+                {selectedArea && (
+                  <select value={selectedDistrict} onChange={(e) => { setSelectedDistrict(e.target.value); setSelectedSchoolId(null); }}
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white">
+                    <option value="">選擇地區</option>
+                    {districts.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                )}
+                {selectedDistrict && (
+                  <select value={selectedSchoolId || ""} onChange={(e) => setSelectedSchoolId(e.target.value || null)}
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white">
+                    <option value="">選擇學校</option>
+                    {filteredSchools.map((s) => <option key={s.id} value={s.id}>{s.name_zh || s.name_en}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+
+          {siteKey && (
+            <div className="flex justify-center">
+              <Turnstile siteKey={siteKey} onSuccess={(token) => setTurnstileToken(token)} onError={() => setTurnstileToken(null)} onExpire={() => setTurnstileToken(null)} options={{ theme: "light", size: "normal" }} />
+            </div>
+          )}
+
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
+            提示：新增的學生將會共用現有的題目餘額。
+          </p>
+
+          {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+
+          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
+            disabled={!canSubmit}
+            className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
+            新增學生
+          </button>
+          <button onClick={onBack} className="w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileEditScreen({
   mobileNumber,
   onSaved,
@@ -2219,11 +2462,13 @@ function RoleSelectScreen({
   onStudent,
   onParent,
   onProfile,
+  onAddStudent,
   onBack,
 }: {
   onStudent: () => void;
   onParent: () => void;
   onProfile: () => void;
+  onAddStudent: () => void;
   onBack: () => void;
 }) {
   return (
@@ -2271,6 +2516,18 @@ function RoleSelectScreen({
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">更新資料</p>
               <p className="text-sm text-gray-500">修改個人及學生資料</p>
+            </div>
+          </button>
+          <button
+            onClick={onAddStudent}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xl">
+              👦
+            </div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">新增學生</p>
+              <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
             </div>
           </button>
         </div>
