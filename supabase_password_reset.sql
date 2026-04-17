@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 ALTER TABLE password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
--- 2. Verify email belongs to a parent, create reset token
-CREATE OR REPLACE FUNCTION create_password_reset(p_email TEXT)
+-- 2. Verify email matches the parent's record (by mobile), create reset token
+CREATE OR REPLACE FUNCTION create_password_reset(p_mobile TEXT, p_email TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -26,9 +26,13 @@ DECLARE
   v_parent RECORD;
   v_token TEXT;
 BEGIN
-  SELECT * INTO v_parent FROM parents WHERE email = p_email;
+  SELECT * INTO v_parent FROM parents WHERE mobile_number = p_mobile;
   IF v_parent IS NULL THEN
-    RETURN json_build_object('found', false);
+    RETURN json_build_object('found', false, 'reason', 'parent_not_found');
+  END IF;
+
+  IF v_parent.email IS NULL OR lower(v_parent.email) <> lower(p_email) THEN
+    RETURN json_build_object('found', false, 'reason', 'email_mismatch');
   END IF;
 
   v_token := encode(gen_random_bytes(32), 'hex');
@@ -39,8 +43,7 @@ BEGIN
   RETURN json_build_object(
     'found', true,
     'token', v_token,
-    'parent_name', v_parent.parent_name,
-    'mobile_number', v_parent.mobile_number
+    'parent_name', v_parent.parent_name
   );
 END;
 $$;

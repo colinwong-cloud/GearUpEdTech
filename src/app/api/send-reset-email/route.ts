@@ -48,21 +48,23 @@ function buildResetEmailHtml(resetUrl: string, parentName: string | null): strin
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: "Missing email" }, { status: 400 });
+    const { email, mobile } = await req.json();
+    if (!email || !mobile) {
+      return NextResponse.json({ error: "Missing email or mobile" }, { status: 400 });
     }
 
     const { data, error: rpcErr } = await supabase.rpc("create_password_reset", {
+      p_mobile: mobile.trim(),
       p_email: email.trim(),
     });
     if (rpcErr) {
-      return NextResponse.json({ error: "Server error" }, { status: 500 });
+      console.error("Reset RPC error:", rpcErr);
+      return NextResponse.json({ error: "Server error", detail: rpcErr.message }, { status: 500 });
     }
 
-    const result = data as { found: boolean; token?: string; parent_name?: string; mobile_number?: string };
+    const result = data as { found: boolean; reason?: string; token?: string; parent_name?: string };
     if (!result.found) {
-      return NextResponse.json({ found: false });
+      return NextResponse.json({ found: false, reason: result.reason || "email_mismatch" });
     }
 
     if (!process.env.RESEND_API_KEY) {
@@ -83,7 +85,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (sendErr) {
-      return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+      console.error("Resend error:", sendErr);
+      return NextResponse.json({ error: "Failed to send email", detail: sendErr.message }, { status: 500 });
     }
 
     return NextResponse.json({ found: true, sent: true });

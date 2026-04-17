@@ -770,6 +770,7 @@ export default function QuizApp() {
   if (screen === "forgot_password") {
     return (
       <ForgotPasswordScreen
+        mobileNumber={mobileNumber}
         onBack={() => setScreen("login_role")}
       />
     );
@@ -2461,7 +2462,7 @@ function ProfileEditScreen({
   );
 }
 
-function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
+function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -2475,11 +2476,11 @@ function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
       const res = await fetch("/api/send-reset-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), mobile: mobileNumber.trim() }),
       });
       const data = await res.json();
       if (data.found === false) {
-        setMsg("此電郵地址不在系統記錄中，請重新輸入。");
+        setMsg("此電郵地址與你的帳戶記錄不符，請重新輸入。");
       } else if (data.sent) {
         setSent(true);
       } else {
