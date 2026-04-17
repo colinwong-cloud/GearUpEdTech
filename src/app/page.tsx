@@ -2484,7 +2484,7 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
       } else if (data.sent) {
         setSent(true);
       } else {
-        setMsg("發送失敗，請重試。");
+        setMsg(data.detail ? `發送失敗：${data.detail}` : "發送失敗，請重試。");
       }
     } catch {
       setMsg("發送失敗，請重試。");
