@@ -35,7 +35,7 @@ BEGIN
     RETURN json_build_object('found', false, 'reason', 'email_mismatch');
   END IF;
 
-  v_token := encode(gen_random_bytes(32), 'hex');
+  v_token := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 
   INSERT INTO password_reset_tokens (parent_id, token, expires_at)
   VALUES (v_parent.id, v_token, NOW() + INTERVAL '1 hour');
