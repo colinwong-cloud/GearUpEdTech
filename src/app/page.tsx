@@ -43,9 +43,9 @@ type AppScreen =
   | "parent_pin"
   | "parent_dashboard"
   | "parent_session_detail"
-  | "profile_pin"
+  | "account_pin"
+  | "account_menu"
   | "profile_edit"
-  | "add_student_pin"
   | "add_student_form"
   | "parent_student_select"
   | "forgot_password";
@@ -385,23 +385,12 @@ export default function QuizApp() {
     }
   }, [pinInput, students, parentSubject, parentMonth]);
 
-  const handleProfilePinSubmit = useCallback(() => {
+  const handleAccountPinSubmit = useCallback(() => {
     const firstStudent = students[0];
     if (!firstStudent) return;
     if (pinInput === firstStudent.pin_code) {
       setError(null);
-      setScreen("profile_edit");
-    } else {
-      setError("PIN 碼不正確，請重試。");
-    }
-  }, [pinInput, students]);
-
-  const handleAddStudentPinSubmit = useCallback(() => {
-    const firstStudent = students[0];
-    if (!firstStudent) return;
-    if (pinInput === firstStudent.pin_code) {
-      setError(null);
-      setScreen("add_student_form");
+      setScreen("account_menu");
     } else {
       setError("PIN 碼不正確，請重試。");
     }
@@ -425,7 +414,7 @@ export default function QuizApp() {
         if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
         const newStudent = data as Student;
         setStudents((prev) => [...prev, newStudent]);
-        setScreen("login_role");
+        setScreen("account_menu");
       } catch (err) {
         setError(err instanceof Error ? err.message : "新增學生失敗，請重試。");
       } finally {
@@ -728,32 +717,37 @@ export default function QuizApp() {
           setError(null);
           setScreen("parent_pin");
         }}
-        onProfile={() => {
+        onAccount={() => {
           setPinInput("");
           setError(null);
-          setScreen("profile_pin");
-        }}
-        onAddStudent={() => {
-          setPinInput("");
-          setError(null);
-          setScreen("add_student_pin");
+          setScreen("account_pin");
         }}
         onBack={handleLogout}
       />
     );
   }
 
-  if (screen === "profile_pin") {
+  if (screen === "account_pin") {
     return (
       <PinScreen
-        studentName="更新資料"
+        studentName="戶口管理"
         pin={pinInput}
         setPin={setPinInput}
-        onSubmit={handleProfilePinSubmit}
+        onSubmit={handleAccountPinSubmit}
         error={error}
         setError={setError}
         onBack={() => setScreen("login_role")}
         onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
+      />
+    );
+  }
+
+  if (screen === "account_menu") {
+    return (
+      <AccountMenuScreen
+        onProfile={() => setScreen("profile_edit")}
+        onAddStudent={() => setScreen("add_student_form")}
+        onBack={() => setScreen("login_role")}
       />
     );
   }
@@ -762,25 +756,8 @@ export default function QuizApp() {
     return (
       <ProfileEditScreen
         mobileNumber={mobileNumber}
-        onSaved={() => {
-          setScreen("login_role");
-        }}
-        onBack={() => setScreen("login_role")}
-      />
-    );
-  }
-
-  if (screen === "add_student_pin") {
-    return (
-      <PinScreen
-        studentName="新增學生"
-        pin={pinInput}
-        setPin={setPinInput}
-        onSubmit={handleAddStudentPinSubmit}
-        error={error}
-        setError={setError}
-        onBack={() => setScreen("login_role")}
-        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
+        onSaved={() => setScreen("account_menu")}
+        onBack={() => setScreen("account_menu")}
       />
     );
   }
@@ -791,7 +768,7 @@ export default function QuizApp() {
         mobileNumber={mobileNumber}
         existingPinCode={students[0]?.pin_code || ""}
         onSubmit={handleAddStudentSubmit}
-        onBack={() => setScreen("login_role")}
+        onBack={() => setScreen("account_menu")}
         error={error}
         setError={setError}
       />
@@ -2252,6 +2229,46 @@ function AddStudentScreen({
   );
 }
 
+function AccountMenuScreen({
+  onProfile,
+  onAddStudent,
+  onBack,
+}: {
+  onProfile: () => void;
+  onAddStudent: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">戶口管理</h1>
+          <p className="mt-2 text-gray-500">請選擇操作</p>
+        </div>
+        <div className="space-y-3">
+          <button onClick={onProfile}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">更新資料</p>
+              <p className="text-sm text-gray-500">修改個人及學生資料</p>
+            </div>
+          </button>
+          <button onClick={onAddStudent}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xl">👦</div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">新增學生</p>
+              <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
+            </div>
+          </button>
+        </div>
+        <button onClick={onBack} className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
+      </div>
+    </div>
+  );
+}
+
 function ProfileEditScreen({
   mobileNumber,
   onSaved,
@@ -2694,14 +2711,12 @@ function ContactFooter() {
 function RoleSelectScreen({
   onStudent,
   onParent,
-  onProfile,
-  onAddStudent,
+  onAccount,
   onBack,
 }: {
   onStudent: () => void;
   onParent: () => void;
-  onProfile: () => void;
-  onAddStudent: () => void;
+  onAccount: () => void;
   onBack: () => void;
 }) {
   return (
@@ -2740,27 +2755,15 @@ function RoleSelectScreen({
             </div>
           </button>
           <button
-            onClick={onProfile}
+            onClick={onAccount}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
               ⚙️
             </div>
             <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">更新資料</p>
-              <p className="text-sm text-gray-500">修改個人及學生資料</p>
-            </div>
-          </button>
-          <button
-            onClick={onAddStudent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
-          >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xl">
-              👦
-            </div>
-            <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">新增學生</p>
-              <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
+              <p className="text-base font-semibold text-gray-900">戶口管理</p>
+              <p className="text-sm text-gray-500">更新資料及新增學生</p>
             </div>
           </button>
         </div>
