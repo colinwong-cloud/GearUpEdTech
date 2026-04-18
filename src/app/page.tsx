@@ -2605,9 +2605,14 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
         const sessions = chartData.type_sessions
           .filter((t) => t.question_type === type)
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
-        const data = sessions.map((s) => {
+        const data = sessions.map((s, i) => {
           const d = new Date(s.created_at);
-          return { date: `${d.getMonth() + 1}/${d.getDate()}`, pct: s.correct_pct };
+          return {
+            idx: i,
+            date: `${d.getMonth() + 1}/${d.getDate()}`,
+            datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+            pct: s.correct_pct,
+          };
         });
         const avg = avgMap.get(type);
         const color = colors[idx % colors.length];
@@ -2618,14 +2623,19 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                <XAxis dataKey="idx" tick={{ fontSize: 9 }} interval="preserveStartEnd"
+                  tickFormatter={(i: number) => data[i]?.date || ""} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(v) => [`${v}%`, "正確率"]} />
+                <Tooltip content={<ChartTooltip />} />
                 {avg !== undefined && (
                   <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5"
                     label={{ value: `平均${avg}%`, position: "insideTopRight", fontSize: 9, fill: "#f59e0b" }} />
                 )}
-                <Bar dataKey="pct" fill={color} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                  {data.map((entry, i) => (
+                    <Cell key={i} fill={entry.pct >= 80 ? "#059669" : entry.pct >= 60 ? color : "#dc2626"} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
