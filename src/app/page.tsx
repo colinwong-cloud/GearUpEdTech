@@ -2507,12 +2507,14 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
   const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
-  const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s) => {
+  const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s, i) => {
     const d = new Date(s.created_at);
     return {
+      idx: i,
       date: `${d.getMonth() + 1}/${d.getDate()}`,
       datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
       pct: s.correct_pct,
+      fill: pctColor(s.correct_pct),
     };
   });
 
@@ -2522,7 +2524,8 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+          <XAxis dataKey="idx" tick={{ fontSize: 10 }} interval="preserveStartEnd"
+            tickFormatter={(idx: number) => data[idx]?.date || ""} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
           <Tooltip content={<ChartTooltip />} />
           {overallAvg && (
@@ -2531,7 +2534,7 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
           )}
           <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={pctColor(entry.pct)} />
+              <Cell key={i} fill={entry.fill} />
             ))}
           </Bar>
         </BarChart>
