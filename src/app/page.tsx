@@ -2285,6 +2285,7 @@ function ProfileEditScreen({
   const [parentId, setParentId] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
+  const [sharedPin, setSharedPin] = useState("");
   const [studentEdits, setStudentEdits] = useState<{
     id: string;
     student_name: string;
@@ -2324,6 +2325,7 @@ function ProfileEditScreen({
         setParentName(d.parent.parent_name || "");
         setParentEmail(d.parent.email || "");
         setStudentEdits(d.students.map((s) => ({ ...s, pin_code: s.pin_code || "" })));
+        setSharedPin(d.students[0]?.pin_code || "");
       }
       setLoading(false);
     })();
@@ -2347,7 +2349,7 @@ function ProfileEditScreen({
         await supabase.rpc("update_student_profile", {
           p_student_id: s.id,
           p_student_name: s.student_name,
-          p_pin_code: s.pin_code,
+          p_pin_code: sharedPin,
           p_avatar_style: s.avatar_style,
           p_grade_level: s.grade_level,
           p_school_id: s.school_id,
@@ -2458,18 +2460,22 @@ function ProfileEditScreen({
           </div>
         </div>
 
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 space-y-4">
+          <h2 className="text-base font-bold text-gray-800">密碼</h2>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">登入密碼（6 位英文或數字，所有學生共用）</label>
+            <input value={sharedPin} onChange={(e) => setSharedPin(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+              maxLength={6}
+              className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+          </div>
+        </div>
+
         {studentEdits.map((s, idx) => (
           <div key={s.id} className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 space-y-4">
             <h2 className="text-base font-bold text-gray-800">學生資料 {studentEdits.length > 1 ? `(${idx + 1})` : ""}</h2>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">學生姓名</label>
               <input value={s.student_name} onChange={(e) => updateStudent(idx, "student_name", e.target.value)}
-                className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">密碼（6 位英文或數字）</label>
-              <input value={s.pin_code} onChange={(e) => updateStudent(idx, "pin_code", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
-                maxLength={6}
                 className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
             </div>
             <div>
