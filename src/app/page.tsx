@@ -13,6 +13,7 @@ const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGr
 const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
 const ReferenceLine = dynamic(() => import("recharts").then((m) => m.ReferenceLine), { ssr: false });
 const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false });
+const Cell = dynamic(() => import("recharts").then((m) => m.Cell), { ssr: false });
 import type {
   Student,
   Question,
@@ -2594,6 +2595,12 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
   );
 }
 
+function pctColor(pct: number): string {
+  if (pct >= 80) return "#059669";
+  if (pct >= 60) return "#d97706";
+  return "#dc2626";
+}
+
 function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
   const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
   const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s) => {
@@ -2614,7 +2621,11 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
             <ReferenceLine y={Number(overallAvg.avg_correct_pct)} stroke="#f59e0b" strokeDasharray="5 5"
               label={{ value: `同級平均 ${overallAvg.avg_correct_pct}%`, position: "insideTopRight", fontSize: 10, fill: "#f59e0b" }} />
           )}
-          <Bar dataKey="pct" fill="#6366f1" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={pctColor(entry.pct)} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
