@@ -535,6 +535,16 @@ export default function QuizApp() {
       ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
       : answer === currentQuestion.correct_answer;
 
+    answerTimestampsRef.current.push(Date.now());
+    if (!speedReminderShownRef.current && answerTimestampsRef.current.length >= 3) {
+      const ts = answerTimestampsRef.current;
+      const last3Duration = ts[ts.length - 1] - ts[ts.length - 3];
+      if (last3Duration < 5000) {
+        setShowSpeedReminder(true);
+        speedReminderShownRef.current = true;
+      }
+    }
+
     setSubmitting(true);
     try {
       const { error: ansErr } = await supabase.rpc("submit_answer", {
@@ -565,16 +575,6 @@ export default function QuizApp() {
         p_score: newScore,
         p_time_spent_seconds: timeSpent,
       });
-
-      answerTimestampsRef.current.push(Date.now());
-      if (!speedReminderShownRef.current && answerTimestampsRef.current.length >= 3) {
-        const ts = answerTimestampsRef.current;
-        const last3Duration = ts[ts.length - 1] - ts[ts.length - 3];
-        if (last3Duration < 5000) {
-          setShowSpeedReminder(true);
-          speedReminderShownRef.current = true;
-        }
-      }
 
       if (currentIndex + 1 >= questions.length) {
         await finalizeQuiz(updatedAnswers);
