@@ -1,8 +1,18 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
+
+const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import("recharts").then((m) => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
+const ReferenceLine = dynamic(() => import("recharts").then((m) => m.ReferenceLine), { ssr: false });
+const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false });
 import type {
   Student,
   Question,
@@ -55,6 +65,36 @@ interface SessionDetailAnswer {
   is_correct: boolean;
   question_order: number | null;
   question: Question;
+}
+
+interface ChartSession {
+  id: string;
+  created_at: string;
+  questions_attempted: number;
+  score: number;
+  correct_pct: number;
+}
+
+interface ChartTypeSession {
+  question_type: string;
+  session_id: string;
+  created_at: string;
+  total: number;
+  correct: number;
+  correct_pct: number;
+}
+
+interface GradeAverage {
+  question_type: string;
+  avg_correct_pct: number;
+  total_sessions: number;
+}
+
+interface ChartDataPayload {
+  grade_level: string;
+  sessions: ChartSession[];
+  type_sessions: ChartTypeSession[];
+  grade_averages: GradeAverage[];
 }
 
 interface BalanceTransaction {
@@ -246,6 +286,7 @@ export default function QuizApp() {
   const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
   const [parentBalanceData, setParentBalanceData] = useState<BalanceTransactionData | null>(null);
+  const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim()) return;
@@ -402,7 +443,7 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const [sessRes, balRes] = await Promise.all([
+      const [sessRes, balRes, chartRes] = await Promise.all([
         supabase.rpc("get_parent_sessions", {
           p_student_id: studentId,
           p_subject: subject,
@@ -415,10 +456,14 @@ export default function QuizApp() {
           p_year: year,
           p_month: month,
         }),
+        supabase.rpc("get_student_chart_data", {
+          p_student_id: studentId,
+        }),
       ]);
       if (sessRes.error) throw sessRes.error;
       setParentSessions((sessRes.data as SessionSummary[]) || []);
       setParentBalanceData(balRes.data as BalanceTransactionData | null);
+      setChartData(chartRes.data as ChartDataPayload | null);
       setScreen("parent_dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入練習記錄。");
@@ -800,6 +845,7 @@ export default function QuizApp() {
         month={parentMonth.month}
         subject={parentSubject}
         balanceData={parentBalanceData}
+        chartData={chartData}
         onMonthChange={handleParentMonthChange}
         onSubjectChange={(s) => {
           setParentSubject(s);
@@ -2548,6 +2594,74 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
   );
 }
 
+function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
+  const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
+  const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s) => {
+    const d = new Date(s.created_at);
+    return { date: `${d.getMonth() + 1}/${d.getDate()}`, pct: s.correct_pct };
+  });
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 mb-4">
+      <h3 className="text-sm font-bold text-gray-800 mb-3">整體正確率趨勢（最近30次）</h3>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+          <Tooltip formatter={(v) => [`${v}%`, "正確率"]} />
+          {overallAvg && (
+            <ReferenceLine y={Number(overallAvg.avg_correct_pct)} stroke="#f59e0b" strokeDasharray="5 5"
+              label={{ value: `同級平均 ${overallAvg.avg_correct_pct}%`, position: "insideTopRight", fontSize: 10, fill: "#f59e0b" }} />
+          )}
+          <Bar dataKey="pct" fill="#6366f1" radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
+  const types = [...new Set(chartData.type_sessions.map((t) => t.question_type))].sort();
+  const avgMap = new Map(chartData.grade_averages.map((g) => [g.question_type, Number(g.avg_correct_pct)]));
+  const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
+
+  return (
+    <div className="mt-3 space-y-4">
+      {types.map((type, idx) => {
+        const sessions = chartData.type_sessions
+          .filter((t) => t.question_type === type)
+          .sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const data = sessions.map((s) => {
+          const d = new Date(s.created_at);
+          return { date: `${d.getMonth() + 1}/${d.getDate()}`, pct: s.correct_pct };
+        });
+        const avg = avgMap.get(type);
+        const color = colors[idx % colors.length];
+
+        return (
+          <div key={type} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <h4 className="text-xs font-bold text-gray-700 mb-2">{type}</h4>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip formatter={(v) => [`${v}%`, "正確率"]} />
+                {avg !== undefined && (
+                  <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5"
+                    label={{ value: `平均${avg}%`, position: "insideTopRight", fontSize: 9, fill: "#f59e0b" }} />
+                )}
+                <Bar dataKey="pct" fill={color} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ContactFooter() {
   return (
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
@@ -2652,6 +2766,7 @@ function ParentDashboard({
   month,
   subject,
   balanceData,
+  chartData,
   onMonthChange,
   onSubjectChange,
   onViewDetail,
@@ -2664,6 +2779,7 @@ function ParentDashboard({
   month: number;
   subject: string;
   balanceData: BalanceTransactionData | null;
+  chartData: ChartDataPayload | null;
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
   onViewDetail: (s: SessionSummary) => void;
@@ -2672,6 +2788,7 @@ function ParentDashboard({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [txExpanded, setTxExpanded] = useState(false);
+  const [chartsExpanded, setChartsExpanded] = useState(false);
   const subjects = [{ key: "數學", label: "數學" }];
   const monthLabel = `${year} 年 ${month} 月`;
 
@@ -2757,6 +2874,10 @@ function ParentDashboard({
           </div>
         )}
 
+        {chartData && chartData.sessions.length > 0 && (
+          <OverallChart chartData={chartData} />
+        )}
+
         {sessions.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-base">本月暫無練習記錄</p>
@@ -2807,6 +2928,24 @@ function ParentDashboard({
               </div>
             )}
           </>
+        )}
+
+        {chartData && chartData.type_sessions.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setChartsExpanded(!chartsExpanded)}
+              className="w-full flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 hover:shadow-md transition-all"
+            >
+              <span className="text-sm font-semibold text-gray-700">各題型正確率趨勢</span>
+              <svg className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${chartsExpanded ? "rotate-180" : ""}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {chartsExpanded && (
+              <TypeCharts chartData={chartData} />
+            )}
+          </div>
         )}
 
         {balanceData && balanceData.transactions.length > 0 && (
