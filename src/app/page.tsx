@@ -42,6 +42,7 @@ type AppScreen =
   | "parent_dashboard"
   | "parent_session_detail"
   | "account_menu"
+  | "balance_view"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
@@ -104,10 +105,10 @@ interface BalanceTransaction {
   created_at: string;
 }
 
-interface BalanceTransactionData {
+interface ParentBalanceView {
+  total_balance: number;
   opening_balance: number;
-  current_balance: number;
-  transactions: BalanceTransaction[];
+  transactions: (BalanceTransaction & { student_name: string })[];
 }
 
 function isShortAnswer(q: Question): boolean {
@@ -283,7 +284,7 @@ export default function QuizApp() {
   const [parentSubject, setParentSubject] = useState("數學");
   const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
-  const [parentBalanceData, setParentBalanceData] = useState<BalanceTransactionData | null>(null);
+  
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
 
   const handleMobileSubmit = useCallback(async () => {
@@ -393,14 +394,8 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const [sessRes, balRes, chartRes] = await Promise.all([
+      const [sessRes, chartRes] = await Promise.all([
         supabase.rpc("get_parent_sessions", {
-          p_student_id: studentId,
-          p_subject: subject,
-          p_year: year,
-          p_month: month,
-        }),
-        supabase.rpc("get_balance_transactions", {
           p_student_id: studentId,
           p_subject: subject,
           p_year: year,
@@ -412,7 +407,6 @@ export default function QuizApp() {
       ]);
       if (sessRes.error) throw sessRes.error;
       setParentSessions((sessRes.data as SessionSummary[]) || []);
-      setParentBalanceData(balRes.data as BalanceTransactionData | null);
       setChartData(chartRes.data as ChartDataPayload | null);
       setScreen("parent_dashboard");
     } catch (err) {
@@ -695,7 +689,17 @@ export default function QuizApp() {
       <AccountMenuScreen
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
+        onBalance={() => setScreen("balance_view")}
         onBack={() => setScreen("login_role")}
+      />
+    );
+  }
+
+  if (screen === "balance_view") {
+    return (
+      <BalanceViewScreen
+        mobileNumber={mobileNumber}
+        onBack={() => setScreen("account_menu")}
       />
     );
   }
@@ -755,7 +759,7 @@ export default function QuizApp() {
         year={parentMonth.year}
         month={parentMonth.month}
         subject={parentSubject}
-        balanceData={parentBalanceData}
+        
         chartData={chartData}
         onMonthChange={handleParentMonthChange}
         onSubjectChange={(s) => {
@@ -2102,10 +2106,12 @@ function AddStudentScreen({
 function AccountMenuScreen({
   onProfile,
   onAddStudent,
+  onBalance,
   onBack,
 }: {
   onProfile: () => void;
   onAddStudent: () => void;
+  onBalance: () => void;
   onBack: () => void;
 }) {
   return (
@@ -2130,6 +2136,14 @@ function AccountMenuScreen({
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">新增學生</p>
               <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
+            </div>
+          </button>
+          <button onClick={onBalance}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">題目餘額</p>
+              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
         </div>
@@ -2590,6 +2604,133 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
   );
 }
 
+function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [data, setData] = useState<ParentBalanceView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
+  const [fetchKey, setFetchKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: res } = await supabase.rpc("get_parent_balance_view", {
+        p_mobile: mobileNumber.trim(),
+        p_subject: "數學",
+        p_year: viewMonth.year,
+        p_month: viewMonth.month,
+      });
+      if (!cancelled) {
+        setData(res as ParentBalanceView | null);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mobileNumber, viewMonth, fetchKey]);
+
+  const prevMonth = () => {
+    setLoading(true);
+    setViewMonth((prev) => ({
+      year: prev.month === 1 ? prev.year - 1 : prev.year,
+      month: prev.month === 1 ? 12 : prev.month - 1,
+    }));
+    setFetchKey((k) => k + 1);
+  };
+  const nextMonth = () => {
+    const now = new Date();
+    const currentYM = now.getFullYear() * 12 + now.getMonth() + 1;
+    const nextYM = viewMonth.year * 12 + viewMonth.month + 1;
+    if (nextYM > currentYM) return;
+    setLoading(true);
+    setViewMonth((prev) => ({
+      year: prev.month === 12 ? prev.year + 1 : prev.year,
+      month: prev.month === 12 ? 1 : prev.month + 1,
+    }));
+    setFetchKey((k) => k + 1);
+  };
+
+  const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">題目餘額</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {data && (
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
+            <p className="text-indigo-100 text-xs font-medium">題目餘額</p>
+            <p className="text-white text-4xl font-extrabold mt-1">{data.total_balance}</p>
+            <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <span className="text-base font-semibold text-gray-800">{monthLabel}</span>
+          <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8"><Spinner size="lg" /></div>
+        ) : data && data.transactions.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">學生</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                <tr className="bg-gray-50/50">
+                  <td className="px-3 py-2 text-xs text-gray-400">{viewMonth.month}/1</td>
+                  <td className="px-3 py-2 text-xs text-gray-400">—</td>
+                  <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
+                  <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
+                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{data.opening_balance}</td>
+                </tr>
+                {data.transactions.map((tx) => {
+                  const d = new Date(tx.created_at);
+                  const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                  const isPositive = tx.change_amount > 0;
+                  return (
+                    <tr key={tx.id}>
+                      <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{tx.student_name}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
+                      <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
+                        {isPositive ? "+" : ""}{tx.change_amount}
+                      </td>
+                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{tx.balance_after}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">本月暫無交易記錄</p>
+          </div>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
 function ContactFooter() {
   return (
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
@@ -2679,7 +2820,6 @@ function ParentDashboard({
   year,
   month,
   subject,
-  balanceData,
   chartData,
   onMonthChange,
   onSubjectChange,
@@ -2692,7 +2832,6 @@ function ParentDashboard({
   year: number;
   month: number;
   subject: string;
-  balanceData: BalanceTransactionData | null;
   chartData: ChartDataPayload | null;
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
@@ -2701,7 +2840,6 @@ function ParentDashboard({
   onLogout: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [txExpanded, setTxExpanded] = useState(false);
   const [chartsExpanded, setChartsExpanded] = useState(false);
   const subjects = [{ key: "數學", label: "數學" }];
   const monthLabel = `${year} 年 ${month} 月`;
@@ -2733,18 +2871,6 @@ function ParentDashboard({
         </div>
       </div>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {balanceData && (
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5 mb-4 flex items-center justify-between">
-            <div>
-              <p className="text-indigo-100 text-xs font-medium">題目餘額</p>
-              <p className="text-white text-3xl font-extrabold">{balanceData.current_balance}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-indigo-200 text-xs">剩餘可用題目</p>
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-wrap gap-2 mb-4">
           {subjects.map((s) => (
             <button
@@ -2858,60 +2984,6 @@ function ParentDashboard({
             </button>
             {chartsExpanded && (
               <TypeCharts chartData={chartData} />
-            )}
-          </div>
-        )}
-
-        {balanceData && balanceData.transactions.length > 0 && (
-          <div className="mt-6">
-            <button
-              onClick={() => setTxExpanded(!txExpanded)}
-              className="w-full flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3 hover:shadow-md transition-all"
-            >
-              <span className="text-sm font-semibold text-gray-700">題目餘額變動記錄</span>
-              <svg
-                className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${txExpanded ? "rotate-180" : ""}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {txExpanded && (
-              <div className="mt-2 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    <tr className="bg-gray-50/50">
-                      <td className="px-3 py-2 text-xs text-gray-400">{month}/1</td>
-                      <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
-                      <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
-                      <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{balanceData.opening_balance}</td>
-                    </tr>
-                    {balanceData.transactions.map((tx) => {
-                      const d = new Date(tx.created_at);
-                      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-                      const isPositive = tx.change_amount > 0;
-                      return (
-                        <tr key={tx.id}>
-                          <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
-                          <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
-                          <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
-                            {isPositive ? "+" : ""}{tx.change_amount}
-                          </td>
-                          <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{tx.balance_after}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
             )}
           </div>
         )}
