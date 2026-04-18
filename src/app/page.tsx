@@ -35,15 +35,12 @@ type AppScreen =
   | "register"
   | "login_role"
   | "login_student"
-  | "login_pin"
   | "subject_select"
   | "question_count_select"
   | "quiz"
   | "results"
-  | "parent_pin"
   | "parent_dashboard"
   | "parent_session_detail"
-  | "account_pin"
   | "account_menu"
   | "profile_edit"
   | "add_student_form"
@@ -290,7 +287,7 @@ export default function QuizApp() {
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
 
   const handleMobileSubmit = useCallback(async () => {
-    if (!mobileNumber.trim()) return;
+    if (!mobileNumber.trim() || !pinInput.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -305,6 +302,11 @@ export default function QuizApp() {
       if (!result.students || result.students.length === 0)
         throw new Error("此帳戶下沒有學生，請先註冊。");
 
+      const firstStudent = result.students[0];
+      if (pinInput !== firstStudent.pin_code) {
+        throw new Error("密碼不正確，請重試。");
+      }
+
       setStudents(result.students);
       setScreen("login_role");
     } catch (err) {
@@ -312,7 +314,7 @@ export default function QuizApp() {
     } finally {
       setLoading(false);
     }
-  }, [mobileNumber]);
+  }, [mobileNumber, pinInput]);
 
   const handleRegister = useCallback(
     async (form: {
@@ -351,50 +353,8 @@ export default function QuizApp() {
 
   const handleStudentSelect = useCallback((student: Student) => {
     setSelectedStudent(student);
-    if (student.pin_code) {
-      setPinInput("");
-      setScreen("login_pin");
-    } else {
-      setScreen("subject_select");
-    }
+    setScreen("subject_select");
   }, []);
-
-  const handlePinSubmit = useCallback(() => {
-    if (!selectedStudent) return;
-    if (pinInput === selectedStudent.pin_code) {
-      setError(null);
-      setScreen("subject_select");
-    } else {
-      setError("PIN 碼不正確，請重試。");
-    }
-  }, [pinInput, selectedStudent]);
-
-  const handleParentPinSubmit = useCallback(() => {
-    const firstStudent = students[0];
-    if (!firstStudent) return;
-    if (pinInput === firstStudent.pin_code) {
-      setError(null);
-      if (students.length > 1) {
-        setScreen("parent_student_select");
-      } else {
-        setSelectedStudent(firstStudent);
-        loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
-      }
-    } else {
-      setError("PIN 碼不正確，請重試。");
-    }
-  }, [pinInput, students, parentSubject, parentMonth]);
-
-  const handleAccountPinSubmit = useCallback(() => {
-    const firstStudent = students[0];
-    if (!firstStudent) return;
-    if (pinInput === firstStudent.pin_code) {
-      setError(null);
-      setScreen("account_menu");
-    } else {
-      setError("PIN 碼不正確，請重試。");
-    }
-  }, [pinInput, students]);
 
   const handleAddStudentSubmit = useCallback(
     async (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
@@ -697,11 +657,14 @@ export default function QuizApp() {
       <LoginMobileScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
+        pin={pinInput}
+        setPin={setPinInput}
         onSubmit={handleMobileSubmit}
         onRegister={() => {
           setError(null);
           setScreen("register");
         }}
+        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
         error={error}
         setError={setError}
       />
@@ -713,31 +676,16 @@ export default function QuizApp() {
       <RoleSelectScreen
         onStudent={() => setScreen("login_student")}
         onParent={() => {
-          setPinInput("");
-          setError(null);
-          setScreen("parent_pin");
+          const firstStudent = students[0];
+          if (students.length > 1) {
+            setScreen("parent_student_select");
+          } else if (firstStudent) {
+            setSelectedStudent(firstStudent);
+            loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
+          }
         }}
-        onAccount={() => {
-          setPinInput("");
-          setError(null);
-          setScreen("account_pin");
-        }}
+        onAccount={() => setScreen("account_menu")}
         onBack={handleLogout}
-      />
-    );
-  }
-
-  if (screen === "account_pin") {
-    return (
-      <PinScreen
-        studentName="戶口管理"
-        pin={pinInput}
-        setPin={setPinInput}
-        onSubmit={handleAccountPinSubmit}
-        error={error}
-        setError={setError}
-        onBack={() => setScreen("login_role")}
-        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -799,21 +747,6 @@ export default function QuizApp() {
     );
   }
 
-  if (screen === "parent_pin") {
-    return (
-      <PinScreen
-        studentName="家長"
-        pin={pinInput}
-        setPin={setPinInput}
-        onSubmit={handleParentPinSubmit}
-        error={error}
-        setError={setError}
-        onBack={() => setScreen("login_role")}
-        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
-      />
-    );
-  }
-
   if (screen === "parent_dashboard") {
     return (
       <ParentDashboard
@@ -870,21 +803,6 @@ export default function QuizApp() {
         students={students}
         onSelect={handleStudentSelect}
         onBack={handleLogout}
-      />
-    );
-  }
-
-  if (screen === "login_pin") {
-    return (
-      <PinScreen
-        studentName={selectedStudent?.student_name || ""}
-        pin={pinInput}
-        setPin={setPinInput}
-        onSubmit={handlePinSubmit}
-        error={error}
-        setError={setError}
-        onBack={() => setScreen("login_student")}
-        onForgotPassword={() => { setError(null); setScreen("forgot_password"); }}
       />
     );
   }
@@ -1076,18 +994,25 @@ function Header({
 function LoginMobileScreen({
   mobileNumber,
   setMobileNumber,
+  pin,
+  setPin,
   onSubmit,
   onRegister,
+  onForgotPassword,
   error,
   setError,
 }: {
   mobileNumber: string;
   setMobileNumber: (v: string) => void;
+  pin: string;
+  setPin: (v: string) => void;
   onSubmit: () => void;
   onRegister: () => void;
+  onForgotPassword: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
+  const canLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -1102,7 +1027,7 @@ function LoginMobileScreen({
             className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
             draggable={false}
           />
-          <p className="mt-2 text-gray-500">請輸入家長電話號碼登入</p>
+          <p className="mt-2 text-gray-500">請輸入電話號碼及密碼登入</p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
           <div>
@@ -1111,13 +1036,32 @@ function LoginMobileScreen({
             </label>
             <input
               type="tel"
+              autoComplete="username"
               value={mobileNumber}
               onChange={(e) => {
                 setMobileNumber(e.target.value);
                 if (error) setError(null);
               }}
-              onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
               placeholder="例如：91234567"
+              className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              密碼
+            </label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
+              placeholder="6 位英文或數字密碼"
               className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
@@ -1126,16 +1070,16 @@ function LoginMobileScreen({
           )}
           <button
             onClick={onSubmit}
-            disabled={!mobileNumber.trim()}
+            disabled={!canLogin}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-              mobileNumber.trim()
+              canLogin
                 ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             登入
           </button>
-          <div className="text-center pt-2 border-t border-gray-100">
+          <div className="text-center pt-2 border-t border-gray-100 space-y-2">
             <p className="text-sm text-gray-500">
               還沒有帳戶？{" "}
               <button
@@ -1145,6 +1089,12 @@ function LoginMobileScreen({
                 新用戶註冊
               </button>
             </p>
+            <button
+              onClick={onForgotPassword}
+              className="text-xs text-indigo-500 hover:text-indigo-700"
+            >
+              忘記密碼？
+            </button>
           </div>
         </div>
       </div>
@@ -1524,86 +1474,6 @@ function StudentSelectScreen({
         >
           返回
         </button>
-      </div>
-    </div>
-  );
-}
-
-function PinScreen({
-  studentName,
-  pin,
-  setPin,
-  onSubmit,
-  error,
-  setError,
-  onBack,
-  onForgotPassword,
-}: {
-  studentName: string;
-  pin: string;
-  setPin: (v: string) => void;
-  onSubmit: () => void;
-  error: string | null;
-  setError: (v: string | null) => void;
-  onBack: () => void;
-  onForgotPassword?: () => void;
-}) {
-  return (
-    <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
-      onContextMenu={preventContextMenu}
-    >
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            你好，{studentName}
-          </h1>
-          <p className="mt-2 text-gray-500">請輸入你的 PIN 碼</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
-          <input
-            type="password"
-            maxLength={6}
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value);
-              if (error) setError(null);
-            }}
-            onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-            placeholder="PIN 碼"
-            className="w-full p-4 rounded-xl border-2 border-gray-200 text-center text-2xl tracking-[0.5em] outline-none focus:border-indigo-400 transition-colors"
-          />
-          {error && (
-            <p className="text-sm text-red-500 font-medium text-center">
-              {error}
-            </p>
-          )}
-          <button
-            onClick={onSubmit}
-            disabled={!pin}
-            className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-              pin
-                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            確認
-          </button>
-          <button
-            onClick={onBack}
-            className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
-          >
-            返回
-          </button>
-          {onForgotPassword && (
-            <button
-              onClick={onForgotPassword}
-              className="w-full text-center text-xs text-indigo-500 hover:text-indigo-700"
-            >
-              忘記密碼？
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
