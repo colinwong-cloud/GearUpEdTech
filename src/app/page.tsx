@@ -275,6 +275,9 @@ export default function QuizApp() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const [showSpeedReminder, setShowSpeedReminder] = useState(false);
+  const speedReminderShownRef = useRef(false);
+  const answerTimestampsRef = useRef<number[]>([]);
 
   const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
   const [parentMonth, setParentMonth] = useState(() => {
@@ -485,6 +488,9 @@ export default function QuizApp() {
     setTextAnswer("");
     setAnswers([]);
     startTimeRef.current = Date.now();
+    setShowSpeedReminder(false);
+    speedReminderShownRef.current = false;
+    answerTimestampsRef.current = [];
 
     try {
       const allQuestions = await fetchAllQuestions(subject, student.grade_level);
@@ -559,6 +565,16 @@ export default function QuizApp() {
         p_score: newScore,
         p_time_spent_seconds: timeSpent,
       });
+
+      answerTimestampsRef.current.push(Date.now());
+      if (!speedReminderShownRef.current && answerTimestampsRef.current.length >= 3) {
+        const ts = answerTimestampsRef.current;
+        const last3Duration = ts[ts.length - 1] - ts[ts.length - 3];
+        if (last3Duration < 5000) {
+          setShowSpeedReminder(true);
+          speedReminderShownRef.current = true;
+        }
+      }
 
       if (currentIndex + 1 >= questions.length) {
         await finalizeQuiz(updatedAnswers);
@@ -967,6 +983,21 @@ export default function QuizApp() {
           </div>
         </div>
       </div>
+      {showSpeedReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 px-8 py-10 mx-4 max-w-xs text-center">
+            <button
+              onClick={() => setShowSpeedReminder(false)}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            >
+              ✕
+            </button>
+            <p className="text-xl font-bold text-gray-800 leading-relaxed">
+              看清題目，細心回答 💗
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
