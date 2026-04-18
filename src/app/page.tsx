@@ -2494,11 +2494,26 @@ function pctColor(pct: number): string {
   return "#dc2626";
 }
 
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { datetime: string; pct: number } }> }) {
+  if (!active || !payload || !payload[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 text-xs">
+      <p className="text-gray-500">{d.datetime}</p>
+      <p className="font-bold" style={{ color: pctColor(d.pct) }}>{d.pct}%</p>
+    </div>
+  );
+}
+
 function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
   const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
   const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s) => {
     const d = new Date(s.created_at);
-    return { date: `${d.getMonth() + 1}/${d.getDate()}`, pct: s.correct_pct };
+    return {
+      date: `${d.getMonth() + 1}/${d.getDate()}`,
+      datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      pct: s.correct_pct,
+    };
   });
 
   return (
@@ -2509,7 +2524,7 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
           <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(v) => [`${v}%`, "正確率"]} />
+          <Tooltip content={<ChartTooltip />} />
           {overallAvg && (
             <ReferenceLine y={Number(overallAvg.avg_correct_pct)} stroke="#f59e0b" strokeDasharray="5 5"
               label={{ value: `同級平均 ${overallAvg.avg_correct_pct}%`, position: "insideTopRight", fontSize: 10, fill: "#f59e0b" }} />
@@ -2521,6 +2536,7 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <p className="text-xs text-gray-400 mt-2">如同一天多於一次練習，則會有多個棒型以同一日標示。</p>
     </div>
   );
 }
