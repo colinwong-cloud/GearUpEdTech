@@ -2622,9 +2622,14 @@ function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
 }
 
 function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
-  const types = [...new Set(chartData.type_sessions.map((t) => t.question_type))].sort();
+  const typeCounts = new Map<string, number>();
+  chartData.type_sessions.forEach((t) => typeCounts.set(t.question_type, (typeCounts.get(t.question_type) || 0) + 1));
+  const types = [...typeCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([t]) => t);
   const avgMap = new Map(chartData.grade_averages.map((g) => [g.question_type, Number(g.avg_correct_pct)]));
-  const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
+  const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
     <div className="mt-3 space-y-4">
