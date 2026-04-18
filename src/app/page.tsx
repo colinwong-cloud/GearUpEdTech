@@ -2122,6 +2122,14 @@ function AccountMenuScreen({
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
+          <button onClick={onBalance}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">題目餘額</p>
+              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
+            </div>
+          </button>
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -2136,14 +2144,6 @@ function AccountMenuScreen({
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">新增學生</p>
               <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
-            </div>
-          </button>
-          <button onClick={onBalance}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
-            <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">題目餘額</p>
-              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
         </div>
@@ -2799,7 +2799,7 @@ function RoleSelectScreen({
             </div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">戶口管理</p>
-              <p className="text-sm text-gray-500">更新資料及新增學生</p>
+              <p className="text-sm text-gray-500">題目餘額及管理戶口資料</p>
             </div>
           </button>
         </div>
