@@ -2597,11 +2597,10 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
     .slice(0, 5)
     .map(([t]) => t);
   const avgMap = new Map(chartData.grade_averages.map((g) => [g.question_type, Number(g.avg_correct_pct)]));
-  const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
     <div className="mt-3 space-y-4">
-      {types.map((type, idx) => {
+      {types.map((type) => {
         const sessions = chartData.type_sessions
           .filter((t) => t.question_type === type)
           .sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -2615,7 +2614,6 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
           };
         });
         const avg = avgMap.get(type);
-        const color = colors[idx % colors.length];
 
         return (
           <div key={type} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -2633,7 +2631,7 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
                 )}
                 <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
                   {data.map((entry, i) => (
-                    <Cell key={i} fill={entry.pct >= 80 ? "#059669" : entry.pct >= 60 ? color : "#dc2626"} />
+                    <Cell key={i} fill={pctColor(entry.pct)} />
                   ))}
                 </Bar>
               </BarChart>
