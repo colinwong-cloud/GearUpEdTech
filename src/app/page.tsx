@@ -2611,6 +2611,7 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
             date: `${d.getMonth() + 1}/${d.getDate()}`,
             datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
             pct: s.correct_pct,
+            fill: pctColor(s.correct_pct),
           };
         });
         const avg = avgMap.get(type);
@@ -2631,7 +2632,7 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
                 )}
                 <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
                   {data.map((entry, i) => (
-                    <Cell key={i} fill={pctColor(entry.pct)} />
+                    <Cell key={i} fill={entry.fill} />
                   ))}
                 </Bar>
               </BarChart>
