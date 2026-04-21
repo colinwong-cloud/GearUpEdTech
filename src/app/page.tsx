@@ -1051,89 +1051,96 @@ function LoginMobileScreen({
   const canLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col"
       onContextMenu={preventContextMenu}
     >
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`}
-            alt="GearUp Quiz"
-            className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
-            draggable={false}
-          />
-          <p className="mt-2 text-gray-500">請輸入電話號碼及密碼登入</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              電話號碼
-            </label>
-            <input
-              type="tel"
-              autoComplete="username"
-              value={mobileNumber}
-              onChange={(e) => {
-                setMobileNumber(e.target.value);
-                if (error) setError(null);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
-              placeholder="例如：91234567"
-              className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`}
+              alt="GearUp Quiz"
+              className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
+              draggable={false}
             />
+            <p className="mt-2 text-gray-500">請輸入電話號碼及密碼登入</p>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              密碼
-            </label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => {
-                setPin(e.target.value);
-                if (error) setError(null);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
-              placeholder="6 位英文或數字密碼"
-              className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-red-500 font-medium">{error}</p>
-          )}
-          <button
-            onClick={onSubmit}
-            disabled={!canLogin}
-            className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-              canLogin
-                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            登入
-          </button>
-          <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-            <p className="text-sm text-gray-500">
-              還沒有帳戶？{" "}
-              <button
-                onClick={onRegister}
-                className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-              >
-                新用戶註冊
-              </button>
-            </p>
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                電話號碼
+              </label>
+              <input
+                type="tel"
+                autoComplete="username"
+                value={mobileNumber}
+                onChange={(e) => {
+                  setMobileNumber(e.target.value);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
+                placeholder="例如：91234567"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                密碼
+              </label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => {
+                  setPin(e.target.value);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
+                placeholder="6 位英文或數字密碼"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-red-500 font-medium">{error}</p>
+            )}
             <button
-              onClick={onForgotPassword}
-              className="text-xs text-indigo-500 hover:text-indigo-700"
+              onClick={onSubmit}
+              disabled={!canLogin}
+              className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
+                canLogin
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
             >
-              忘記密碼？
+              登入
             </button>
+            <div className="text-center pt-2 border-t border-gray-100 space-y-2">
+              <p className="text-sm text-gray-500">
+                還沒有帳戶？{" "}
+                <button
+                  onClick={onRegister}
+                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
+                >
+                  新用戶註冊
+                </button>
+              </p>
+              <button
+                onClick={onForgotPassword}
+                className="text-xs text-indigo-500 hover:text-indigo-700"
+              >
+                忘記密碼？
+              </button>
+            </div>
           </div>
         </div>
       </div>
+      <footer className="shrink-0 py-4 px-4 text-center">
+        <p className="text-xs text-gray-400/90 tracking-wide">
+          © 2026 GearUp EduTech Limited
+        </p>
+      </footer>
     </div>
   );
 }
