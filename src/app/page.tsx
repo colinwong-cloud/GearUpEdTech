@@ -122,7 +122,8 @@ function hasImage(q: Question): boolean {
 function getImagePublicUrl(q: Question): string | null {
   if (!q.image_url) return null;
   const match = q.image_url.match(STORAGE_PATH_RE);
-  const path = match ? match[1] : q.image_url;
+  if (!match) return q.image_url;
+  const path = decodeURIComponent(match[1]);
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
