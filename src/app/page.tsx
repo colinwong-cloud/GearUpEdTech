@@ -1051,10 +1051,10 @@ function LoginMobileScreen({
   const canLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col"
+      className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-28">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1136,8 +1136,11 @@ function LoginMobileScreen({
           </div>
         </div>
       </div>
-      <footer className="shrink-0 py-4 px-4 text-center">
-        <p className="text-xs text-gray-400/90 tracking-wide">
+      <footer
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-10 border-t border-gray-200/70 bg-white/55 py-3 text-center backdrop-blur-sm sm:py-3.5"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <p className="pointer-events-auto text-[11px] text-gray-500/90 sm:text-xs">
           © 2026 GearUp EduTech Limited
         </p>
       </footer>
