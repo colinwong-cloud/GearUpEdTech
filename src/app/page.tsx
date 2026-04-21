@@ -1194,8 +1194,9 @@ function RegisterScreen({
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const canSubmit =
-    /^\d{8}$/.test(mobileNumber.trim()) &&
+    mobileValid &&
     studentName.trim().length > 0 &&
     pinValid &&
     avatarStyle !== "" &&
@@ -1238,13 +1239,16 @@ function RegisterScreen({
               maxLength={8}
               placeholder="例如：91234567"
               className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
-                mobileNumber.length > 0 && mobileNumber.length !== 8
+                (mobileNumber.length > 0 && mobileNumber.length !== 8) || (mobileNumber.length === 8 && mobileNumber.startsWith("999"))
                   ? "border-red-300 focus:border-red-400"
                   : "border-gray-200 focus:border-indigo-400"
               }`}
             />
             {mobileNumber.length > 0 && mobileNumber.length !== 8 && (
               <p className="mt-1 text-xs text-red-500">請輸入8位數字電話號碼</p>
+            )}
+            {mobileNumber.length === 8 && mobileNumber.startsWith("999") && (
+              <p className="mt-1 text-xs text-red-500">輸入的電話號碼無效</p>
             )}
           </div>
 
@@ -1427,9 +1431,14 @@ function RegisterScreen({
           )}
 
           <button
-            onClick={() =>
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId })
-            }
+            onClick={async () => {
+              const { data: emailCheck } = await supabase.rpc("check_email_exists", { p_email: email.trim() });
+              if (emailCheck && (emailCheck as { exists: boolean }).exists) {
+                setError("輸入的電郵已經登記");
+                return;
+              }
+              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+            }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
               canSubmit
