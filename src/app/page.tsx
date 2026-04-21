@@ -1851,6 +1851,11 @@ function ResultsView({
                     <p className="text-sm text-gray-700">
                       {answer.question.content}
                     </p>
+                    {hasImage(answer.question) && (
+                      <QuestionImage
+                        src={getImagePublicUrl(answer.question)!}
+                      />
+                    )}
                     {answer.question.explanation ? (
                       <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
                         {answer.question.explanation}
@@ -3148,6 +3153,11 @@ function ParentSessionDetail({
                   </div>
                   <div className="px-4 py-3 space-y-2">
                     <p className="text-sm text-gray-700">{answer.question.content}</p>
+                    {hasImage(answer.question) && (
+                      <QuestionImage
+                        src={getImagePublicUrl(answer.question)!}
+                      />
+                    )}
                     {answer.question.explanation ? (
                       <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{answer.question.explanation}</p>
                     ) : (
