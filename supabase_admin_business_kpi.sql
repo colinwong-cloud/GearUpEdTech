@@ -7,6 +7,15 @@
 
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS gender text;
 
+-- HKT date for index-friendly filters (stored; maintained on insert/update)
+ALTER TABLE public.students
+  ADD COLUMN IF NOT EXISTS hkt_reg_date date
+  GENERATED ALWAYS AS (date(timezone('Asia/Hong_Kong', created_at::timestamptz))) STORED;
+
+ALTER TABLE public.quiz_sessions
+  ADD COLUMN IF NOT EXISTS hkt_practice_date date
+  GENERATED ALWAYS AS (date(timezone('Asia/Hong_Kong', created_at::timestamptz))) STORED;
+
 CREATE TABLE IF NOT EXISTS public.parent_dashboard_view_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id uuid REFERENCES public.parents (id) ON DELETE SET NULL,
@@ -21,6 +30,23 @@ ALTER TABLE public.parent_dashboard_view_log
 
 DROP INDEX IF EXISTS idx_pdv_t;
 CREATE INDEX IF NOT EXISTS idx_pdv_t ON public.parent_dashboard_view_log (hkt_date);
+
+CREATE INDEX IF NOT EXISTS idx_students_hkt_reg_date
+  ON public.students (hkt_reg_date);
+
+CREATE INDEX IF NOT EXISTS idx_students_school
+  ON public.students (school_id);
+
+CREATE INDEX IF NOT EXISTS idx_qs_hkt_practice
+  ON public.quiz_sessions (hkt_practice_date)
+  WHERE student_id IS NOT NULL AND questions_attempted > 0;
+
+CREATE INDEX IF NOT EXISTS idx_qs_student_hkt
+  ON public.quiz_sessions (student_id, hkt_practice_date)
+  WHERE student_id IS NOT NULL AND questions_attempted > 0;
+
+CREATE INDEX IF NOT EXISTS idx_session_answers_session_id
+  ON public.session_answers (session_id);
 
 ALTER TABLE public.parent_dashboard_view_log ENABLE ROW LEVEL SECURITY;
 
@@ -51,27 +77,29 @@ DECLARE
   d date := public.hkt_today();
   st int; s jsonb; q jsonb; n int;
 BEGIN
+  SET LOCAL statement_timeout = '2min';
+
   SELECT count(DISTINCT qs.student_id)::int INTO st
   FROM public.quiz_sessions qs
   WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
-    AND (timezone('Asia/Hong_Kong', qs.created_at::timestamptz))::date = d;
+    AND qs.hkt_practice_date = d;
 
   SELECT coalesce(jsonb_object_agg(su.subject, su.cnt), '{}') INTO s FROM (
     SELECT qs.subject, count(*)::int AS cnt
     FROM public.quiz_sessions qs
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
-      AND (timezone('Asia/Hong_Kong', qs.created_at::timestamptz))::date = d
+      AND qs.hkt_practice_date = d
     GROUP BY qs.subject) su;
 
   SELECT coalesce(jsonb_object_agg(qu.subject, qu.tq), '{}') INTO q FROM (
     SELECT qs.subject, coalesce(sum(qs.questions_attempted),0)::int AS tq
     FROM public.quiz_sessions qs
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
-      AND (timezone('Asia/Hong_Kong', qs.created_at::timestamptz))::date = d
+      AND qs.hkt_practice_date = d
     GROUP BY qs.subject) qu;
 
   SELECT count(*)::int INTO n FROM public.students s
-  WHERE (timezone('Asia/Hong_Kong', s.created_at::timestamptz))::date = d;
+  WHERE s.hkt_reg_date = d;
 
   RETURN jsonb_build_object(
     'hkt_date', d,
@@ -94,32 +122,31 @@ STABLE
 AS $$
 DECLARE
   yst date := public.hkt_today() - 1;
-  ms date := date_trunc('month', yst::timestamp)::date;
+  ms date := (date_trunc('month', (yst::timestamp))::date);
   m0 date; m1 date; i int;
   reg_mtd int; pstu_mtd int; pvi_mtd int;
   t jsonb; arr jsonb := '[]'::jsonb;
   yy int; mm int;
   reg_tot int; par_tot int; sess_tot int; ans_tot int;
-  sch jsonb; sch_tr jsonb := '[]'::jsonb; mo jsonb;
-  s_id uuid; pct numeric;
+  sch jsonb; sch_tr jsonb := '[]'::jsonb;
   sk text;
   rates_obj jsonb;
   k int;
   d1 date; d2 date;
 BEGIN
+  SET LOCAL statement_timeout = '3min';
+
   SELECT count(*)::int INTO reg_tot FROM public.students;
   SELECT count(*)::int INTO par_tot FROM public.parents;
   SELECT count(*)::int INTO sess_tot FROM public.quiz_sessions q WHERE q.student_id IS NOT NULL AND q.questions_attempted>0;
   SELECT count(*)::int INTO ans_tot FROM public.session_answers;
 
   SELECT coalesce(count(*),0) INTO reg_mtd FROM public.students s
-  WHERE (timezone('Asia/Hong_Kong', s.created_at::timestamptz))::date >= ms
-    AND (timezone('Asia/Hong_Kong', s.created_at::timestamptz))::date <= yst;
+  WHERE s.hkt_reg_date IS NOT NULL AND s.hkt_reg_date >= ms AND s.hkt_reg_date <= yst;
 
   SELECT coalesce(count(DISTINCT q.student_id),0) INTO pstu_mtd FROM public.quiz_sessions q
   WHERE q.student_id IS NOT NULL AND q.questions_attempted>0
-    AND (timezone('Asia/Hong_Kong', q.created_at::timestamptz))::date >= ms
-    AND (timezone('Asia/Hong_Kong', q.created_at::timestamptz))::date <= yst;
+    AND q.hkt_practice_date IS NOT NULL AND q.hkt_practice_date >= ms AND q.hkt_practice_date <= yst;
 
   SELECT coalesce(count(*),0) INTO pvi_mtd FROM public.parent_dashboard_view_log p
   WHERE p.hkt_date IS NOT NULL
@@ -134,12 +161,21 @@ BEGIN
     mm := EXTRACT(MONTH FROM m0)::int;
     t := jsonb_build_object('y', yy, 'm', mm,
       'key', to_char(m0, 'YYYY-MM'),
-      'registrations', (SELECT coalesce(count(*),0) FROM public.students s2 WHERE (timezone('Asia/Hong_Kong', s2.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s2.created_at::timestamptz))::date <= m1),
-      'practice_students', (SELECT coalesce(count(DISTINCT q2.student_id),0) FROM public.quiz_sessions q2 WHERE q2.student_id IS NOT NULL AND q2.questions_attempted>0 AND (timezone('Asia/Hong_Kong', q2.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', q2.created_at::timestamptz))::date <= m1),
+      'registrations', (SELECT coalesce(count(*),0) FROM public.students s2
+        WHERE s2.hkt_reg_date IS NOT NULL AND s2.hkt_reg_date >= m0 AND s2.hkt_reg_date <= m1),
+      'practice_students', (SELECT coalesce(count(DISTINCT q2.student_id),0) FROM public.quiz_sessions q2
+        WHERE q2.student_id IS NOT NULL AND q2.questions_attempted>0
+          AND q2.hkt_practice_date IS NOT NULL AND q2.hkt_practice_date >= m0 AND q2.hkt_practice_date <= m1),
       'parent_views', (SELECT coalesce(count(*),0) FROM public.parent_dashboard_view_log p2 WHERE p2.hkt_date IS NOT NULL AND p2.hkt_date >= m0 AND p2.hkt_date <= m1),
-      'male', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND upper(trim(coalesce(s3.gender,'')))='M'),
-      'female', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND upper(trim(coalesce(s3.gender,'')))='F'),
-      'undisclosed', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND (s3.gender IS NULL OR btrim(s3.gender)='' OR upper(trim(s3.gender)) NOT IN ('M','F')))
+      'male', (SELECT coalesce(count(*),0) FROM public.students s3
+        WHERE s3.hkt_reg_date IS NOT NULL AND s3.hkt_reg_date >= m0 AND s3.hkt_reg_date <= m1
+        AND upper(trim(coalesce(s3.gender,'')))='M'),
+      'female', (SELECT coalesce(count(*),0) FROM public.students s3
+        WHERE s3.hkt_reg_date IS NOT NULL AND s3.hkt_reg_date >= m0 AND s3.hkt_reg_date <= m1
+        AND upper(trim(coalesce(s3.gender,'')))='F'),
+      'undisclosed', (SELECT coalesce(count(*),0) FROM public.students s3
+        WHERE s3.hkt_reg_date IS NOT NULL AND s3.hkt_reg_date >= m0 AND s3.hkt_reg_date <= m1
+        AND (s3.gender IS NULL OR btrim(s3.gender)='' OR upper(trim(s3.gender)) NOT IN ('M','F')))
     );
     arr := arr || jsonb_build_array(t);
   END LOOP;
@@ -149,34 +185,55 @@ BEGIN
       sc.id::text AS id,
       coalesce(sc.name_zh, sc.name_en) AS name,
       sc.district, sc.area,
-      (SELECT coalesce(jsonb_object_agg(gg.grade, gg.cnt), '{}') FROM (SELECT s4.grade_level AS grade, count(*)::int AS cnt FROM public.students s4 WHERE s4.school_id = sc.id GROUP BY s4.grade_level) AS gg(grade, cnt)) AS by_grade
+      (SELECT coalesce(jsonb_object_agg(gg.grade, gg.cnt), '{}')
+        FROM (SELECT s4.grade_level AS grade, count(*)::int AS cnt
+              FROM public.students s4 WHERE s4.school_id = sc.id
+              GROUP BY s4.grade_level) AS gg(grade, cnt)
+      ) AS by_grade
     FROM public.schools sc
     WHERE EXISTS (SELECT 1 FROM public.students s5 WHERE s5.school_id = sc.id)
     ORDER BY sc.district, coalesce(sc.name_zh, sc.name_en) LIMIT 5000
   ) sx;
 
+  -- One pass per month: one GROUP BY for all schools (avoids 12 * N_schools scans of session_answers)
   FOR k IN 0..11 LOOP
     d1 := (date_trunc('month', (yst::timestamp - (k || ' months')::interval)))::date;
     d2 := (d1 + interval '1 month' - interval '1 day')::date;
     IF d2 > yst THEN d2 := yst; END IF;
     sk := to_char(d1, 'YYYY-MM');
-    rates_obj := '{}'::jsonb;
-    FOR s_id IN SELECT s6.id FROM public.schools s6 WHERE EXISTS (SELECT 1 FROM public.students st WHERE st.school_id = s6.id) LOOP
-      SELECT CASE WHEN coalesce(tot,0) = 0 THEN 0::numeric ELSE round((100.0 * ri / tot)::numeric, 2) END INTO pct
-      FROM (
+
+    SELECT coalesce(
+      (SELECT jsonb_object_agg(
+          si.sid::text,
+          CASE
+            WHEN coalesce(a.tot, 0) = 0 THEN 0
+            ELSE round(
+              (100.0 * coalesce(a.ri, 0)::numeric / a.tot::numeric)::numeric,
+              2
+            )
+          END
+      )
+      FROM (SELECT DISTINCT school_id AS sid FROM public.students WHERE school_id IS NOT NULL) AS si
+      LEFT JOIN (
         SELECT
-          coalesce(count(*),0)::numeric AS tot,
-          coalesce(sum(CASE WHEN sa.is_correct THEN 1 ELSE 0 END),0)::numeric AS ri
+          st.school_id AS gsid,
+          count(*)::bigint AS tot,
+          sum(CASE WHEN sa.is_correct THEN 1 ELSE 0 END)::bigint AS ri
         FROM public.session_answers sa
-        JOIN public.quiz_sessions qx ON qx.id = sa.session_id
-        JOIN public.students st ON st.id = qx.student_id
-        WHERE st.school_id = s_id AND qx.questions_attempted > 0
-          AND (timezone('Asia/Hong_Kong', qx.created_at::timestamptz))::date >= d1
-          AND (timezone('Asia/Hong_Kong', qx.created_at::timestamptz))::date <= d2
-      ) z(tot, ri);
-      rates_obj := rates_obj || jsonb_build_object(s_id::text, coalesce(pct,0));
-    END LOOP;
-    sch_tr := sch_tr || jsonb_build_array(jsonb_build_object('key', sk, 'by_school_id', coalesce(rates_obj, '{}')));
+        INNER JOIN public.quiz_sessions qx ON qx.id = sa.session_id
+        INNER JOIN public.students st ON st.id = qx.student_id
+        WHERE qx.questions_attempted > 0
+          AND qx.hkt_practice_date IS NOT NULL
+          AND qx.hkt_practice_date >= d1
+          AND qx.hkt_practice_date <= d2
+          AND st.school_id IS NOT NULL
+        GROUP BY st.school_id
+      ) a ON a.gsid = si.sid
+      ),
+      '{}'::jsonb
+    ) INTO rates_obj;
+
+    sch_tr := sch_tr || jsonb_build_array(jsonb_build_object('key', sk, 'by_school_id', coalesce(rates_obj, '{}'::jsonb)));
   END LOOP;
 
   RETURN jsonb_build_object(

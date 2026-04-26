@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+/* Heavy RPC: allow Vercel long enough to wait for PostgREST (monthly can run ~10–60s after SQL fix). */
+export const maxDuration = 120;
+
 const ADMIN_U = process.env.ADMIN_CONSOLE_USER || "colinwong";
 const ADMIN_P = process.env.ADMIN_CONSOLE_PASS || "qweasd";
 
