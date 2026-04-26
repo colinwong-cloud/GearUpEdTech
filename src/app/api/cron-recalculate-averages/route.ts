@@ -15,6 +15,16 @@ const supabaseAdmin = createClient(
   serviceKey
 );
 
+function missingRpcError(e: { message: string } | null): boolean {
+  if (!e) return false;
+  const m = String(e.message).toLowerCase();
+  return (
+    m.includes("does not exist") ||
+    m.includes("find the function") ||
+    m.includes("schema cache")
+  );
+}
+
 /**
  * `part` (optional) avoids PostgREST request timeout by running one heavy RPC per HTTP request:
  * - part=rank → student grade rankings
@@ -51,16 +61,13 @@ export async function GET(req: NextRequest) {
     }
     if (doGrade) {
       const { error: clearE } = await client.rpc("clear_grade_averages");
-      const canSplit = !clearE;
-      if (clearE && !String(clearE.message).includes("does not exist")) {
-        console.error("clear_grade_averages error:", clearE);
+      if (clearE && !missingRpcError(clearE)) {
         return NextResponse.json(
           { error: clearE.message, part: "grade" },
           { status: 500 }
         );
       }
-
-      if (!canSplit) {
+      if (clearE) {
         const { error: monolith } = await client.rpc("recalculate_grade_averages");
         if (monolith) {
           return NextResponse.json(
@@ -72,7 +79,7 @@ export async function GET(req: NextRequest) {
         const { data: gradeLevels, error: gErr } = await client.rpc(
           "get_distinct_grade_levels"
         );
-        if (gErr && !String(gErr.message).includes("does not exist")) {
+        if (gErr && !missingRpcError(gErr)) {
           return NextResponse.json(
             { error: gErr.message, part: "grade" },
             { status: 500 }
@@ -93,7 +100,7 @@ export async function GET(req: NextRequest) {
               { p_grade_level: gl }
             );
             if (oneErr) {
-              if (String(oneErr.message).includes("does not exist")) {
+              if (missingRpcError(oneErr)) {
                 const { error: monolith } = await client.rpc("recalculate_grade_averages");
                 if (monolith) {
                   return NextResponse.json(
