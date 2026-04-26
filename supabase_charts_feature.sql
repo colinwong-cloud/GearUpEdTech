@@ -25,6 +25,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  SET LOCAL statement_timeout = '5min';
   -- WHERE true: some hosts reject DELETE without a WHERE clause
   DELETE FROM grade_averages WHERE true;
 
@@ -40,16 +41,19 @@ BEGIN
   WHERE qs.questions_attempted > 0
   GROUP BY s.grade_level;
 
-  -- Per question_type average per grade
+  -- Per question_type average per grade (join via sessions+students for large session_answers)
   INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)
   SELECT
-    q.grade_level,
+    st.grade_level,
     q.question_type,
     ROUND(AVG(CASE WHEN sa.is_correct THEN 100.0 ELSE 0.0 END), 2),
     COUNT(DISTINCT sa.session_id)::int
   FROM session_answers sa
-  JOIN questions q ON q.id = sa.question_id
-  GROUP BY q.grade_level, q.question_type;
+  INNER JOIN quiz_sessions qs ON qs.id = sa.session_id
+  INNER JOIN students st ON st.id = qs.student_id
+  INNER JOIN questions q ON q.id = sa.question_id
+  WHERE qs.questions_attempted > 0
+  GROUP BY st.grade_level, q.question_type;
 END;
 $$;
 
