@@ -25,7 +25,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  DELETE FROM grade_averages;
+  -- WHERE true: some hosts reject DELETE without a WHERE clause
+  DELETE FROM grade_averages WHERE true;
 
   -- Overall average per grade
   INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)

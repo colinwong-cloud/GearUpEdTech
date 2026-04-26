@@ -12,6 +12,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 - **更新**：與原 `recalculate_grade_averages` 同一 Vercel Cron（`vercel.json` → `/api/cron-recalculate-averages`，每日 UTC 午夜）。Cron 內**先**呼叫 `recalculate_student_grade_rankings()`，再 `recalculate_grade_averages()`。
 - **讀取**：`get_parent_student_grade_rank(p_student_id)`（`SECURITY DEFINER`）→ 前端在載入家長儀表板時與 sessions／圖表一併請求。
 - **佈署新環境時**：在 Supabase 執行 `supabase_grade_level_ranking.sql` 一次，然後觸發 cron 或手動執行上述兩支函數。  
+- **如批次／cron 出現** `DELETE requires a WHERE clause`：在 Supabase 執行 `supabase_fix_batch_delete_require_where.sql`（將 `DELETE FROM …` 改為 `DELETE FROM … WHERE true`）。  
 - **測試**：見 `test_plan_grade_ranking.md`。
 
 ## Deployment

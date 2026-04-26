@@ -34,7 +34,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  DELETE FROM student_grade_rankings;
+  -- WHERE true: required by some Supabase/Postgres configs (no unqualified table DELETE)
+  DELETE FROM student_grade_rankings WHERE true;
 
   WITH session_rates AS (
     SELECT
