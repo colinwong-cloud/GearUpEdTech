@@ -31,3 +31,12 @@ input[type="text"] {
   -ms-user-select: text;
   user-select: text;
 }
+
+/* Admin /admin — body is user-select:none; allow copy from KPI tables and text */
+.admin-console-root,
+.admin-console-root * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}

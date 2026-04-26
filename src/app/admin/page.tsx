@@ -53,7 +53,7 @@ export default function AdminPage() {
 
   if (!loggedIn) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="admin-console-root min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-6">管理員控制台</h1>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
@@ -95,7 +95,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-console-root min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <span className="text-sm font-bold text-gray-800">管理員控制台</span>
         <button onClick={() => setLoggedIn(false)} className="text-sm text-gray-500 hover:text-red-500">登出</button>

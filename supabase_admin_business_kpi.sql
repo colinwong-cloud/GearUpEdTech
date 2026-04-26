@@ -71,7 +71,8 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-STABLE
+-- VOLATILE: must not be STABLE/IMMUTABLE while using SET LOCAL (PostgreSQL restriction)
+VOLATILE
 AS $$
 DECLARE
   d date := public.hkt_today();
@@ -118,7 +119,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-STABLE
+VOLATILE
 AS $$
 DECLARE
   yst date := public.hkt_today() - 1;
