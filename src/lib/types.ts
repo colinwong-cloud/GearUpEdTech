@@ -14,6 +14,8 @@ export interface Student {
   avatar_style: string;
   grade_level: string;
   created_at: string;
+  /** "M" | "F" | null — optional, see profile edit / admin business KPIs */
+  gender?: string | null;
 }
 
 export interface Question {

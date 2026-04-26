@@ -31,7 +31,8 @@ BEGIN
         'pin_code', s.pin_code,
         'avatar_style', s.avatar_style,
         'grade_level', s.grade_level,
-        'school_id', s.school_id
+        'school_id', s.school_id,
+        'gender', s.gender
       ))
       FROM students s WHERE s.parent_id = v_parent.id
     ), '[]'::json)
@@ -67,7 +68,8 @@ CREATE OR REPLACE FUNCTION update_student_profile(
   p_pin_code TEXT,
   p_avatar_style TEXT,
   p_grade_level TEXT,
-  p_school_id UUID DEFAULT NULL
+  p_school_id UUID DEFAULT NULL,
+  p_gender TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -80,7 +82,8 @@ BEGIN
     pin_code = p_pin_code,
     avatar_style = p_avatar_style,
     grade_level = p_grade_level,
-    school_id = p_school_id
+    school_id = p_school_id,
+    gender = NULLIF(UPPER(TRIM(p_gender)), '')
   WHERE id = p_student_id;
 END;
 $$;

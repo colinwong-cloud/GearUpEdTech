@@ -441,6 +441,13 @@ export default function QuizApp() {
         );
       }
       setScreen("parent_dashboard");
+      const stu = students.find((x) => x.id === studentId);
+      if (stu?.parent_id) {
+        void supabase.rpc("log_parent_dashboard_view", {
+          p_parent_id: stu.parent_id,
+          p_student_id: studentId,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入練習記錄。");
     } finally {
@@ -2261,6 +2268,7 @@ function ProfileEditScreen({
     avatar_style: string;
     grade_level: string;
     school_id: string | null;
+    gender: string | null;
   }[]>([]);
 
   const [schools, setSchools] = useState<{ id: string; area: string; district: string; name_zh: string | null; name_en: string }[]>([]);
@@ -2287,12 +2295,32 @@ function ProfileEditScreen({
       if (profileRes.data) {
         const d = profileRes.data as {
           parent: { id: string; mobile_number: string; parent_name: string | null; email: string | null };
-          students: { id: string; student_name: string; pin_code: string; avatar_style: string; grade_level: string; school_id: string | null }[];
+          students: {
+            id: string;
+            student_name: string;
+            pin_code: string;
+            avatar_style: string;
+            grade_level: string;
+            school_id: string | null;
+            gender?: string | null;
+          }[];
         };
         setParentId(d.parent.id);
         setParentName(d.parent.parent_name || "");
         setParentEmail(d.parent.email || "");
-        setStudentEdits(d.students.map((s) => ({ ...s, pin_code: s.pin_code || "" })));
+        setStudentEdits(
+          d.students.map((s) => {
+            const g = s.gender?.trim() ? s.gender.trim().toUpperCase() : "";
+            const fromGender =
+              g === "M" ? "Boy" : g === "F" ? "Girl" : s.avatar_style || "Boy";
+            return {
+              ...s,
+              pin_code: s.pin_code || "",
+              gender: s.gender ?? null,
+              avatar_style: fromGender,
+            };
+          })
+        );
         setSharedPin(d.students[0]?.pin_code || "");
       }
       setLoading(false);
@@ -2321,6 +2349,7 @@ function ProfileEditScreen({
           p_avatar_style: s.avatar_style,
           p_grade_level: s.grade_level,
           p_school_id: s.school_id,
+          p_gender: s.avatar_style === "Boy" ? "M" : s.avatar_style === "Girl" ? "F" : null,
         });
       }
 

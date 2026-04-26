@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { BusinessKpiSection } from "./business-kpi";
 
 const ADMIN_USER = "colinwong";
 const ADMIN_PASS = "qweasd";
 
-type Tab = "quota" | "delete" | "email" | "questions";
+type Tab = "quota" | "delete" | "email" | "questions" | "business";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -39,7 +40,7 @@ export default function AdminPage() {
   const [loginId, setLoginId] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [tab, setTab] = useState<Tab>("quota");
+  const [tab, setTab] = useState<Tab>("business");
 
   const handleLogin = () => {
     if (loginId === ADMIN_USER && loginPass === ADMIN_PASS) {
@@ -86,6 +87,7 @@ export default function AdminPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: "business", label: "業務概覽" },
     { key: "quota", label: "題目配額" },
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
@@ -113,6 +115,7 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {tab === "business" && <BusinessKpiSection user={loginId} pass={loginPass} />}
         {tab === "quota" && <QuotaSection />}
         {tab === "delete" && <DeleteSection />}
         {tab === "email" && <EmailSection />}
