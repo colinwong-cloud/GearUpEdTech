@@ -50,10 +50,67 @@ export async function GET(req: NextRequest) {
       }
     }
     if (doGrade) {
-      const { error: gradeErr } = await client.rpc("recalculate_grade_averages");
-      if (gradeErr) {
-        console.error("recalculate_grade_averages error:", gradeErr);
-        return NextResponse.json({ error: gradeErr.message, part: "grade" }, { status: 500 });
+      const { error: clearE } = await client.rpc("clear_grade_averages");
+      const canSplit = !clearE;
+      if (clearE && !String(clearE.message).includes("does not exist")) {
+        console.error("clear_grade_averages error:", clearE);
+        return NextResponse.json(
+          { error: clearE.message, part: "grade" },
+          { status: 500 }
+        );
+      }
+
+      if (!canSplit) {
+        const { error: monolith } = await client.rpc("recalculate_grade_averages");
+        if (monolith) {
+          return NextResponse.json(
+            { error: monolith.message, part: "grade" },
+            { status: 500 }
+          );
+        }
+      } else {
+        const { data: gradeLevels, error: gErr } = await client.rpc(
+          "get_distinct_grade_levels"
+        );
+        if (gErr && !String(gErr.message).includes("does not exist")) {
+          return NextResponse.json(
+            { error: gErr.message, part: "grade" },
+            { status: 500 }
+          );
+        }
+        if (gErr) {
+          const { error: monolith } = await client.rpc("recalculate_grade_averages");
+          if (monolith) {
+            return NextResponse.json(
+              { error: monolith.message, part: "grade" },
+              { status: 500 }
+            );
+          }
+        } else {
+          for (const gl of (gradeLevels as string[] | null) ?? []) {
+            const { error: oneErr } = await client.rpc(
+              "recalculate_grade_averages_for_grade",
+              { p_grade_level: gl }
+            );
+            if (oneErr) {
+              if (String(oneErr.message).includes("does not exist")) {
+                const { error: monolith } = await client.rpc("recalculate_grade_averages");
+                if (monolith) {
+                  return NextResponse.json(
+                    { error: monolith.message, part: "grade" },
+                    { status: 500 }
+                  );
+                }
+              } else {
+                return NextResponse.json(
+                  { error: oneErr.message, part: "grade" },
+                  { status: 500 }
+                );
+              }
+              break;
+            }
+          }
+        }
       }
     }
     return NextResponse.json({
