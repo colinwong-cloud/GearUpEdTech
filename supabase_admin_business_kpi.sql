@@ -191,7 +191,9 @@ BEGIN
     ORDER BY sc.district, coalesce(sc.name_zh, sc.name_en) LIMIT 5000
   ) sx;
 
-  -- One pass per month: one GROUP BY for all schools (avoids 12 * N_schools scans of session_answers)
+  -- One pass per month: use quiz_sessions only (no session_answers) so large answer tables are not
+  -- scanned 12 times. Metric: weighted overall correct % = 100 * sum(score) / sum(questions_attempted)
+  -- for sessions in the month (score is correct count per your schema; matches per-answer rate when no partial credit).
   FOR k IN 0..11 LOOP
     d1 := (date_trunc('month', (yst::timestamp - (k || ' months')::interval)))::date;
     d2 := (d1 + interval '1 month' - interval '1 day')::date;
@@ -202,9 +204,9 @@ BEGIN
       (SELECT jsonb_object_agg(
           si.sid::text,
           CASE
-            WHEN coalesce(a.tot, 0) = 0 THEN 0
+            WHEN coalesce(a.tq, 0) = 0 THEN 0
             ELSE round(
-              (100.0 * coalesce(a.ri, 0)::numeric / a.tot::numeric)::numeric,
+              (100.0 * (a.correct_sum::numeric) / a.tq::numeric)::numeric,
               2
             )
           END
@@ -213,12 +215,12 @@ BEGIN
       LEFT JOIN (
         SELECT
           st.school_id AS gsid,
-          count(*)::bigint AS tot,
-          sum(CASE WHEN sa.is_correct THEN 1 ELSE 0 END)::bigint AS ri
-        FROM public.session_answers sa
-        INNER JOIN public.quiz_sessions qx ON qx.id = sa.session_id
+          coalesce(sum(qx.questions_attempted), 0)::bigint AS tq,
+          coalesce(sum(qx.score), 0)::bigint AS correct_sum
+        FROM public.quiz_sessions qx
         INNER JOIN public.students st ON st.id = qx.student_id
-        WHERE qx.questions_attempted > 0
+        WHERE qx.student_id IS NOT NULL
+          AND qx.questions_attempted > 0
           AND qx.hkt_practice_date IS NOT NULL
           AND qx.hkt_practice_date >= d1
           AND qx.hkt_practice_date <= d2

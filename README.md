@@ -36,6 +36,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | 業務概覽「學校正確率」曆月：`admin_business_monthly` 內已改為 **僅讀 `quiz_sessions`**（按校 `sum(score)/sum(questions_attempted)` 加權，不再掃 `session_answers`），以降低 PostgREST 逾時。與單次練習內之逐題正確率一致。 |
 | 2026-04 | `admin_today_business` / `admin_business_monthly`：已移除函數內 `SET LOCAL statement_timeout`（避免與 `STABLE`/權限相關的 `SET is not allowed in a non-volatile function`）；兩者仍為 **VOLATILE**。請重跑 `supabase_admin_business_kpi.sql`。 |
 | 2026-04 | `supabase_admin_business_kpi.sql`：含 `students.hkt_reg_date`、`quiz_sessions.hkt_practice_date`（generated STORED）及索引；`admin_business_monthly` 內學校正確率改為各月單次 `GROUP BY school`（避免 12×N 校全表掃 `session_answers` 導致 PostgREST 逾時）。如曾跑舊版腳本，在 Supabase **重跑整份** `supabase_admin_business_kpi.sql`（idempotent）。`parent_dashboard_view_log.hkt_date` 與 `supabase_admin_business_kpi_index_fix.sql` 仍適用只缺 view log 欄位之表。 |
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
