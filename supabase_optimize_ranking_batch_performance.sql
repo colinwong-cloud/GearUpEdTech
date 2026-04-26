@@ -1,35 +1,13 @@
--- ============================================================
--- Grade-level performance ranking (nightly batch + parent read)
--- Run in Supabase SQL Editor after backup.
--- - Eligible: sum(questions_attempted) in quiz_sessions >= 100
--- - Score: average of per-session correct % over last 10 sessions (or fewer if <10)
--- - Rank: RANK() among eligibles in same grade_level, higher avg = better (rank 1 = best)
--- ============================================================
+-- Run in Supabase SQL after hotfix, if the batch times out.
+-- 1) Adds an index to speed the ranking scan.
+-- 2) Replaces nested subqueries in recalculate_student_grade_rankings
+--    with set-based CTEs (O(students) + O(sessions)) instead of O(n^2 per student).
+-- 3) Raises statement timeout inside the function to 5 minutes.
+-- 4) Same for recalculate_grade_averages.
 
 CREATE INDEX IF NOT EXISTS idx_quiz_sessions_student_created
   ON public.quiz_sessions (student_id, created_at DESC)
   WHERE student_id IS NOT NULL AND questions_attempted > 0;
-
-CREATE TABLE IF NOT EXISTS student_grade_rankings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  calculated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  grade_level TEXT NOT NULL,
-  student_id UUID NOT NULL,
-  student_name TEXT NOT NULL,
-  lifetime_questions INTEGER NOT NULL DEFAULT 0,
-  session_count_in_avg INTEGER NOT NULL DEFAULT 0,
-  last_10_avg_correct_pct NUMERIC(7,4),
-  rank_in_grade INTEGER,
-  total_eligible_in_grade INTEGER NOT NULL DEFAULT 0,
-  CONSTRAINT uq_ranking_student_grade UNIQUE (grade_level, student_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_sgr_student ON student_grade_rankings (student_id);
-CREATE INDEX IF NOT EXISTS idx_sgr_grade ON student_grade_rankings (grade_level);
-
-ALTER TABLE student_grade_rankings ENABLE ROW LEVEL SECURITY;
-
--- No direct access; use RPC only (matches security model)
 
 CREATE OR REPLACE FUNCTION recalculate_student_grade_rankings()
 RETURNS void
@@ -125,46 +103,35 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION get_parent_student_grade_rank(p_student_id UUID)
-RETURNS JSON
+CREATE OR REPLACE FUNCTION recalculate_grade_averages()
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-STABLE
 AS $$
-DECLARE
-  v_row student_grade_rankings%ROWTYPE;
-  v_result JSON;
 BEGIN
-  SELECT * INTO v_row
-  FROM student_grade_rankings
-  WHERE student_id = p_student_id
-  LIMIT 1;
+  SET LOCAL statement_timeout = '5min';
+  DELETE FROM grade_averages WHERE true;
 
-  IF NOT FOUND THEN
-    RETURN json_build_object(
-      'has_snapshot', false,
-      'error', 'no_ranking_data'
-    );
-  END IF;
+  INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)
+  SELECT
+    s.grade_level,
+    '_overall' AS question_type,
+    ROUND(AVG(CASE WHEN qs.questions_attempted > 0 THEN (qs.score::numeric / qs.questions_attempted) * 100 ELSE 0 END), 2),
+    COUNT(qs.id)::int
+  FROM quiz_sessions qs
+  JOIN students s ON s.id = qs.student_id
+  WHERE qs.questions_attempted > 0
+  GROUP BY s.grade_level;
 
-  v_result := json_build_object(
-    'has_snapshot', true,
-    'calculated_at', v_row.calculated_at,
-    'grade_level', v_row.grade_level,
-    'student_id', v_row.student_id,
-    'student_name', v_row.student_name,
-    'lifetime_questions', v_row.lifetime_questions,
-    'session_count_in_avg', v_row.session_count_in_avg,
-    'last_10_avg_correct_pct', v_row.last_10_avg_correct_pct,
-    'rank_in_grade', v_row.rank_in_grade,
-    'total_eligible_in_grade', v_row.total_eligible_in_grade,
-    'is_eligible', (v_row.lifetime_questions >= 100)
-  );
-  RETURN v_result;
+  INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)
+  SELECT
+    q.grade_level,
+    q.question_type,
+    ROUND(AVG(CASE WHEN sa.is_correct THEN 100.0 ELSE 0.0 END), 2),
+    COUNT(DISTINCT sa.session_id)::int
+  FROM session_answers sa
+  JOIN questions q ON q.id = sa.question_id
+  GROUP BY q.grade_level, q.question_type;
 END;
 $$;
-
--- Grant execute to anon (same as other public RPCs)
-GRANT EXECUTE ON FUNCTION recalculate_student_grade_rankings() TO postgres, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION get_parent_student_grade_rank(UUID) TO postgres, anon, authenticated, service_role;

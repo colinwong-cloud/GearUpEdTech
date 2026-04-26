@@ -13,6 +13,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 - **讀取**：`get_parent_student_grade_rank(p_student_id)`（`SECURITY DEFINER`）→ 前端在載入家長儀表板時與 sessions／圖表一併請求。
 - **佈署新環境時**：在 Supabase 執行 `supabase_grade_level_ranking.sql` 一次，然後觸發 cron 或手動執行上述兩支函數。  
 - **如批次／cron 出現** `DELETE requires a WHERE clause`：在 Supabase 執行 `supabase_fix_batch_delete_require_where.sql`（將 `DELETE FROM …` 改為 `DELETE FROM … WHERE true`）。  
+- **如出現** `canceling statement due to statement timeout`：資料量較大時，原先排名批次對每位學生子查詢掃表會過慢；請在 Supabase 執行 `supabase_optimize_ranking_batch_performance.sql`（加索引、改寫成集合式查詢，並在函數內 `SET LOCAL statement_timeout = '5min'`）。Vercel 路由 `/api/cron-recalculate-averages` 已設 `maxDuration = 300`（秒），需重新部署才生效。  
 - **測試**：見 `test_plan_grade_ranking.md`。
 
 ## Deployment
