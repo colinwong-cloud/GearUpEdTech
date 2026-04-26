@@ -40,3 +40,12 @@ input[type="text"] {
   -ms-user-select: text;
   user-select: text;
 }
+
+/* Student quiz — same body rule; allow text selection in question/options */
+.student-quiz-root,
+.student-quiz-root * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}

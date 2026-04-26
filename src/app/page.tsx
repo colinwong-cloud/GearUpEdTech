@@ -21,11 +21,14 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
-
+import {
+  StudentQuizExperience,
+  getQuizSoundEnabled,
+  setQuizSoundEnabled,
+  playClickSound,
+} from "@/components/student-quiz-experience";
 const MAX_SHORT_ANSWER = 2;
 const MAX_IMAGE = 1;
-const OPTION_LABELS = ["A", "B", "C", "D"] as const;
-const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
 const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
@@ -295,6 +298,15 @@ export default function QuizApp() {
   const [showSpeedReminder, setShowSpeedReminder] = useState(false);
   const speedReminderShownRef = useRef(false);
   const answerTimestampsRef = useRef<number[]>([]);
+  const [quizAfterFeedback, setQuizAfterFeedback] = useState<"idle" | "pending" | "correct" | "wrong">("idle");
+  const [quizMascotBounce, setQuizMascotBounce] = useState(0);
+  const [quizTransition, setQuizTransition] = useState(0);
+  const [encourageIndex, setEncourageIndex] = useState(0);
+  const [showQuizConfetti, setShowQuizConfetti] = useState(false);
+  const [quizSoundOn, setQuizSoundOn] = useState(true);
+  useEffect(() => {
+    setQuizSoundOn(getQuizSoundEnabled());
+  }, []);
 
   const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
   const [parentMonth, setParentMonth] = useState(() => {
@@ -551,9 +563,14 @@ export default function QuizApp() {
       );
       if (sessErr) throw sessErr;
 
-      setQuestions(selected);
-      setSessionId((session as { id: string }).id);
-      setScreen("quiz");
+    setQuestions(selected);
+    setSessionId((session as { id: string }).id);
+    setQuizAfterFeedback("idle");
+    setShowQuizConfetti(false);
+    setEncourageIndex(Math.floor(Math.random() * 3));
+    setQuizMascotBounce(0);
+    setQuizTransition(0);
+    setScreen("quiz");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入測驗。");
     } finally {
@@ -561,8 +578,27 @@ export default function QuizApp() {
     }
   };
 
+  const advanceQuizFromFeedback = useCallback(() => {
+    setShowQuizConfetti(false);
+    setQuizAfterFeedback("idle");
+    if (currentIndex + 1 >= questions.length) {
+      setScreen("results");
+      return;
+    }
+    setCurrentIndex((i) => i + 1);
+    setSelectedAnswer(null);
+    setTextAnswer("");
+    setQuizTransition((k) => k + 1);
+    setEncourageIndex((e) => e + 1);
+  }, [currentIndex, questions.length]);
+
   const handleSubmitAnswer = async () => {
+    if (quizAfterFeedback === "correct" || quizAfterFeedback === "wrong") {
+      advanceQuizFromFeedback();
+      return;
+    }
     const currentQuestion = questions[currentIndex];
+    if (!currentQuestion) return;
     const shortAns = isShortAnswer(currentQuestion);
     const answer = shortAns ? textAnswer.trim() : selectedAnswer;
     if (!answer || !sessionId || submitting) return;
@@ -582,6 +618,7 @@ export default function QuizApp() {
     }
 
     setSubmitting(true);
+    setQuizAfterFeedback("pending");
     try {
       const { error: ansErr } = await supabase.rpc("submit_answer", {
         p_session_id: sessionId,
@@ -612,16 +649,21 @@ export default function QuizApp() {
         p_time_spent_seconds: timeSpent,
       });
 
-      if (currentIndex + 1 >= questions.length) {
+      const isLastQ = currentIndex + 1 >= questions.length;
+      if (isLastQ) {
         await finalizeQuiz(updatedAnswers);
-        setScreen("results");
+      }
+
+      if (isCorrect) {
+        setQuizAfterFeedback("correct");
+        setShowQuizConfetti(true);
+        window.setTimeout(() => setShowQuizConfetti(false), 1400);
       } else {
-        setCurrentIndex(currentIndex + 1);
-        setSelectedAnswer(null);
-        setTextAnswer("");
+        setQuizAfterFeedback("wrong");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交答案失敗。");
+      setQuizAfterFeedback("idle");
     } finally {
       setSubmitting(false);
     }
@@ -911,113 +953,54 @@ export default function QuizApp() {
   }
 
   const shortAnswer = isShortAnswer(currentQuestion);
-  const canSubmit = shortAnswer
-    ? textAnswer.trim().length > 0
-    : selectedAnswer != null;
+  const hasAns = shortAnswer ? textAnswer.trim().length > 0 : selectedAnswer != null;
+  const inFeedback = quizAfterFeedback === "correct" || quizAfterFeedback === "wrong";
+  const canSubmit = inFeedback ? true : hasAns;
+
+  const onQuizOptionPick = (label: string) => {
+    if (inFeedback || submitting || quizAfterFeedback === "pending") return;
+    setSelectedAnswer(label);
+    setQuizMascotBounce((k) => k + 1);
+    if (getQuizSoundEnabled()) playClickSound();
+  };
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col"
+      className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
       onContextMenu={preventContextMenu}
     >
       <Header
         studentName={selectedStudent?.student_name}
         onLogout={handleLogout}
       />
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="w-full max-w-2xl">
-          <ProgressBar current={currentIndex + 1} total={questions.length} />
-
-          <div className="mt-6 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 sm:px-8 sm:py-5">
-              <p className="text-indigo-100 text-sm font-medium">
-                第 {currentIndex + 1} 題 / 共 {questions.length} 題
-              </p>
-              <h2 className="mt-2 text-lg sm:text-xl font-semibold text-white leading-relaxed">
-                {currentQuestion.content}
-              </h2>
-              {hasImage(currentQuestion) && (
-                <QuestionImage src={getImagePublicUrl(currentQuestion)!} />
-              )}
-            </div>
-
-            <div className="p-6 sm:p-8 space-y-3">
-              {shortAnswer ? (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    請輸入答案
-                  </label>
-                  <input
-                    type="text"
-                    value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    disabled={submitting}
-                    className={`w-full p-4 rounded-xl border-2 text-base transition-all duration-200 outline-none ${
-                      textAnswer.trim()
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200 focus:border-indigo-400"
-                    } ${submitting ? "opacity-60 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-              ) : (
-                OPTION_LABELS.map((label, i) => {
-                  const optionText = currentQuestion[OPTION_KEYS[i]];
-                  const isSelected = selectedAnswer === label;
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => setSelectedAnswer(label)}
-                      disabled={submitting}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group ${
-                        isSelected
-                          ? "border-indigo-500 bg-indigo-50 shadow-md"
-                          : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
-                      } ${submitting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                    >
-                      <span
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-                          isSelected
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
-                        }`}
-                      >
-                        {label}
-                      </span>
-                      <span
-                        className={`text-base ${isSelected ? "text-indigo-900 font-medium" : "text-gray-700"}`}
-                      >
-                        {optionText}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="px-6 pb-6 sm:px-8 sm:pb-8">
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={!canSubmit || submitting}
-                className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-                  canSubmit && !submitting
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-[0.98]"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Spinner />
-                    提交中...
-                  </span>
-                ) : currentIndex + 1 === questions.length ? (
-                  "提交並查看結果"
-                ) : (
-                  "提交答案"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-0 flex flex-1 flex-col">
+        <StudentQuizExperience
+          currentQuestion={currentQuestion}
+          currentIndex={currentIndex}
+          totalQuestions={questions.length}
+          shortAnswer={shortAnswer}
+          hasImage={hasImage}
+          getImageUrl={getImagePublicUrl}
+          selectedAnswer={selectedAnswer}
+          textAnswer={textAnswer}
+          onTextChange={(v) => setTextAnswer(v)}
+          submitting={submitting}
+          onSubmit={handleSubmitAnswer}
+          canSubmit={canSubmit}
+          isLastQuestion={currentIndex + 1 === questions.length}
+          afterFeedback={quizAfterFeedback}
+          onToggleSound={() => {
+            const n = !quizSoundOn;
+            setQuizSoundOn(n);
+            setQuizSoundEnabled(n);
+          }}
+          soundEnabled={quizSoundOn}
+          encouragementIndex={encourageIndex}
+          mascotBounceKey={quizMascotBounce}
+          transitionKey={quizTransition}
+          onOptionPick={onQuizOptionPick}
+          showConfetti={showQuizConfetti}
+        />
       </div>
       {showSpeedReminder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
