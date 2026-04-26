@@ -2,6 +2,9 @@
 -- Splits recalculate_grade_averages_for_grade into two short statements:
 --   overall (quiz_sessions) vs by-type (session_answers) so each PostgREST RPC stays under timeout.
 
+CREATE INDEX IF NOT EXISTS idx_session_answers_session_id
+  ON public.session_answers (session_id);
+
 CREATE OR REPLACE FUNCTION recalculate_grade_overall_for_grade(p_grade_level text)
 RETURNS void
 LANGUAGE plpgsql
