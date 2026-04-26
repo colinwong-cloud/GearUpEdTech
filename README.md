@@ -36,6 +36,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | `supabase_admin_business_kpi.sql`: `parent_dashboard_view_log.hkt_date` 為 STORED generated 欄位；索引為 `CREATE INDEX (hkt_date)`（避免在 SQL Editor 內含 `::` 的 expression index）。若表已建，可單跑 `supabase_admin_business_kpi_index_fix.sql` 補欄位與索引。 |
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
 | 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
 | 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |

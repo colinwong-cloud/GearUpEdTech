@@ -1,6 +1,9 @@
 -- Admin business KPI — run in Supabase SQL Editor (full file).
 -- New: students.gender, parent_dashboard_view_log, log_parent_dashboard_view,
 --      admin_today_business, admin_business_monthly (service_role only for admin RPCs)
+--
+-- Index: use a STORED generated column hkt_date + plain "CREATE INDEX (hkt_date)".
+-- Some clients reject expression indexes with casts (::) in SQL Editor; this avoids that.
 
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS gender text;
 
@@ -10,9 +13,15 @@ CREATE TABLE IF NOT EXISTS public.parent_dashboard_view_log (
   student_id uuid REFERENCES public.students (id) ON DELETE SET NULL,
   viewed_at timestamptz NOT NULL DEFAULT now()
 );
--- HKT calendar date for monthly queries; use date() not :: to avoid client parse issues on CREATE INDEX
-CREATE INDEX IF NOT EXISTS idx_pdv_t
-  ON public.parent_dashboard_view_log (date(timezone('Asia/Hong_Kong', viewed_at)));
+
+-- Existing installs from an older script: add the column (idempotent)
+ALTER TABLE public.parent_dashboard_view_log
+  ADD COLUMN IF NOT EXISTS hkt_date date
+  GENERATED ALWAYS AS (date(timezone('Asia/Hong_Kong', viewed_at))) STORED;
+
+DROP INDEX IF EXISTS idx_pdv_t;
+CREATE INDEX IF NOT EXISTS idx_pdv_t ON public.parent_dashboard_view_log (hkt_date);
+
 ALTER TABLE public.parent_dashboard_view_log ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.log_parent_dashboard_view(p_parent_id uuid, p_student_id uuid)
@@ -113,8 +122,9 @@ BEGIN
     AND (timezone('Asia/Hong_Kong', q.created_at::timestamptz))::date <= yst;
 
   SELECT coalesce(count(*),0) INTO pvi_mtd FROM public.parent_dashboard_view_log p
-  WHERE (timezone('Asia/Hong_Kong', p.viewed_at::timestamptz))::date >= ms
-    AND (timezone('Asia/Hong_Kong', p.viewed_at::timestamptz))::date <= yst;
+  WHERE p.hkt_date IS NOT NULL
+    AND p.hkt_date >= ms
+    AND p.hkt_date <= yst;
 
   FOR i IN 0..11 LOOP
     m0 := (date_trunc('month', (yst::timestamp - (i || ' months')::interval)))::date;
@@ -126,7 +136,7 @@ BEGIN
       'key', to_char(m0, 'YYYY-MM'),
       'registrations', (SELECT coalesce(count(*),0) FROM public.students s2 WHERE (timezone('Asia/Hong_Kong', s2.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s2.created_at::timestamptz))::date <= m1),
       'practice_students', (SELECT coalesce(count(DISTINCT q2.student_id),0) FROM public.quiz_sessions q2 WHERE q2.student_id IS NOT NULL AND q2.questions_attempted>0 AND (timezone('Asia/Hong_Kong', q2.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', q2.created_at::timestamptz))::date <= m1),
-      'parent_views', (SELECT coalesce(count(*),0) FROM public.parent_dashboard_view_log p2 WHERE (timezone('Asia/Hong_Kong', p2.viewed_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', p2.viewed_at::timestamptz))::date <= m1),
+      'parent_views', (SELECT coalesce(count(*),0) FROM public.parent_dashboard_view_log p2 WHERE p2.hkt_date IS NOT NULL AND p2.hkt_date >= m0 AND p2.hkt_date <= m1),
       'male', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND upper(trim(coalesce(s3.gender,'')))='M'),
       'female', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND upper(trim(coalesce(s3.gender,'')))='F'),
       'undisclosed', (SELECT coalesce(count(*),0) FROM public.students s3 WHERE (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date >= m0 AND (timezone('Asia/Hong_Kong', s3.created_at::timestamptz))::date <= m1 AND (s3.gender IS NULL OR btrim(s3.gender)='' OR upper(trim(s3.gender)) NOT IN ('M','F')))
