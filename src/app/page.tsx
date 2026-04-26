@@ -3067,8 +3067,6 @@ function ParentDashboard({
         </div>
       </div>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <ParentGradeRankPanel studentName={studentName} rank={gradeRank} />
-
         <div className="flex flex-wrap gap-2 mb-4">
           {subjects.map((s) => (
             <button
@@ -3084,6 +3082,8 @@ function ParentDashboard({
             </button>
           ))}
         </div>
+
+        <ParentGradeRankPanel studentName={studentName} rank={gradeRank} />
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">

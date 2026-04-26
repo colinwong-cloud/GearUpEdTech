@@ -4,7 +4,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 ## Parent dashboard: 同級排名
 
-- **位置**：家長「練習報告」頁面頂部（科目／月份切換上方）。
+- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（例：數學）→ ② **同級排名**（`ParentGradeRankPanel`）→ ③ **月份**導航與列表／圖表。純前端順序，無需改 DB。
 - **邏輯**（實作於 `supabase_grade_level_ranking.sql`）  
   - 只納入 **累積完成至少 100 題**（`sum(quiz_sessions.questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
   - 分數＝**最近 10 次**練習的「每次正確率」之**平均**（不滿 10 次則以實有次數平均）。  
@@ -29,6 +29,15 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project `quiz-deploy` under scope `colinwong-clouds-projects`).
 
 **Production URL:** https://q.hkedutech.com
+
+Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and deployed to Vercel with `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`) and `vercel deploy --prod`.
+
+## Changelog (recent)
+
+| Date (approx) | Change |
+|----------------|--------|
+| 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
+| 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |
 
 ## Setup
 
