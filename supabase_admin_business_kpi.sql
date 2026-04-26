@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS public.parent_dashboard_view_log (
   student_id uuid REFERENCES public.students (id) ON DELETE SET NULL,
   viewed_at timestamptz NOT NULL DEFAULT now()
 );
--- Use CAST (not ::) in index expr — some SQL clients fail parsing nested :: in CREATE INDEX
+-- HKT calendar date for monthly queries; use date() not :: to avoid client parse issues on CREATE INDEX
 CREATE INDEX IF NOT EXISTS idx_pdv_t
-  ON public.parent_dashboard_view_log (CAST((timezone('Asia/Hong_Kong', viewed_at)) AS date));
+  ON public.parent_dashboard_view_log (date(timezone('Asia/Hong_Kong', viewed_at)));
 ALTER TABLE public.parent_dashboard_view_log ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.log_parent_dashboard_view(p_parent_id uuid, p_student_id uuid)
