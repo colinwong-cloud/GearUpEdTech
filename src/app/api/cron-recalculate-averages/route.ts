@@ -95,26 +95,48 @@ export async function GET(req: NextRequest) {
           }
         } else {
           for (const gl of (gradeLevels as string[] | null) ?? []) {
-            const { error: oneErr } = await client.rpc(
-              "recalculate_grade_averages_for_grade",
+            const { error: oErr } = await client.rpc(
+              "recalculate_grade_overall_for_grade",
               { p_grade_level: gl }
             );
-            if (oneErr) {
-              if (missingRpcError(oneErr)) {
-                const { error: monolith } = await client.rpc("recalculate_grade_averages");
-                if (monolith) {
+            if (oErr) {
+              if (missingRpcError(oErr)) {
+                const { error: oneErr } = await client.rpc(
+                  "recalculate_grade_averages_for_grade",
+                  { p_grade_level: gl }
+                );
+                if (oneErr) {
                   return NextResponse.json(
-                    { error: monolith.message, part: "grade" },
+                    { error: oneErr.message, part: "grade" },
                     { status: 500 }
                   );
                 }
-              } else {
+                continue;
+              }
+              return NextResponse.json(
+                { error: oErr.message, part: "grade" },
+                { status: 500 }
+              );
+            }
+            const { error: tErr } = await client.rpc(
+              "recalculate_grade_by_type_for_grade",
+              { p_grade_level: gl }
+            );
+            if (tErr) {
+              if (missingRpcError(tErr)) {
                 return NextResponse.json(
-                  { error: oneErr.message, part: "grade" },
+                  {
+                    part: "grade",
+                    error:
+                      "recalculate_grade_by_type_for_grade missing. Run supabase_grade_averages_two_step_per_grade.sql in Supabase (cannot fall back without duplicating _overall).",
+                  },
                   { status: 500 }
                 );
               }
-              break;
+              return NextResponse.json(
+                { error: tErr.message, part: "grade" },
+                { status: 500 }
+              );
             }
           }
         }
