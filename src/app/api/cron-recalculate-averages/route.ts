@@ -118,25 +118,66 @@ export async function GET(req: NextRequest) {
                 { status: 500 }
               );
             }
-            const { error: tErr } = await client.rpc(
-              "recalculate_grade_by_type_for_grade",
+            const { data: typeList, error: tListErr } = await client.rpc(
+              "get_question_types_for_grade",
               { p_grade_level: gl }
             );
-            if (tErr) {
-              if (missingRpcError(tErr)) {
-                return NextResponse.json(
+            if (!tListErr) {
+              for (const qt of (typeList as string[] | null) ?? []) {
+                const { error: oneTErr } = await client.rpc(
+                  "recalculate_grade_one_type_for_grade",
                   {
-                    part: "grade",
-                    error:
-                      "recalculate_grade_by_type_for_grade missing. Run supabase_grade_averages_two_step_per_grade.sql in Supabase (cannot fall back without duplicating _overall).",
-                  },
+                    p_grade_level: gl,
+                    p_question_type: qt,
+                  }
+                );
+                if (oneTErr) {
+                  if (missingRpcError(oneTErr)) {
+                    const { error: tErr } = await client.rpc(
+                      "recalculate_grade_by_type_for_grade",
+                      { p_grade_level: gl }
+                    );
+                    if (tErr) {
+                      return NextResponse.json(
+                        { error: tErr.message, part: "grade" },
+                        { status: 500 }
+                      );
+                    }
+                    break;
+                  }
+                  return NextResponse.json(
+                    { error: oneTErr.message, part: "grade" },
+                    { status: 500 }
+                  );
+                }
+              }
+            } else {
+              if (!missingRpcError(tListErr)) {
+                return NextResponse.json(
+                  { error: tListErr.message, part: "grade" },
                   { status: 500 }
                 );
               }
-              return NextResponse.json(
-                { error: tErr.message, part: "grade" },
-                { status: 500 }
+              const { error: tErr } = await client.rpc(
+                "recalculate_grade_by_type_for_grade",
+                { p_grade_level: gl }
               );
+              if (tErr) {
+                if (missingRpcError(tErr)) {
+                  return NextResponse.json(
+                    {
+                      part: "grade",
+                      error:
+                        "Run supabase_grade_by_question_type_fine.sql (or recalculate_grade_by_type still times out).",
+                    },
+                    { status: 500 }
+                  );
+                }
+                return NextResponse.json(
+                  { error: tErr.message, part: "grade" },
+                  { status: 500 }
+                );
+              }
             }
           }
         }
