@@ -71,15 +71,12 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
--- VOLATILE: must not be STABLE/IMMUTABLE while using SET LOCAL (PostgreSQL restriction)
 VOLATILE
 AS $$
 DECLARE
   d date := public.hkt_today();
   st int; s jsonb; q jsonb; n int;
 BEGIN
-  SET LOCAL statement_timeout = '2min';
-
   SELECT count(DISTINCT qs.student_id)::int INTO st
   FROM public.quiz_sessions qs
   WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
@@ -135,8 +132,6 @@ DECLARE
   k int;
   d1 date; d2 date;
 BEGIN
-  SET LOCAL statement_timeout = '3min';
-
   SELECT count(*)::int INTO reg_tot FROM public.students;
   SELECT count(*)::int INTO par_tot FROM public.parents;
   SELECT count(*)::int INTO sess_tot FROM public.quiz_sessions q WHERE q.student_id IS NOT NULL AND q.questions_attempted>0;
