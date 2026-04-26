@@ -96,6 +96,22 @@ interface ChartDataPayload {
   grade_averages: GradeAverage[];
 }
 
+/** Nightly cache from student_grade_rankings; see get_parent_student_grade_rank RPC */
+interface ParentGradeRankPayload {
+  has_snapshot: boolean;
+  error?: string;
+  calculated_at?: string;
+  grade_level?: string;
+  student_id?: string;
+  student_name?: string;
+  lifetime_questions?: number;
+  session_count_in_avg?: number;
+  last_10_avg_correct_pct?: number;
+  rank_in_grade?: number | null;
+  total_eligible_in_grade?: number;
+  is_eligible?: boolean;
+}
+
 interface BalanceTransaction {
   id: string;
   change_amount: number;
@@ -290,6 +306,7 @@ export default function QuizApp() {
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
   
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
+  const [gradeRank, setGradeRank] = useState<ParentGradeRankPayload | null>(null);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
@@ -398,7 +415,7 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const [sessRes, chartRes] = await Promise.all([
+      const [sessRes, chartRes, rankRes] = await Promise.all([
         supabase.rpc("get_parent_sessions", {
           p_student_id: studentId,
           p_subject: subject,
@@ -408,10 +425,21 @@ export default function QuizApp() {
         supabase.rpc("get_student_chart_data", {
           p_student_id: studentId,
         }),
+        supabase.rpc("get_parent_student_grade_rank", {
+          p_student_id: studentId,
+        }),
       ]);
       if (sessRes.error) throw sessRes.error;
+      if (chartRes.error) throw chartRes.error;
       setParentSessions((sessRes.data as SessionSummary[]) || []);
       setChartData(chartRes.data as ChartDataPayload | null);
+      if (rankRes.error) {
+        setGradeRank({ has_snapshot: false, error: rankRes.error.message });
+      } else {
+        setGradeRank(
+          (rankRes.data as ParentGradeRankPayload | null) ?? { has_snapshot: false }
+        );
+      }
       setScreen("parent_dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入練習記錄。");
@@ -772,11 +800,11 @@ export default function QuizApp() {
     return (
       <ParentDashboard
         studentName={selectedStudent?.student_name || ""}
+        gradeRank={gradeRank}
         sessions={parentSessions}
         year={parentMonth.year}
         month={parentMonth.month}
         subject={parentSubject}
-        
         chartData={chartData}
         onMonthChange={handleParentMonthChange}
         onSubjectChange={(s) => {
@@ -2879,8 +2907,110 @@ function RoleSelectScreen({
   );
 }
 
+function ParentGradeRankPanel({
+  studentName,
+  rank,
+}: {
+  studentName: string;
+  rank: ParentGradeRankPayload | null;
+}) {
+  const notReady = (
+    <div className="relative overflow-hidden rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-rose-100/80 via-amber-100/80 to-emerald-100/80 h-14" aria-hidden>
+      <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+        <p className="text-center text-xs text-gray-600 px-3 leading-relaxed">
+          學生完成100題練習後，系統將會提供評級數據。
+        </p>
+      </div>
+    </div>
+  );
+
+  if (!rank || !rank.has_snapshot) {
+    return (
+      <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-sm text-amber-800/90">暫無同級排名資料（系統每日更新）。</p>
+        <p className="mt-1 text-[11px] text-gray-400 leading-snug">
+          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
+        </p>
+      </div>
+    );
+  }
+
+  const displayName = (rank.student_name || studentName).trim() || "學生";
+  const eligible = rank.is_eligible === true;
+  const total = rank.total_eligible_in_grade ?? 0;
+  const rnk = rank.rank_in_grade;
+  const avg = rank.last_10_avg_correct_pct;
+  const calcAt = rank.calculated_at
+    ? new Date(rank.calculated_at)
+    : null;
+  const updatedStr = calcAt
+    ? `${calcAt.getFullYear()}/${calcAt.getMonth() + 1}/${calcAt.getDate()} ${String(calcAt.getHours()).padStart(2, "0")}:${String(calcAt.getMinutes()).padStart(2, "0")}`
+    : null;
+
+  if (!eligible) {
+    return (
+      <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+        <p className="text-sm text-gray-800">
+          {displayName} 完成累積 100 題練習後，即可與同級同學比較表現。
+        </p>
+        {notReady}
+        <p className="mt-2 text-[11px] text-gray-400 leading-snug">
+          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。{updatedStr ? ` 資料更新：${updatedStr}。` : ""}
+        </p>
+      </div>
+    );
+  }
+
+  if (total === 0 || rnk == null) {
+    return (
+      <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-sm text-amber-800/90">同級暫時沒有足夠學生可顯示排名。</p>
+        {notReady}
+        <p className="mt-2 text-[11px] text-gray-400 leading-snug">
+          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。
+        </p>
+      </div>
+    );
+  }
+
+  const posPct =
+    total <= 1
+      ? 50
+      : Math.min(100, Math.max(0, ((total - rnk) / (total - 1)) * 100));
+
+  return (
+    <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+      <p className="text-sm text-gray-800 font-medium">
+        {displayName} 在同級活躍用戶中排第 {rnk} 名（共 {total} 人）
+      </p>
+      <p className="mt-1 text-xs text-gray-500">
+        最近 10 次練習平均正確率
+        {avg != null
+          ? `：${(Math.round(Number(avg) * 10) / 10).toFixed(1)}%`
+          : "：—"}
+        {updatedStr ? ` · 資料更新：${updatedStr}` : ""}
+      </p>
+      <div className="mt-3 relative h-9 select-none" role="img" aria-label="同級表現位置（紅至綠）">
+        <div className="absolute inset-0 flex rounded-lg overflow-hidden">
+          <div className="flex-1 bg-gradient-to-b from-rose-400 to-rose-500" />
+          <div className="flex-1 bg-gradient-to-b from-amber-300 to-amber-400" />
+          <div className="flex-1 bg-gradient-to-b from-emerald-400 to-emerald-500" />
+        </div>
+        <div
+          className="absolute -top-1 w-0 h-0 border-l-[7px] border-r-[7px] border-b-[9px] border-l-transparent border-r-transparent border-b-gray-800 -translate-x-1/2"
+          style={{ left: `${posPct}%` }}
+        />
+      </div>
+      <p className="mt-2 text-[11px] text-gray-400 leading-snug">
+        僅納入累積完成至少 100 題練習的同級學生；以「最近 10 次練習」各次正確率之平均排序，表現愈高排名愈前。箭頭表示相對位置（紅：待加強，綠：表現佳）。每日凌晨批次更新，非即時。
+      </p>
+    </div>
+  );
+}
+
 function ParentDashboard({
   studentName,
+  gradeRank,
   sessions,
   year,
   month,
@@ -2893,6 +3023,7 @@ function ParentDashboard({
   onLogout,
 }: {
   studentName: string;
+  gradeRank: ParentGradeRankPayload | null;
   sessions: SessionSummary[];
   year: number;
   month: number;
@@ -2936,6 +3067,8 @@ function ParentDashboard({
         </div>
       </div>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <ParentGradeRankPanel studentName={studentName} rank={gradeRank} />
+
         <div className="flex flex-wrap gap-2 mb-4">
           {subjects.map((s) => (
             <button

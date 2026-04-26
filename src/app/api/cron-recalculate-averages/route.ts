@@ -13,9 +13,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const { error: rankErr } = await supabase.rpc("recalculate_student_grade_rankings");
+    if (rankErr) {
+      console.error("recalculate_student_grade_rankings error:", rankErr);
+      return NextResponse.json({ error: rankErr.message }, { status: 500 });
+    }
     const { error } = await supabase.rpc("recalculate_grade_averages");
     if (error) {
-      console.error("Recalculate error:", error);
+      console.error("recalculate_grade_averages error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true, calculated_at: new Date().toISOString() });

@@ -2,11 +2,23 @@
 
 Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
+## Parent dashboard: 同級排名
+
+- **位置**：家長「練習報告」頁面頂部（科目／月份切換上方）。
+- **邏輯**（實作於 `supabase_grade_level_ranking.sql`）  
+  - 只納入 **累積完成至少 100 題**（`sum(quiz_sessions.questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
+  - 分數＝**最近 10 次**練習的「每次正確率」之**平均**（不滿 10 次則以實有次數平均）。  
+  - 以該分數在同期 **`students.grade_level`** 內用 **RANK** 排名（分數愈高，名次數字愈小＝愈前）。  
+- **更新**：與原 `recalculate_grade_averages` 同一 Vercel Cron（`vercel.json` → `/api/cron-recalculate-averages`，每日 UTC 午夜）。Cron 內**先**呼叫 `recalculate_student_grade_rankings()`，再 `recalculate_grade_averages()`。
+- **讀取**：`get_parent_student_grade_rank(p_student_id)`（`SECURITY DEFINER`）→ 前端在載入家長儀表板時與 sessions／圖表一併請求。
+- **佈署新環境時**：在 Supabase 執行 `supabase_grade_level_ranking.sql` 一次，然後觸發 cron 或手動執行上述兩支函數。  
+- **測試**：見 `test_plan_grade_ranking.md`。
+
 ## Deployment
 
-The app is deployed on Vercel:
+The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project `quiz-deploy` under scope `colinwong-clouds-projects`).
 
-**Production URL:** https://quiz-deploy-rosy.vercel.app
+**Production URL:** https://q.hkedutech.com
 
 ## Setup
 
