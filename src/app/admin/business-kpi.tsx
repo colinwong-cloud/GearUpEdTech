@@ -202,7 +202,7 @@ export function BusinessKpiSection({ user, pass }: { user: string; pass: string 
     <div className="space-y-8">
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-gray-800">今日實時（香港 date）</h2>
+          <h2 className="text-lg font-bold text-gray-800">今日實時</h2>
           <button
             type="button"
             onClick={() => void loadToday()}
@@ -272,7 +272,7 @@ export function BusinessKpiSection({ user, pass }: { user: string; pass: string 
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-bold text-gray-800">月結及趨勢（截至 HKT 昨日，靜態）</h2>
+        <h2 className="text-lg font-bold text-gray-800">月結及趨勢（截至昨日）</h2>
         {mErr && <p className="text-sm text-red-500">{mErr}</p>}
 
         {monthly && !mErr && (
