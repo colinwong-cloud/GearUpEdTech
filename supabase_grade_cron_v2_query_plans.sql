@@ -73,3 +73,6 @@ BEGIN
   GROUP BY q.grade_level, q.question_type;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.recalculate_grade_overall_for_grade(text) TO postgres, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.recalculate_grade_one_type_for_grade(text, text) TO postgres, anon, authenticated, service_role;

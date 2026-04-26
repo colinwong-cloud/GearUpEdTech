@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
@@ -15,7 +15,7 @@ const supabaseAdmin = createClient(
   serviceKey
 );
 
-function missingRpcError(e: { message: string } | null): boolean {
+function missingRpcError(e: { message: string } | null | undefined): boolean {
   if (!e) return false;
   const m = String(e.message).toLowerCase();
   return (
@@ -25,11 +25,96 @@ function missingRpcError(e: { message: string } | null): boolean {
   );
 }
 
+/** PostgREST can cancel the statement before the function’s SET LOCAL timeout takes effect. */
+function isStatementTimeout(
+  e: { message: string } | null | undefined
+): boolean {
+  if (!e) return false;
+  return /canceling statement|statement timeout|query canceled|57014|timeout/i.test(
+    String(e.message)
+  );
+}
+
+type Rpc = SupabaseClient;
+
+type RecomputeError = { message: string; isTimeout: boolean };
+type RecomputeResult = { ok: true } | { ok: false; err: RecomputeError };
+
 /**
- * `part` (optional) avoids PostgREST request timeout by running one heavy RPC per HTTP request:
- * - part=rank → student grade rankings
- * - part=grade → grade_averages (charts)
- * - part=all (default) → both; may time out on large DBs — use two Vercel crons with rank + grade
+ * Recompute all grade_averages rows for one `grade_level` (multiple RPC calls).
+ * On timeout, falls back to `recalculate_grade_by_type_for_grade` only after
+ * `delete_grade_averages_for_grade` when available (avoids unique violations).
+ */
+async function recomputeOneGrade(client: Rpc, gl: string): Promise<RecomputeResult> {
+  const { error: oErr } = await client.rpc("recalculate_grade_overall_for_grade", {
+    p_grade_level: gl,
+  });
+  if (oErr) {
+    if (missingRpcError(oErr) || isStatementTimeout(oErr)) {
+      const { error: fe } = await client.rpc("recalculate_grade_averages_for_grade", {
+        p_grade_level: gl,
+      });
+      if (fe) {
+        return {
+          ok: false,
+          err: { message: fe.message, isTimeout: isStatementTimeout(fe) },
+        };
+      }
+      return { ok: true };
+    }
+    return { ok: false, err: { message: oErr.message, isTimeout: false } };
+  }
+
+  const { data: typeList, error: tListErr } = await client.rpc("get_question_types_for_grade", {
+    p_grade_level: gl,
+  });
+  if (tListErr) {
+    if (missingRpcError(tListErr) || isStatementTimeout(tListErr)) {
+      const { error: tErr } = await client.rpc("recalculate_grade_by_type_for_grade", {
+        p_grade_level: gl,
+      });
+      if (tErr) {
+        return { ok: false, err: { message: tErr.message, isTimeout: isStatementTimeout(tErr) } };
+      }
+    } else {
+      return { ok: false, err: { message: tListErr.message, isTimeout: false } };
+    }
+    return { ok: true };
+  }
+
+  for (const qt of (typeList as string[] | null) ?? []) {
+    const { error: oneTErr } = await client.rpc("recalculate_grade_one_type_for_grade", {
+      p_grade_level: gl,
+      p_question_type: qt,
+    });
+    if (!oneTErr) continue;
+
+    if (missingRpcError(oneTErr) || isStatementTimeout(oneTErr)) {
+      const { error: dErr } = await client.rpc("delete_grade_averages_for_grade", {
+        p_grade_level: gl,
+      });
+      if (dErr && !missingRpcError(dErr) && !isStatementTimeout(dErr)) {
+        return { ok: false, err: { message: dErr.message, isTimeout: false } };
+      }
+      const { error: tErr } = await client.rpc("recalculate_grade_by_type_for_grade", {
+        p_grade_level: gl,
+      });
+      if (tErr) {
+        return { ok: false, err: { message: tErr.message, isTimeout: isStatementTimeout(tErr) } };
+      }
+      break;
+    }
+    return { ok: false, err: { message: oneTErr.message, isTimeout: isStatementTimeout(oneTErr) } };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * `part` (optional) avoids huge single-RPC work:
+ * - part=rank → `recalculate_student_grade_rankings`
+ * - part=grade → `clear` + per-grade recompute
+ * - part=all → both (can hit DB limits; prefer two crons: rank + grade)
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -47,145 +132,91 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const client = process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? supabaseAdmin
-    : supabase;
+  const useService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const client: Rpc = useService ? supabaseAdmin : supabase;
+  if (!useService) {
+    console.warn(
+      "cron: SUPABASE_SERVICE_ROLE_KEY not set; using anon key. Add service role in Vercel for more reliable long RPCs."
+    );
+  }
 
   try {
     if (doRank) {
       const { error: rankErr } = await client.rpc("recalculate_student_grade_rankings");
       if (rankErr) {
-        console.error("recalculate_student_grade_rankings error:", rankErr);
-        return NextResponse.json({ error: rankErr.message, part: "rank" }, { status: 500 });
+        if (isStatementTimeout(rankErr)) {
+          return NextResponse.json(
+            {
+              part: "rank",
+              error: rankErr.message,
+              hint: "Set SUPABASE_SERVICE_ROLE_KEY in Vercel, or run recalculate_student_grade_rankings() in Supabase SQL. Ensure supabase_optimize_ranking_batch_performance.sql is applied.",
+            },
+            { status: 503 }
+          );
+        }
+        console.error("recalculate_student_grade_rankings:", rankErr);
+        return NextResponse.json({ part: "rank", error: rankErr.message }, { status: 500 });
       }
     }
+
     if (doGrade) {
       const { error: clearE } = await client.rpc("clear_grade_averages");
-      if (clearE && !missingRpcError(clearE)) {
-        return NextResponse.json(
-          { error: clearE.message, part: "grade" },
-          { status: 500 }
-        );
-      }
       if (clearE) {
-        const { error: monolith } = await client.rpc("recalculate_grade_averages");
-        if (monolith) {
-          return NextResponse.json(
-            { error: monolith.message, part: "grade" },
-            { status: 500 }
-          );
-        }
-      } else {
-        const { data: gradeLevels, error: gErr } = await client.rpc(
-          "get_distinct_grade_levels"
-        );
-        if (gErr && !missingRpcError(gErr)) {
-          return NextResponse.json(
-            { error: gErr.message, part: "grade" },
-            { status: 500 }
-          );
-        }
-        if (gErr) {
+        if (missingRpcError(clearE) || isStatementTimeout(clearE)) {
           const { error: monolith } = await client.rpc("recalculate_grade_averages");
           if (monolith) {
             return NextResponse.json(
-              { error: monolith.message, part: "grade" },
-              { status: 500 }
+              {
+                part: "grade",
+                error: monolith.message,
+                hint: useService
+                  ? "Run recalculate_grade_averages() in Supabase SQL, or apply the grade script chain in README (split, two_step, by_question_type_fine, v2, delete_and_grants)."
+                  : "Set SUPABASE_SERVICE_ROLE_KEY in Vercel and re-run, or run recalculate_grade_averages() in SQL.",
+              },
+              { status: isStatementTimeout({ message: monolith.message }) ? 503 : 500 }
             );
           }
         } else {
-          for (const gl of (gradeLevels as string[] | null) ?? []) {
-            const { error: oErr } = await client.rpc(
-              "recalculate_grade_overall_for_grade",
-              { p_grade_level: gl }
-            );
-            if (oErr) {
-              if (missingRpcError(oErr)) {
-                const { error: oneErr } = await client.rpc(
-                  "recalculate_grade_averages_for_grade",
-                  { p_grade_level: gl }
-                );
-                if (oneErr) {
-                  return NextResponse.json(
-                    { error: oneErr.message, part: "grade" },
-                    { status: 500 }
-                  );
-                }
-                continue;
-              }
+          return NextResponse.json({ part: "grade", error: clearE.message }, { status: 500 });
+        }
+      } else {
+        const { data: gradeLevels, error: gErr } = await client.rpc("get_distinct_grade_levels");
+        if (gErr) {
+          if (missingRpcError(gErr) || isStatementTimeout(gErr)) {
+            const { error: monolith } = await client.rpc("recalculate_grade_averages");
+            if (monolith) {
               return NextResponse.json(
-                { error: oErr.message, part: "grade" },
+                { part: "grade", error: monolith.message },
                 { status: 500 }
               );
             }
-            const { data: typeList, error: tListErr } = await client.rpc(
-              "get_question_types_for_grade",
-              { p_grade_level: gl }
+          } else {
+            return NextResponse.json({ part: "grade", error: gErr.message }, { status: 500 });
+          }
+        } else {
+          for (const gl of (gradeLevels as string[] | null) ?? []) {
+            const gRes = await recomputeOneGrade(client, gl);
+            if (gRes.ok) continue;
+            return NextResponse.json(
+              {
+                part: "grade",
+                error: gRes.err.message,
+                grade_level: gl,
+                hint: gRes.err.isTimeout
+                  ? "PostgREST/statement timeout. Set SUPABASE_SERVICE_ROLE_KEY, run supabase_grade_cron_v2_query_plans.sql and supabase_grade_cron_delete_and_grants.sql, or run recalculate_grade_averages() in Supabase SQL."
+                  : undefined,
+              },
+              { status: gRes.err.isTimeout ? 503 : 500 }
             );
-            if (!tListErr) {
-              for (const qt of (typeList as string[] | null) ?? []) {
-                const { error: oneTErr } = await client.rpc(
-                  "recalculate_grade_one_type_for_grade",
-                  {
-                    p_grade_level: gl,
-                    p_question_type: qt,
-                  }
-                );
-                if (oneTErr) {
-                  if (missingRpcError(oneTErr)) {
-                    const { error: tErr } = await client.rpc(
-                      "recalculate_grade_by_type_for_grade",
-                      { p_grade_level: gl }
-                    );
-                    if (tErr) {
-                      return NextResponse.json(
-                        { error: tErr.message, part: "grade" },
-                        { status: 500 }
-                      );
-                    }
-                    break;
-                  }
-                  return NextResponse.json(
-                    { error: oneTErr.message, part: "grade" },
-                    { status: 500 }
-                  );
-                }
-              }
-            } else {
-              if (!missingRpcError(tListErr)) {
-                return NextResponse.json(
-                  { error: tListErr.message, part: "grade" },
-                  { status: 500 }
-                );
-              }
-              const { error: tErr } = await client.rpc(
-                "recalculate_grade_by_type_for_grade",
-                { p_grade_level: gl }
-              );
-              if (tErr) {
-                if (missingRpcError(tErr)) {
-                  return NextResponse.json(
-                    {
-                      part: "grade",
-                      error:
-                        "Run supabase_grade_by_question_type_fine.sql (or recalculate_grade_by_type still times out).",
-                    },
-                    { status: 500 }
-                  );
-                }
-                return NextResponse.json(
-                  { error: tErr.message, part: "grade" },
-                  { status: 500 }
-                );
-              }
-            }
           }
         }
       }
     }
+
     return NextResponse.json({
       success: true,
-      part: part,
+      part,
+      use_service_role: useService,
       calculated_at: new Date().toISOString(),
     });
   } catch (err) {
