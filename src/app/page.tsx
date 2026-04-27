@@ -21,6 +21,7 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
+import { buildSessionPracticeSummary } from "@/lib/session-practice-summary";
 import {
   StudentQuizExperience,
   getQuizSoundEnabled,
@@ -300,6 +301,7 @@ export default function QuizApp() {
   const [quizTransition, setQuizTransition] = useState(0);
   const [encourageIndex, setEncourageIndex] = useState(0);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
+  const [sessionPracticeSummary, setSessionPracticeSummary] = useState<string | null>(null);
   useEffect(() => {
     setQuizSoundOn(getQuizSoundEnabled());
   }, []);
@@ -562,6 +564,7 @@ export default function QuizApp() {
     setSessionId((session as { id: string }).id);
     setEncourageIndex(Math.floor(Math.random() * 3));
     setQuizTransition(0);
+    setSessionPracticeSummary(null);
     setScreen("quiz");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入測驗。");
@@ -621,7 +624,8 @@ export default function QuizApp() {
 
       const isLastQ = currentIndex + 1 >= questions.length;
       if (isLastQ) {
-        await finalizeQuiz(updatedAnswers);
+        const summary = await finalizeQuizAndSummary(updatedAnswers);
+        setSessionPracticeSummary(summary);
         setScreen("results");
         return;
       }
@@ -650,8 +654,21 @@ export default function QuizApp() {
     await runSubmitWithAnswer(label);
   };
 
-  const finalizeQuiz = async (finalAnswers: AnswerRecord[]) => {
-    if (!selectedStudent || !selectedSubject) return;
+  const finalizeQuizAndSummary = async (finalAnswers: AnswerRecord[]): Promise<string> => {
+    if (!selectedStudent || !selectedSubject) return "";
+    const summary = buildSessionPracticeSummary(finalAnswers, selectedSubject);
+    if (sessionId) {
+      try {
+        const { error: sumErr } = await supabase.rpc("save_session_practice_summary", {
+          p_session_id: sessionId,
+          p_student_id: selectedStudent.id,
+          p_summary: summary,
+        });
+        if (sumErr) console.error("save_session_practice_summary", sumErr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
     try {
       if (balance) {
         const { data: deductResult } = await supabase.rpc("deduct_student_balance", {
@@ -690,11 +707,13 @@ export default function QuizApp() {
         body: JSON.stringify({
           student_id: selectedStudent.id,
           session_id: sessionId,
+          session_summary: summary,
         }),
       }).catch(() => {});
     } catch {
       // non-critical: don't block results
     }
+    return summary;
   };
 
   const handleRestart = () => {
@@ -702,6 +721,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionPracticeSummary(null);
     setError(null);
   };
 
@@ -716,6 +736,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionPracticeSummary(null);
     setError(null);
   };
 
@@ -917,6 +938,7 @@ export default function QuizApp() {
         studentName={selectedStudent?.student_name || ""}
         studentId={selectedStudent?.id || null}
         sessionId={sessionId}
+        sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
         onLogout={handleLogout}
         balance={balance}
@@ -1687,11 +1709,19 @@ function ProgressBar({
   );
 }
 
+function getPracticeMascotImageSrc(): string {
+  const o = process.env.NEXT_PUBLIC_MASCOT_IMAGE_URL?.trim();
+  if (o) return o;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+}
+
 function ResultsView({
   answers,
   studentName,
   studentId,
   sessionId,
+  sessionSummary,
   onRestart,
   onLogout,
   balance,
@@ -1700,6 +1730,7 @@ function ResultsView({
   studentName: string;
   studentId: string | null;
   sessionId: string | null;
+  sessionSummary: string | null;
   onRestart: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
@@ -1707,6 +1738,8 @@ function ResultsView({
   const score = answers.filter((a) => a.isCorrect).length;
   const total = answers.length;
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+  const summaryText =
+    sessionSummary?.trim() || buildSessionPracticeSummary(answers, answers[0]?.question.subject || "");
 
   const wrongAnswers = answers
     .map((answer, index) => ({ answer, index }))
@@ -1764,6 +1797,30 @@ function ResultsView({
               剩餘題目：{balance.remaining_questions}
             </p>
           )}
+        </div>
+
+        <div className="mb-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+          <div className="shrink-0 self-center sm:self-end">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getPracticeMascotImageSrc()}
+              alt=""
+              className="h-16 w-16 sm:h-20 sm:w-20"
+              width={80}
+              height={80}
+              draggable={false}
+            />
+          </div>
+          <div className="relative min-w-0 flex-1 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
+            <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
+            <p className="mt-2 text-pretty" style={{ fontFamily: "var(--font-baloo2), system-ui" }}>
+              {summaryText}
+            </p>
+            <div
+              className="absolute -bottom-2 left-6 h-4 w-4 rotate-45 border-b-2 border-r-2 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50"
+              aria-hidden
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

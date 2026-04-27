@@ -2,6 +2,15 @@
 
 Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
+## 練習小結（每節測驗後）
+
+- **內容**：完成一節練習後，系統根據各題 `question_type` 正確率產生 **約 50–80 字** **繁體**小結（鼓勵語氣、含強項、弱項與**生活化**建議）。**目前不呼叫 LLM**（純規則）；要更口語可接 OpenAI 等，仍寫入同欄位。  
+- **顯示**：學生結果頁在**整體正確率區塊下方**，小香蕉**對話泡泡**內。  
+- **儲存**：`quiz_sessions.session_practice_summary`；RPC `save_session_practice_summary(p_session_id, p_student_id, p_summary)`。  
+- **電郵**：`get_quiz_email_data` 回傳 `session_practice_summary`；完成練習時亦傳 `session_summary` 予 `/api/send-quiz-email` 作後備。  
+- **Supabase**：執行 `supabase_session_practice_summary.sql`（欄位 + 函數 + 更新 `get_quiz_email_data`）。  
+- **測試**：`npm test`；手動清單見 `test_plan_practice_session_summary.md`。
+
 ## Parent dashboard: 同級排名
 
 - **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（例：數學）→ ② **同級排名**（`ParentGradeRankPanel`）→ ③ **月份**導航與列表／圖表。純前端順序，無需改 DB。
@@ -36,6 +45,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | **每節練習小結**（繁中 50–80 字、規則產生、可存 DB、郵件、「小香蕉」泡泡 UI）：見上節；SQL `supabase_session_practice_summary.sql`；`npm test` + `test_plan_practice_session_summary.md`。 |
 | 2026-04 | 答題畫面後續：去吉祥物；選項單行（A–D+文字 `truncate`+`title`）；多選題改為**點選即提交**並直接下一題（非短答仍用按鈕提交）。**無 SQL**。 |
 | 2026-04 | 學生答題畫面：`StudentQuizExperience`；吉祥物預設路徑為同專案 Storage `Webpage_images/logo/...`；若檔在另一專案可設 `NEXT_PUBLIC_MASCOT_IMAGE_URL`。**無 SQL**。 |
 | 2026-04 | 業務概覽「學校正確率」曆月：`admin_business_monthly` 內已改為 **僅讀 `quiz_sessions`**（按校 `sum(score)/sum(questions_attempted)` 加權，不再掃 `session_answers`），以降低 PostgREST 逾時。與單次練習內之逐題正確率一致。 |
