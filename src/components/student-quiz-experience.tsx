@@ -52,7 +52,7 @@ function StarProgress({ onQuestion, total }: { onQuestion: number; total: number
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
-          className={`text-lg leading-none transition-all duration-300 sm:text-2xl ${
+          className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
             i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
           }`}
         >
@@ -95,12 +95,12 @@ function OptionButton({
       style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
     >
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-white/60 bg-white/35 text-sm font-extrabold text-slate-800 shadow-sm sm:h-10 sm:w-10 sm:text-base"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white/60 bg-white/35 text-base font-extrabold text-slate-800 shadow-sm sm:h-12 sm:w-12 sm:text-lg"
         aria-hidden
       >
         {label}
       </span>
-      <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-800 sm:text-base">
+      <span className="min-w-0 flex-1 truncate text-left text-base font-semibold text-slate-800 sm:text-lg">
         {text}
       </span>
     </motion.button>
@@ -160,7 +160,7 @@ export function StudentQuizExperience({
 
       <div className="mb-1 flex items-start justify-between gap-2 px-3 pt-2 sm:px-4">
         <p
-          className="text-xs font-medium text-rose-600/90 sm:text-sm"
+          className="text-base font-medium text-rose-600/90 sm:text-lg"
           style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
         >
           <span className="text-violet-800">{e.sub} </span>
@@ -169,7 +169,7 @@ export function StudentQuizExperience({
         <button
           type="button"
           onClick={onToggleSound}
-          className="shrink-0 rounded-full border-2 border-white/70 bg-white/55 px-3 py-1 text-xs font-bold text-slate-600 shadow-sm backdrop-blur"
+          className="shrink-0 rounded-full border-2 border-white/70 bg-white/55 px-3 py-1.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur sm:text-base"
         >
           音效 {soundEnabled ? "ON" : "OFF"}
         </button>
@@ -194,7 +194,7 @@ export function StudentQuizExperience({
                 className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
                 style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
               >
-                <h2 className="text-balance text-base font-extrabold leading-relaxed text-slate-800 sm:text-lg">
+                <h2 className="text-balance text-xl font-extrabold leading-relaxed text-slate-800 sm:text-2xl">
                   {currentQuestion.content}
                 </h2>
               </div>
@@ -215,13 +215,13 @@ export function StudentQuizExperience({
             <div className="mt-4 space-y-3 sm:mt-5">
               {shortAnswer ? (
                 <label className="block" style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}>
-                  <span className="mb-2 block text-sm font-bold text-slate-600">在這裡寫上你的答案</span>
+                  <span className="mb-2 block text-base font-bold text-slate-600 sm:text-lg">在這裡寫上你的答案</span>
                   <input
                     type="text"
                     value={textAnswer}
                     onChange={(e) => onTextChange(e.target.value)}
                     disabled={submitting}
-                    className={`w-full rounded-2xl border-4 p-4 text-base font-semibold shadow-inner outline-none transition-all ${
+                    className={`w-full rounded-2xl border-4 p-4 text-lg font-semibold shadow-inner outline-none transition-all sm:text-xl ${
                       textAnswer.trim()
                         ? "border-fuchsia-300 bg-white/80"
                         : "border-white/80 bg-white/50"
@@ -261,7 +261,7 @@ export function StudentQuizExperience({
             onClick={onSubmit}
             disabled={!canSubmit || submitting}
             className={`
-            relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-4 text-center text-lg font-extrabold
+            relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-4 text-center text-xl font-extrabold sm:text-2xl
             text-white shadow-[0_4px_0_#7c3aed] transition-all
             ${
               canSubmit && !submitting
