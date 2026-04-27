@@ -288,7 +288,6 @@ export default function QuizApp() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -298,11 +297,8 @@ export default function QuizApp() {
   const [showSpeedReminder, setShowSpeedReminder] = useState(false);
   const speedReminderShownRef = useRef(false);
   const answerTimestampsRef = useRef<number[]>([]);
-  const [quizAfterFeedback, setQuizAfterFeedback] = useState<"idle" | "pending" | "correct" | "wrong">("idle");
-  const [quizMascotBounce, setQuizMascotBounce] = useState(0);
   const [quizTransition, setQuizTransition] = useState(0);
   const [encourageIndex, setEncourageIndex] = useState(0);
-  const [showQuizConfetti, setShowQuizConfetti] = useState(false);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
   useEffect(() => {
     setQuizSoundOn(getQuizSoundEnabled());
@@ -532,7 +528,6 @@ export default function QuizApp() {
   const startQuiz = async (student: Student, subject: string, count: number = 10) => {
     setLoading(true);
     setCurrentIndex(0);
-    setSelectedAnswer(null);
     setTextAnswer("");
     setAnswers([]);
     startTimeRef.current = Date.now();
@@ -565,10 +560,7 @@ export default function QuizApp() {
 
     setQuestions(selected);
     setSessionId((session as { id: string }).id);
-    setQuizAfterFeedback("idle");
-    setShowQuizConfetti(false);
     setEncourageIndex(Math.floor(Math.random() * 3));
-    setQuizMascotBounce(0);
     setQuizTransition(0);
     setScreen("quiz");
     } catch (err) {
@@ -578,32 +570,11 @@ export default function QuizApp() {
     }
   };
 
-  const advanceQuizFromFeedback = useCallback(() => {
-    setShowQuizConfetti(false);
-    setQuizAfterFeedback("idle");
-    if (currentIndex + 1 >= questions.length) {
-      setScreen("results");
-      return;
-    }
-    setCurrentIndex((i) => i + 1);
-    setSelectedAnswer(null);
-    setTextAnswer("");
-    setQuizTransition((k) => k + 1);
-    setEncourageIndex((e) => e + 1);
-  }, [currentIndex, questions.length]);
-
-  const handleSubmitAnswer = async () => {
-    if (quizAfterFeedback === "correct" || quizAfterFeedback === "wrong") {
-      advanceQuizFromFeedback();
-      return;
-    }
+  const runSubmitWithAnswer = async (answer: string) => {
     const currentQuestion = questions[currentIndex];
-    if (!currentQuestion) return;
-    const shortAns = isShortAnswer(currentQuestion);
-    const answer = shortAns ? textAnswer.trim() : selectedAnswer;
-    if (!answer || !sessionId || submitting) return;
+    if (!currentQuestion || !sessionId || submitting) return;
 
-    const isCorrect = shortAns
+    const isCorrect = isShortAnswer(currentQuestion)
       ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
       : answer === currentQuestion.correct_answer;
 
@@ -618,7 +589,6 @@ export default function QuizApp() {
     }
 
     setSubmitting(true);
-    setQuizAfterFeedback("pending");
     try {
       const { error: ansErr } = await supabase.rpc("submit_answer", {
         p_session_id: sessionId,
@@ -652,21 +622,32 @@ export default function QuizApp() {
       const isLastQ = currentIndex + 1 >= questions.length;
       if (isLastQ) {
         await finalizeQuiz(updatedAnswers);
+        setScreen("results");
+        return;
       }
-
-      if (isCorrect) {
-        setQuizAfterFeedback("correct");
-        setShowQuizConfetti(true);
-        window.setTimeout(() => setShowQuizConfetti(false), 1400);
-      } else {
-        setQuizAfterFeedback("wrong");
-      }
+      setCurrentIndex((i) => i + 1);
+      setTextAnswer("");
+      setQuizTransition((k) => k + 1);
+      setEncourageIndex((e) => e + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交答案失敗。");
-      setQuizAfterFeedback("idle");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmitAnswer = async () => {
+    const currentQuestion = questions[currentIndex];
+    if (!currentQuestion || !isShortAnswer(currentQuestion)) return;
+    const answer = textAnswer.trim();
+    if (!answer) return;
+    await runSubmitWithAnswer(answer);
+  };
+
+  const handleSelectMcqOption = async (label: string) => {
+    if (submitting) return;
+    if (getQuizSoundEnabled()) playClickSound();
+    await runSubmitWithAnswer(label);
   };
 
   const finalizeQuiz = async (finalAnswers: AnswerRecord[]) => {
@@ -953,16 +934,8 @@ export default function QuizApp() {
   }
 
   const shortAnswer = isShortAnswer(currentQuestion);
-  const hasAns = shortAnswer ? textAnswer.trim().length > 0 : selectedAnswer != null;
-  const inFeedback = quizAfterFeedback === "correct" || quizAfterFeedback === "wrong";
-  const canSubmit = inFeedback ? true : hasAns;
-
-  const onQuizOptionPick = (label: string) => {
-    if (inFeedback || submitting || quizAfterFeedback === "pending") return;
-    setSelectedAnswer(label);
-    setQuizMascotBounce((k) => k + 1);
-    if (getQuizSoundEnabled()) playClickSound();
-  };
+  const canSubmit =
+    shortAnswer && textAnswer.trim().length > 0 && !submitting;
 
   return (
     <div
@@ -981,14 +954,12 @@ export default function QuizApp() {
           shortAnswer={shortAnswer}
           hasImage={hasImage}
           getImageUrl={getImagePublicUrl}
-          selectedAnswer={selectedAnswer}
           textAnswer={textAnswer}
           onTextChange={(v) => setTextAnswer(v)}
           submitting={submitting}
           onSubmit={handleSubmitAnswer}
           canSubmit={canSubmit}
           isLastQuestion={currentIndex + 1 === questions.length}
-          afterFeedback={quizAfterFeedback}
           onToggleSound={() => {
             const n = !quizSoundOn;
             setQuizSoundOn(n);
@@ -996,10 +967,9 @@ export default function QuizApp() {
           }}
           soundEnabled={quizSoundOn}
           encouragementIndex={encourageIndex}
-          mascotBounceKey={quizMascotBounce}
           transitionKey={quizTransition}
-          onOptionPick={onQuizOptionPick}
-          showConfetti={showQuizConfetti}
+          onSelectOption={handleSelectMcqOption}
+          showSubmitButton={shortAnswer}
         />
       </div>
       {showSpeedReminder && (

@@ -1,16 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Question } from "@/lib/types";
 import { OPTION_KEYS, OPTION_LABELS } from "@/lib/student-quiz-constants";
-
-function mascotImageSrc(): string {
-  const override = process.env.NEXT_PUBLIC_MASCOT_IMAGE_URL?.trim();
-  if (override) return override;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
-}
 
 const OPTION_STYLES: Record<string, { bg: string; ring: string }> = {
   A: { bg: "from-sky-200/90 to-blue-200/80", ring: "ring-sky-400/80" },
@@ -49,53 +41,6 @@ function playClickSound() {
   }
 }
 
-function ConfettiBurst({ show }: { show: boolean }) {
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 40 }, (_, i) => ({
-        id: i,
-        x: (Math.random() - 0.5) * 220,
-        y: -30 - Math.random() * 100,
-        r: 4 + Math.random() * 7,
-        color: ["#fbbf24", "#f472b6", "#60a5fa", "#4ade80", "#c084fc", "#fb923c"][
-          Math.floor(Math.random() * 6)
-        ]!,
-        rot: (Math.random() - 0.5) * 360,
-        delay: Math.random() * 0.2,
-      })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [show]
-  );
-  if (!show) return null;
-  return (
-    <div className="pointer-events-none fixed inset-0 z-40 flex items-end justify-center overflow-hidden">
-      {particles.map((p) => (
-        <motion.span
-          key={p.id}
-          initial={{ opacity: 0, y: 0, x: 0, rotate: 0, scale: 0 }}
-          animate={{
-            opacity: [0, 1, 1, 0],
-            y: [0, p.y, p.y * 1.2],
-            x: [0, p.x, p.x * 1.1],
-            rotate: p.rot,
-            scale: [0, 1.2, 0.8],
-          }}
-          transition={{ duration: 1, delay: p.delay, ease: "easeOut" }}
-          className="absolute rounded-sm"
-          style={{
-            width: p.r,
-            height: p.r * 0.6,
-            background: p.color,
-            bottom: "40%",
-            left: "50%",
-            marginLeft: -p.r / 2,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function StarProgress({ onQuestion, total }: { onQuestion: number; total: number }) {
   const n = Math.min(onQuestion, total);
   return (
@@ -118,66 +63,46 @@ function StarProgress({ onQuestion, total }: { onQuestion: number; total: number
   );
 }
 
-function MascotBounceImage({ bounceKey }: { bounceKey: number }) {
-  return (
-    <div className="w-20 shrink-0 self-center sm:w-28 sm:self-start">
-      <motion.div
-        key={bounceKey}
-        initial={{ y: 0 }}
-        animate={{ y: [0, -12, 0, -8, 0] }}
-        transition={{ duration: 0.55, times: [0, 0.2, 0.45, 0.65, 1] }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={mascotImageSrc()}
-          alt=""
-          className="h-auto w-full drop-shadow-lg"
-          width={120}
-          height={120}
-          draggable={false}
-        />
-      </motion.div>
-    </div>
-  );
-}
-
 function OptionButton({
   label,
   text,
   optionStyle,
-  selected,
   disabled,
   onPress,
+  title,
 }: {
   label: string;
   text: string;
   optionStyle: { bg: string; ring: string };
-  selected: boolean;
   disabled: boolean;
   onPress: () => void;
+  title?: string;
 }) {
   return (
     <motion.button
       type="button"
+      title={title}
       disabled={disabled}
       onClick={onPress}
       whileHover={disabled ? undefined : { scale: 1.04, y: -2, boxShadow: "0 12px 24px -8px rgb(0 0 0 / 0.2)" }}
-      whileTap={disabled ? undefined : { scale: 0.9 }}
+      whileTap={disabled ? undefined : { scale: 0.95 }}
       className={`
-        group relative w-full overflow-hidden rounded-2xl border-2 border-white/50 bg-gradient-to-br ${optionStyle.bg}
-        px-4 py-4 text-left shadow-md transition-shadow
-        ${selected ? `ring-4 ${optionStyle.ring} ring-offset-2 ring-offset-amber-50/50` : "hover:shadow-xl"}
-        ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}
+        group relative flex w-full min-w-0 flex-nowrap items-center justify-start gap-3 overflow-hidden
+        rounded-2xl border-2 border-white/50 bg-gradient-to-br ${optionStyle.bg}
+        px-3 py-3 text-left shadow-md transition-shadow sm:px-4 sm:py-3.5
+        ${disabled ? "cursor-not-allowed opacity-60" : "hover:shadow-xl cursor-pointer"}
       `}
       style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
     >
       <span
-        className="mb-1.5 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/60 bg-white/35 text-base font-extrabold text-slate-800 shadow-sm"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-white/60 bg-white/35 text-sm font-extrabold text-slate-800 shadow-sm sm:h-10 sm:w-10 sm:text-base"
         aria-hidden
       >
         {label}
       </span>
-      <span className="text-base font-semibold leading-snug text-slate-800">{text}</span>
+      <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-800 sm:text-base">
+        {text}
+      </span>
     </motion.button>
   );
 }
@@ -189,21 +114,18 @@ export function StudentQuizExperience({
   shortAnswer,
   hasImage,
   getImageUrl,
-  selectedAnswer,
   textAnswer,
   onTextChange,
   submitting,
   onSubmit,
   canSubmit,
   isLastQuestion,
-  afterFeedback,
   onToggleSound,
   soundEnabled,
   encouragementIndex,
-  mascotBounceKey,
   transitionKey,
-  onOptionPick,
-  showConfetti,
+  onSelectOption,
+  showSubmitButton,
 }: {
   currentQuestion: Question;
   currentIndex: number;
@@ -211,21 +133,18 @@ export function StudentQuizExperience({
   shortAnswer: boolean;
   hasImage: (q: Question) => boolean;
   getImageUrl: (q: Question) => string | null;
-  selectedAnswer: string | null;
   textAnswer: string;
   onTextChange: (v: string) => void;
   submitting: boolean;
   onSubmit: () => void;
   canSubmit: boolean;
   isLastQuestion: boolean;
-  afterFeedback: "correct" | "wrong" | "idle" | "pending";
   onToggleSound: () => void;
   soundEnabled: boolean;
   encouragementIndex: number;
-  mascotBounceKey: number;
   transitionKey: number;
-  onOptionPick: (label: string) => void;
-  showConfetti: boolean;
+  onSelectOption: (label: string) => void;
+  showSubmitButton: boolean;
 }) {
   const img = hasImage(currentQuestion) ? getImageUrl(currentQuestion) : null;
   const e = ENCOURAGE[encouragementIndex % ENCOURAGE.length]!;
@@ -238,7 +157,6 @@ export function StudentQuizExperience({
           "linear-gradient(150deg, #ffecf2 0%, #fef3c7 18%, #dbeafe 40%, #f3e8ff 62%, #d1fae5 100%)",
       }}
     >
-      <ConfettiBurst show={showConfetti} />
 
       <div className="mb-1 flex items-start justify-between gap-2 px-3 pt-2 sm:px-4">
         <p
@@ -271,21 +189,14 @@ export function StudentQuizExperience({
             transition={{ duration: 0.32, ease: "easeInOut" }}
             className="w-full"
           >
-            <div className="flex flex-col items-stretch sm:flex-row sm:items-start sm:gap-2">
-              <MascotBounceImage bounceKey={mascotBounceKey} />
-              <div className="min-w-0 flex-1 sm:pt-1">
-                <div
-                  className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
-                  style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
-                >
-                  <div
-                    className="absolute -left-0 top-3 hidden h-7 w-7 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-pink-100/90 bg-fuchsia-50/95 sm:block"
-                    aria-hidden
-                  />
-                  <h2 className="text-balance text-base font-extrabold leading-relaxed text-slate-800 sm:text-lg">
-                    {currentQuestion.content}
-                  </h2>
-                </div>
+            <div className="min-w-0 flex-1">
+              <div
+                className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
+                style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+              >
+                <h2 className="text-balance text-base font-extrabold leading-relaxed text-slate-800 sm:text-lg">
+                  {currentQuestion.content}
+                </h2>
               </div>
             </div>
 
@@ -309,7 +220,7 @@ export function StudentQuizExperience({
                     type="text"
                     value={textAnswer}
                     onChange={(e) => onTextChange(e.target.value)}
-                    disabled={submitting || afterFeedback === "correct" || afterFeedback === "wrong" || afterFeedback === "pending"}
+                    disabled={submitting}
                     className={`w-full rounded-2xl border-4 p-4 text-base font-semibold shadow-inner outline-none transition-all ${
                       textAnswer.trim()
                         ? "border-fuchsia-300 bg-white/80"
@@ -323,15 +234,16 @@ export function StudentQuizExperience({
                     const text = currentQuestion[OPTION_KEYS[i]!];
                     if (text == null) return null;
                     const st = OPTION_STYLES[label] ?? OPTION_STYLES.A;
+                    const t = String(text);
                     return (
                       <OptionButton
                         key={`${label}-${transitionKey}`}
                         label={label}
-                        text={String(text)}
+                        text={t}
                         optionStyle={st}
-                        selected={selectedAnswer === label}
-                        disabled={submitting || afterFeedback === "correct" || afterFeedback === "wrong" || afterFeedback === "pending"}
-                        onPress={() => onOptionPick(label)}
+                        disabled={submitting}
+                        onPress={() => onSelectOption(label)}
+                        title={t}
                       />
                     );
                   })}
@@ -342,24 +254,13 @@ export function StudentQuizExperience({
         </AnimatePresence>
       </div>
 
-      {afterFeedback !== "idle" && !submitting && (
-        <div
-          className="border-t border-white/40 bg-white/25 px-4 py-2 text-center backdrop-blur"
-          style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
-        >
-          {afterFeedback === "correct" && (
-            <p className="text-base font-extrabold text-emerald-600">太棒了，答對了！🎉</p>
-          )}
-          {afterFeedback === "wrong" && <p className="text-base font-extrabold text-amber-800">再想想看！💡</p>}
-        </div>
-      )}
-
-      <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-rose-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit || submitting}
-          className={`
+      {showSubmitButton && (
+        <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-rose-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!canSubmit || submitting}
+            className={`
             relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-4 text-center text-lg font-extrabold
             text-white shadow-[0_4px_0_#7c3aed] transition-all
             ${
@@ -368,16 +269,12 @@ export function StudentQuizExperience({
                 : "cursor-not-allowed border-b-0 bg-slate-300/90 text-slate-500 shadow-none"
             }
           `}
-          style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
-        >
-          {(() => {
-            if (afterFeedback === "pending" && submitting) return "提交中…";
-            if (afterFeedback === "correct" || afterFeedback === "wrong")
-              return isLastQuestion ? "看結果" : "下一題";
-            return isLastQuestion ? "提交並查看結果" : "提交答案";
-          })()}
-        </button>
-      </div>
+            style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+          >
+            {submitting ? "提交中…" : isLastQuestion ? "提交並查看結果" : "提交答案"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

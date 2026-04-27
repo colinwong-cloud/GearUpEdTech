@@ -36,6 +36,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | 答題畫面後續：去吉祥物；選項單行（A–D+文字 `truncate`+`title`）；多選題改為**點選即提交**並直接下一題（非短答仍用按鈕提交）。**無 SQL**。 |
 | 2026-04 | 學生答題畫面：`StudentQuizExperience`；吉祥物預設路徑為同專案 Storage `Webpage_images/logo/...`；若檔在另一專案可設 `NEXT_PUBLIC_MASCOT_IMAGE_URL`。**無 SQL**。 |
 | 2026-04 | 業務概覽「學校正確率」曆月：`admin_business_monthly` 內已改為 **僅讀 `quiz_sessions`**（按校 `sum(score)/sum(questions_attempted)` 加權，不再掃 `session_answers`），以降低 PostgREST 逾時。與單次練習內之逐題正確率一致。 |
 | 2026-04 | `admin_today_business` / `admin_business_monthly`：已移除函數內 `SET LOCAL statement_timeout`（避免與 `STABLE`/權限相關的 `SET is not allowed in a non-volatile function`）；兩者仍為 **VOLATILE**。請重跑 `supabase_admin_business_kpi.sql`。 |
