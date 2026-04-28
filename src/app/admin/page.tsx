@@ -159,7 +159,7 @@ function QuotaSection() {
     try {
       const { data, error } = await supabase.rpc("admin_add_quota", {
         p_student_id: studentId,
-        p_subject: "數學",
+        p_subject: "Math",
         p_amount: amount,
       });
       if (error) throw error;

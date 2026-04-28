@@ -4,12 +4,13 @@ import {
   buildSessionPracticeSummaryForParent,
   type AnswerLike,
 } from "./session-practice-summary";
+import { PRIMARY_QUIZ_SUBJECT } from "@/lib/quiz-subjects";
 import type { Question } from "@/lib/types";
 
 const q = (t: string, type: string, id: string): Question => ({
   id,
   past_paper_id: null,
-  subject: "數學",
+  subject: PRIMARY_QUIZ_SUBJECT,
   question_type: type,
   paper_rank: "1",
   grade_level: "P4",
@@ -39,7 +40,7 @@ describe("buildSessionPracticeSummary", () => {
       mk("圖形題", "3", false),
       mk("圖形題", "4", false),
     ];
-    const s = buildSessionPracticeSummary(answers, "數學");
+    const s = buildSessionPracticeSummary(answers, PRIMARY_QUIZ_SUBJECT);
     expect(s.length).toBeGreaterThanOrEqual(50);
     expect(s.length).toBeLessThanOrEqual(80);
   });
@@ -50,19 +51,19 @@ describe("buildSessionPracticeSummary", () => {
       mk("選擇題", "2", true),
       mk("應用題", "3", false),
     ];
-    const s = buildSessionPracticeSummary(answers, "數學");
+    const s = buildSessionPracticeSummary(answers, PRIMARY_QUIZ_SUBJECT);
     expect(s).toContain("選擇題");
     expect(s).toContain("應用題");
   });
 
   it("handles single question type", () => {
     const answers: AnswerLike[] = [mk("綜合", "1", true), mk("綜合", "2", false)];
-    const s = buildSessionPracticeSummary(answers, "數學");
+    const s = buildSessionPracticeSummary(answers, PRIMARY_QUIZ_SUBJECT);
     expect(s.length).toBeGreaterThanOrEqual(20);
   });
 
   it("empty returns short fallback", () => {
-    const s = buildSessionPracticeSummary([], "數學");
+    const s = buildSessionPracticeSummary([], PRIMARY_QUIZ_SUBJECT);
     expect(s.length).toBeGreaterThan(0);
   });
 });
@@ -74,8 +75,8 @@ describe("buildSessionPracticeSummaryForParent", () => {
       mk("選擇題", "2", true),
       mk("應用題", "3", false),
     ];
-    const student = buildSessionPracticeSummary(answers, "數學");
-    const parent = buildSessionPracticeSummaryForParent(answers, "數學", "小明");
+    const student = buildSessionPracticeSummary(answers, PRIMARY_QUIZ_SUBJECT);
+    const parent = buildSessionPracticeSummaryForParent(answers, PRIMARY_QUIZ_SUBJECT, "小明");
     expect(parent).not.toBe(student);
     expect(parent).toContain("小明");
     expect(parent).toMatch(/關於|敬啟/);

@@ -21,6 +21,7 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
+import { PRIMARY_QUIZ_SUBJECT, STUDENT_SUBJECT_OPTIONS } from "@/lib/quiz-subjects";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -314,7 +315,7 @@ export default function QuizApp() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
   });
-  const [parentSubject, setParentSubject] = useState("數學");
+  const [parentSubject, setParentSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
   
@@ -1564,9 +1565,7 @@ function SubjectSelectScreen({
   onLogout: () => void;
   error: string | null;
 }) {
-  const subjects = [
-    { key: "數學", label: "數學", icon: "🔢" },
-  ];
+  const subjects = [...STUDENT_SUBJECT_OPTIONS];
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -2759,7 +2758,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
     (async () => {
       const { data: res } = await supabase.rpc("get_parent_balance_view", {
         p_mobile: mobileNumber.trim(),
-        p_subject: "數學",
+        p_subject: PRIMARY_QUIZ_SUBJECT,
         p_year: viewMonth.year,
         p_month: viewMonth.month,
       });
@@ -3085,7 +3084,7 @@ function ParentDashboard({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chartsExpanded, setChartsExpanded] = useState(false);
-  const subjects = [{ key: "數學", label: "數學" }];
+  const subjects = STUDENT_SUBJECT_OPTIONS.map(({ key, label }) => ({ key, label }));
   const monthLabel = `${year} 年 ${month} 月`;
 
   const prevMonth = () => {

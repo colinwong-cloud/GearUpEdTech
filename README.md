@@ -13,7 +13,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 ## Parent dashboard: 同級排名
 
-- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（例：數學）→ ② **同級排名**（`ParentGradeRankPanel`）→ ③ **月份**導航與列表／圖表。純前端順序，無需改 DB。
+- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（例：`Math`，介面顯示「數學」）→ ② **同級排名**（`ParentGradeRankPanel`）→ ③ **月份**導航與列表／圖表。純前端順序，無需改 DB。
 - **邏輯**（實作於 `supabase_grade_level_ranking.sql`）  
   - 只納入 **累積完成至少 100 題**（`sum(quiz_sessions.questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
   - 分數＝**最近 10 次**練習的「每次正確率」之**平均**（不滿 10 次則以實有次數平均）。  
@@ -45,6 +45,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | 科目主鍵由 `數學` 改為 **`Math`**（與 DB `questions.subject` 一致）；`src/lib/quiz-subjects.ts` 單一來源，學生畫面仍顯示「數學」。**無額外 SQL**（已自行更新庫內 `subject` 值）。 |
 | 2026-04 | 練習小結：**電郵用** `session_practice_summary_parent`（老師對家長口吻）與結果頁 **分開**；重跑 `supabase_session_practice_summary.sql`（含 `save_session_practice_summaries`）。 |
 | 2026-04 | **每節練習小結**（繁中 50–80 字、規則產生、可存 DB、郵件、「小香蕉」泡泡 UI）：見上節；SQL `supabase_session_practice_summary.sql`；`npm test` + `test_plan_practice_session_summary.md`。 |
 | 2026-04 | 答題畫面後續：去吉祥物；選項單行（A–D+文字 `truncate`+`title`）；多選題改為**點選即提交**並直接下一題（非短答仍用按鈕提交）。**無 SQL**。 |
