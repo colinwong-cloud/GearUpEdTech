@@ -47,8 +47,10 @@ export interface QuizSession {
   time_spent_seconds: number;
   created_at: string;
   session_token: string | null;
-  /** 練習小結（繁中），由系統產生並寫入 DB */
+  /** 練習小結（繁中，學生向），由系統產生並寫入 DB */
   session_practice_summary?: string | null;
+  /** 練習小結（繁中，老師視角給家長），電郵用 */
+  session_practice_summary_parent?: string | null;
 }
 
 export interface SessionAnswer {

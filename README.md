@@ -6,8 +6,8 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 - **內容**：完成一節練習後，系統根據各題 `question_type` 正確率產生 **約 50–80 字** **繁體**小結（鼓勵語氣、含強項、弱項與**生活化**建議）。**目前不呼叫 LLM**（純規則）；要更口語可接 OpenAI 等，仍寫入同欄位。  
 - **顯示**：學生結果頁在**整體正確率區塊下方**，小香蕉**對話泡泡**內。  
-- **儲存**：`quiz_sessions.session_practice_summary`；RPC `save_session_practice_summary(p_session_id, p_student_id, p_summary)`。  
-- **電郵**：`get_quiz_email_data` 回傳 `session_practice_summary`；完成練習時亦傳 `session_summary` 予 `/api/send-quiz-email` 作後備。  
+- **儲存**：`quiz_sessions.session_practice_summary`（學生向）、`session_practice_summary_parent`（老師視角給家長）；RPC `save_session_practice_summaries(p_session_id, p_student_id, p_student_summary, p_parent_summary)`。  
+- **電郵**：`get_quiz_email_data` 含 **`session_practice_summary_parent`**（電郵正文）；完成練習時 Body 可傳 **`session_summary_parent`** 作後備。  
 - **Supabase**：執行 `supabase_session_practice_summary.sql`（欄位 + 函數 + 更新 `get_quiz_email_data`）。  
 - **測試**：`npm test`；手動清單見 `test_plan_practice_session_summary.md`。
 
@@ -45,6 +45,7 @@ Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and dep
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | 練習小結：**電郵用** `session_practice_summary_parent`（老師對家長口吻）與結果頁 **分開**；重跑 `supabase_session_practice_summary.sql`（含 `save_session_practice_summaries`）。 |
 | 2026-04 | **每節練習小結**（繁中 50–80 字、規則產生、可存 DB、郵件、「小香蕉」泡泡 UI）：見上節；SQL `supabase_session_practice_summary.sql`；`npm test` + `test_plan_practice_session_summary.md`。 |
 | 2026-04 | 答題畫面後續：去吉祥物；選項單行（A–D+文字 `truncate`+`title`）；多選題改為**點選即提交**並直接下一題（非短答仍用按鈕提交）。**無 SQL**。 |
 | 2026-04 | 學生答題畫面：`StudentQuizExperience`；吉祥物預設路徑為同專案 Storage `Webpage_images/logo/...`；若檔在另一專案可設 `NEXT_PUBLIC_MASCOT_IMAGE_URL`。**無 SQL**。 |

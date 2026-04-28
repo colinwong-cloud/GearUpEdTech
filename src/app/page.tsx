@@ -21,7 +21,10 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
-import { buildSessionPracticeSummary } from "@/lib/session-practice-summary";
+import {
+  buildSessionPracticeSummary,
+  buildSessionPracticeSummaryForParent,
+} from "@/lib/session-practice-summary";
 import {
   StudentQuizExperience,
   getQuizSoundEnabled,
@@ -657,14 +660,20 @@ export default function QuizApp() {
   const finalizeQuizAndSummary = async (finalAnswers: AnswerRecord[]): Promise<string> => {
     if (!selectedStudent || !selectedSubject) return "";
     const summary = buildSessionPracticeSummary(finalAnswers, selectedSubject);
+    const summaryParent = buildSessionPracticeSummaryForParent(
+      finalAnswers,
+      selectedSubject,
+      selectedStudent.student_name || ""
+    );
     if (sessionId) {
       try {
-        const { error: sumErr } = await supabase.rpc("save_session_practice_summary", {
+        const { error: sumErr } = await supabase.rpc("save_session_practice_summaries", {
           p_session_id: sessionId,
           p_student_id: selectedStudent.id,
-          p_summary: summary,
+          p_student_summary: summary,
+          p_parent_summary: summaryParent,
         });
-        if (sumErr) console.error("save_session_practice_summary", sumErr);
+        if (sumErr) console.error("save_session_practice_summaries", sumErr);
       } catch (e) {
         console.error(e);
       }
@@ -707,7 +716,7 @@ export default function QuizApp() {
         body: JSON.stringify({
           student_id: selectedStudent.id,
           session_id: sessionId,
-          session_summary: summary,
+          session_summary_parent: summaryParent,
         }),
       }).catch(() => {});
     } catch {

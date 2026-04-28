@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildSessionPracticeSummary, type AnswerLike } from "./session-practice-summary";
+import {
+  buildSessionPracticeSummary,
+  buildSessionPracticeSummaryForParent,
+  type AnswerLike,
+} from "./session-practice-summary";
 import type { Question } from "@/lib/types";
 
 const q = (t: string, type: string, id: string): Question => ({
@@ -60,5 +64,22 @@ describe("buildSessionPracticeSummary", () => {
   it("empty returns short fallback", () => {
     const s = buildSessionPracticeSummary([], "數學");
     expect(s.length).toBeGreaterThan(0);
+  });
+});
+
+describe("buildSessionPracticeSummaryForParent", () => {
+  it("differs from student summary and uses teacher-like wording", () => {
+    const answers: AnswerLike[] = [
+      mk("選擇題", "1", true),
+      mk("選擇題", "2", true),
+      mk("應用題", "3", false),
+    ];
+    const student = buildSessionPracticeSummary(answers, "數學");
+    const parent = buildSessionPracticeSummaryForParent(answers, "數學", "小明");
+    expect(parent).not.toBe(student);
+    expect(parent).toContain("小明");
+    expect(parent).toMatch(/關於|敬啟/);
+    expect(parent.length).toBeGreaterThanOrEqual(40);
+    expect(parent.length).toBeLessThanOrEqual(120);
   });
 });

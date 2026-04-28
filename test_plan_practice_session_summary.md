@@ -14,11 +14,11 @@
 
 ## 手動 — 家長電郵
 1. 有電郵與通知開啟的帳戶完成一節練習。  
-2. 郵件在**正確率大框之後、科目/用時表格之前**有一節 **「教練小結（本節練習）」**，文字與 App 內**一致**（可優先用 Body 的 `session_summary`）。
+2. 郵件在**正確率大框之後**有一節 **「老師給家長的練習小結」**，語氣為**對家長／老師視角**，與結果頁「小香蕉」內文**不同**。
 
 ## 資料庫
 1. Supabase 已執行 `supabase_session_practice_summary.sql`。  
-2. 在 Table Editor 開 `quiz_sessions`，剛完結的 `session` 的 `session_practice_summary` 有文字。
+2. 在 Table Editor 開 `quiz_sessions`，剛完結的 `session` 有 **`session_practice_summary`**（學生）與 **`session_practice_summary_parent`**（家長電郵），字句應**不同**。
 
 ## 未接 LLM 之限制
 - 產生方式為**規則 + 題型字串**；不會「讀懂」題幹。若要個人化長文或英文版，可改為呼叫 **OpenAI / 其他 LLM API**（在 `finalizeQuizAndSummary` 內或獨立 Edge Function）並仍寫入同欄位。
