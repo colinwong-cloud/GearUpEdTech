@@ -21,7 +21,11 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
-import { PRIMARY_QUIZ_SUBJECT, STUDENT_SUBJECT_OPTIONS } from "@/lib/quiz-subjects";
+import {
+  PRIMARY_QUIZ_SUBJECT,
+  STUDENT_SUBJECT_OPTIONS,
+  quizSubjectDbPatterns,
+} from "@/lib/quiz-subjects";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -156,13 +160,14 @@ async function fetchAllQuestions(
   subject: string,
   gradeLevel: string
 ): Promise<Question[]> {
+  const subjectPatterns = quizSubjectDbPatterns(subject);
   const all: Question[] = [];
   let from = 0;
   for (;;) {
     const { data, error } = await supabase
       .from("questions")
       .select("*")
-      .ilike("subject", subject)
+      .ilikeAnyOf("subject", subjectPatterns)
       .eq("grade_level", gradeLevel)
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
     if (error) throw error;
@@ -550,7 +555,7 @@ export default function QuizApp() {
         .from("parent_weights")
         .select("*")
         .eq("student_id", student.id)
-        .ilike("subject", subject);
+        .ilikeAnyOf("subject", quizSubjectDbPatterns(subject));
 
       const selected = selectQuestions(
         allQuestions,
