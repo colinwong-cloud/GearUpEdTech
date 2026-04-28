@@ -39,12 +39,17 @@ The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project
 
 **Production URL:** https://q.hkedutech.com
 
-Changes are committed on branch `cursor/quiz-app-vercel-deployment-7068` and deployed to Vercel with `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`) and `vercel deploy --prod`.
+Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`). Ship to production: `npx vercel deploy --prod`.
+
+**PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
+
+**Latest production deploy:** **2026-04-28** — deployment `dpl_6kvoC2KPfiZxV3UghD9VZenvEzRw`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6kvoC2KPfiZxV3UghD9VZenvEzRw).
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | **Apple touch icon + favicon**：`src/app/apple-icon.png`、`src/app/icon.png`（小香蕉吉祥物）。Next.js 自動提供 `/apple-icon.png` 與 `/icon.png`。**無 SQL**。 |
 | 2026-04 | 科目主鍵為 **`Math`**；題庫／`parent_weights` 查詢用 `ilike(any)` 同時匹配 **`Math`** 與舊值 **`數學`**，以免資料尚未全數改名時出現「找不到題目」。完成 `UPDATE questions SET subject = 'Math' WHERE subject = '數學'`（及權重列）後仍可正常運作。**無額外 SQL**（僅建議在庫內統一 subject 字串）。 |
 | 2026-04 | 練習小結：**電郵用** `session_practice_summary_parent`（老師對家長口吻）與結果頁 **分開**；重跑 `supabase_session_practice_summary.sql`（含 `save_session_practice_summaries`）。 |
 | 2026-04 | **每節練習小結**（繁中 50–80 字、規則產生、可存 DB、郵件、「小香蕉」泡泡 UI）：見上節；SQL `supabase_session_practice_summary.sql`；`npm test` + `test_plan_practice_session_summary.md`。 |
