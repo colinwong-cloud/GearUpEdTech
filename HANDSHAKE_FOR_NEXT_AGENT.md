@@ -98,13 +98,13 @@ login_mobile (mobile + PIN)
 | Function | Purpose |
 |----------|---------|
 | `login_by_mobile` | Login: returns parent + students (bypasses RLS) |
-| `register_student` | Registration: create parent + student + balance + transaction |
+| `register_student` | Registration: create parent + student; **one** initial Math balance + gift transaction per **parent** (not per extra sibling) |
 | `add_student_to_parent` | Add student under existing parent |
 | `create_quiz_session` | Start quiz |
-| `submit_answer` | Record answer |
+| `submit_answer` | Record answer, **deduct 1 question balance** (shared parent pool), log `balance_transactions`; raises if insufficient |
 | `update_quiz_session` | Update score/progress |
-| `deduct_student_balance` | Deduct balance + log transaction |
-| `get_student_balance` | Read balance (bypasses RLS) |
+| `deduct_student_balance` | Batch deduct + log (e.g. admin); `remaining_questions` in JSON = **family total** for that subject |
+| `get_student_balance` | Read balance (bypasses RLS): `remaining_questions` = **sum across siblings** for subject (Math merges legacy `數學`) |
 | `get_parent_balance_view` | Parent-level balance + monthly transactions with student names |
 | `get_balance_transactions` | Monthly transaction history |
 | `upsert_rank_performance` | Track per-rank performance |
@@ -149,7 +149,7 @@ login_mobile (mobile + PIN)
 7. **Admin console** (`/admin`) — Quota management, delete accounts, email toggles, question editor
 8. **Anti-cheat** — Speed reminder if 3 answers in 5 seconds, anti-copy CSS, right-click disabled
 9. **Question types** — Multiple choice (A-D), short answer (null options → text input), image questions
-10. **Balance system** — 300 initial questions, deducted per practice, shared across students, transaction history
+10. **Balance system** — 300 initial questions per **parent** (first student row); **−1 per answered question** in `submit_answer` (incomplete sessions still consume); siblings share pool (`get_student_balance` sums rows). Run `supabase_question_balance_per_answer.sql` for RPCs + index.
 
 ---
 

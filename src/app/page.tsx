@@ -638,6 +638,13 @@ export default function QuizApp() {
         setScreen("results");
         return;
       }
+      if (selectedStudent && selectedSubject) {
+        const { data: balFresh } = await supabase.rpc("get_student_balance", {
+          p_student_id: selectedStudent.id,
+          p_subject: selectedSubject,
+        });
+        if (balFresh) setBalance(balFresh as StudentBalance);
+      }
       setCurrentIndex((i) => i + 1);
       setTextAnswer("");
       setQuizTransition((k) => k + 1);
@@ -685,15 +692,13 @@ export default function QuizApp() {
       }
     }
     try {
-      if (balance) {
-        const { data: deductResult } = await supabase.rpc("deduct_student_balance", {
-          p_balance_id: balance.id,
-          p_amount: finalAnswers.length,
-          p_session_id: sessionId,
+      /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
+      if (selectedStudent && selectedSubject) {
+        const { data: balFresh } = await supabase.rpc("get_student_balance", {
+          p_student_id: selectedStudent.id,
+          p_subject: selectedSubject,
         });
-        const newBal = (deductResult as { remaining_questions: number } | null)?.remaining_questions
-          ?? Math.max(0, balance.remaining_questions - finalAnswers.length);
-        setBalance({ ...balance, remaining_questions: newBal });
+        if (balFresh) setBalance(balFresh as StudentBalance);
       }
 
       const rankGroups: Record<string, { attempted: number; correct: number }> =
