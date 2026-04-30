@@ -132,7 +132,7 @@ login_mobile (mobile + PIN)
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `RESEND_API_KEY` | Resend email API |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile (frontend) |
+| `NEXT_PUBLIC_PRIVACY_STATEMENT_URL` | Optional. Full URL to privacy `.txt`; if unset, uses `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt` |
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile (server, reserved) |
 | `CRON_SECRET` | Nightly cron job auth (`gearup-cron-2026`) |
 
@@ -142,7 +142,7 @@ login_mobile (mobile + PIN)
 
 1. **Student quiz** — Login → select subject → choose question count (10/20/30) → quiz → results with wrong answer analysis
 2. **Parent dashboard** — Monthly session summaries in 3-col grid, bar charts (overall + per-type), session detail view
-3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA
+3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **privacy statement checkbox** (`同意並繼續`); full text `fetch` from default `{NEXT_PUBLIC_SUPABASE_URL}/.../Webpage_statements/privacy_statment.txt` or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`
 4. **Account management** — Update profile, add student, view balance + transactions
 5. **Password recovery** — Email-based reset with 1-hour expiry tokens
 6. **Email notifications** — Practice completion summary with strong/weak analysis (global + per-parent toggle)

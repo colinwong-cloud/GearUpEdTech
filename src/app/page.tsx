@@ -26,6 +26,7 @@ import {
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
 } from "@/lib/quiz-subjects";
+import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -1214,6 +1215,11 @@ function RegisterScreen({
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [privacyStatementText, setPrivacyStatementText] = useState<string | null>(null);
+  const [privacyLoadError, setPrivacyLoadError] = useState<string | null>(null);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -1228,6 +1234,44 @@ function RegisterScreen({
     });
   }, []);
 
+  useEffect(() => {
+    if (!privacyModalOpen) return;
+    const url = getPrivacyStatementTxtUrl();
+    let cancelled = false;
+    setPrivacyLoadError(null);
+    if (!url) {
+      setPrivacyLoading(false);
+      setPrivacyLoadError(
+        "無法取得私隱政策網址：請設定 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_PRIVACY_STATEMENT_URL。"
+      );
+      return;
+    }
+    setPrivacyLoading(true);
+    if (privacyStatementText === null) {
+      fetch(url, { cache: "no-store" })
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        })
+        .then((text) => {
+          if (!cancelled) setPrivacyStatementText(text);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setPrivacyLoadError("無法載入私隱政策全文，請稍後再試或直接開啟官方連結。");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setPrivacyLoading(false);
+        });
+    } else {
+      setPrivacyLoading(false);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [privacyModalOpen, privacyStatementText]);
+
   const areas = [...new Set(schools.map((s) => s.area))];
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
@@ -1236,6 +1280,7 @@ function RegisterScreen({
   const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
+  const privacyStatementUrl = getPrivacyStatementTxtUrl();
   const canSubmit =
     mobileValid &&
     studentName.trim().length > 0 &&
@@ -1244,6 +1289,8 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    privacyAgreed &&
+    privacyStatementUrl.length > 0 &&
     (siteKey ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
@@ -1471,6 +1518,34 @@ function RegisterScreen({
             <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
 
+          <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+            <label className="flex gap-3 cursor-pointer items-start">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(e) => {
+                  setPrivacyAgreed(e.target.checked);
+                  if (error) setError(null);
+                }}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                本人確認已閱讀並同意本平台的
+                <button
+                  type="button"
+                  onClick={() => setPrivacyModalOpen(true)}
+                  className="text-indigo-600 font-semibold underline underline-offset-2 hover:text-indigo-800 mx-0.5"
+                >
+                  《私隱政策聲明》
+                </button>
+                ；明白所提供的個人資料將按該聲明處理。
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 leading-relaxed pl-7">
+              為符合香港個人資料私隱相關規定，請先閱讀聲明並勾選方格，方可建立帳戶。
+            </p>
+          </div>
+
           <button
             onClick={async () => {
               const { data: emailCheck } = await supabase.rpc("check_email_exists", { p_email: email.trim() });
@@ -1487,7 +1562,7 @@ function RegisterScreen({
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            完成註冊
+            同意並繼續
           </button>
 
           <button
@@ -1498,6 +1573,69 @@ function RegisterScreen({
           </button>
         </div>
       </div>
+
+      {privacyModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => setPrivacyModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="privacy-modal-title"
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 shrink-0">
+              <h2 id="privacy-modal-title" className="text-lg font-bold text-gray-900">
+                私隱政策聲明
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                aria-label="關閉"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 py-4 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+              {privacyLoading && privacyStatementText === null && (
+                <p className="text-gray-500">載入中…</p>
+              )}
+              {privacyLoadError && (
+                <p className="text-red-600 mb-3">{privacyLoadError}</p>
+              )}
+              {privacyStatementText !== null && privacyStatementText}
+              {(privacyLoadError || privacyStatementText === null) && !privacyLoading && privacyStatementUrl && (
+                <p className="mt-4 text-xs text-gray-500 break-all">
+                  官方檔案連結：
+                  <a
+                    href={privacyStatementUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 underline"
+                  >
+                    {privacyStatementUrl}
+                  </a>
+                </p>
+              )}
+            </div>
+            <div className="border-t border-gray-100 px-4 py-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-800 font-semibold text-sm hover:bg-gray-200"
+              >
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
