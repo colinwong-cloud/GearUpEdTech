@@ -1,19 +1,19 @@
 -- ============================================================
 -- Seed: 30 Chinese practice sessions × 10 questions each
--- Parent mobile: 91917838 | Students: Loklok, Heihei (name match case-insensitive)
+-- Parent mobile: 91917838 | Students: Loklok, Heihei (name case-insensitive)
 -- Each session: 10 questions, score 4–9 → 40%–90% correct rate
 --
--- Idempotent: DELETE rows where session_practice_summary = marker (see below).
--- Does NOT ALTER any table (no new tables/columns).
+-- Matches schema: quiz_sessions has session_token (UNIQUE), session_practice_summary,
+-- hkt_practice_date (nullable); NO session_practice_summary_parent column.
 --
--- Requires existing column (already in app SQL):
---   quiz_sessions.session_practice_summary  — from `supabase_session_practice_summary.sql`
--- If that migration was never run, run it first; otherwise this INSERT will error.
+-- Idempotent: DELETE quiz_sessions WHERE session_token LIKE 'gearup_seed_chinese_30-%'
+-- (answers cascade via explicit delete first for FK order).
+-- No ALTER TABLE / no new tables.
 --
 -- Preconditions:
---   - At least 10 `questions` per student grade with lower(trim(subject)) = 'chinese'
+--   - ≥10 questions per student grade: lower(trim(subject)) = 'chinese'
 --
--- Run: Supabase → SQL Editor → paste → Run
+-- Run: Supabase → SQL Editor
 -- ============================================================
 
 BEGIN;
@@ -21,10 +21,10 @@ BEGIN;
 DELETE FROM public.session_answers sa
 USING public.quiz_sessions qs
 WHERE sa.session_id = qs.id
-  AND qs.session_practice_summary = '__SEED__:gearup_chinese_30__';
+  AND qs.session_token LIKE 'gearup_seed_chinese_30-%';
 
 DELETE FROM public.quiz_sessions
-WHERE session_practice_summary = '__SEED__:gearup_chinese_30__';
+WHERE session_token LIKE 'gearup_seed_chinese_30-%';
 
 WITH targets AS (
   SELECT s.id AS student_id, s.grade_level, s.student_name
@@ -41,8 +41,8 @@ ins AS (
     score,
     time_spent_seconds,
     created_at,
-    session_practice_summary,
-    session_practice_summary_parent
+    session_token,
+    session_practice_summary
   )
   SELECT
     t.student_id,
@@ -53,7 +53,7 @@ ins AS (
     (timezone('UTC', now()))
       - ((gs.n - 1) * interval '2 days')
       - (random() * interval '45 minutes'),
-    '__SEED__:gearup_chinese_30__',
+    'gearup_seed_chinese_30-' || gen_random_uuid()::text,
     NULL
   FROM targets t
   CROSS JOIN generate_series(1, 30) AS gs(n)
@@ -80,7 +80,7 @@ JOIN LATERAL (
 
 COMMIT;
 
--- Verify (expect 2 rows if Loklok + Heihei matched; 60 sessions total)
+-- Verify (2 students × 30 sessions; pct 40–90 per session)
 SELECT
   s.student_name,
   COUNT(*)::int AS sessions,
@@ -92,6 +92,6 @@ SELECT
     THEN (qs.score::numeric / qs.questions_attempted) * 100 END), 1) AS max_pct
 FROM public.quiz_sessions qs
 JOIN public.students s ON s.id = qs.student_id
-WHERE qs.session_practice_summary = '__SEED__:gearup_chinese_30__'
+WHERE qs.session_token LIKE 'gearup_seed_chinese_30-%'
 GROUP BY s.id, s.student_name
 ORDER BY s.student_name;
