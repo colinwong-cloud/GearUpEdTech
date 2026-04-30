@@ -98,7 +98,7 @@ login_mobile (mobile + PIN)
 | Function | Purpose |
 |----------|---------|
 | `login_by_mobile` | Login: returns parent + students (bypasses RLS) |
-| `register_student` | Registration: create parent + student; **one** initial Math balance + gift transaction per **parent** (not per extra sibling) |
+| `register_student` | Registration: create parent + student; initial **Math** + **Chinese** balances (300 each) when the parent has no row for that subject yet |
 | `add_student_to_parent` | Add student under existing parent |
 | `create_quiz_session` | Start quiz |
 | `submit_answer` | Record answer, **deduct 1 question balance** (shared parent pool), log `balance_transactions`; raises if insufficient |

@@ -25,6 +25,7 @@ import {
   PRIMARY_QUIZ_SUBJECT,
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
+  subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
@@ -943,7 +944,7 @@ export default function QuizApp() {
     return (
       <QuestionCountScreen
         studentName={selectedStudent?.student_name || ""}
-        subject={selectedSubject || ""}
+        subjectKey={selectedSubject || ""}
         balance={balance?.remaining_questions ?? null}
         onSelect={handleQuestionCountSelect}
         onBack={() => { setError(null); setScreen("subject_select"); }}
@@ -1754,19 +1755,20 @@ function SubjectSelectScreen({
 
 function QuestionCountScreen({
   studentName,
-  subject,
+  subjectKey,
   balance,
   onSelect,
   onBack,
   error,
 }: {
   studentName: string;
-  subject: string;
+  subjectKey: string;
   balance: number | null;
   onSelect: (count: number) => void;
   onBack: () => void;
   error: string | null;
 }) {
+  const subjectLine = subjectKey ? subjectDisplayLabel(subjectKey) : "";
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -1778,7 +1780,7 @@ function QuestionCountScreen({
             {studentName}，選擇題數
           </h1>
           <p className="mt-2 text-gray-500">
-            {subject} — 請選擇本次練習的題目數量
+            {subjectLine} — 請選擇本次練習的題目數量
           </p>
           {balance !== null && (
             <p className="mt-1 text-sm text-indigo-600 font-medium">
@@ -2889,6 +2891,7 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
 }
 
 function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [balanceSubject, setBalanceSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [data, setData] = useState<ParentBalanceView | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -2899,10 +2902,11 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const { data: res } = await supabase.rpc("get_parent_balance_view", {
         p_mobile: mobileNumber.trim(),
-        p_subject: PRIMARY_QUIZ_SUBJECT,
+        p_subject: balanceSubject,
         p_year: viewMonth.year,
         p_month: viewMonth.month,
       });
@@ -2912,7 +2916,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
       }
     })();
     return () => { cancelled = true; };
-  }, [mobileNumber, viewMonth, fetchKey]);
+  }, [mobileNumber, viewMonth, fetchKey, balanceSubject]);
 
   const prevMonth = () => {
     setLoading(true);
@@ -2944,9 +2948,29 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {STUDENT_SUBJECT_OPTIONS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => {
+                if (s.key === balanceSubject) return;
+                setBalanceSubject(s.key);
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                balanceSubject === s.key
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
-            <p className="text-indigo-100 text-xs font-medium">題目餘額</p>
+            <p className="text-indigo-100 text-xs font-medium">題目餘額（{subjectDisplayLabel(balanceSubject)}）</p>
             <p className="text-white text-4xl font-extrabold mt-1">{data.total_balance}</p>
             <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
           </div>
@@ -3429,7 +3453,7 @@ function ParentSessionDetail({
         </button>
 
         <div className={`text-center p-5 rounded-2xl border-2 ${scoreBg} mb-6`}>
-          <p className="text-sm text-gray-500">{dateStr} · {session.subject} · 用時 {timeStr}</p>
+          <p className="text-sm text-gray-500">{dateStr} · {subjectDisplayLabel(session.subject)} · 用時 {timeStr}</p>
           <p className={`mt-2 text-4xl font-extrabold ${scoreColor}`}>{score} / {total}</p>
           <p className="mt-1 text-base text-gray-600">{percentage}% 正確 · 答對 {score} 題 · 答錯 {incorrect} 題</p>
         </div>

@@ -390,7 +390,7 @@ BEGIN
 END;
 $$;
 
--- ---------- register_student: one initial balance pool per parent+subject ----------
+-- ---------- register_student: initial balance for Math + Chinese (per subject, once per parent) ----------
 CREATE OR REPLACE FUNCTION register_student(
   p_mobile_number TEXT,
   p_student_name TEXT,
@@ -408,8 +408,8 @@ AS $$
 DECLARE
   v_parent_id UUID;
   v_student RECORD;
-  v_has_balance BOOLEAN;
-  v_subject TEXT := 'Math';
+  v_has_math BOOLEAN;
+  v_has_chinese BOOLEAN;
 BEGIN
   SELECT id INTO v_parent_id FROM parents WHERE mobile_number = p_mobile_number;
   IF v_parent_id IS NULL THEN
@@ -429,14 +429,27 @@ BEGIN
     JOIN students st ON st.id = sb.student_id
     WHERE st.parent_id = v_parent_id
       AND lower(trim(sb.subject)) IN ('math', '數學')
-  ) INTO v_has_balance;
+  ) INTO v_has_math;
 
-  IF NOT v_has_balance THEN
+  IF NOT v_has_math THEN
     INSERT INTO student_balances (student_id, subject, remaining_questions)
-    VALUES (v_student.id, v_subject, 300);
-
+    VALUES (v_student.id, 'Math', 300);
     INSERT INTO balance_transactions (student_id, subject, change_amount, balance_after, description)
-    VALUES (v_student.id, v_subject, 300, 300, '新用戶註冊贈送');
+    VALUES (v_student.id, 'Math', 300, 300, '新用戶註冊贈送');
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM student_balances sb
+    JOIN students st ON st.id = sb.student_id
+    WHERE st.parent_id = v_parent_id
+      AND lower(trim(sb.subject)) = 'chinese'
+  ) INTO v_has_chinese;
+
+  IF NOT v_has_chinese THEN
+    INSERT INTO student_balances (student_id, subject, remaining_questions)
+    VALUES (v_student.id, 'Chinese', 300);
+    INSERT INTO balance_transactions (student_id, subject, change_amount, balance_after, description)
+    VALUES (v_student.id, 'Chinese', 300, 300, '新用戶註冊贈送');
   END IF;
 
   RETURN row_to_json(v_student);
