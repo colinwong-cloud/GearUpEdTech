@@ -41,9 +41,17 @@ input[type="text"] {
   user-select: text;
 }
 
-/* Student quiz — same body rule; allow text selection in question/options */
+/* Student quiz — discourage copying question text (short-answer input overrides below) */
 .student-quiz-root,
 .student-quiz-root * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.student-quiz-root input[type="text"],
+.student-quiz-root input[type="text"] * {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;

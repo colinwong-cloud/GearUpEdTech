@@ -195,7 +195,9 @@ export function StudentQuizExperience({
                 className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
                 style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
               >
-                <h2
+                <div
+                  role="heading"
+                  aria-level={2}
                   className="text-balance text-xl font-extrabold leading-relaxed text-slate-800 sm:text-2xl"
                   style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
                 >
@@ -205,7 +207,7 @@ export function StudentQuizExperience({
                     paragraphGapClass="mt-3 sm:mt-4"
                     alignClass="text-center"
                   />
-                </h2>
+                </div>
               </div>
             </div>
 

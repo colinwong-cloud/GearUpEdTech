@@ -29,7 +29,9 @@ export function QuestionContentParagraphs({
   const blocks = splitContentIntoParagraphBlocks(raw);
 
   if (blocks.length <= 1) {
-    return <div className={base}>{raw.trimEnd()}</div>;
+    const single = blocks[0] ?? "";
+    if (!single) return null;
+    return <div className={base}>{single}</div>;
   }
 
   return (
