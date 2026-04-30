@@ -1,65 +1,12 @@
 -- ============================================================
--- Charts Feature: grade averages table + RPC functions
--- Run this in Supabase Dashboard > SQL Editor
+-- Parent dashboard charts: filter by subject (Math / Chinese)
+-- Problem: get_student_chart_data(p_student_id) returned last 30
+-- sessions across ALL subjects, so Math and Chinese tabs showed
+-- the same trend data.
+-- Run in Supabase SQL Editor (replaces function; backward compatible
+-- when p_subject is NULL = old behaviour).
 -- ============================================================
 
--- 1. Table to cache nightly grade-level averages
-CREATE TABLE IF NOT EXISTS grade_averages (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  grade_level     TEXT NOT NULL,
-  question_type   TEXT NOT NULL,
-  avg_correct_pct NUMERIC(5,2) NOT NULL DEFAULT 0,
-  total_sessions  INTEGER NOT NULL DEFAULT 0,
-  calculated_at   TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(grade_level, question_type)
-);
-
-ALTER TABLE grade_averages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "anon_select_grade_averages" ON grade_averages FOR SELECT TO anon USING (true);
-
--- 2. Function to recalculate all grade averages (called by scheduled task)
-CREATE OR REPLACE FUNCTION recalculate_grade_averages()
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  SET LOCAL statement_timeout = '5min';
-  -- WHERE true: some hosts reject DELETE without a WHERE clause
-  DELETE FROM grade_averages WHERE true;
-
-  -- Overall average per grade
-  INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)
-  SELECT
-    s.grade_level,
-    '_overall' AS question_type,
-    ROUND(AVG(CASE WHEN qs.questions_attempted > 0 THEN (qs.score::numeric / qs.questions_attempted) * 100 ELSE 0 END), 2),
-    COUNT(qs.id)::int
-  FROM quiz_sessions qs
-  JOIN students s ON s.id = qs.student_id
-  WHERE qs.questions_attempted > 0
-  GROUP BY s.grade_level;
-
-  -- Per question_type average per grade (join via sessions+students for large session_answers)
-  INSERT INTO grade_averages (grade_level, question_type, avg_correct_pct, total_sessions)
-  SELECT
-    st.grade_level,
-    q.question_type,
-    ROUND(AVG(CASE WHEN sa.is_correct THEN 100.0 ELSE 0.0 END), 2),
-    COUNT(DISTINCT sa.session_id)::int
-  FROM session_answers sa
-  INNER JOIN quiz_sessions qs ON qs.id = sa.session_id
-  INNER JOIN students st ON st.id = qs.student_id
-  INNER JOIN questions q ON q.id = sa.question_id
-  WHERE qs.questions_attempted > 0
-  GROUP BY st.grade_level, q.question_type;
-END;
-$$;
-
--- 3. Get chart data for a student (last 30 sessions + per-type breakdown)
--- Optional p_subject: when set (e.g. 'Math', 'Chinese'), only sessions for that subject
--- (Math merges legacy 數學). NULL = all subjects (legacy behaviour).
 CREATE OR REPLACE FUNCTION get_student_chart_data(
   p_student_id UUID,
   p_subject TEXT DEFAULT NULL

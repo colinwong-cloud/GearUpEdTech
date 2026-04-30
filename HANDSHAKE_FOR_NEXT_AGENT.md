@@ -111,7 +111,7 @@ login_mobile (mobile + PIN)
 | `get_quiz_email_data` | All data for practice completion email |
 | `get_parent_sessions` | Monthly session summaries |
 | `get_session_detail` | Session answers + questions for detail view |
-| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts |
+| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts; pass **`p_subject`** (`Math` / `Chinese`; Math merges legacy `數學`) to match parent dashboard tab — **run** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) in Supabase |
 | `recalculate_grade_averages` | Nightly cron: calculate grade-level averages |
 | `get_parent_profile` | Full profile for editing |
 | `update_parent_profile` | Update parent name/email |

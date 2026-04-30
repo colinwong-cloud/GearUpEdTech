@@ -27,6 +27,7 @@ npm run build
 |---|------|----------|
 | 4 | Parent → practice report | **數學** / **中文** tabs switch sessions and charts for that subject |
 | 5 | Session card footer | Shows **中文** label for Chinese sessions |
+| 6 | Trend charts | After SQL `supabase_chart_data_filter_by_subject.sql`, 整體正確率趨勢 + 各題型圖表應隨科目切換（非兩科同一組數據） |
 
 ## Manual — account maintenance
 
@@ -38,3 +39,4 @@ npm run build
 
 - Math flow unchanged (legacy `數學` rows still load if present).
 - Email / session summaries still send after practice.
+- `get_student_chart_data` with only `p_student_id` (omit `p_subject`) still returns all-subject charts if any caller relies on it.

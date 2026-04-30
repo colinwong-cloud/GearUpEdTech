@@ -445,6 +445,7 @@ export default function QuizApp() {
         }),
         supabase.rpc("get_student_chart_data", {
           p_student_id: studentId,
+          p_subject: subject,
         }),
         supabase.rpc("get_parent_student_grade_rank", {
           p_student_id: studentId,
