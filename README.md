@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_DC4a8Hibihna7FNiJNrCKn2BVA9p`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/DC4a8Hibihna7FNiJNrCKn2BVA9p). **Supabase (ranking per subject):** run **`supabase_grade_ranking_per_subject.sql`**, then `select recalculate_student_grade_rankings();` (or wait for cron); optional `GRANT` line in `supabase_grade_cron_delete_and_grants.sql`. **English balance (if needed):** `register_student` block / `supabase_backfill_english_balance.sql`.
+**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
 
 ## Changelog (recent)
 
