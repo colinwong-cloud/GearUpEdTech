@@ -13,21 +13,22 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 ## Parent dashboard: 同級排名
 
-- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（`Math`／`Chinese`／`English`，介面「數學／中文／英文」）→ ② **同級排名**（`ParentGradeRankPanel`；**全科**合計，與科目分頁無關）→ ③ **月份**導航與列表／圖表（**隨科目分頁**：`get_parent_sessions`、`get_student_chart_data` 皆傳 `p_subject`）。純前端順序，無需改 DB。
-- **邏輯**（實作於 `supabase_grade_level_ranking.sql`）  
-  - 只納入 **累積完成至少 100 題**（`sum(quiz_sessions.questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
-  - 分數＝**最近 10 次**練習的「每次正確率」之**平均**（不滿 10 次則以實有次數平均）。  
-  - 以該分數在同期 **`students.grade_level`** 內用 **RANK** 排名（分數愈高，名次數字愈小＝愈前）。  
-- **更新**：與原 `recalculate_grade_averages` 同一 Vercel Cron（`vercel.json` → `/api/cron-recalculate-averages`，每日 UTC 午夜）。Cron 內**先**呼叫 `recalculate_student_grade_rankings()`，再 `recalculate_grade_averages()`。
-- **讀取**：`get_parent_student_grade_rank(p_student_id)`（`SECURITY DEFINER`）→ 前端在載入家長儀表板時與 sessions／圖表一併請求。
-- **佈署新環境時**：在 Supabase 執行 `supabase_grade_level_ranking.sql` 一次，然後觸發 cron 或手動執行上述兩支函數。  
+- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（`Math`／`Chinese`／`English`）→ ② **同級排名**（`ParentGradeRankPanel`，**隨科目**：與列表／圖表同一 `p_subject`）→ ③ **月份**導航與列表／圖表。純前端順序；**排名改為按科目**需執行 `supabase_grade_ranking_per_subject.sql` 並重跑 `recalculate_student_grade_rankings()`。
+- **邏輯**（批次：`recalculate_student_grade_rankings()`；讀取：`get_parent_student_grade_rank(p_student_id, p_subject)`）  
+  - `student_grade_rankings` 每列含 **`subject`**（`Math`／`Chinese`／`English`…）；`Math` 統計含 `quiz_sessions.subject` 為 `Math` 或 **`數學`**。  
+  - 只納入 **該科目**累積完成至少 **100 題**（`sum(questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
+  - 分數＝該科目 **最近 10 次**練習的「每次正確率」之**平均**。  
+  - 以該分數在同期 **`grade_level` + `subject`** 內用 **RANK** 排名。  
+- **更新**：Vercel Cron（`vercel.json` → `/api/cron-recalculate-averages`）先 `recalculate_student_grade_rankings()`，再 `recalculate_grade_averages()`。
+- **讀取**：`get_parent_student_grade_rank(p_student_id, p_subject)` — 前端與 `get_parent_sessions` / `get_student_chart_data` 傳**相同**科目鍵。
+- **佈署**：在 Supabase 執行 **`supabase_grade_ranking_per_subject.sql`**（會清空舊排名表並改 schema），然後手動或等 cron 執行 `recalculate_student_grade_rankings()`。若 `GRANT` 失敗，再執行 `supabase_grade_cron_delete_and_grants.sql` 內相關 `GRANT`（或於該檔補上 `get_parent_student_grade_rank(uuid, text)`）。
 - **如批次／cron 出現** `DELETE requires a WHERE clause`：在 Supabase 執行 `supabase_fix_batch_delete_require_where.sql`（將 `DELETE FROM …` 改為 `DELETE FROM … WHERE true`）。  
 - **如出現** `canceling statement due to statement timeout`：資料量較大時，原先排名批次對每位學生子查詢掃表會過慢；請在 Supabase 執行 `supabase_optimize_ranking_batch_performance.sql`（加索引、改寫成集合式查詢，並在函數內 `SET LOCAL statement_timeout = '5min'`）。Vercel 路由 `/api/cron-recalculate-averages` 已設 `maxDuration = 300`（秒），需重新部署才生效。  
 - **如仍超時**（兩道 RPC 各跑一輪仍觸及 PostgREST 單次請求上限）：每日批次已拆成兩個 Vercel Cron——`?part=rank`（0:00 UTC）與 `?part=grade`（0:02 UTC），見 `vercel.json`。（可選）在 Vercel 專案加入 `SUPABASE_SERVICE_ROLE_KEY` 讓 API 以 service role 呼叫 RPC。依序執行：`supabase_optimize_grade_averages_batch.sql` → `supabase_split_grade_averages_cron.sql` → `supabase_grade_averages_two_step_per_grade.sql`；若**單一年級的「全部題型」**仍超時，執行 `supabase_grade_by_question_type_fine.sql`；若 `?part=grade` 仍失敗，再執行 `supabase_grade_cron_v2_query_plans.sql`（索引＋從 `students`／`questions` 驅動的 `overall` / `one_type`）；務必在 Vercel 設定 `SUPABASE_SERVICE_ROLE_KEY`（僅專案密鑰，勿入庫）。  
 - **測試**：見 `test_plan_grade_ranking.md`。
 - **最後一併執行** `supabase_grade_cron_delete_and_grants.sql`：新增 `delete_grade_averages_for_grade(grade_level)`，並補齊 `GRANT EXECUTE` 給 cron 會呼叫的函數。API 在 fallback 到 `recalculate_grade_by_type_for_grade` 前可刪除該年級列，避免 unique 衝突。  
 
-### Nightly batch (English)
+### Nightly batch
 
 - Vercel env: `CRON_SECRET` (bearer for `/api/cron-recalculate-averages`), `SUPABASE_SERVICE_ROLE_KEY` (strongly recommended for long RPCs).
 - Recommended SQL order for chart/rank recalc: `…optimize_grade…` → `…split…` → `…two_step…` → `…by_question_type_fine…` → `supabase_grade_cron_v2_query_plans.sql` → `supabase_grade_cron_delete_and_grants.sql`.
@@ -49,10 +50,11 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
 | 2026-04 | 學生答題選項：移除 `truncate`／單行限制，改為 **`whitespace-normal` + `break-words` + `leading-snug`**，長答案可多行顯示（`StudentQuizExperience` / `OptionButton`）。**無 SQL**。 |
 | 2026-04 | **測試數據**：`supabase_seed_chinese_30_sessions_91917838.sql` — 與現行 **`quiz_sessions`** 欄位一致（`session_token` UNIQUE 前綴 `gearup_seed_chinese_30-` + UUID、`session_practice_summary` 可為 NULL；**無** `session_practice_summary_parent`）。手動於 Supabase SQL Editor 執行。計劃：`test_plan_seed_chinese_30_sessions_91917838.md`。 |
-| 2026-04 | **英文科目**：題庫 `subject = 'English'`；學生／家長／題目餘額與 **數學、中文** 並列。`register_student` 贈送 **English** 餘額 300（見 `supabase_question_balance_per_answer.sql`）；既有學生可選 `supabase_backfill_english_balance.sql`。家長儀表板加註：**同級排名為全科**，練習列表與趨勢圖隨科目分頁。測試：`test_plan_english_subject.md`。 |
+| 2026-04 | **英文科目**：題庫 `subject = 'English'`；學生／家長／題目餘額與 **數學、中文** 並列。`register_student` 贈送 **English** 餘額 300（見 `supabase_question_balance_per_answer.sql`）；既有學生可選 `supabase_backfill_english_balance.sql`。同級排名隨科目（見「同級排名按科目」）。測試：`test_plan_english_subject.md`。 |
 | 2026-04 | **中文科目**：題庫 `subject = 'Chinese'`；學生選科、家長練習報告、戶口「題目餘額」支援 **數學／中文**（`src/lib/quiz-subjects.ts`）。`register_student` 於新戶口首次各送 **Math** 與 **Chinese** 餘額各 300（見 `supabase_question_balance_per_answer.sql` 內函數；已部署舊 RPC 請重跑該段或整份）。**既有學生**可選跑一次 `supabase_backfill_chinese_balance.sql` 補 `Chinese` 餘額列。測試：`src/lib/quiz-subjects.test.ts`、`test_plan_chinese_subject.md`。 |
 | 2026-04 | **註冊私隱同意**：勾選「本人確認已閱讀並同意本平台的**私隱政策聲明**」（連結開啟彈窗載入 `.txt`）方可按「**同意並繼續**」。預設 URL：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`；不同專案可設 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`**。**無 SQL**。 |
 | 2026-04 | **題目餘額**：每答一題在 `submit_answer` 內扣 **1** 題（未完成練習也照扣）；餘額不足時拒絕提交。家長端總餘額＝**同戶口所有學生**該科目餘額**加總**（共用池）；扣款優先從作答學生帳列扣，不足則扣兄弟姊妹列。交易 `balance_after` 為**戶口合計**。科目 **`Math`** 與舊 **`數學`** 在 RPC 內視為同一組（修正家長月曆「無交易」）。註冊贈送僅在該家長**尚無**該科目餘額列時發放（避免二孩各 +300）。SQL：**必跑** `supabase_question_balance_per_answer.sql`（含合併重複餘額列、`session_answers` 唯一索引防雙扣）。前端：每題後重讀 `get_student_balance`；結束練習不再呼叫 `deduct_student_balance`。測試清單：`test_plan_question_balance.md`。 |

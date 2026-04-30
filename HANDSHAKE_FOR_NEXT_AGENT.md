@@ -110,6 +110,8 @@ login_mobile (mobile + PIN)
 | `upsert_rank_performance` | Track per-rank performance |
 | `get_quiz_email_data` | All data for practice completion email |
 | `get_parent_sessions` | Monthly session summaries |
+| `get_parent_student_grade_rank` | Cached grade rank for parent dashboard — **`(p_student_id, p_subject)`**; per-subject rows in `student_grade_rankings` after **`supabase_grade_ranking_per_subject.sql`** |
+| `recalculate_student_grade_rankings` | Nightly: rebuild **per-subject** rankings (Math merges `數學` in session subject) |
 | `get_session_detail` | Session answers + questions for detail view |
 | `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts; pass **`p_subject`** (`Math` / `Chinese` / `English`; Math merges legacy `數學`) to match parent dashboard tab — **run** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) in Supabase |
 | `recalculate_grade_averages` | Nightly cron: calculate grade-level averages |

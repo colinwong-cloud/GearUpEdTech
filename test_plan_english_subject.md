@@ -28,7 +28,7 @@ npm run build
 |---|------|----------|
 | 4 | Parent → **英文** tab | Session grid and trend charts **only** English sessions (`quiz_sessions.subject` / RPC `p_subject`) |
 | 5 | Switch to **數學** / **中文** | Different session counts / charts when data exists per subject |
-| 6 | **同級排名** block | Disclaimer: rank is **全科** (all subjects); list + charts follow **selected tab** |
+| 6 | **同級排名** block | Text states rank is **for current tab subject**; switching 數學/中文/英文 may show different rank / eligible pool |
 
 ## Regression
 

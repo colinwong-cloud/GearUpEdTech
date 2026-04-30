@@ -1,5 +1,7 @@
 -- ============================================================
 -- Grade-level performance ranking (nightly batch + parent read)
+-- NOTE (2026-04): For **per-subject** rankings + `get_parent_student_grade_rank(uuid, text)`,
+-- apply **`supabase_grade_ranking_per_subject.sql`** in Supabase instead of relying on this file alone.
 -- Run in Supabase SQL Editor after backup.
 -- - Eligible: sum(questions_attempted) in quiz_sessions >= 100
 -- - Score: average of per-session correct % over last 10 sessions (or fewer if <10)

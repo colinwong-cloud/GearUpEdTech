@@ -115,6 +115,8 @@ interface ChartDataPayload {
 interface ParentGradeRankPayload {
   has_snapshot: boolean;
   error?: string;
+  /** Canonical subject key (Math / Chinese / English) when snapshot exists */
+  subject?: string;
   calculated_at?: string;
   grade_level?: string;
   student_id?: string;
@@ -450,6 +452,7 @@ export default function QuizApp() {
         }),
         supabase.rpc("get_parent_student_grade_rank", {
           p_student_id: studentId,
+          p_subject: subject,
         }),
       ]);
       if (sessRes.error) throw sessRes.error;
@@ -3135,7 +3138,7 @@ function ParentGradeRankPanel({
 }: {
   studentName: string;
   rank: ParentGradeRankPayload | null;
-  /** Current dashboard subject tab (for disclaimer: rank is all-subject) */
+  /** Current dashboard subject tab (rank + charts match this subject) */
   subjectUiLabel: string;
 }) {
   const notReady = (
@@ -3152,11 +3155,11 @@ function ParentGradeRankPanel({
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
         <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
         </p>
         <p className="text-sm text-amber-800/90">暫無同級排名資料（系統每日更新）。</p>
         <p className="mt-1 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
         </p>
       </div>
     );
@@ -3178,14 +3181,14 @@ function ParentGradeRankPanel({
     return (
       <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
         <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
         </p>
         <p className="text-sm text-gray-800">
           {displayName} 完成累積 100 題練習後，即可與同級同學比較表現。
         </p>
         {notReady}
         <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。{updatedStr ? ` 資料更新：${updatedStr}。` : ""}
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨更新。{updatedStr ? ` 資料更新：${updatedStr}。` : ""}
         </p>
       </div>
     );
@@ -3195,12 +3198,12 @@ function ParentGradeRankPanel({
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
         <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
         </p>
         <p className="text-sm text-amber-800/90">同級暫時沒有足夠學生可顯示排名。</p>
         {notReady}
         <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨更新。
         </p>
       </div>
     );
@@ -3214,7 +3217,7 @@ function ParentGradeRankPanel({
   return (
     <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
       <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-        「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+        「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
       </p>
       <p className="text-sm text-gray-800 font-medium">
         {displayName} 在同級活躍用戶中排第 {rnk} 名（共 {total} 人）
@@ -3238,7 +3241,7 @@ function ParentGradeRankPanel({
         />
       </div>
       <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-        僅納入累積完成至少 100 題練習的同級學生；以「最近 10 次練習」各次正確率之平均排序，表現愈高排名愈前。箭頭表示相對位置（紅：待加強，綠：表現佳）。每日凌晨批次更新，非即時。
+        僅納入該科目累積完成至少 100 題的同級學生；以該科目「最近 10 次練習」各次正確率之平均排序，表現愈高排名愈前。箭頭表示相對位置（紅：待加強，綠：表現佳）。每日凌晨批次更新，非即時。
       </p>
     </div>
   );
