@@ -49,6 +49,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | 學生答題選項：移除 `truncate`／單行限制，改為 **`whitespace-normal` + `break-words` + `leading-snug`**，長答案可多行顯示（`StudentQuizExperience` / `OptionButton`）。**無 SQL**。 |
 | 2026-04 | **測試數據**：`supabase_seed_chinese_30_sessions_91917838.sql` — 與現行 **`quiz_sessions`** 欄位一致（`session_token` UNIQUE 前綴 `gearup_seed_chinese_30-` + UUID、`session_practice_summary` 可為 NULL；**無** `session_practice_summary_parent`）。手動於 Supabase SQL Editor 執行。計劃：`test_plan_seed_chinese_30_sessions_91917838.md`。 |
 | 2026-04 | **中文科目**：題庫 `subject = 'Chinese'`；學生選科、家長練習報告、戶口「題目餘額」支援 **數學／中文**（`src/lib/quiz-subjects.ts`）。`register_student` 於新戶口首次各送 **Math** 與 **Chinese** 餘額各 300（見 `supabase_question_balance_per_answer.sql` 內函數；已部署舊 RPC 請重跑該段或整份）。**既有學生**可選跑一次 `supabase_backfill_chinese_balance.sql` 補 `Chinese` 餘額列。測試：`src/lib/quiz-subjects.test.ts`、`test_plan_chinese_subject.md`。 |
 | 2026-04 | **註冊私隱同意**：勾選「本人確認已閱讀並同意本平台的**私隱政策聲明**」（連結開啟彈窗載入 `.txt`）方可按「**同意並繼續**」。預設 URL：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`；不同專案可設 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`**。**無 SQL**。 |

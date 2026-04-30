@@ -87,7 +87,7 @@ function OptionButton({
       whileHover={disabled ? undefined : { scale: 1.04, y: -2, boxShadow: "0 12px 24px -8px rgb(0 0 0 / 0.2)" }}
       whileTap={disabled ? undefined : { scale: 0.95 }}
       className={`
-        group relative flex w-full min-w-0 flex-nowrap items-center justify-start gap-3 overflow-hidden
+        group relative flex w-full min-w-0 items-start justify-start gap-3
         rounded-2xl border-2 border-white/50 bg-gradient-to-br ${optionStyle.bg}
         px-3 py-3 text-left shadow-md transition-shadow sm:px-4 sm:py-3.5
         ${disabled ? "cursor-not-allowed opacity-60" : "hover:shadow-xl cursor-pointer"}
@@ -100,7 +100,7 @@ function OptionButton({
       >
         {label}
       </span>
-      <span className="min-w-0 flex-1 truncate text-left text-base font-semibold text-slate-800 sm:text-lg">
+      <span className="min-w-0 flex-1 whitespace-normal break-words text-left text-base font-semibold leading-snug text-slate-800 sm:text-lg sm:leading-snug">
         {text}
       </span>
     </motion.button>
