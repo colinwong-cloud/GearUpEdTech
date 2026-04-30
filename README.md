@@ -50,6 +50,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
 | 2026-04 | 學生答題選項：移除 `truncate`／單行限制，改為 **`whitespace-normal` + `break-words` + `leading-snug`**，長答案可多行顯示（`StudentQuizExperience` / `OptionButton`）。**無 SQL**。 |
