@@ -98,7 +98,7 @@ login_mobile (mobile + PIN)
 | Function | Purpose |
 |----------|---------|
 | `login_by_mobile` | Login: returns parent + students (bypasses RLS) |
-| `register_student` | Registration: create parent + student; initial **Math** + **Chinese** balances (300 each) when the parent has no row for that subject yet |
+| `register_student` | Registration: create parent + student; initial **Math** + **Chinese** + **English** balances (300 each) when the parent has no row for that subject yet |
 | `add_student_to_parent` | Add student under existing parent |
 | `create_quiz_session` | Start quiz |
 | `submit_answer` | Record answer, **deduct 1 question balance** (shared parent pool), log `balance_transactions`; raises if insufficient |
@@ -111,7 +111,7 @@ login_mobile (mobile + PIN)
 | `get_quiz_email_data` | All data for practice completion email |
 | `get_parent_sessions` | Monthly session summaries |
 | `get_session_detail` | Session answers + questions for detail view |
-| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts; pass **`p_subject`** (`Math` / `Chinese`; Math merges legacy `數學`) to match parent dashboard tab — **run** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) in Supabase |
+| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts; pass **`p_subject`** (`Math` / `Chinese` / `English`; Math merges legacy `數學`) to match parent dashboard tab — **run** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) in Supabase |
 | `recalculate_grade_averages` | Nightly cron: calculate grade-level averages |
 | `get_parent_profile` | Full profile for editing |
 | `update_parent_profile` | Update parent name/email |
@@ -142,7 +142,7 @@ login_mobile (mobile + PIN)
 
 1. **Student quiz** — Login → select subject → choose question count (10/20/30) → quiz → results with wrong answer analysis
 2. **Parent dashboard** — Monthly session summaries in 3-col grid, bar charts (overall + per-type), session detail view
-3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **short privacy checkbox** (link opens modal → `fetch` `.txt` from default URL or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`); submit **同意並繼續**
+3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **short privacy checkbox** (link opens modal → `fetch` `.txt` from default URL or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`); submit **同意並繼續**; starter balances **Math + Chinese + English** (see `register_student` in `supabase_question_balance_per_answer.sql`)
 4. **Account management** — Update profile, add student, view balance + transactions
 5. **Password recovery** — Email-based reset with 1-hour expiry tokens
 6. **Email notifications** — Practice completion summary with strong/weak analysis (global + per-parent toggle)

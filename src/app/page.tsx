@@ -3131,9 +3131,12 @@ function RoleSelectScreen({
 function ParentGradeRankPanel({
   studentName,
   rank,
+  subjectUiLabel,
 }: {
   studentName: string;
   rank: ParentGradeRankPayload | null;
+  /** Current dashboard subject tab (for disclaimer: rank is all-subject) */
+  subjectUiLabel: string;
 }) {
   const notReady = (
     <div className="relative overflow-hidden rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-rose-100/80 via-amber-100/80 to-emerald-100/80 h-14" aria-hidden>
@@ -3148,6 +3151,9 @@ function ParentGradeRankPanel({
   if (!rank || !rank.has_snapshot) {
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+        </p>
         <p className="text-sm text-amber-800/90">暫無同級排名資料（系統每日更新）。</p>
         <p className="mt-1 text-[11px] text-gray-400 leading-snug">
           僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
@@ -3171,6 +3177,9 @@ function ParentGradeRankPanel({
   if (!eligible) {
     return (
       <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+        </p>
         <p className="text-sm text-gray-800">
           {displayName} 完成累積 100 題練習後，即可與同級同學比較表現。
         </p>
@@ -3185,6 +3194,9 @@ function ParentGradeRankPanel({
   if (total === 0 || rnk == null) {
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+        </p>
         <p className="text-sm text-amber-800/90">同級暫時沒有足夠學生可顯示排名。</p>
         {notReady}
         <p className="mt-2 text-[11px] text-gray-400 leading-snug">
@@ -3201,6 +3213,9 @@ function ParentGradeRankPanel({
 
   return (
     <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+      <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+        「同級排名」按<strong>全科</strong>（所有科目合計）計算；下方練習列表與趨勢圖為<strong>{subjectUiLabel}</strong>。
+      </p>
       <p className="text-sm text-gray-800 font-medium">
         {displayName} 在同級活躍用戶中排第 {rnk} 名（共 {total} 人）
       </p>
@@ -3304,7 +3319,11 @@ function ParentDashboard({
           ))}
         </div>
 
-        <ParentGradeRankPanel studentName={studentName} rank={gradeRank} />
+        <ParentGradeRankPanel
+          studentName={studentName}
+          rank={gradeRank}
+          subjectUiLabel={subjectDisplayLabel(subject)}
+        />
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">

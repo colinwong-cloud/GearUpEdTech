@@ -1,5 +1,5 @@
 -- ============================================================
--- Parent dashboard charts: filter by subject (Math / Chinese)
+-- Parent dashboard charts: filter by subject (Math / Chinese / English)
 -- Problem: get_student_chart_data(p_student_id) returned last 30
 -- sessions across ALL subjects, so Math and Chinese tabs showed
 -- the same trend data.

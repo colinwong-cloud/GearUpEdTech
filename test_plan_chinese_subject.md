@@ -3,7 +3,7 @@
 ## Preconditions
 
 - Supabase `questions` include rows with `subject = 'Chinese'` (and grades in use).
-- **New registrations:** ensure `register_student` in production includes Math + Chinese grants — re-run `supabase_question_balance_per_answer.sql` (at least the `register_student` block) if you deployed an older version.
+- **New registrations:** ensure `register_student` in production includes Math + Chinese + **English** grants — re-run `supabase_question_balance_per_answer.sql` (at least the `register_student` block) if you deployed an older version.
 - **Existing students:** optionally run once `supabase_backfill_chinese_balance.sql` so every student has a `Chinese` balance row (300) if missing.
 
 ## Automated

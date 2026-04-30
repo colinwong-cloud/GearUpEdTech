@@ -58,7 +58,7 @@ END;
 $$;
 
 -- 3. Get chart data for a student (last 30 sessions + per-type breakdown)
--- Optional p_subject: when set (e.g. 'Math', 'Chinese'), only sessions for that subject
+-- Optional p_subject: when set (e.g. 'Math', 'Chinese', 'English'), only sessions for that subject
 -- (Math merges legacy 數學). NULL = all subjects (legacy behaviour).
 CREATE OR REPLACE FUNCTION get_student_chart_data(
   p_student_id UUID,

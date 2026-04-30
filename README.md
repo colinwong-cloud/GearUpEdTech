@@ -13,7 +13,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 ## Parent dashboard: 同級排名
 
-- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（`Math`／`Chinese`，介面顯示「數學」／「中文」）→ ② **同級排名**（`ParentGradeRankPanel`）→ ③ **月份**導航與列表／圖表。純前端順序，無需改 DB。
+- **位置**：家長「練習報告」內容區**由上而下**為：① **科目**切換（`Math`／`Chinese`／`English`，介面「數學／中文／英文」）→ ② **同級排名**（`ParentGradeRankPanel`；**全科**合計，與科目分頁無關）→ ③ **月份**導航與列表／圖表（**隨科目分頁**：`get_parent_sessions`、`get_student_chart_data` 皆傳 `p_subject`）。純前端順序，無需改 DB。
 - **邏輯**（實作於 `supabase_grade_level_ranking.sql`）  
   - 只納入 **累積完成至少 100 題**（`sum(quiz_sessions.questions_attempted)`，僅 `questions_attempted > 0` 的次數）的同級學生。  
   - 分數＝**最近 10 次**練習的「每次正確率」之**平均**（不滿 10 次則以實有次數平均）。  
@@ -52,6 +52,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
 | 2026-04 | 學生答題選項：移除 `truncate`／單行限制，改為 **`whitespace-normal` + `break-words` + `leading-snug`**，長答案可多行顯示（`StudentQuizExperience` / `OptionButton`）。**無 SQL**。 |
 | 2026-04 | **測試數據**：`supabase_seed_chinese_30_sessions_91917838.sql` — 與現行 **`quiz_sessions`** 欄位一致（`session_token` UNIQUE 前綴 `gearup_seed_chinese_30-` + UUID、`session_practice_summary` 可為 NULL；**無** `session_practice_summary_parent`）。手動於 Supabase SQL Editor 執行。計劃：`test_plan_seed_chinese_30_sessions_91917838.md`。 |
+| 2026-04 | **英文科目**：題庫 `subject = 'English'`；學生／家長／題目餘額與 **數學、中文** 並列。`register_student` 贈送 **English** 餘額 300（見 `supabase_question_balance_per_answer.sql`）；既有學生可選 `supabase_backfill_english_balance.sql`。家長儀表板加註：**同級排名為全科**，練習列表與趨勢圖隨科目分頁。測試：`test_plan_english_subject.md`。 |
 | 2026-04 | **中文科目**：題庫 `subject = 'Chinese'`；學生選科、家長練習報告、戶口「題目餘額」支援 **數學／中文**（`src/lib/quiz-subjects.ts`）。`register_student` 於新戶口首次各送 **Math** 與 **Chinese** 餘額各 300（見 `supabase_question_balance_per_answer.sql` 內函數；已部署舊 RPC 請重跑該段或整份）。**既有學生**可選跑一次 `supabase_backfill_chinese_balance.sql` 補 `Chinese` 餘額列。測試：`src/lib/quiz-subjects.test.ts`、`test_plan_chinese_subject.md`。 |
 | 2026-04 | **註冊私隱同意**：勾選「本人確認已閱讀並同意本平台的**私隱政策聲明**」（連結開啟彈窗載入 `.txt`）方可按「**同意並繼續**」。預設 URL：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`；不同專案可設 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`**。**無 SQL**。 |
 | 2026-04 | **題目餘額**：每答一題在 `submit_answer` 內扣 **1** 題（未完成練習也照扣）；餘額不足時拒絕提交。家長端總餘額＝**同戶口所有學生**該科目餘額**加總**（共用池）；扣款優先從作答學生帳列扣，不足則扣兄弟姊妹列。交易 `balance_after` 為**戶口合計**。科目 **`Math`** 與舊 **`數學`** 在 RPC 內視為同一組（修正家長月曆「無交易」）。註冊贈送僅在該家長**尚無**該科目餘額列時發放（避免二孩各 +300）。SQL：**必跑** `supabase_question_balance_per_answer.sql`（含合併重複餘額列、`session_answers` 唯一索引防雙扣）。前端：每題後重讀 `get_student_balance`；結束練習不再呼叫 `deduct_student_balance`。測試清單：`test_plan_question_balance.md`。 |
@@ -91,6 +92,6 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 The app expects these Supabase tables:
 
 - **questions** — `id`, `content`, `opt_a`, `opt_b`, `opt_c`, `opt_d`, `correct_answer`, `explanation`, `subject`, `grade_level`
-  - App quiz subjects: DB keys **`Math`** (UI「數學」) and **`Chinese`** (UI「中文」); see `src/lib/quiz-subjects.ts`.
+  - App quiz subjects: DB keys **`Math`** (「數學」), **`Chinese`** (「中文」), **`English`** (「英文」); see `src/lib/quiz-subjects.ts`.
 - **quiz_sessions** — `id`, `student_id`, `subject`, `questions_attempted`, `score`, `time_spent_seconds`
 - **session_answers** — `id`, `session_id`, `question_id`, `student_answer`, `is_correct`

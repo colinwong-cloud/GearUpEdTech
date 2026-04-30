@@ -4,6 +4,9 @@ export const PRIMARY_QUIZ_SUBJECT = "Math";
 /** DB subject key for Chinese (must match `questions.subject` in Supabase) */
 export const CHINESE_QUIZ_SUBJECT = "Chinese";
 
+/** DB subject key for English */
+export const ENGLISH_QUIZ_SUBJECT = "English";
+
 /** Previous DB value for math (rename to `Math`). Used in queries until rows are migrated. */
 export const LEGACY_PRIMARY_QUIZ_SUBJECT_KEY = "數學";
 
@@ -19,6 +22,7 @@ export function quizSubjectDbPatterns(subjectKey: string): readonly string[] {
 export const STUDENT_SUBJECT_OPTIONS = [
   { key: PRIMARY_QUIZ_SUBJECT, label: "數學", icon: "🔢" },
   { key: CHINESE_QUIZ_SUBJECT, label: "中文", icon: "📖" },
+  { key: ENGLISH_QUIZ_SUBJECT, label: "英文", icon: "🔤" },
 ] as const;
 
 export type QuizSubjectKey = (typeof STUDENT_SUBJECT_OPTIONS)[number]["key"];
