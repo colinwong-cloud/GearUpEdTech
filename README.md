@@ -49,7 +49,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
-| 2026-04 | **家長趨勢圖按科目**：`get_student_chart_data` 增加可選參數 **`p_subject`**；家長儀表板呼叫時傳入目前科目，趨勢與「各題型」只含該科最近 30 次練習（`Math` 合併舊 `數學`）。SQL：`supabase_chart_data_filter_by_subject.sql` 或已更新的 `supabase_charts_feature.sql`。前端：`loadParentSessions` 傳 `p_subject`。 |
+| 2026-04 | **測試數據**：`supabase_seed_chinese_30_sessions_91917838.sql` — 為手機 **91917838** 下 **Loklok / Heihei** 各插入 30 節 **Chinese**、每節 10 題、正確率 40–90%（`session_token` 可重跑）。手動在 Supabase SQL Editor 執行；計劃見 `test_plan_seed_chinese_30_sessions_91917838.md`。 |
 | 2026-04 | **中文科目**：題庫 `subject = 'Chinese'`；學生選科、家長練習報告、戶口「題目餘額」支援 **數學／中文**（`src/lib/quiz-subjects.ts`）。`register_student` 於新戶口首次各送 **Math** 與 **Chinese** 餘額各 300（見 `supabase_question_balance_per_answer.sql` 內函數；已部署舊 RPC 請重跑該段或整份）。**既有學生**可選跑一次 `supabase_backfill_chinese_balance.sql` 補 `Chinese` 餘額列。測試：`src/lib/quiz-subjects.test.ts`、`test_plan_chinese_subject.md`。 |
 | 2026-04 | **註冊私隱同意**：勾選「本人確認已閱讀並同意本平台的**私隱政策聲明**」（連結開啟彈窗載入 `.txt`）方可按「**同意並繼續**」。預設 URL：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`；不同專案可設 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`**。**無 SQL**。 |
 | 2026-04 | **題目餘額**：每答一題在 `submit_answer` 內扣 **1** 題（未完成練習也照扣）；餘額不足時拒絕提交。家長端總餘額＝**同戶口所有學生**該科目餘額**加總**（共用池）；扣款優先從作答學生帳列扣，不足則扣兄弟姊妹列。交易 `balance_after` 為**戶口合計**。科目 **`Math`** 與舊 **`數學`** 在 RPC 內視為同一組（修正家長月曆「無交易」）。註冊贈送僅在該家長**尚無**該科目餘額列時發放（避免二孩各 +300）。SQL：**必跑** `supabase_question_balance_per_answer.sql`（含合併重複餘額列、`session_answers` 唯一索引防雙扣）。前端：每題後重讀 `get_student_balance`；結束練習不再呼叫 `deduct_student_balance`。測試清單：`test_plan_question_balance.md`。 |
