@@ -142,7 +142,7 @@ login_mobile (mobile + PIN)
 
 1. **Student quiz** — Login → select subject → choose question count (10/20/30) → quiz → results with wrong answer analysis
 2. **Parent dashboard** — Monthly session summaries in 3-col grid, bar charts (overall + per-type), session detail view
-3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **privacy statement checkbox** (`同意並繼續`); full text `fetch` from default `{NEXT_PUBLIC_SUPABASE_URL}/.../Webpage_statements/privacy_statment.txt` or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`
+3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **short privacy checkbox** (link opens modal → `fetch` `.txt` from default URL or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`); submit **同意並繼續**
 4. **Account management** — Update profile, add student, view balance + transactions
 5. **Password recovery** — Email-based reset with 1-hour expiry tokens
 6. **Email notifications** — Practice completion summary with strong/weak analysis (global + per-parent toggle)

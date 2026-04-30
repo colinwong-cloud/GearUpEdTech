@@ -49,7 +49,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
-| 2026-04 | **註冊私隱同意**：註冊頁底部勾選「已閱讀並同意《私隱政策聲明》」方可按「**同意並繼續**」；連結開啟彈窗以 `fetch` 載入繁中 `.txt`（預設：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`）。若檔案與題庫不在同一 Supabase 專案，請在 Vercel 設定 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`** 為完整 `https://.../privacy_statment.txt`。**無 SQL**。 |
+| 2026-04 | **註冊私隱同意**：勾選「本人確認已閱讀並同意本平台的**私隱政策聲明**」（連結開啟彈窗載入 `.txt`）方可按「**同意並繼續**」。預設 URL：`{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt`；不同專案可設 **`NEXT_PUBLIC_PRIVACY_STATEMENT_URL`**。**無 SQL**。 |
 | 2026-04 | **題目餘額**：每答一題在 `submit_answer` 內扣 **1** 題（未完成練習也照扣）；餘額不足時拒絕提交。家長端總餘額＝**同戶口所有學生**該科目餘額**加總**（共用池）；扣款優先從作答學生帳列扣，不足則扣兄弟姊妹列。交易 `balance_after` 為**戶口合計**。科目 **`Math`** 與舊 **`數學`** 在 RPC 內視為同一組（修正家長月曆「無交易」）。註冊贈送僅在該家長**尚無**該科目餘額列時發放（避免二孩各 +300）。SQL：**必跑** `supabase_question_balance_per_answer.sql`（含合併重複餘額列、`session_answers` 唯一索引防雙扣）。前端：每題後重讀 `get_student_balance`；結束練習不再呼叫 `deduct_student_balance`。測試清單：`test_plan_question_balance.md`。 |
 | 2026-04 | **Apple touch icon + favicon**：`src/app/apple-icon.png`、`src/app/icon.png`（小香蕉吉祥物）。Next.js 自動提供 `/apple-icon.png` 與 `/icon.png`。**無 SQL**。 |
 | 2026-04 | 科目主鍵為 **`Math`**；題庫／`parent_weights` 查詢用 `ilike(any)` 同時匹配 **`Math`** 與舊值 **`數學`**，以免資料尚未全數改名時出現「找不到題目」。完成 `UPDATE questions SET subject = 'Math' WHERE subject = '數學'`（及權重列）後仍可正常運作。**無額外 SQL**（僅建議在庫內統一 subject 字串）。 |

@@ -1518,7 +1518,7 @@ function RegisterScreen({
             <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
             <label className="flex gap-3 cursor-pointer items-start">
               <input
                 type="checkbox"
@@ -1529,21 +1529,17 @@ function RegisterScreen({
                 }}
                 className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <span className="text-sm text-gray-700 leading-relaxed">
+              <span className="text-sm text-gray-700 leading-snug">
                 本人確認已閱讀並同意本平台的
                 <button
                   type="button"
                   onClick={() => setPrivacyModalOpen(true)}
-                  className="text-indigo-600 font-semibold underline underline-offset-2 hover:text-indigo-800 mx-0.5"
+                  className="text-indigo-600 font-semibold underline underline-offset-2 hover:text-indigo-800"
                 >
-                  《私隱政策聲明》
+                  私隱政策聲明
                 </button>
-                ；明白所提供的個人資料將按該聲明處理。
               </span>
             </label>
-            <p className="text-xs text-gray-500 leading-relaxed pl-7">
-              為符合香港個人資料私隱相關規定，請先閱讀聲明並勾選方格，方可建立帳戶。
-            </p>
           </div>
 
           <button
