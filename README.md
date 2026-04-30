@@ -43,7 +43,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_7yNEsuwZ6QosGxzCK2fx9LAednkT`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7yNEsuwZ6QosGxzCK2fx9LAednkT). **Supabase:** run `supabase_question_balance_per_answer.sql` so per-answer deduction matches production app; for **Chinese** + dual registration grants, ensure `register_student` in that file is applied; optional `supabase_backfill_chinese_balance.sql` for existing students. **Parent charts by subject:** run `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) so `get_student_chart_data` accepts `p_subject`.
+**Latest production deploy:** **2026-04-29** — deployment `dpl_CS8rfJHtWaCyvikaGgNanJH4wst5`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/CS8rfJHtWaCyvikaGgNanJH4wst5). **Supabase:** run `supabase_question_balance_per_answer.sql` so per-answer deduction matches production app; for **Chinese** + dual registration grants, ensure `register_student` in that file is applied; optional `supabase_backfill_chinese_balance.sql` for existing students. **Parent charts by subject:** run `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) so `get_student_chart_data` accepts `p_subject`.
 
 ## Changelog (recent)
 
@@ -58,7 +58,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | 科目主鍵為 **`Math`**；題庫／`parent_weights` 查詢用 `ilike(any)` 同時匹配 **`Math`** 與舊值 **`數學`**，以免資料尚未全數改名時出現「找不到題目」。完成 `UPDATE questions SET subject = 'Math' WHERE subject = '數學'`（及權重列）後仍可正常運作。**無額外 SQL**（僅建議在庫內統一 subject 字串）。 |
 | 2026-04 | 練習小結：**電郵用** `session_practice_summary_parent`（老師對家長口吻）與結果頁 **分開**；重跑 `supabase_session_practice_summary.sql`（含 `save_session_practice_summaries`）。 |
 | 2026-04 | **每節練習小結**（繁中 50–80 字、規則產生、可存 DB、郵件、「小香蕉」泡泡 UI）：見上節；SQL `supabase_session_practice_summary.sql`；`npm test` + `test_plan_practice_session_summary.md`。 |
-| 2026-04 | 答題畫面後續：去吉祥物；選項單行（A–D+文字 `truncate`+`title`）；多選題改為**點選即提交**並直接下一題（非短答仍用按鈕提交）。**無 SQL**。 |
+| 2026-04 | 答題畫面後續：去吉祥物；多選題改為**點選即提交**（非短答仍用按鈕提交）。選項文字曾用單行 `truncate`，已改為**可換行**（見上列「學生答題選項」）。**無 SQL**。 |
 | 2026-04 | 學生答題畫面：`StudentQuizExperience`；吉祥物預設路徑為同專案 Storage `Webpage_images/logo/...`；若檔在另一專案可設 `NEXT_PUBLIC_MASCOT_IMAGE_URL`。**無 SQL**。 |
 | 2026-04 | 業務概覽「學校正確率」曆月：`admin_business_monthly` 內已改為 **僅讀 `quiz_sessions`**（按校 `sum(score)/sum(questions_attempted)` 加權，不再掃 `session_answers`），以降低 PostgREST 逾時。與單次練習內之逐題正確率一致。 |
 | 2026-04 | `admin_today_business` / `admin_business_monthly`：已移除函數內 `SET LOCAL statement_timeout`（避免與 `STABLE`/權限相關的 `SET is not allowed in a non-volatile function`）；兩者仍為 **VOLATILE**。請重跑 `supabase_admin_business_kpi.sql`。 |
