@@ -43,7 +43,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_4zLfeQ9QzcLR2fmaix8ASzTDbuFZ`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/4zLfeQ9QzcLR2fmaix8ASzTDbuFZ). **Supabase:** run `supabase_question_balance_per_answer.sql` so per-answer deduction matches production app.
+**Latest production deploy:** **2026-04-29** — deployment `dpl_2HRQCTMXLghPvHo9yKX6haFHNFqd`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2HRQCTMXLghPvHo9yKX6haFHNFqd). **Supabase:** run `supabase_question_balance_per_answer.sql` so per-answer deduction matches production app.
 
 ## Changelog (recent)
 
