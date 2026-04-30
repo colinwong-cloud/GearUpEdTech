@@ -43,7 +43,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_8PA5pgWoyPuZ68zxNcLbhNeVmfbs`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8PA5pgWoyPuZ68zxNcLbhNeVmfbs). **Supabase (if not done yet):** `supabase_question_balance_per_answer.sql`; optional `supabase_backfill_chinese_balance.sql`; **parent charts:** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`).
+**Latest production deploy:** **2026-04-29** — deployment `dpl_BPQxBRW5DGhhw13gPwxVoPSSqLk5`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BPQxBRW5DGhhw13gPwxVoPSSqLk5). **Supabase (if not done yet):** re-run `register_student` in `supabase_question_balance_per_answer.sql` for **English** starter balance; optional `supabase_backfill_english_balance.sql`.
 
 ## Changelog (recent)
 
