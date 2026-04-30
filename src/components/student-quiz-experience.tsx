@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Question } from "@/lib/types";
 import { OPTION_KEYS, OPTION_LABELS } from "@/lib/student-quiz-constants";
+import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 
 const OPTION_STYLES: Record<string, { bg: string; ring: string }> = {
   A: { bg: "from-sky-200/90 to-blue-200/80", ring: "ring-sky-400/80" },
@@ -194,8 +195,16 @@ export function StudentQuizExperience({
                 className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
                 style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
               >
-                <h2 className="text-balance text-xl font-extrabold leading-relaxed text-slate-800 sm:text-2xl">
-                  {currentQuestion.content}
+                <h2
+                  className="text-balance text-xl font-extrabold leading-relaxed text-slate-800 sm:text-2xl"
+                  style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+                >
+                  <QuestionContentParagraphs
+                    content={currentQuestion.content}
+                    className="text-balance text-xl font-extrabold leading-relaxed text-slate-800 sm:text-2xl"
+                    paragraphGapClass="mt-3 sm:mt-4"
+                    alignClass="text-center"
+                  />
                 </h2>
               </div>
             </div>

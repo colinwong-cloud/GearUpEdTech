@@ -38,6 +38,7 @@ import {
   setQuizSoundEnabled,
   playClickSound,
 } from "@/components/student-quiz-experience";
+import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 const MAX_SHORT_ANSWER = 2;
 const MAX_IMAGE = 1;
 const SUPABASE_PAGE_SIZE = 1000;
@@ -2058,18 +2059,22 @@ function ResultsView({
                     </p>
                   </div>
                   <div className="px-4 py-3 space-y-2">
-                    <p className="text-sm text-gray-700">
-                      {answer.question.content}
-                    </p>
+                    <QuestionContentParagraphs
+                      content={answer.question.content}
+                      className="text-sm text-gray-700"
+                      paragraphGapClass="mt-3"
+                    />
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
                     )}
                     {answer.question.explanation ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
-                        {answer.question.explanation}
-                      </p>
+                      <QuestionContentParagraphs
+                        content={answer.question.explanation}
+                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
+                        paragraphGapClass="mt-2"
+                      />
                     ) : (
                       <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
@@ -3511,14 +3516,22 @@ function ParentSessionDetail({
                     </p>
                   </div>
                   <div className="px-4 py-3 space-y-2">
-                    <p className="text-sm text-gray-700">{answer.question.content}</p>
+                    <QuestionContentParagraphs
+                      content={answer.question.content}
+                      className="text-sm text-gray-700"
+                      paragraphGapClass="mt-3"
+                    />
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
                     )}
                     {answer.question.explanation ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{answer.question.explanation}</p>
+                      <QuestionContentParagraphs
+                        content={answer.question.explanation}
+                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
+                        paragraphGapClass="mt-2"
+                      />
                     ) : (
                       <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
