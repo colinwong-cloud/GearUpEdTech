@@ -3,27 +3,28 @@
 -- Parent mobile: 91917838 | Students: Loklok, Heihei (name match case-insensitive)
 -- Each session: 10 questions, score 4–9 → 40%–90% correct rate
 --
--- Idempotent: DELETE seed rows by marker `session_token`, then INSERT again.
+-- Idempotent: DELETE rows where session_practice_summary = marker (see below).
+-- Does NOT ALTER any table (no new tables/columns).
+--
+-- Requires existing column (already in app SQL):
+--   quiz_sessions.session_practice_summary  — from `supabase_session_practice_summary.sql`
+-- If that migration was never run, run it first; otherwise this INSERT will error.
 --
 -- Preconditions:
---   - At least 10 `questions` per student grade with subject Chinese
---     (ilike 'chinese' or trim lower = 'chinese')
+--   - At least 10 `questions` per student grade with lower(trim(subject)) = 'chinese'
 --
 -- Run: Supabase → SQL Editor → paste → Run
 -- ============================================================
-
-ALTER TABLE public.quiz_sessions
-  ADD COLUMN IF NOT EXISTS session_token TEXT;
 
 BEGIN;
 
 DELETE FROM public.session_answers sa
 USING public.quiz_sessions qs
 WHERE sa.session_id = qs.id
-  AND qs.session_token = 'gearup_seed_chinese_30';
+  AND qs.session_practice_summary = '__SEED__:gearup_chinese_30__';
 
 DELETE FROM public.quiz_sessions
-WHERE session_token = 'gearup_seed_chinese_30';
+WHERE session_practice_summary = '__SEED__:gearup_chinese_30__';
 
 WITH targets AS (
   SELECT s.id AS student_id, s.grade_level, s.student_name
@@ -39,8 +40,9 @@ ins AS (
     questions_attempted,
     score,
     time_spent_seconds,
-    session_token,
-    created_at
+    created_at,
+    session_practice_summary,
+    session_practice_summary_parent
   )
   SELECT
     t.student_id,
@@ -48,10 +50,11 @@ ins AS (
     10,
     LEAST(9, GREATEST(4, floor(4 + random() * 6)::int)),
     (420 + floor(random() * 480))::int,
-    'gearup_seed_chinese_30',
     (timezone('UTC', now()))
       - ((gs.n - 1) * interval '2 days')
-      - (random() * interval '45 minutes')
+      - (random() * interval '45 minutes'),
+    '__SEED__:gearup_chinese_30__',
+    NULL
   FROM targets t
   CROSS JOIN generate_series(1, 30) AS gs(n)
   RETURNING id, student_id, score, created_at
@@ -89,6 +92,6 @@ SELECT
     THEN (qs.score::numeric / qs.questions_attempted) * 100 END), 1) AS max_pct
 FROM public.quiz_sessions qs
 JOIN public.students s ON s.id = qs.student_id
-WHERE qs.session_token = 'gearup_seed_chinese_30'
+WHERE qs.session_practice_summary = '__SEED__:gearup_chinese_30__'
 GROUP BY s.id, s.student_name
 ORDER BY s.student_name;
