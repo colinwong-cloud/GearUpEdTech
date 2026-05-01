@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
 import { LoginAddToHomeButton } from "@/components/login-add-to-home-button";
 import {
+  getLoginBackgroundImageUrl,
   getLoginHeroLogoUrl,
   getLoginMarketingLogoUrl,
   getPlatformBriefTxtUrl,
@@ -250,6 +251,26 @@ export default function QuizPage() {
   );
 }
 
+function LoginBackgroundLayer() {
+  const bgUrl = useMemo(() => getLoginBackgroundImageUrl(), []);
+  if (!bgUrl) return null;
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={bgUrl}
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 h-full min-h-full w-full object-cover"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 z-[1] bg-white/45 backdrop-blur-[3px]"
+        aria-hidden
+      />
+    </>
+  );
+}
+
 function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
   const [mobileNumber, setMobileNumber] = useState("");
   const [pin, setPin] = useState("");
@@ -257,8 +278,9 @@ function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
   const heroLogoUrl = getLoginHeroLogoUrl();
 
   return (
-    <div className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm">
-      <div className="mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-28 pt-6 sm:pb-32 sm:pt-8">
+    <div className="relative isolate min-h-[100dvh] overflow-hidden">
+      <LoginBackgroundLayer />
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-28 pt-6 sm:pb-32 sm:pt-8">
         <div className="w-full max-w-sm self-center text-center">
           {heroLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

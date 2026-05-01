@@ -64,7 +64,7 @@ NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://YOUR_PROJECT.supabase.co/storage/v1/objec
 
 After opening `/`, you should see:
 
-1. **Full-page background** — Banana-themed image from Storage (`bk.png`), applied on `body` in `layout.tsx`, with a frosted overlay (`bg-white/60 backdrop-blur-sm`) so the form stays readable.
+1. **Full-page background** — `bk.png` from Storage is rendered as a **fixed cover `<img>`** behind the login (`LoginBackgroundLayer` in `page.tsx`), plus a light translucent veil (`bg-white/45 backdrop-blur-[3px]`) so the form stays readable. Do **not** rely on `SUPABASE_URL` alone in the browser: set **`NEXT_PUBLIC_SUPABASE_URL`** in Vercel, or set **`NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`** to the full `bk.png` URL.
 2. **Original top hero logo** — `GearUplogo.png` from `question-images/Banana images/` above the subtitle.
 3. Login card, then **加入主畫面**, divider, **Chi/Eng marketing logo**, and **platform brief** (`platform_brief.txt`).
 
