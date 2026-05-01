@@ -256,20 +256,22 @@ function LoginBackgroundLayer() {
   if (!bgUrl) return null;
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
-        {/* Tiled image (natural tile size), blurred — not stretched as one cover */}
+      <div className="pointer-events-none absolute inset-0 z-0 min-h-full overflow-hidden" aria-hidden>
+        {/* Tiled + blurred (natural repeat); fills viewport */}
         <div
-          className="absolute -inset-[14px] blur-[18px] will-change-[filter]"
+          className="absolute inset-0 blur-[14px] sm:blur-[18px]"
           style={{
-            backgroundImage: `url(${bgUrl})`,
+            backgroundImage: `url("${bgUrl}")`,
             backgroundRepeat: "repeat",
             backgroundSize: "auto",
-            backgroundPosition: "0 0",
+            backgroundPosition: "top left",
+            minHeight: "100%",
+            minWidth: "100%",
           }}
         />
       </div>
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-white/45"
+        className="pointer-events-none absolute inset-0 z-[1] bg-white/35 backdrop-blur-[2px]"
         aria-hidden
       />
     </>

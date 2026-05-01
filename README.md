@@ -12,7 +12,8 @@ Production follows the **`main`** branch on GitHub. After pushing to `main`, Ver
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - Optional: `NEXT_PUBLIC_LOGIN_HERO_LOGO_URL`, `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`, `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_SITE_ICON_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
-4. Deploy. The production URL is shown on the project’s **Deployments** tab (and under **Domains**).
+4. At build time, `next.config.ts` exposes **`SUPABASE_URL`** as **`NEXT_PUBLIC_SUPABASE_URL`** when only the server env is set—this fixes **login background / favicon URLs in the browser bundle** on Vercel.
+5. Deploy. The production URL is shown on the project’s **Deployments** tab (and under **Domains**).
 
 If you opened a **preview deployment** or an older production URL, use the latest deployment from the dashboard or merge into `main` and wait for the build to finish—new login UI only appears after that build succeeds.
 
@@ -41,7 +42,7 @@ If you opened a **preview deployment** or an older production URL, use the lates
    NEXT_PUBLIC_PLATFORM_BRIEF_URL=https://…/platform_brief.txt
    ```
 
-   Default hero logo and full-page background (when env vars are omitted) use `question-images/Banana images/` paths under your Supabase project—same as the original login styling. **Set `NEXT_PUBLIC_SUPABASE_URL` in Vercel** so the layout can inject `bk.png` on `body`. To force an exact image URL (e.g. if build env differs), set:
+   Default hero logo and full-page background (when env vars are omitted) use `question-images/Banana images/` paths under your Supabase project—same as the original login styling. Prefer **`NEXT_PUBLIC_SUPABASE_URL`** in Vercel; if missing, the build still picks up **`SUPABASE_URL`** via `next.config.ts`. To force exact URLs, set overrides below.
 
 ```
 NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://YOUR_PROJECT.supabase.co/storage/v1/object/public/question-images/Banana%20images/bk.png

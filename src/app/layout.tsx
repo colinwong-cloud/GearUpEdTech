@@ -31,7 +31,11 @@ export const metadata: Metadata = {
         icons: {
           ...(siteIcon
             ? {
-                icon: [{ url: siteIcon, type: "image/png", sizes: "32x32" }],
+                icon: [
+                  { url: siteIcon, type: "image/png", sizes: "any" },
+                  { url: siteIcon, type: "image/png", sizes: "32x32" },
+                  { url: siteIcon, type: "image/png", sizes: "192x192" },
+                ],
                 shortcut: [{ url: siteIcon, type: "image/png" }],
               }
             : {}),
@@ -55,7 +59,14 @@ export default function RootLayout({
       lang="zh-Hant"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansTc.variable} h-full antialiased`}
     >
-      <head />
+      <head>
+        {siteIcon ? (
+          <>
+            <link rel="icon" href={siteIcon} type="image/png" sizes="any" />
+            <link rel="shortcut icon" href={siteIcon} type="image/png" />
+          </>
+        ) : null}
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
