@@ -13,6 +13,8 @@ import {
 import { decodeTraditionalChineseText } from "@/lib/decode-traditional-chinese-text";
 
 const QUESTION_COUNT = 10;
+/** DB `student_id` is uuid — use nil UUID for demo / unsigned session (not the string "anonymous"). */
+const ANONYMOUS_STUDENT_ID = "00000000-0000-0000-0000-000000000000";
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
 
@@ -67,7 +69,7 @@ export default function QuizPage() {
       const { data: session, error: sessionError } = await supabase
         .from("quiz_sessions")
         .insert({
-          student_id: "anonymous",
+          student_id: ANONYMOUS_STUDENT_ID,
           subject: selected[0]?.subject ?? "general",
           questions_attempted: 0,
           score: 0,

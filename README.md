@@ -94,5 +94,5 @@ The app also exposes **`/manifest.webmanifest`** using the **site icon** (`logo_
 The app expects these Supabase tables:
 
 - **questions** — `id`, `content`, `opt_a`, `opt_b`, `opt_c`, `opt_d`, `correct_answer`, `explanation`, `subject`, `grade_level`
-- **quiz_sessions** — `id`, `student_id`, `subject`, `questions_attempted`, `score`, `time_spent_seconds`
+- **quiz_sessions** — `id`, `student_id` (**uuid**), `subject`, `questions_attempted`, `score`, `time_spent_seconds` — demo inserts use nil UUID `00000000-0000-0000-0000-000000000000` for `student_id`.
 - **session_answers** — `id`, `session_id`, `question_id`, `student_answer`, `is_correct`
