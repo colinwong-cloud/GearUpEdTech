@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseBrowserConfigured } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
 import { LoginAddToHomeButton } from "@/components/login-add-to-home-button";
 import {
@@ -80,8 +80,25 @@ export default function QuizPage() {
 
       setQuestions(selected);
       setSessionId((session as { id: string }).id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load quiz. Please try again.");
+    } catch (err: unknown) {
+      if (!isSupabaseBrowserConfigured) {
+        setError(
+          "無法連線題庫：請在部署環境設定 NEXT_PUBLIC_SUPABASE_URL 及 NEXT_PUBLIC_SUPABASE_ANON_KEY（或設定 SUPABASE_URL / SUPABASE_ANON_KEY，建置時會一併注入）。"
+        );
+      } else {
+        let msg = "Failed to load quiz. Please try again.";
+        if (
+          err &&
+          typeof err === "object" &&
+          "message" in err &&
+          typeof (err as { message: unknown }).message === "string"
+        ) {
+          msg = (err as { message: string }).message;
+        } else if (err instanceof Error) {
+          msg = err.message;
+        }
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

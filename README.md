@@ -12,7 +12,7 @@ Production follows the **`main`** branch on GitHub. After pushing to `main`, Ver
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - Optional: `NEXT_PUBLIC_LOGIN_HERO_LOGO_URL`, `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`, `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_SITE_ICON_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
-4. At build time, `next.config.ts` exposes **`SUPABASE_URL`** as **`NEXT_PUBLIC_SUPABASE_URL`** when only the server env is set—this fixes **login background / favicon URLs in the browser bundle** on Vercel.
+4. At build time, `next.config.ts` can copy **`SUPABASE_URL`** → **`NEXT_PUBLIC_SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** → **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** when the public names are missing, so the **browser** can call Supabase (quiz + login assets). Use the **anon** key only, never `service_role`.
 5. Deploy. The production URL is shown on the project’s **Deployments** tab (and under **Domains**).
 
 If you opened a **preview deployment** or an older production URL, use the latest deployment from the dashboard or merge into `main` and wait for the build to finish—new login UI only appears after that build succeeds.
