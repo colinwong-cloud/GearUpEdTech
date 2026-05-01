@@ -3,18 +3,25 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
+import { LoginAddToHomeButton } from "@/components/login-add-to-home-button";
+import { getLoginMarketingLogoUrl, getPlatformBriefTxtUrl } from "@/lib/login-marketing-assets";
+import { decodeTraditionalChineseText } from "@/lib/decode-traditional-chinese-text";
 
 const QUESTION_COUNT = 10;
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
 
+type AuthPhase = "landing" | "quiz";
+
 export default function QuizPage() {
+  const [authPhase, setAuthPhase] = useState<AuthPhase>("landing");
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quizComplete, setQuizComplete] = useState(false);
@@ -76,8 +83,9 @@ export default function QuizPage() {
   }, []);
 
   useEffect(() => {
+    if (authPhase !== "quiz") return;
     initializeQuiz();
-  }, [initializeQuiz]);
+  }, [authPhase, initializeQuiz]);
 
   const handleSubmitAnswer = async () => {
     if (!selectedAnswer || !sessionId || submitting) return;
@@ -129,6 +137,12 @@ export default function QuizPage() {
     }
   };
 
+  const beginQuiz = () => setAuthPhase("quiz");
+
+  if (authPhase === "landing") {
+    return <ParentLoginLanding onEnterQuiz={beginQuiz} />;
+  }
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -138,7 +152,16 @@ export default function QuizPage() {
   }
 
   if (quizComplete) {
-    return <ResultsView answers={answers} onRestart={initializeQuiz} />;
+    return (
+      <ResultsView
+        answers={answers}
+        onRestart={() => {
+          setAuthPhase("landing");
+          setQuizComplete(false);
+          setError(null);
+        }}
+      />
+    );
   }
 
   const currentQuestion = questions[currentIndex];
@@ -219,6 +242,162 @@ export default function QuizPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [pin, setPin] = useState("");
+  const canTryLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
+
+  return (
+    <div className="relative min-h-[100dvh] bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/80">
+      <div className="mx-auto flex max-w-lg flex-col px-4 pb-28 pt-8 sm:pb-32 sm:pt-10">
+        <div className="text-center">
+          <p className="text-sm font-medium text-gray-600">GearUp 練習平台</p>
+          <h1 className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">家長登入</h1>
+          <p className="mt-2 text-sm text-gray-500">請輸入電話號碼及密碼登入</p>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">電話號碼</label>
+              <input
+                type="tel"
+                autoComplete="username"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                placeholder="例如：91234567"
+                className="w-full rounded-xl border-2 border-gray-200 p-4 text-base outline-none transition-colors focus:border-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">密碼</label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="6 位英文或數字密碼"
+                className="w-full rounded-xl border-2 border-gray-200 p-4 text-base outline-none transition-colors focus:border-indigo-400"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={!canTryLogin}
+              onClick={onEnterQuiz}
+              className={`w-full rounded-xl py-3.5 text-base font-semibold transition-all duration-200 ${
+                canTryLogin
+                  ? "bg-indigo-600 text-white shadow-md hover:bg-indigo-700"
+                  : "cursor-not-allowed bg-gray-200 text-gray-400"
+              }`}
+            >
+              登入
+            </button>
+
+            <LoginAddToHomeButton />
+
+            <p className="text-center text-[11px] leading-snug text-gray-400">
+              試用環境：填寫電話與密碼後按「登入」即可進入練習；正式網站將連接帳戶驗證。
+            </p>
+          </div>
+        </div>
+
+        <div className="my-8 h-px w-full bg-gradient-to-r from-transparent via-gray-300 to-transparent" aria-hidden />
+
+        <LoginMarketingLogoAndBrief />
+      </div>
+
+      <footer
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-10 border-t border-gray-200/70 bg-white/60 py-3 text-center backdrop-blur-sm"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <p className="pointer-events-auto text-[11px] text-gray-500/90 sm:text-xs">
+          © 2026 GearUp EduTech Limited
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+function LoginMarketingLogoAndBrief() {
+  const logoUrl = getLoginMarketingLogoUrl();
+  const briefUrl = getPlatformBriefTxtUrl();
+
+  return (
+    <div className="flex flex-col items-center">
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logoUrl}
+          alt="GearUp"
+          className="h-auto w-full max-w-md px-2"
+          draggable={false}
+        />
+      ) : null}
+
+      <PlatformBriefPanel key={briefUrl ?? "none"} briefUrl={briefUrl} />
+    </div>
+  );
+}
+
+function PlatformBriefPanel({ briefUrl }: { briefUrl: string | null }) {
+  const panelClass =
+    "mt-6 w-full max-w-lg rounded-2xl border border-gray-100 bg-white/90 px-5 py-5 text-[15px] leading-relaxed text-gray-800 shadow-sm sm:px-6 sm:py-6 sm:text-base";
+
+  const [briefText, setBriefText] = useState<string | null>(null);
+  const [briefError, setBriefError] = useState<string | null>(null);
+  const [briefLoading, setBriefLoading] = useState(!!briefUrl);
+
+  useEffect(() => {
+    if (!briefUrl) return;
+    let cancelled = false;
+    fetch(briefUrl, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((buf) => {
+        if (!cancelled) setBriefText(decodeTraditionalChineseText(buf));
+      })
+      .catch(() => {
+        if (!cancelled) setBriefError("無法載入平台簡介，請稍後再試。");
+      })
+      .finally(() => {
+        if (!cancelled) setBriefLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [briefUrl]);
+
+  if (!briefUrl) {
+    return (
+      <div className={panelClass} style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}>
+        <p className="text-center text-red-600">
+          尚未設定平台簡介網址（請設定 NEXT_PUBLIC_SUPABASE_URL）。
+        </p>
+      </div>
+    );
+  }
+
+  const paragraphs =
+    briefText?.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) ?? [];
+
+  return (
+    <div className={panelClass} style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}>
+      {briefLoading && <p className="text-center text-gray-500">載入平台簡介中…</p>}
+      {briefError && !briefLoading && <p className="text-center text-red-600">{briefError}</p>}
+      {!briefLoading &&
+        !briefError &&
+        paragraphs.map((block, i) => (
+          <p key={i} className={i > 0 ? "mt-4 whitespace-pre-line" : "whitespace-pre-line"}>
+            {block}
+          </p>
+        ))}
     </div>
   );
 }
@@ -347,7 +526,7 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            Start New Quiz
+            返回登入
           </button>
         </div>
       </div>

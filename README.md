@@ -15,6 +15,13 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
 
+   Optional overrides for the login page marketing assets (defaults use `NEXT_PUBLIC_SUPABASE_URL` + public Storage paths):
+
+   ```
+   NEXT_PUBLIC_LOGIN_LOGO_URL=https://…/GearUp_Chi_Eng.png
+   NEXT_PUBLIC_PLATFORM_BRIEF_URL=https://…/platform_brief.txt
+   ```
+
 3. Run the development server:
    ```bash
    npm run dev
