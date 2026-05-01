@@ -11,7 +11,7 @@ Production follows the **`main`** branch on GitHub. After pushing to `main`, Ver
 3. Add **Environment variables** (Production / Preview as needed):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - Optional: `NEXT_PUBLIC_LOGIN_HERO_LOGO_URL`, `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`, `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
+   - Optional: `NEXT_PUBLIC_LOGIN_HERO_LOGO_URL`, `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`, `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_SITE_ICON_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
 4. Deploy. The production URL is shown on the project’s **Deployments** tab (and under **Domains**).
 
 If you opened a **preview deployment** or an older production URL, use the latest deployment from the dashboard or merge into `main` and wait for the build to finish—new login UI only appears after that build succeeds.
@@ -37,6 +37,7 @@ If you opened a **preview deployment** or an older production URL, use the lates
    NEXT_PUBLIC_LOGIN_HERO_LOGO_URL=https://…/GearUplogo.png
    NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://…/bk.png
    NEXT_PUBLIC_LOGIN_LOGO_URL=https://…/GearUp_Chi_Eng.png
+   NEXT_PUBLIC_SITE_ICON_URL=https://…/logo_banana_student.png
    NEXT_PUBLIC_PLATFORM_BRIEF_URL=https://…/platform_brief.txt
    ```
 
@@ -64,7 +65,7 @@ NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://YOUR_PROJECT.supabase.co/storage/v1/objec
 
 After opening `/`, you should see:
 
-1. **Full-page background** — `bk.png` from Storage is rendered as a **fixed cover `<img>`** behind the login (`LoginBackgroundLayer` in `page.tsx`), plus a light translucent veil (`bg-white/45 backdrop-blur-[3px]`) so the form stays readable. Do **not** rely on `SUPABASE_URL` alone in the browser: set **`NEXT_PUBLIC_SUPABASE_URL`** in Vercel, or set **`NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`** to the full `bk.png` URL.
+1. **Full-page background** — `bk.png` is shown as a **repeating tile** (natural image size, not stretched edge-to-edge), with **blur** on that layer and a light veil (`bg-white/45`). Set **`NEXT_PUBLIC_SUPABASE_URL`** or **`NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`** so the URL resolves in the browser.
 2. **Original top hero logo** — `GearUplogo.png` from `question-images/Banana images/` above the subtitle.
 3. Login card, then **加入主畫面**, divider, **Chi/Eng marketing logo**, and **platform brief** (`platform_brief.txt`).
 
@@ -83,7 +84,7 @@ Asset URLs are built in `src/lib/login-marketing-assets.ts`. Defaults:
 - Marketing logo (lower): `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng.png`
 - Brief: `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_images/logo/platform_brief.txt`
 
-The app also exposes a web app manifest at **`/manifest.webmanifest`** (`src/app/manifest.ts`) so installed shortcuts use the logo and app metadata.
+The app also exposes **`/manifest.webmanifest`** using the **site icon** (`logo_banana_student.png` by default). Override with **`NEXT_PUBLIC_SITE_ICON_URL`**.
 
 **Note:** This repository’s home page starts on the login/marketing view; **登入** (with phone + PIN filled) continues into the bundled demo quiz flow. Replace that hook with your real Supabase auth when integrating the full parent app.
 

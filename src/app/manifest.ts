@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
-import { getLoginMarketingLogoUrl } from "@/lib/login-marketing-assets";
+import { getSiteIconUrl } from "@/lib/login-marketing-assets";
 
 export default function manifest(): MetadataRoute.Manifest {
-  const icon = getLoginMarketingLogoUrl() || undefined;
+  const icon = getSiteIconUrl() || undefined;
   return {
     name: "GearUp Quiz",
     short_name: "GearUp",

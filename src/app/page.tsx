@@ -256,15 +256,20 @@ function LoginBackgroundLayer() {
   if (!bgUrl) return null;
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={bgUrl}
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 h-full min-h-full w-full object-cover"
-      />
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+        {/* Tiled image (natural tile size), blurred — not stretched as one cover */}
+        <div
+          className="absolute -inset-[14px] blur-[18px] will-change-[filter]"
+          style={{
+            backgroundImage: `url(${bgUrl})`,
+            backgroundRepeat: "repeat",
+            backgroundSize: "auto",
+            backgroundPosition: "0 0",
+          }}
+        />
+      </div>
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-white/45 backdrop-blur-[3px]"
+        className="pointer-events-none absolute inset-0 z-[1] bg-white/45"
         aria-hidden
       />
     </>

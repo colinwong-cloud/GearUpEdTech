@@ -54,3 +54,12 @@ export function getPlatformBriefTxtUrl(): string {
   if (!base) return "";
   return `${base}/storage/v1/object/public/Webpage_images/logo/platform_brief.txt`;
 }
+
+/** Tab favicon / PWA icon — banana student logo in Storage. */
+export function getSiteIconUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_ICON_URL?.trim();
+  if (explicit) return explicit;
+  const base = supabaseProjectOrigin();
+  if (!base) return "";
+  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+}

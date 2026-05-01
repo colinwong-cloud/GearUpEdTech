@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
-import { getLoginMarketingLogoUrl } from "@/lib/login-marketing-assets";
+import { getLoginMarketingLogoUrl, getSiteIconUrl } from "@/lib/login-marketing-assets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,14 +21,25 @@ const notoSansTc = Noto_Sans_TC({
 });
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
+const siteIcon = getSiteIconUrl();
 
 export const metadata: Metadata = {
   title: "GearUp Quiz",
   description: "Interactive quiz platform for students",
-  ...(appleTouchIcon
+  ...(siteIcon || appleTouchIcon
     ? {
         icons: {
-          apple: [{ url: appleTouchIcon, sizes: "180x180", type: "image/png" }],
+          ...(siteIcon
+            ? {
+                icon: [{ url: siteIcon, type: "image/png", sizes: "32x32" }],
+                shortcut: [{ url: siteIcon, type: "image/png" }],
+              }
+            : {}),
+          ...(appleTouchIcon
+            ? {
+                apple: [{ url: appleTouchIcon, sizes: "180x180", type: "image/png" }],
+              }
+            : {}),
         },
       }
     : {}),
