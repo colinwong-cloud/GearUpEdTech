@@ -11,7 +11,7 @@ Production follows the **`main`** branch on GitHub. After pushing to `main`, Ver
 3. Add **Environment variables** (Production / Preview as needed):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - Optional: `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
+   - Optional: `NEXT_PUBLIC_LOGIN_HERO_LOGO_URL`, `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL`, `NEXT_PUBLIC_LOGIN_LOGO_URL`, `NEXT_PUBLIC_PLATFORM_BRIEF_URL` (see [Login page assets](#login-page-assets-home-screen-logo-brief))
 4. Deploy. The production URL is shown on the project’s **Deployments** tab (and under **Domains**).
 
 If you opened a **preview deployment** or an older production URL, use the latest deployment from the dashboard or merge into `main` and wait for the build to finish—new login UI only appears after that build succeeds.
@@ -34,9 +34,13 @@ If you opened a **preview deployment** or an older production URL, use the lates
    Optional overrides for the login page marketing assets (defaults use `NEXT_PUBLIC_SUPABASE_URL` + public Storage paths):
 
    ```
+   NEXT_PUBLIC_LOGIN_HERO_LOGO_URL=https://…/GearUplogo.png
+   NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://…/bk.png
    NEXT_PUBLIC_LOGIN_LOGO_URL=https://…/GearUp_Chi_Eng.png
    NEXT_PUBLIC_PLATFORM_BRIEF_URL=https://…/platform_brief.txt
    ```
+
+   Default hero logo and full-page background (when env vars are omitted) use `question-images/Banana images/` paths under your Supabase project—same as the original login styling.
 
 3. Run the development server:
 
@@ -54,7 +58,15 @@ If you opened a **preview deployment** or an older production URL, use the lates
 
 ## Login page: assets, home screen, logo, brief
 
-After opening `/`, you should see (scroll if needed):
+After opening `/`, you should see:
+
+1. **Full-page background** — Banana-themed image from Storage (`bk.png`), applied on `body` in `layout.tsx`, with a frosted overlay (`bg-white/60 backdrop-blur-sm`) so the form stays readable.
+2. **Original top hero logo** — `GearUplogo.png` from `question-images/Banana images/` above the subtitle.
+3. Login card, then **加入主畫面**, divider, **Chi/Eng marketing logo**, and **platform brief** (`platform_brief.txt`).
+
+Scroll below the white card if you do not see the lower logo or brief on small screens.
+
+### Controls & lower section
 
 1. **加入主畫面** — Uses the browser install prompt when available (e.g. Chrome/Edge/Android). Otherwise a modal explains **iOS Safari** (Share → 加入主畫面), **Android**, and **desktop** shortcuts.
 2. A horizontal divider, then the **GearUp Chi/Eng logo** from Supabase Storage (public bucket).
@@ -62,7 +74,9 @@ After opening `/`, you should see (scroll if needed):
 
 Asset URLs are built in `src/lib/login-marketing-assets.ts`. Defaults:
 
-- Logo: `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng.png`
+- Hero (top): `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`
+- Background: `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/bk.png`
+- Marketing logo (lower): `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng.png`
 - Brief: `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_images/logo/platform_brief.txt`
 
 The app also exposes a web app manifest at **`/manifest.webmanifest`** (`src/app/manifest.ts`) so installed shortcuts use the logo and app metadata.

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
-import { getLoginMarketingLogoUrl } from "@/lib/login-marketing-assets";
+import { getLoginBackgroundImageUrl, getLoginMarketingLogoUrl } from "@/lib/login-marketing-assets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +21,7 @@ const notoSansTc = Noto_Sans_TC({
 });
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
+const loginBgUrl = getLoginBackgroundImageUrl();
 
 export const metadata: Metadata = {
   title: "GearUp Quiz",
@@ -44,6 +45,15 @@ export default function RootLayout({
       lang="zh-Hant"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansTc.variable} h-full antialiased`}
     >
+      <head>
+        {loginBgUrl ? (
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `body{background-image:url(${loginBgUrl});background-size:cover;background-position:center;background-attachment:fixed;background-repeat:no-repeat;}`,
+            }}
+          />
+        ) : null}
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

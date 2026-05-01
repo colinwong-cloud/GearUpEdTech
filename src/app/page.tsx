@@ -4,7 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Question, AnswerRecord } from "@/lib/types";
 import { LoginAddToHomeButton } from "@/components/login-add-to-home-button";
-import { getLoginMarketingLogoUrl, getPlatformBriefTxtUrl } from "@/lib/login-marketing-assets";
+import {
+  getLoginHeroLogoUrl,
+  getLoginMarketingLogoUrl,
+  getPlatformBriefTxtUrl,
+} from "@/lib/login-marketing-assets";
 import { decodeTraditionalChineseText } from "@/lib/decode-traditional-chinese-text";
 
 const QUESTION_COUNT = 10;
@@ -250,14 +254,24 @@ function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
   const [mobileNumber, setMobileNumber] = useState("");
   const [pin, setPin] = useState("");
   const canTryLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
+  const heroLogoUrl = getLoginHeroLogoUrl();
 
   return (
-    <div className="relative min-h-[100dvh] bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/80">
-      <div className="mx-auto flex max-w-lg flex-col px-4 pb-28 pt-8 sm:pb-32 sm:pt-10">
-        <div className="text-center">
-          <p className="text-sm font-medium text-gray-600">GearUp 練習平台</p>
-          <h1 className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">家長登入</h1>
-          <p className="mt-2 text-sm text-gray-500">請輸入電話號碼及密碼登入</p>
+    <div className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm">
+      <div className="mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-28 pt-6 sm:pb-32 sm:pt-8">
+        <div className="w-full max-w-sm self-center text-center">
+          {heroLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroLogoUrl}
+              alt="GearUp Quiz"
+              className="mx-auto mb-4 h-auto w-full max-w-xs sm:max-w-sm"
+              draggable={false}
+            />
+          ) : (
+            <h1 className="mb-4 text-center text-2xl font-bold text-gray-800">GearUp Quiz</h1>
+          )}
+          <p className="text-gray-500">請輸入電話號碼及密碼登入</p>
         </div>
 
         <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
