@@ -40,7 +40,11 @@ If you opened a **preview deployment** or an older production URL, use the lates
    NEXT_PUBLIC_PLATFORM_BRIEF_URL=https://…/platform_brief.txt
    ```
 
-   Default hero logo and full-page background (when env vars are omitted) use `question-images/Banana images/` paths under your Supabase project—same as the original login styling.
+   Default hero logo and full-page background (when env vars are omitted) use `question-images/Banana images/` paths under your Supabase project—same as the original login styling. **Set `NEXT_PUBLIC_SUPABASE_URL` in Vercel** so the layout can inject `bk.png` on `body`. To force an exact image URL (e.g. if build env differs), set:
+
+```
+NEXT_PUBLIC_LOGIN_BG_IMAGE_URL=https://YOUR_PROJECT.supabase.co/storage/v1/object/public/question-images/Banana%20images/bk.png
+```
 
 3. Run the development server:
 

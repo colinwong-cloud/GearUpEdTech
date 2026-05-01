@@ -313,10 +313,6 @@ function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
             </button>
 
             <LoginAddToHomeButton />
-
-            <p className="text-center text-[11px] leading-snug text-gray-400">
-              試用環境：填寫電話與密碼後按「登入」即可進入練習；正式網站將連接帳戶驗證。
-            </p>
           </div>
         </div>
 
@@ -359,8 +355,8 @@ function LoginMarketingLogoAndBrief() {
 }
 
 function PlatformBriefPanel({ briefUrl }: { briefUrl: string | null }) {
-  const panelClass =
-    "mt-6 w-full max-w-lg rounded-2xl border border-gray-100 bg-white/90 px-5 py-5 text-[15px] leading-relaxed text-gray-800 shadow-sm sm:px-6 sm:py-6 sm:text-base";
+  const panelWrap =
+    "mt-7 w-full max-w-lg rounded-[1.35rem] border border-amber-200/90 bg-gradient-to-br from-amber-50/98 via-orange-50/95 to-rose-50/90 px-5 py-6 shadow-[0_12px_40px_-12px_rgba(180,83,9,0.25)] ring-1 ring-amber-100/80 backdrop-blur-[2px] sm:px-7 sm:py-8";
 
   const [briefText, setBriefText] = useState<string | null>(null);
   const [briefError, setBriefError] = useState<string | null>(null);
@@ -390,8 +386,11 @@ function PlatformBriefPanel({ briefUrl }: { briefUrl: string | null }) {
 
   if (!briefUrl) {
     return (
-      <div className={panelClass} style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}>
-        <p className="text-center text-red-600">
+      <div
+        className={panelWrap}
+        style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}
+      >
+        <p className="text-center text-sm text-amber-900/80">
           尚未設定平台簡介網址（請設定 NEXT_PUBLIC_SUPABASE_URL）。
         </p>
       </div>
@@ -402,14 +401,31 @@ function PlatformBriefPanel({ briefUrl }: { briefUrl: string | null }) {
     briefText?.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) ?? [];
 
   return (
-    <div className={panelClass} style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}>
-      {briefLoading && <p className="text-center text-gray-500">載入平台簡介中…</p>}
-      {briefError && !briefLoading && <p className="text-center text-red-600">{briefError}</p>}
+    <div className={panelWrap} style={{ fontFamily: "var(--font-noto-sans-tc), system-ui, sans-serif" }}>
+      <div className="mb-4 flex items-center gap-2 border-b border-amber-200/70 pb-3">
+        <span className="text-2xl leading-none" aria-hidden>
+          ✨
+        </span>
+        <h2 className="text-lg font-semibold tracking-wide text-amber-950/95 sm:text-xl">歡迎來到 GearUp</h2>
+      </div>
+      {briefLoading && (
+        <p className="text-center text-[15px] text-amber-900/70">載入平台簡介中…</p>
+      )}
+      {briefError && !briefLoading && (
+        <p className="text-center text-sm font-medium text-red-700">{briefError}</p>
+      )}
       {!briefLoading &&
         !briefError &&
         paragraphs.map((block, i) => (
-          <p key={i} className={i > 0 ? "mt-4 whitespace-pre-line" : "whitespace-pre-line"}>
-            {block}
+          <p
+            key={i}
+            className={
+              i === 0
+                ? "text-[16px] font-medium leading-[1.75] text-stone-800 sm:text-[17px]"
+                : "mt-5 text-[15px] leading-[1.8] text-stone-700/95 sm:text-base"
+            }
+          >
+            <span className="whitespace-pre-line">{block}</span>
           </p>
         ))}
     </div>

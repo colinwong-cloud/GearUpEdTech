@@ -10,7 +10,8 @@ export function getLoginHeroLogoUrl(): string {
 }
 
 /**
- * Full-page background image behind login.
+ * Full-page background image behind login (`bk.png` in `question-images/Banana images/`).
+ * Set `NEXT_PUBLIC_LOGIN_BG_IMAGE_URL` to override (e.g. full Supabase Storage URL).
  */
 export function getLoginBackgroundImageUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_LOGIN_BG_IMAGE_URL?.trim();
