@@ -13,15 +13,26 @@ import {
 import { decodeTraditionalChineseText } from "@/lib/decode-traditional-chinese-text";
 
 const QUESTION_COUNT = 10;
-/** DB `student_id` is uuid — use nil UUID for demo / unsigned session (not the string "anonymous"). */
-const ANONYMOUS_STUDENT_ID = "00000000-0000-0000-0000-000000000000";
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
+
+type RpcStudentRow = {
+  id: string;
+  pin_code?: string | null;
+  student_name?: string | null;
+};
+
+type AuthSession = {
+  studentId: string;
+  mobile: string;
+  studentName: string;
+};
 
 type AuthPhase = "landing" | "quiz";
 
 export default function QuizPage() {
   const [authPhase, setAuthPhase] = useState<AuthPhase>("landing");
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -46,6 +57,10 @@ export default function QuizPage() {
     startTimeRef.current = Date.now();
 
     try {
+      if (!authSession) {
+        throw new Error("請先登入（電話及學生密碼）。");
+      }
+
       const { count, error: countError } = await supabase
         .from("questions")
         .select("*", { count: "exact", head: true });
@@ -65,23 +80,23 @@ export default function QuizPage() {
 
       const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, Math.min(QUESTION_COUNT, shuffled.length)) as Question[];
+      const subject = selected[0]?.subject ?? "general";
 
-      const { data: session, error: sessionError } = await supabase
-        .from("quiz_sessions")
-        .insert({
-          student_id: ANONYMOUS_STUDENT_ID,
-          subject: selected[0]?.subject ?? "general",
-          questions_attempted: 0,
-          score: 0,
-          time_spent_seconds: 0,
-        })
-        .select()
-        .single();
+      const { data: sessionJson, error: sessionError } = await supabase.rpc("create_quiz_session", {
+        p_student_id: authSession.studentId,
+        p_subject: subject,
+      });
 
       if (sessionError) throw sessionError;
+      const sessionRow = sessionJson as { id?: string } | null;
+      const newSessionId =
+        sessionRow && typeof sessionRow.id === "string" ? sessionRow.id : null;
+      if (!newSessionId) {
+        throw new Error("無法建立練習紀錄（create_quiz_session 回傳異常）。請確認 Supabase 已部署 RPC。");
+      }
 
       setQuestions(selected);
-      setSessionId((session as { id: string }).id);
+      setSessionId(newSessionId);
     } catch (err: unknown) {
       if (!isSupabaseBrowserConfigured) {
         setError(
@@ -104,7 +119,7 @@ export default function QuizPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authSession]);
 
   useEffect(() => {
     if (authPhase !== "quiz") return;
@@ -119,11 +134,12 @@ export default function QuizPage() {
 
     setSubmitting(true);
     try {
-      const { error: answerError } = await supabase.from("session_answers").insert({
-        session_id: sessionId,
-        question_id: currentQuestion.id,
-        student_answer: selectedAnswer,
-        is_correct: isCorrect,
+      const { error: answerError } = await supabase.rpc("submit_answer", {
+        p_session_id: sessionId,
+        p_question_id: currentQuestion.id,
+        p_student_answer: selectedAnswer,
+        p_is_correct: isCorrect,
+        p_question_order: currentIndex + 1,
       });
 
       if (answerError) throw answerError;
@@ -139,14 +155,14 @@ export default function QuizPage() {
       const newScore = updatedAnswers.filter((a) => a.isCorrect).length;
       const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
 
-      await supabase
-        .from("quiz_sessions")
-        .update({
-          questions_attempted: updatedAnswers.length,
-          score: newScore,
-          time_spent_seconds: timeSpent,
-        })
-        .eq("id", sessionId);
+      const { error: updateErr } = await supabase.rpc("update_quiz_session", {
+        p_session_id: sessionId,
+        p_questions_attempted: updatedAnswers.length,
+        p_score: newScore,
+        p_time_spent_seconds: timeSpent,
+      });
+
+      if (updateErr) throw updateErr;
 
       if (currentIndex + 1 >= questions.length) {
         setQuizComplete(true);
@@ -161,10 +177,13 @@ export default function QuizPage() {
     }
   };
 
-  const beginQuiz = () => setAuthPhase("quiz");
+  const beginQuizAfterLogin = (session: AuthSession) => {
+    setAuthSession(session);
+    setAuthPhase("quiz");
+  };
 
   if (authPhase === "landing") {
-    return <ParentLoginLanding onEnterQuiz={beginQuiz} />;
+    return <ParentLoginLanding onLoginSuccess={beginQuizAfterLogin} />;
   }
 
   if (loading) {
@@ -181,8 +200,14 @@ export default function QuizPage() {
         answers={answers}
         onRestart={() => {
           setAuthPhase("landing");
+          setAuthSession(null);
           setQuizComplete(false);
           setError(null);
+        }}
+        onPlayAgain={() => {
+          setQuizComplete(false);
+          setError(null);
+          void initializeQuiz();
         }}
       />
     );
@@ -297,11 +322,73 @@ function LoginBackgroundLayer() {
   );
 }
 
-function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
+function ParentLoginLanding({
+  onLoginSuccess,
+}: {
+  onLoginSuccess: (session: AuthSession) => void;
+}) {
   const [mobileNumber, setMobileNumber] = useState("");
   const [pin, setPin] = useState("");
-  const canTryLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const canTryLogin =
+    mobileNumber.trim().length > 0 && pin.trim().length > 0 && !loginBusy;
   const heroLogoUrl = getLoginHeroLogoUrl();
+
+  const handleLogin = async () => {
+    const mobile = mobileNumber.trim();
+    const pinNorm = pin.trim();
+    if (!mobile || !pinNorm) return;
+
+    setLoginBusy(true);
+    setLoginError(null);
+
+    try {
+      const { data, error } = await supabase.rpc("login_by_mobile", {
+        p_mobile_number: mobile,
+      });
+
+      if (error) throw error;
+
+      const payload = data as {
+        parent_found?: boolean;
+        students?: RpcStudentRow[] | null;
+      };
+
+      if (!payload?.parent_found) {
+        throw new Error("找不到此電話號碼，請確認號碼是否與註冊時一致。");
+      }
+
+      const list = Array.isArray(payload.students) ? payload.students : [];
+      const matched = list.filter(
+        (s) => String(s.pin_code ?? "").trim().toLowerCase() === pinNorm.toLowerCase()
+      );
+
+      if (matched.length === 0) {
+        throw new Error("密碼不正確，請重新輸入學生練習密碼。");
+      }
+
+      const student = matched[0]!;
+      if (!student.id) {
+        throw new Error("學生資料異常，請聯絡客服。");
+      }
+
+      onLoginSuccess({
+        studentId: student.id,
+        mobile,
+        studentName: String(student.student_name ?? "").trim() || "同學",
+      });
+    } catch (e: unknown) {
+      let msg = "登入失敗，請稍後再試。";
+      if (e instanceof Error) msg = e.message;
+      else if (e && typeof e === "object" && "message" in e) {
+        msg = String((e as { message: unknown }).message);
+      }
+      setLoginError(msg);
+    } finally {
+      setLoginBusy(false);
+    }
+  };
 
   return (
     <div className="relative isolate min-h-[100dvh] overflow-hidden">
@@ -330,7 +417,10 @@ function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
                 type="tel"
                 autoComplete="username"
                 value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
+                onChange={(e) => {
+                  setMobileNumber(e.target.value);
+                  if (loginError) setLoginError(null);
+                }}
                 placeholder="例如：91234567"
                 className="w-full rounded-xl border-2 border-gray-200 p-4 text-base outline-none transition-colors focus:border-indigo-400"
               />
@@ -342,22 +432,30 @@ function ParentLoginLanding({ onEnterQuiz }: { onEnterQuiz: () => void }) {
                 autoComplete="current-password"
                 maxLength={6}
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                onChange={(e) => {
+                  setPin(e.target.value);
+                  if (loginError) setLoginError(null);
+                }}
                 placeholder="6 位英文或數字密碼"
                 className="w-full rounded-xl border-2 border-gray-200 p-4 text-base outline-none transition-colors focus:border-indigo-400"
               />
             </div>
+
+            {loginError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loginError}</p>
+            )}
+
             <button
               type="button"
               disabled={!canTryLogin}
-              onClick={onEnterQuiz}
+              onClick={() => void handleLogin()}
               className={`w-full rounded-xl py-3.5 text-base font-semibold transition-all duration-200 ${
                 canTryLogin
                   ? "bg-indigo-600 text-white shadow-md hover:bg-indigo-700"
                   : "cursor-not-allowed bg-gray-200 text-gray-400"
               }`}
             >
-              登入
+              {loginBusy ? "登入中…" : "登入"}
             </button>
 
             <LoginAddToHomeButton />
@@ -500,7 +598,15 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   );
 }
 
-function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestart: () => void }) {
+function ResultsView({
+  answers,
+  onRestart,
+  onPlayAgain,
+}: {
+  answers: AnswerRecord[];
+  onRestart: () => void;
+  onPlayAgain: () => void;
+}) {
   const score = answers.filter((a) => a.isCorrect).length;
   const total = answers.length;
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
@@ -591,12 +697,20 @@ function ResultsView({ answers, onRestart }: { answers: AnswerRecord[]; onRestar
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button
-            onClick={onRestart}
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+            type="button"
+            onClick={onPlayAgain}
+            className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-indigo-700 shadow-md ring-2 ring-indigo-200 transition-all hover:bg-indigo-50 sm:w-auto"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            再練一次
+          </button>
+          <button
+            type="button"
+            onClick={onRestart}
+            className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-3.5 font-semibold text-white shadow-md transition-all hover:bg-indigo-700 sm:w-auto"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

@@ -87,12 +87,25 @@ Asset URLs are built in `src/lib/login-marketing-assets.ts`. Defaults:
 
 The app also exposes **`/manifest.webmanifest`** using the **site icon** (`logo_banana_student.png` by default). Override with **`NEXT_PUBLIC_SITE_ICON_URL`**.
 
-**Note:** This repository’s home page starts on the login/marketing view; **登入** (with phone + PIN filled) continues into the bundled demo quiz flow. Replace that hook with your real Supabase auth when integrating the full parent app.
+**Note:** **登入** calls **`login_by_mobile`** and starts the quiz only after PIN verification; it is no longer a “demo only” button without Supabase auth.
 
-## Database Schema
+## Supabase: RLS and quiz writes
 
-The app expects these Supabase tables:
+Production uses **Row Level Security** (`supabase_rls_policies.sql` from `cursor/parent-grade-rank-dashboard-98ae`): the **`anon`** role may **`SELECT`** questions but **must not** insert into **`quiz_sessions`** or **`session_answers`** directly. All writes go through **`SECURITY DEFINER`** RPCs in **`supabase_rpc_functions.sql`**.
+
+The app now:
+
+1. **`login_by_mobile(p_mobile_number)`** — loads students for that parent phone.
+2. Matches **`pin_code`** to the student PIN entered on the login form (same rule as the full app). If you have **multiple children** with the same PIN, the **first** matching student is used; give distinct PINs per child if needed.
+3. **`create_quiz_session(p_student_id, p_subject)`** — creates the session row with the real **`students.id`**.
+4. **`submit_answer(...)`** and **`update_quiz_session(...)`** — record answers and scores.
+
+After deploying functions, run **`supabase_grants_quiz_rpc_anon.sql`** so **`anon`** can **`EXECUTE`** these RPCs (otherwise PostgREST returns permission errors).
+
+If you see **`Could not find the function public.login_by_mobile`** (or similar), apply **`supabase_rpc_functions.sql`** in the Supabase SQL Editor.
+
 
 - **questions** — `id`, `content`, `opt_a`, `opt_b`, `opt_c`, `opt_d`, `correct_answer`, `explanation`, `subject`, `grade_level`
-- **quiz_sessions** — `id`, `student_id` (**uuid**), `subject`, `questions_attempted`, `score`, `time_spent_seconds` — demo inserts use nil UUID `00000000-0000-0000-0000-000000000000` for `student_id`.
+- **quiz_sessions** — `id`, `student_id` (**uuid**, real student from login), `subject`, `questions_attempted`, `score`, `time_spent_seconds` — created via RPC **`create_quiz_session`**, not direct insert.
+
 - **session_answers** — `id`, `session_id`, `question_id`, `student_answer`, `is_correct`
