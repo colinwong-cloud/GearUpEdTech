@@ -73,7 +73,7 @@ function subjectEntries(obj: Record<string, number> | null | undefined) {
   return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
 }
 
-export function BusinessKpiSection() {
+export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
   const [today, setToday] = useState<TodayPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPayload | null>(null);
   const [tLoading, setTLoading] = useState(true);
@@ -93,6 +93,9 @@ export function BusinessKpiSection() {
       const res = await fetch("/api/admin/business-today", {
         method: "POST",
         credentials: "same-origin",
+        headers: {
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
       });
       const j = (await res.json()) as { data?: TodayPayload; error?: string };
       if (!res.ok) throw new Error(j.error || "無法載入");
@@ -102,7 +105,7 @@ export function BusinessKpiSection() {
     } finally {
       setTLoading(false);
     }
-  }, []);
+  }, [sessionToken]);
 
   const loadMonthly = useCallback(async () => {
     setMLoading(true);
@@ -111,6 +114,9 @@ export function BusinessKpiSection() {
       const res = await fetch("/api/admin/business-monthly", {
         method: "POST",
         credentials: "same-origin",
+        headers: {
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
       });
       const j = (await res.json()) as { data?: MonthlyPayload; error?: string };
       if (!res.ok) throw new Error(j.error || "無法載入");
@@ -120,7 +126,7 @@ export function BusinessKpiSection() {
     } finally {
       setMLoading(false);
     }
-  }, []);
+  }, [sessionToken]);
 
   useEffect(() => {
     void loadToday();

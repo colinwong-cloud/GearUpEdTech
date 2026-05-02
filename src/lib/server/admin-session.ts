@@ -69,7 +69,15 @@ export function parseAdminSessionToken(token: string): SessionPayload | null {
 }
 
 export function getAdminSession(req: NextRequest): SessionPayload | null {
-  const token = req.cookies.get(ADMIN_COOKIE)?.value;
+  const authHeader = req.headers.get("authorization") ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
+  const headerToken = req.headers.get("x-admin-session")?.trim() ?? "";
+  const token =
+    req.cookies.get(ADMIN_COOKIE)?.value ||
+    bearerToken ||
+    headerToken;
   if (!token) return null;
   return parseAdminSessionToken(token);
 }

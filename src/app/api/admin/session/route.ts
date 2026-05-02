@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
-  return NextResponse.json({ authenticated: true, user: session.sub });
+  const token = req.cookies.get("admin_session")?.value ?? "";
+  return NextResponse.json({ authenticated: true, user: session.sub, token });
 }
 
 export async function POST(req: NextRequest) {
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = createAdminSessionToken(user);
-  const res = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true, token });
   setAdminSessionCookie(res, token);
   return res;
 }

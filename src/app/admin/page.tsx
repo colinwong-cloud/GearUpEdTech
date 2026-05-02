@@ -15,13 +15,22 @@ type AdminConsoleAction =
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  sessionToken?: string
 ): Promise<T> {
   const res = await fetch("/api/admin/console", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     cache: "no-store",
+    ...(sessionToken
+      ? {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      : {}),
     body: JSON.stringify({ action, payload }),
   });
   const body = (await res.json()) as { data?: T; error?: string };
@@ -61,6 +70,7 @@ interface QuestionResult {
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [sessionToken, setSessionToken] = useState("");
   const [loginId, setLoginId] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -75,11 +85,14 @@ export default function AdminPage() {
     })
       .then((res) => {
         if (!res.ok) return null;
-        return res.json() as Promise<{ authenticated?: boolean }>;
+        return res.json() as Promise<{ authenticated?: boolean; token?: string }>;
       })
       .then((data) => {
         if (!active) return;
-        if (data?.authenticated) setLoggedIn(true);
+        if (data?.authenticated) {
+          setLoggedIn(true);
+          if (data.token) setSessionToken(data.token);
+        }
       })
       .catch(() => {});
     return () => {
@@ -98,12 +111,13 @@ export default function AdminPage() {
         cache: "no-store",
         body: JSON.stringify({ user: loginId.trim(), pass: loginPass }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; token?: string };
       if (!res.ok) {
         setLoginError(data.error || "帳號或密碼錯誤");
         return;
       }
       const sessionRes = await fetch("/api/admin/session", {
+        method: "GET",
         credentials: "include",
         cache: "no-store",
       });
@@ -111,6 +125,15 @@ export default function AdminPage() {
         setLoginError("登入狀態建立失敗，請重試。");
         return;
       }
+      const sessionData = (await sessionRes.json()) as {
+        authenticated?: boolean;
+        token?: string;
+      };
+      if (!sessionData.authenticated) {
+        setLoginError("登入狀態建立失敗，請重試。");
+        return;
+      }
+      setSessionToken(sessionData.token || data.token || "");
       setLoggedIn(true);
     } catch {
       setLoginError("登入失敗，請重試。");
@@ -129,6 +152,7 @@ export default function AdminPage() {
       // no-op
     }
     setLoggedIn(false);
+    setSessionToken("");
     setLoginPass("");
   };
 
@@ -197,17 +221,17 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {tab === "business" && <BusinessKpiSection />}
-        {tab === "quota" && <QuotaSection />}
-        {tab === "delete" && <DeleteSection />}
-        {tab === "email" && <EmailSection />}
-        {tab === "questions" && <QuestionsSection />}
+        {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
+        {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
+        {tab === "email" && <EmailSection sessionToken={sessionToken} />}
+        {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
 }
 
-function QuotaSection() {
+function QuotaSection({ sessionToken }: { sessionToken: string }) {
   const [searchType, setSearchType] = useState<"mobile" | "student_id">("mobile");
   const [searchVal, setSearchVal] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
@@ -224,7 +248,7 @@ function QuotaSection() {
       if (searchType === "mobile") {
         const data = await adminConsoleRequest<ParentInfo | null>("search_parent", {
           p_mobile: searchVal.trim(),
-        });
+        }, sessionToken);
         if (!data) { setMsg("找不到此電話號碼"); return; }
         setParentInfo(data);
       } else {
@@ -245,7 +269,8 @@ function QuotaSection() {
           p_student_id: studentId,
           p_subject: "Math",
           p_amount: amount,
-        }
+        },
+        sessionToken
       );
       setMsg(`成功增加 ${amount} 題，新餘額：${result.remaining_questions}`);
       setAddAmount("");
@@ -303,7 +328,7 @@ function QuotaSection() {
   );
 }
 
-function DeleteSection() {
+function DeleteSection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
   const [msg, setMsg] = useState("");
@@ -319,7 +344,7 @@ function DeleteSection() {
     try {
       const data = await adminConsoleRequest<ParentInfo | null>("search_parent", {
         p_mobile: mobile.trim(),
-      });
+      }, sessionToken);
       if (!data) { setMsg("找不到此電話號碼"); return; }
       setParentInfo(data);
     } catch { setMsg("搜尋失敗"); }
@@ -332,7 +357,8 @@ function DeleteSection() {
     try {
       const result = await adminConsoleRequest<{ deleted: boolean; students_deleted?: number }>(
         "delete_parent",
-        { p_mobile: mobile.trim() }
+        { p_mobile: mobile.trim() },
+        sessionToken
       );
       if (result.deleted) {
         setMsg(`已刪除家長及 ${result.students_deleted || 0} 個學生的所有記錄`);
@@ -397,7 +423,7 @@ function DeleteSection() {
   );
 }
 
-function EmailSection() {
+function EmailSection({ sessionToken }: { sessionToken: string }) {
   const [globalEnabled, setGlobalEnabled] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [, setPerEmailEnabled] = useState<boolean | null>(null);
@@ -407,7 +433,7 @@ function EmailSection() {
   useEffect(() => {
     let active = true;
     if (globalEnabled !== null) return;
-    adminConsoleRequest<Record<string, string>>("get_settings")
+    adminConsoleRequest<Record<string, string>>("get_settings", undefined, sessionToken)
       .then((s) => {
         if (!active) return;
         setGlobalEnabled(s.email_notifications_enabled !== "false");
@@ -419,7 +445,7 @@ function EmailSection() {
     return () => {
       active = false;
     };
-  }, [globalEnabled]);
+  }, [globalEnabled, sessionToken]);
 
   const toggleGlobal = async () => {
     if (globalEnabled === null) return;
@@ -429,7 +455,7 @@ function EmailSection() {
       await adminConsoleRequest<null>("set_setting", {
         p_key: "email_notifications_enabled",
         p_value: newVal ? "true" : "false",
-      });
+      }, sessionToken);
       setGlobalEnabled(newVal);
       setMsg(`全局電郵通知已${newVal ? "開啟" : "關閉"}`);
     } catch { setMsg("設定失敗"); }
@@ -445,7 +471,8 @@ function EmailSection() {
         {
           p_email: email.trim(),
           p_enabled: enabled,
-        }
+        },
+        sessionToken
       );
       if (result.updated > 0) {
         setPerEmailEnabled(enabled);
@@ -505,7 +532,7 @@ function EmailSection() {
   );
 }
 
-function QuestionsSection() {
+function QuestionsSection({ sessionToken }: { sessionToken: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [editing, setEditing] = useState<QuestionResult | null>(null);
@@ -520,7 +547,7 @@ function QuestionsSection() {
     try {
       const data = await adminConsoleRequest<QuestionResult[]>("search_questions", {
         p_query: query.trim(),
-      });
+      }, sessionToken);
       setResults(data || []);
       if (!data || data.length === 0) setMsg("找不到相關題目");
     } catch { setMsg("搜尋失敗"); }
@@ -540,7 +567,7 @@ function QuestionsSection() {
         p_opt_d: editing.opt_d,
         p_correct_answer: editing.correct_answer,
         p_explanation: editing.explanation,
-      });
+      }, sessionToken);
       setMsg("題目已更新");
       setResults(results.map((r) => (r.id === editing.id ? editing : r)));
       setEditing(null);
