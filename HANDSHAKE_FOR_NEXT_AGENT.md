@@ -136,7 +136,7 @@ login_mobile (mobile + PIN)
 | `RESEND_API_KEY` | Resend email API |
 | `NEXT_PUBLIC_PRIVACY_STATEMENT_URL` | Optional. Full URL to privacy `.txt`; if unset, uses `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt` |
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile (server, reserved) |
-| `CRON_SECRET` | Nightly cron job auth (`gearup-cron-2026`) |
+| `CRON_SECRET` | Nightly cron job auth (store only in Vercel env; rotate immediately if exposed) |
 
 ---
 
@@ -163,7 +163,7 @@ login_mobile (mobile + PIN)
 | `99990001` | `123456` | Test | 3,570 students (6 per school), random scores |
 | `99990002` | `123456` | Test | 108 good students (top school per district), 75-100% scores |
 
-Admin console: `https://q.hkedutech.com/admin` — login: `colinwong` / `qweasd`
+Admin console: `https://q.hkedutech.com/admin` — login uses server-side env credentials (`ADMIN_CONSOLE_USER` / `ADMIN_CONSOLE_PASS`)
 
 ---
 

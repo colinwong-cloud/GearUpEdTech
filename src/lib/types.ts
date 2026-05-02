@@ -10,7 +10,6 @@ export interface Student {
   id: string;
   parent_id: string;
   student_name: string;
-  pin_code: string | null;
   avatar_style: string;
   grade_level: string;
   created_at: string;

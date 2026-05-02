@@ -249,7 +249,7 @@ These items should be checked by visiting https://q.hkedutech.com and logging in
 
 ## Part 4: Cleanup (Optional)
 
-If test data needs to be removed after validation, use the admin console at https://q.hkedutech.com/admin (login: colinwong / qweasd). **Do NOT delete the parent account** — only note that test sessions exist for future reference.
+If test data needs to be removed after validation, use the admin console at https://q.hkedutech.com/admin (login with current `ADMIN_CONSOLE_*` env credentials). **Do NOT delete the parent account** — only note that test sessions exist for future reference.
 
 ---
 

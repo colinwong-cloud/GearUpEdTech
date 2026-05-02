@@ -349,21 +349,26 @@ export default function QuizApp() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcErr } = await supabase.rpc("login_by_mobile", {
-        p_mobile_number: mobileNumber.trim(),
+      const res = await fetch("/api/auth/mobile-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mobile: mobileNumber.trim(),
+          pin: pinInput.trim(),
+        }),
       });
-      if (rpcErr) throw rpcErr;
-
-      const result = data as { parent_found: boolean; students: Student[] };
+      const result = (await res.json()) as {
+        parent_found?: boolean;
+        students?: Student[];
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(result.error || "登入失敗，請重試。");
+      }
       if (!result.parent_found)
         throw new Error("找不到此電話號碼的帳戶，請先註冊。");
       if (!result.students || result.students.length === 0)
-        throw new Error("此帳戶下沒有學生，請先註冊。");
-
-      const firstStudent = result.students[0];
-      if (pinInput !== firstStudent.pin_code) {
         throw new Error("密碼不正確，請重試。");
-      }
 
       setStudents(result.students);
       setScreen("login_role");
@@ -399,6 +404,7 @@ export default function QuizApp() {
         if (rpcErr) throw rpcErr;
 
         setSelectedStudent(data as Student);
+        setStudents([data as Student]);
         setScreen("subject_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
@@ -853,7 +859,6 @@ export default function QuizApp() {
     return (
       <AddStudentScreen
         mobileNumber={mobileNumber}
-        existingPinCode={students[0]?.pin_code || ""}
         onSubmit={handleAddStudentSubmit}
         onBack={() => setScreen("account_menu")}
         error={error}
@@ -1100,7 +1105,9 @@ function LoginMobileScreen({
   error: string | null;
   setError: (v: string | null) => void;
 }) {
-  const canLogin = mobileNumber.trim().length > 0 && pin.trim().length > 0;
+  const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const pinValid = PIN_RE.test(pin.trim());
+  const canLogin = mobileNumber.trim().length > 0 && pinValid;
   return (
     <div
       className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
@@ -1146,13 +1153,16 @@ function LoginMobileScreen({
                 maxLength={6}
                 value={pin}
                 onChange={(e) => {
-                  setPin(e.target.value);
+                  setPin(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
                   if (error) setError(null);
                 }}
                 onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
                 placeholder="6 位英文或數字密碼"
                 className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
               />
+              {pin.length > 0 && !pinValid && (
+                <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
+              )}
             </div>
             {error && (
               <p className="text-sm text-red-500 font-medium">{error}</p>
@@ -2223,20 +2233,19 @@ function ErrorScreen({
 
 function AddStudentScreen({
   mobileNumber,
-  existingPinCode,
   onSubmit,
   onBack,
   error,
   setError,
 }: {
   mobileNumber: string;
-  existingPinCode: string;
   onSubmit: (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
   onBack: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
   const [studentName, setStudentName] = useState("");
+  const [pinCode, setPinCode] = useState("");
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -2258,9 +2267,12 @@ function AddStudentScreen({
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
+  const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
     studentName.trim().length > 0 &&
+    pinValid &&
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
@@ -2285,6 +2297,23 @@ function AddStudentScreen({
             <input value={studentName} onChange={(e) => { setStudentName(e.target.value); if (error) setError(null); }}
               placeholder="輸入學生姓名"
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">密碼（6 位英文或數字）</label>
+            <input
+              type="password"
+              value={pinCode}
+              onChange={(e) => {
+                setPinCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="輸入6位密碼"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+            />
+            {pinCode.length > 0 && !pinValid && (
+              <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
@@ -2347,7 +2376,7 @@ function AddStudentScreen({
 
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
-          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode: existingPinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
+          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             新增學生
@@ -2429,7 +2458,6 @@ function ProfileEditScreen({
   const [studentEdits, setStudentEdits] = useState<{
     id: string;
     student_name: string;
-    pin_code: string;
     avatar_style: string;
     grade_level: string;
     school_id: string | null;
@@ -2439,6 +2467,7 @@ function ProfileEditScreen({
   const [schools, setSchools] = useState<{ id: string; area: string; district: string; name_zh: string | null; name_en: string }[]>([]);
   const [schoolAreas, setSchoolAreas] = useState<Record<string, string>>({});
   const [schoolDistricts, setSchoolDistricts] = useState<Record<string, string>>({});
+  const pinFormatValid = /^[A-Za-z0-9]{6}$/.test(sharedPin);
 
   useEffect(() => {
     (async () => {
@@ -2463,7 +2492,6 @@ function ProfileEditScreen({
           students: {
             id: string;
             student_name: string;
-            pin_code: string;
             avatar_style: string;
             grade_level: string;
             school_id: string | null;
@@ -2480,13 +2508,11 @@ function ProfileEditScreen({
               g === "M" ? "Boy" : g === "F" ? "Girl" : s.avatar_style || "Boy";
             return {
               ...s,
-              pin_code: s.pin_code || "",
               gender: s.gender ?? null,
               avatar_style: fromGender,
             };
           })
         );
-        setSharedPin(d.students[0]?.pin_code || "");
       }
       setLoading(false);
     })();
@@ -2497,6 +2523,10 @@ function ProfileEditScreen({
   };
 
   const handleSave = async () => {
+    if (!pinFormatValid) {
+      setMsg("密碼需為 6 位英文字母或數字");
+      return;
+    }
     setSaving(true);
     setMsg("");
     try {
@@ -2520,8 +2550,8 @@ function ProfileEditScreen({
 
       setMsg("資料已更新");
       setTimeout(onSaved, 1000);
-    } catch {
-      setMsg("儲存失敗，請重試");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "儲存失敗，請重試");
     } finally {
       setSaving(false);
     }
@@ -2629,6 +2659,9 @@ function ProfileEditScreen({
             <input value={sharedPin} onChange={(e) => setSharedPin(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
               maxLength={6}
               className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400" />
+            <p className="mt-2 text-xs text-gray-500">
+              儲存後會以加密方式更新，不會在前端或資料庫中保存可讀明文。
+            </p>
           </div>
         </div>
 

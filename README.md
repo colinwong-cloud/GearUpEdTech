@@ -30,7 +30,7 @@ Interactive quiz application built with Next.js, TypeScript, Tailwind CSS, and S
 
 ### Nightly batch
 
-- Vercel env: `CRON_SECRET` (bearer for `/api/cron-recalculate-averages`), `SUPABASE_SERVICE_ROLE_KEY` (strongly recommended for long RPCs).
+- Vercel env: `CRON_SECRET` (bearer for `/api/cron-recalculate-averages`), `SUPABASE_SERVICE_ROLE_KEY` (strongly recommended for long RPCs). Rotate `CRON_SECRET` immediately if previously exposed.
 - Recommended SQL order for chart/rank recalc: `…optimize_grade…` → `…split…` → `…two_step…` → `…by_question_type_fine…` → `supabase_grade_cron_v2_query_plans.sql` → `supabase_grade_cron_delete_and_grants.sql`.
 - Response includes `use_service_role: true` when the service key is set.
 
@@ -150,8 +150,8 @@ Production uses **Row Level Security** (`supabase_rls_policies.sql` from `cursor
 
 The app now:
 
-1. **`login_by_mobile(p_mobile_number)`** — loads students for that parent phone.
-2. Matches **`pin_code`** to the student PIN entered on the login form (same rule as the full app). If you have **multiple children** with the same PIN, the **first** matching student is used; give distinct PINs per child if needed.
+1. **`login_by_mobile(p_mobile_number, p_pin_code)`** — server-side validates PIN and returns only matched students.
+2. PINs are stored as bcrypt hashes in `students.pin_code`; plaintext PIN is never returned to frontend.
 3. **`create_quiz_session(p_student_id, p_subject)`** — creates the session row with the real **`students.id`**.
 4. **`submit_answer(...)`** and **`update_quiz_session(...)`** — record answers and scores.
 
