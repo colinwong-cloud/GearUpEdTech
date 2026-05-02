@@ -1,11 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
 
-const ADMIN_USER = "colinwong";
-const ADMIN_PASS = "qweasd";
+type AdminConsoleAction =
+  | "search_parent"
+  | "add_quota"
+  | "delete_parent"
+  | "get_settings"
+  | "set_setting"
+  | "set_email_notification"
+  | "search_questions"
+  | "update_question";
+
+async function adminConsoleRequest<T>(
+  action: AdminConsoleAction,
+  payload?: Record<string, unknown>,
+  sessionToken?: string
+): Promise<T> {
+  const res = await fetch("/api/admin/console", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    cache: "no-store",
+    ...(sessionToken
+      ? {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      : {}),
+    body: JSON.stringify({ action, payload }),
+  });
+  const body = (await res.json()) as { data?: T; error?: string };
+  if (!res.ok) {
+    throw new Error(body.error || "操作失敗");
+  }
+  return body.data as T;
+}
 
 type Tab = "quota" | "delete" | "email" | "questions" | "business";
 
@@ -37,18 +70,90 @@ interface QuestionResult {
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [sessionToken, setSessionToken] = useState("");
   const [loginId, setLoginId] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
   const [tab, setTab] = useState<Tab>("business");
+  const [loginLoading, setLoginLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (loginId === ADMIN_USER && loginPass === ADMIN_PASS) {
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/session", {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<{ authenticated?: boolean; token?: string }>;
+      })
+      .then((data) => {
+        if (!active) return;
+        if (data?.authenticated) {
+          setLoggedIn(true);
+          if (data.token) setSessionToken(data.token);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogin = async () => {
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ user: loginId.trim(), pass: loginPass }),
+      });
+      const data = (await res.json()) as { error?: string; token?: string };
+      if (!res.ok) {
+        setLoginError(data.error || "帳號或密碼錯誤");
+        return;
+      }
+      const sessionRes = await fetch("/api/admin/session", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!sessionRes.ok) {
+        setLoginError("登入狀態建立失敗，請重試。");
+        return;
+      }
+      const sessionData = (await sessionRes.json()) as {
+        authenticated?: boolean;
+        token?: string;
+      };
+      if (!sessionData.authenticated) {
+        setLoginError("登入狀態建立失敗，請重試。");
+        return;
+      }
+      setSessionToken(sessionData.token || data.token || "");
       setLoggedIn(true);
-      setLoginError("");
-    } else {
-      setLoginError("帳號或密碼錯誤");
+    } catch {
+      setLoginError("登入失敗，請重試。");
+    } finally {
+      setLoginLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/admin/session", {
+        method: "DELETE",
+        credentials: "include",
+      });
+    } catch {
+      // no-op
+    }
+    setLoggedIn(false);
+    setSessionToken("");
+    setLoginPass("");
   };
 
   if (!loggedIn) {
@@ -76,9 +181,10 @@ export default function AdminPage() {
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
             <button
               onClick={handleLogin}
-              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all"
+              disabled={!loginId.trim() || !loginPass || loginLoading}
+              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              登入
+              {loginLoading ? "登入中..." : "登入"}
             </button>
           </div>
         </div>
@@ -98,7 +204,7 @@ export default function AdminPage() {
     <div className="admin-console-root min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <span className="text-sm font-bold text-gray-800">管理員控制台</span>
-        <button onClick={() => setLoggedIn(false)} className="text-sm text-gray-500 hover:text-red-500">登出</button>
+        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-red-500">登出</button>
       </div>
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex gap-2 mb-6 overflow-x-auto">
@@ -115,17 +221,17 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {tab === "business" && <BusinessKpiSection user={loginId} pass={loginPass} />}
-        {tab === "quota" && <QuotaSection />}
-        {tab === "delete" && <DeleteSection />}
-        {tab === "email" && <EmailSection />}
-        {tab === "questions" && <QuestionsSection />}
+        {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
+        {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
+        {tab === "email" && <EmailSection sessionToken={sessionToken} />}
+        {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
 }
 
-function QuotaSection() {
+function QuotaSection({ sessionToken }: { sessionToken: string }) {
   const [searchType, setSearchType] = useState<"mobile" | "student_id">("mobile");
   const [searchVal, setSearchVal] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
@@ -140,12 +246,12 @@ function QuotaSection() {
     setParentInfo(null);
     try {
       if (searchType === "mobile") {
-        const { data } = await supabase.rpc("admin_search_parent", { p_mobile: searchVal.trim() });
+        const data = await adminConsoleRequest<ParentInfo | null>("search_parent", {
+          p_mobile: searchVal.trim(),
+        }, sessionToken);
         if (!data) { setMsg("找不到此電話號碼"); return; }
-        setParentInfo(data as ParentInfo);
+        setParentInfo(data);
       } else {
-        const { data } = await supabase.rpc("admin_search_parent", { p_mobile: "" });
-        void data;
         setMsg("請使用電話號碼搜尋，找到後可對學生操作");
       }
     } catch { setMsg("搜尋失敗"); }
@@ -157,16 +263,18 @@ function QuotaSection() {
     if (!amount || amount <= 0) { setMsg("請輸入有效數量"); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("admin_add_quota", {
-        p_student_id: studentId,
-        p_subject: "Math",
-        p_amount: amount,
-      });
-      if (error) throw error;
-      const result = data as { remaining_questions: number };
+      const result = await adminConsoleRequest<{ remaining_questions: number }>(
+        "add_quota",
+        {
+          p_student_id: studentId,
+          p_subject: "Math",
+          p_amount: amount,
+        },
+        sessionToken
+      );
       setMsg(`成功增加 ${amount} 題，新餘額：${result.remaining_questions}`);
       setAddAmount("");
-      handleSearch();
+      await handleSearch();
     } catch { setMsg("增加失敗"); }
     finally { setLoading(false); }
   };
@@ -220,7 +328,7 @@ function QuotaSection() {
   );
 }
 
-function DeleteSection() {
+function DeleteSection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
   const [msg, setMsg] = useState("");
@@ -234,9 +342,11 @@ function DeleteSection() {
     setParentInfo(null);
     setConfirmDelete(false);
     try {
-      const { data } = await supabase.rpc("admin_search_parent", { p_mobile: mobile.trim() });
+      const data = await adminConsoleRequest<ParentInfo | null>("search_parent", {
+        p_mobile: mobile.trim(),
+      }, sessionToken);
       if (!data) { setMsg("找不到此電話號碼"); return; }
-      setParentInfo(data as ParentInfo);
+      setParentInfo(data);
     } catch { setMsg("搜尋失敗"); }
     finally { setLoading(false); }
   };
@@ -245,9 +355,11 @@ function DeleteSection() {
     if (!mobile.trim()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("admin_delete_parent", { p_mobile: mobile.trim() });
-      if (error) throw error;
-      const result = data as { deleted: boolean; students_deleted?: number };
+      const result = await adminConsoleRequest<{ deleted: boolean; students_deleted?: number }>(
+        "delete_parent",
+        { p_mobile: mobile.trim() },
+        sessionToken
+      );
       if (result.deleted) {
         setMsg(`已刪除家長及 ${result.students_deleted || 0} 個學生的所有記錄`);
         setParentInfo(null);
@@ -311,31 +423,39 @@ function DeleteSection() {
   );
 }
 
-function EmailSection() {
+function EmailSection({ sessionToken }: { sessionToken: string }) {
   const [globalEnabled, setGlobalEnabled] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [, setPerEmailEnabled] = useState<boolean | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const loadGlobal = async () => {
-    const { data } = await supabase.rpc("admin_get_settings");
-    if (data) {
-      const s = data as Record<string, string>;
-      setGlobalEnabled(s.email_notifications_enabled !== "false");
-    }
-  };
-
-  if (globalEnabled === null) { loadGlobal(); }
+  useEffect(() => {
+    let active = true;
+    if (globalEnabled !== null) return;
+    adminConsoleRequest<Record<string, string>>("get_settings", undefined, sessionToken)
+      .then((s) => {
+        if (!active) return;
+        setGlobalEnabled(s.email_notifications_enabled !== "false");
+      })
+      .catch(() => {
+        if (!active) return;
+        setMsg("設定載入失敗");
+      });
+    return () => {
+      active = false;
+    };
+  }, [globalEnabled, sessionToken]);
 
   const toggleGlobal = async () => {
+    if (globalEnabled === null) return;
     setLoading(true);
     const newVal = !globalEnabled;
     try {
-      await supabase.rpc("admin_set_setting", {
+      await adminConsoleRequest<null>("set_setting", {
         p_key: "email_notifications_enabled",
         p_value: newVal ? "true" : "false",
-      });
+      }, sessionToken);
       setGlobalEnabled(newVal);
       setMsg(`全局電郵通知已${newVal ? "開啟" : "關閉"}`);
     } catch { setMsg("設定失敗"); }
@@ -346,12 +466,14 @@ function EmailSection() {
     if (!email.trim()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("admin_set_email_notification", {
-        p_email: email.trim(),
-        p_enabled: enabled,
-      });
-      if (error) throw error;
-      const result = data as { updated: number };
+      const result = await adminConsoleRequest<{ updated: number }>(
+        "set_email_notification",
+        {
+          p_email: email.trim(),
+          p_enabled: enabled,
+        },
+        sessionToken
+      );
       if (result.updated > 0) {
         setPerEmailEnabled(enabled);
         setMsg(`${email.trim()} 的通知已${enabled ? "開啟" : "關閉"}`);
@@ -375,7 +497,7 @@ function EmailSection() {
               {globalEnabled ? "已開啟" : "已關閉"}
             </span>
           </p>
-          <button onClick={toggleGlobal} disabled={loading}
+          <button onClick={toggleGlobal} disabled={loading || globalEnabled === null}
             className={`px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 ${
               globalEnabled ? "bg-red-500 hover:bg-red-600" : "bg-emerald-500 hover:bg-emerald-600"
             }`}>
@@ -410,7 +532,7 @@ function EmailSection() {
   );
 }
 
-function QuestionsSection() {
+function QuestionsSection({ sessionToken }: { sessionToken: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [editing, setEditing] = useState<QuestionResult | null>(null);
@@ -423,10 +545,11 @@ function QuestionsSection() {
     setMsg("");
     setEditing(null);
     try {
-      const { data, error } = await supabase.rpc("admin_search_questions", { p_query: query.trim() });
-      if (error) throw error;
-      setResults((data as QuestionResult[]) || []);
-      if (!data || (data as QuestionResult[]).length === 0) setMsg("找不到相關題目");
+      const data = await adminConsoleRequest<QuestionResult[]>("search_questions", {
+        p_query: query.trim(),
+      }, sessionToken);
+      setResults(data || []);
+      if (!data || data.length === 0) setMsg("找不到相關題目");
     } catch { setMsg("搜尋失敗"); }
     finally { setLoading(false); }
   };
@@ -435,7 +558,7 @@ function QuestionsSection() {
     if (!editing) return;
     setLoading(true);
     try {
-      const { error } = await supabase.rpc("admin_update_question", {
+      await adminConsoleRequest<null>("update_question", {
         p_id: editing.id,
         p_content: editing.content,
         p_opt_a: editing.opt_a,
@@ -444,8 +567,7 @@ function QuestionsSection() {
         p_opt_d: editing.opt_d,
         p_correct_answer: editing.correct_answer,
         p_explanation: editing.explanation,
-      });
-      if (error) throw error;
+      }, sessionToken);
       setMsg("題目已更新");
       setResults(results.map((r) => (r.id === editing.id ? editing : r)));
       setEditing(null);
