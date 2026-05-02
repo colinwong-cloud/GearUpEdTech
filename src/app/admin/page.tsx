@@ -20,6 +20,8 @@ async function adminConsoleRequest<T>(
   const res = await fetch("/api/admin/console", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    cache: "no-store",
     body: JSON.stringify({ action, payload }),
   });
   const body = (await res.json()) as { data?: T; error?: string };
@@ -67,7 +69,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/admin/session")
+    fetch("/api/admin/session", {
+      credentials: "include",
+      cache: "no-store",
+    })
       .then((res) => {
         if (!res.ok) return null;
         return res.json() as Promise<{ authenticated?: boolean }>;
@@ -89,11 +94,21 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({ user: loginId.trim(), pass: loginPass }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
         setLoginError(data.error || "帳號或密碼錯誤");
+        return;
+      }
+      const sessionRes = await fetch("/api/admin/session", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!sessionRes.ok) {
+        setLoginError("登入狀態建立失敗，請重試。");
         return;
       }
       setLoggedIn(true);
@@ -106,7 +121,10 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/admin/session", { method: "DELETE" });
+      await fetch("/api/admin/session", {
+        method: "DELETE",
+        credentials: "include",
+      });
     } catch {
       // no-op
     }

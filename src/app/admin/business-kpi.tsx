@@ -92,6 +92,7 @@ export function BusinessKpiSection() {
     try {
       const res = await fetch("/api/admin/business-today", {
         method: "POST",
+        credentials: "same-origin",
       });
       const j = (await res.json()) as { data?: TodayPayload; error?: string };
       if (!res.ok) throw new Error(j.error || "無法載入");
@@ -109,6 +110,7 @@ export function BusinessKpiSection() {
     try {
       const res = await fetch("/api/admin/business-monthly", {
         method: "POST",
+        credentials: "same-origin",
       });
       const j = (await res.json()) as { data?: MonthlyPayload; error?: string };
       if (!res.ok) throw new Error(j.error || "無法載入");
