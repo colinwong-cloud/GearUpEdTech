@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron-recalculate-averages?part=rank",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron-recalculate-averages?part=grade",
+      "schedule": "2 0 * * *"
+    }
+  ]
+}

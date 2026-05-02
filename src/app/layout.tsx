@@ -49,6 +49,8 @@ export const metadata: Metadata = {
     : {}),
 };
 
+const bgUrl = `${(process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim()}/storage/v1/object/public/question-images/Banana%20images/bk.png`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -60,14 +62,11 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansTc.variable} h-full antialiased`}
     >
       <head>
-        {siteIcon ? (
-          <>
-            <link rel="icon" href={siteIcon} type="image/png" sizes="any" />
-            <link rel="shortcut icon" href={siteIcon} type="image/png" />
-          </>
-        ) : null}
+        <style dangerouslySetInnerHTML={{ __html: `body{background-image:url(${bgUrl});}` }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
