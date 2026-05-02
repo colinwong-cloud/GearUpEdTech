@@ -98,20 +98,22 @@ login_mobile (mobile + PIN)
 | Function | Purpose |
 |----------|---------|
 | `login_by_mobile` | Login: returns parent + students (bypasses RLS) |
-| `register_student` | Registration: create parent + student + balance + transaction |
+| `register_student` | Registration: create parent + student; initial **Math** + **Chinese** + **English** balances (300 each) when the parent has no row for that subject yet |
 | `add_student_to_parent` | Add student under existing parent |
 | `create_quiz_session` | Start quiz |
-| `submit_answer` | Record answer |
+| `submit_answer` | Record answer, **deduct 1 question balance** (shared parent pool), log `balance_transactions`; raises if insufficient |
 | `update_quiz_session` | Update score/progress |
-| `deduct_student_balance` | Deduct balance + log transaction |
-| `get_student_balance` | Read balance (bypasses RLS) |
+| `deduct_student_balance` | Batch deduct + log (e.g. admin); `remaining_questions` in JSON = **family total** for that subject |
+| `get_student_balance` | Read balance (bypasses RLS): `remaining_questions` = **sum across siblings** for subject (Math merges legacy `數學`) |
 | `get_parent_balance_view` | Parent-level balance + monthly transactions with student names |
 | `get_balance_transactions` | Monthly transaction history |
 | `upsert_rank_performance` | Track per-rank performance |
 | `get_quiz_email_data` | All data for practice completion email |
 | `get_parent_sessions` | Monthly session summaries |
+| `get_parent_student_grade_rank` | Cached grade rank for parent dashboard — **`(p_student_id, p_subject)`**; per-subject rows in `student_grade_rankings` after **`supabase_grade_ranking_per_subject.sql`** |
+| `recalculate_student_grade_rankings` | Nightly: rebuild **per-subject** rankings (Math merges `數學` in session subject) |
 | `get_session_detail` | Session answers + questions for detail view |
-| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts |
+| `get_student_chart_data` | Last 30 sessions + per-type breakdown for charts; pass **`p_subject`** (`Math` / `Chinese` / `English`; Math merges legacy `數學`) to match parent dashboard tab — **run** `supabase_chart_data_filter_by_subject.sql` (or updated `supabase_charts_feature.sql`) in Supabase |
 | `recalculate_grade_averages` | Nightly cron: calculate grade-level averages |
 | `get_parent_profile` | Full profile for editing |
 | `update_parent_profile` | Update parent name/email |
@@ -132,7 +134,7 @@ login_mobile (mobile + PIN)
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `RESEND_API_KEY` | Resend email API |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile (frontend) |
+| `NEXT_PUBLIC_PRIVACY_STATEMENT_URL` | Optional. Full URL to privacy `.txt`; if unset, uses `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Webpage_statements/privacy_statment.txt` |
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile (server, reserved) |
 | `CRON_SECRET` | Nightly cron job auth (`gearup-cron-2026`) |
 
@@ -142,14 +144,14 @@ login_mobile (mobile + PIN)
 
 1. **Student quiz** — Login → select subject → choose question count (10/20/30) → quiz → results with wrong answer analysis
 2. **Parent dashboard** — Monthly session summaries in 3-col grid, bar charts (overall + per-type), session detail view
-3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA
+3. **Registration** — Mobile + PIN + student info + school (3-tier dropdown) + email + Turnstile CAPTCHA + **short privacy checkbox** (link opens modal → `fetch` `.txt` from default URL or `NEXT_PUBLIC_PRIVACY_STATEMENT_URL`); submit **同意並繼續**; starter balances **Math + Chinese + English** (see `register_student` in `supabase_question_balance_per_answer.sql`)
 4. **Account management** — Update profile, add student, view balance + transactions
 5. **Password recovery** — Email-based reset with 1-hour expiry tokens
 6. **Email notifications** — Practice completion summary with strong/weak analysis (global + per-parent toggle)
 7. **Admin console** (`/admin`) — Quota management, delete accounts, email toggles, question editor
 8. **Anti-cheat** — Speed reminder if 3 answers in 5 seconds, anti-copy CSS, right-click disabled
 9. **Question types** — Multiple choice (A-D), short answer (null options → text input), image questions
-10. **Balance system** — 300 initial questions, deducted per practice, shared across students, transaction history
+10. **Balance system** — 300 initial questions per **parent** (first student row); **−1 per answered question** in `submit_answer` (incomplete sessions still consume); siblings share pool (`get_student_balance` sums rows). Run `supabase_question_balance_per_answer.sql` for RPCs + index.
 
 ---
 

@@ -30,6 +30,10 @@ interface QuizEmailData {
     time_spent_seconds: number;
     created_at: string;
   };
+  /** 學生向小結（結果頁），可來自 DB */
+  session_practice_summary?: string;
+  /** 家長電郵用（老師視角），可來自 DB */
+  session_practice_summary_parent?: string;
   weekly_count: number;
   type_breakdown: TypeBreakdown[];
 }
@@ -42,7 +46,14 @@ function formatTime(seconds: number): string {
 }
 
 function buildEmailHtml(data: QuizEmailData): string {
-  const { session, student_name, parent_name, weekly_count, type_breakdown } = data;
+  const {
+    session,
+    student_name,
+    parent_name,
+    weekly_count,
+    type_breakdown,
+    session_practice_summary_parent,
+  } = data;
   const incorrect = session.questions_attempted - session.score;
   const pct = session.questions_attempted > 0
     ? Math.round((session.score / session.questions_attempted) * 100)
@@ -104,6 +115,16 @@ function buildEmailHtml(data: QuizEmailData): string {
         <div style="font-size:36px;font-weight:800;color:${scoreColor}">${session.score} / ${session.questions_attempted}</div>
         <div style="font-size:14px;color:#6b7280;margin-top:4px">${pct}% 正確率</div>
       </div>
+
+      ${(session_practice_summary_parent || "").trim() ? `
+      <div style="background:#fffbeb;border-radius:12px;padding:16px 18px;margin:0 0 20px;border:2px solid #fde68a">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#b45309">老師給家長的練習小結</p>
+        <p style="margin:0;font-size:15px;color:#1f2937;line-height:1.65;white-space:pre-wrap">${(session_practice_summary_parent || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+        }</p>
+      </div>` : ""}
 
       <table style="width:100%;border-collapse:collapse;margin:0 0 24px">
         <tr>
@@ -170,7 +191,13 @@ function buildEmailHtml(data: QuizEmailData): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { student_id, session_id } = await req.json();
+    const body = (await req.json()) as {
+      student_id?: string;
+      session_id?: string;
+      /** request body backup when DB column not migrated yet */
+      session_summary_parent?: string;
+    };
+    const { student_id, session_id, session_summary_parent } = body;
     if (!student_id || !session_id) {
       return NextResponse.json({ error: "Missing student_id or session_id" }, { status: 400 });
     }
@@ -185,9 +212,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch quiz data" }, { status: 500 });
     }
 
-    const emailData = data as QuizEmailData;
-    if (!emailData) {
+    if (!data) {
       return NextResponse.json({ error: "No data found" }, { status: 404 });
+    }
+    const emailData = { ...(data as QuizEmailData) } as QuizEmailData;
+    if (
+      session_summary_parent &&
+      typeof session_summary_parent === "string" &&
+      session_summary_parent.trim() &&
+      !emailData.session_practice_summary_parent?.trim()
+    ) {
+      emailData.session_practice_summary_parent = session_summary_parent.trim();
     }
 
     if (!emailData.parent_email) {

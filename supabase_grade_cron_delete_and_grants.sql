@@ -24,4 +24,5 @@ GRANT EXECUTE ON FUNCTION public.recalculate_grade_overall_for_grade(text) TO po
 GRANT EXECUTE ON FUNCTION public.recalculate_grade_by_type_for_grade(text) TO postgres, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.recalculate_grade_one_type_for_grade(text, text) TO postgres, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.recalculate_student_grade_rankings() TO postgres, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_parent_student_grade_rank(uuid, text) TO postgres, anon, authenticated, service_role;
 -- If a GRANT fails, apply the function-defining SQL for that function first, then re-run the GRANT lines.

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { BusinessKpiSection } from "./business-kpi";
 
 const ADMIN_USER = "colinwong";
 const ADMIN_PASS = "qweasd";
 
-type Tab = "quota" | "delete" | "email" | "questions";
+type Tab = "quota" | "delete" | "email" | "questions" | "business";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -39,7 +40,7 @@ export default function AdminPage() {
   const [loginId, setLoginId] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [tab, setTab] = useState<Tab>("quota");
+  const [tab, setTab] = useState<Tab>("business");
 
   const handleLogin = () => {
     if (loginId === ADMIN_USER && loginPass === ADMIN_PASS) {
@@ -52,7 +53,7 @@ export default function AdminPage() {
 
   if (!loggedIn) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="admin-console-root min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-6">管理員控制台</h1>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
@@ -86,6 +87,7 @@ export default function AdminPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: "business", label: "業務概覽" },
     { key: "quota", label: "題目配額" },
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
@@ -93,7 +95,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-console-root min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <span className="text-sm font-bold text-gray-800">管理員控制台</span>
         <button onClick={() => setLoggedIn(false)} className="text-sm text-gray-500 hover:text-red-500">登出</button>
@@ -113,6 +115,7 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {tab === "business" && <BusinessKpiSection user={loginId} pass={loginPass} />}
         {tab === "quota" && <QuotaSection />}
         {tab === "delete" && <DeleteSection />}
         {tab === "email" && <EmailSection />}
@@ -156,7 +159,7 @@ function QuotaSection() {
     try {
       const { data, error } = await supabase.rpc("admin_add_quota", {
         p_student_id: studentId,
-        p_subject: "數學",
+        p_subject: "Math",
         p_amount: amount,
       });
       if (error) throw error;

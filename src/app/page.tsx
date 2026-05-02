@@ -21,11 +21,26 @@ import type {
   ParentWeight,
   StudentBalance,
 } from "@/lib/types";
-
+import {
+  PRIMARY_QUIZ_SUBJECT,
+  STUDENT_SUBJECT_OPTIONS,
+  quizSubjectDbPatterns,
+  subjectDisplayLabel,
+} from "@/lib/quiz-subjects";
+import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
+import {
+  buildSessionPracticeSummary,
+  buildSessionPracticeSummaryForParent,
+} from "@/lib/session-practice-summary";
+import {
+  StudentQuizExperience,
+  getQuizSoundEnabled,
+  setQuizSoundEnabled,
+  playClickSound,
+} from "@/components/student-quiz-experience";
+import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 const MAX_SHORT_ANSWER = 2;
 const MAX_IMAGE = 1;
-const OPTION_LABELS = ["A", "B", "C", "D"] as const;
-const OPTION_KEYS = ["opt_a", "opt_b", "opt_c", "opt_d"] as const;
 const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
@@ -100,6 +115,8 @@ interface ChartDataPayload {
 interface ParentGradeRankPayload {
   has_snapshot: boolean;
   error?: string;
+  /** Canonical subject key (Math / Chinese / English) when snapshot exists */
+  subject?: string;
   calculated_at?: string;
   grade_level?: string;
   student_id?: string;
@@ -148,13 +165,14 @@ async function fetchAllQuestions(
   subject: string,
   gradeLevel: string
 ): Promise<Question[]> {
+  const subjectPatterns = quizSubjectDbPatterns(subject);
   const all: Question[] = [];
   let from = 0;
   for (;;) {
     const { data, error } = await supabase
       .from("questions")
       .select("*")
-      .ilike("subject", subject)
+      .ilikeAnyOf("subject", subjectPatterns)
       .eq("grade_level", gradeLevel)
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
     if (error) throw error;
@@ -285,7 +303,6 @@ export default function QuizApp() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -295,13 +312,20 @@ export default function QuizApp() {
   const [showSpeedReminder, setShowSpeedReminder] = useState(false);
   const speedReminderShownRef = useRef(false);
   const answerTimestampsRef = useRef<number[]>([]);
+  const [quizTransition, setQuizTransition] = useState(0);
+  const [encourageIndex, setEncourageIndex] = useState(0);
+  const [quizSoundOn, setQuizSoundOn] = useState(true);
+  const [sessionPracticeSummary, setSessionPracticeSummary] = useState<string | null>(null);
+  useEffect(() => {
+    setQuizSoundOn(getQuizSoundEnabled());
+  }, []);
 
   const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
   const [parentMonth, setParentMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
   });
-  const [parentSubject, setParentSubject] = useState("數學");
+  const [parentSubject, setParentSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [parentDetailSession, setParentDetailSession] = useState<SessionSummary | null>(null);
   const [parentDetailAnswers, setParentDetailAnswers] = useState<SessionDetailAnswer[]>([]);
   
@@ -424,9 +448,11 @@ export default function QuizApp() {
         }),
         supabase.rpc("get_student_chart_data", {
           p_student_id: studentId,
+          p_subject: subject,
         }),
         supabase.rpc("get_parent_student_grade_rank", {
           p_student_id: studentId,
+          p_subject: subject,
         }),
       ]);
       if (sessRes.error) throw sessRes.error;
@@ -441,6 +467,13 @@ export default function QuizApp() {
         );
       }
       setScreen("parent_dashboard");
+      const stu = students.find((x) => x.id === studentId);
+      if (stu?.parent_id) {
+        void supabase.rpc("log_parent_dashboard_view", {
+          p_parent_id: stu.parent_id,
+          p_student_id: studentId,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入練習記錄。");
     } finally {
@@ -513,7 +546,6 @@ export default function QuizApp() {
   const startQuiz = async (student: Student, subject: string, count: number = 10) => {
     setLoading(true);
     setCurrentIndex(0);
-    setSelectedAnswer(null);
     setTextAnswer("");
     setAnswers([]);
     startTimeRef.current = Date.now();
@@ -530,7 +562,7 @@ export default function QuizApp() {
         .from("parent_weights")
         .select("*")
         .eq("student_id", student.id)
-        .ilike("subject", subject);
+        .ilikeAnyOf("subject", quizSubjectDbPatterns(subject));
 
       const selected = selectQuestions(
         allQuestions,
@@ -544,9 +576,12 @@ export default function QuizApp() {
       );
       if (sessErr) throw sessErr;
 
-      setQuestions(selected);
-      setSessionId((session as { id: string }).id);
-      setScreen("quiz");
+    setQuestions(selected);
+    setSessionId((session as { id: string }).id);
+    setEncourageIndex(Math.floor(Math.random() * 3));
+    setQuizTransition(0);
+    setSessionPracticeSummary(null);
+    setScreen("quiz");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入測驗。");
     } finally {
@@ -554,13 +589,11 @@ export default function QuizApp() {
     }
   };
 
-  const handleSubmitAnswer = async () => {
+  const runSubmitWithAnswer = async (answer: string) => {
     const currentQuestion = questions[currentIndex];
-    const shortAns = isShortAnswer(currentQuestion);
-    const answer = shortAns ? textAnswer.trim() : selectedAnswer;
-    if (!answer || !sessionId || submitting) return;
+    if (!currentQuestion || !sessionId || submitting) return;
 
-    const isCorrect = shortAns
+    const isCorrect = isShortAnswer(currentQuestion)
       ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
       : answer === currentQuestion.correct_answer;
 
@@ -605,14 +638,24 @@ export default function QuizApp() {
         p_time_spent_seconds: timeSpent,
       });
 
-      if (currentIndex + 1 >= questions.length) {
-        await finalizeQuiz(updatedAnswers);
+      const isLastQ = currentIndex + 1 >= questions.length;
+      if (isLastQ) {
+        const summary = await finalizeQuizAndSummary(updatedAnswers);
+        setSessionPracticeSummary(summary);
         setScreen("results");
-      } else {
-        setCurrentIndex(currentIndex + 1);
-        setSelectedAnswer(null);
-        setTextAnswer("");
+        return;
       }
+      if (selectedStudent && selectedSubject) {
+        const { data: balFresh } = await supabase.rpc("get_student_balance", {
+          p_student_id: selectedStudent.id,
+          p_subject: selectedSubject,
+        });
+        if (balFresh) setBalance(balFresh as StudentBalance);
+      }
+      setCurrentIndex((i) => i + 1);
+      setTextAnswer("");
+      setQuizTransition((k) => k + 1);
+      setEncourageIndex((e) => e + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交答案失敗。");
     } finally {
@@ -620,18 +663,49 @@ export default function QuizApp() {
     }
   };
 
-  const finalizeQuiz = async (finalAnswers: AnswerRecord[]) => {
-    if (!selectedStudent || !selectedSubject) return;
-    try {
-      if (balance) {
-        const { data: deductResult } = await supabase.rpc("deduct_student_balance", {
-          p_balance_id: balance.id,
-          p_amount: finalAnswers.length,
+  const handleSubmitAnswer = async () => {
+    const currentQuestion = questions[currentIndex];
+    if (!currentQuestion || !isShortAnswer(currentQuestion)) return;
+    const answer = textAnswer.trim();
+    if (!answer) return;
+    await runSubmitWithAnswer(answer);
+  };
+
+  const handleSelectMcqOption = async (label: string) => {
+    if (submitting) return;
+    if (getQuizSoundEnabled()) playClickSound();
+    await runSubmitWithAnswer(label);
+  };
+
+  const finalizeQuizAndSummary = async (finalAnswers: AnswerRecord[]): Promise<string> => {
+    if (!selectedStudent || !selectedSubject) return "";
+    const summary = buildSessionPracticeSummary(finalAnswers, selectedSubject);
+    const summaryParent = buildSessionPracticeSummaryForParent(
+      finalAnswers,
+      selectedSubject,
+      selectedStudent.student_name || ""
+    );
+    if (sessionId) {
+      try {
+        const { error: sumErr } = await supabase.rpc("save_session_practice_summaries", {
           p_session_id: sessionId,
+          p_student_id: selectedStudent.id,
+          p_student_summary: summary,
+          p_parent_summary: summaryParent,
         });
-        const newBal = (deductResult as { remaining_questions: number } | null)?.remaining_questions
-          ?? Math.max(0, balance.remaining_questions - finalAnswers.length);
-        setBalance({ ...balance, remaining_questions: newBal });
+        if (sumErr) console.error("save_session_practice_summaries", sumErr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    try {
+      /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
+      if (selectedStudent && selectedSubject) {
+        const { data: balFresh } = await supabase.rpc("get_student_balance", {
+          p_student_id: selectedStudent.id,
+          p_subject: selectedSubject,
+        });
+        if (balFresh) setBalance(balFresh as StudentBalance);
       }
 
       const rankGroups: Record<string, { attempted: number; correct: number }> =
@@ -660,11 +734,13 @@ export default function QuizApp() {
         body: JSON.stringify({
           student_id: selectedStudent.id,
           session_id: sessionId,
+          session_summary_parent: summaryParent,
         }),
       }).catch(() => {});
     } catch {
       // non-critical: don't block results
     }
+    return summary;
   };
 
   const handleRestart = () => {
@@ -672,6 +748,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionPracticeSummary(null);
     setError(null);
   };
 
@@ -686,6 +763,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionPracticeSummary(null);
     setError(null);
   };
 
@@ -871,7 +949,7 @@ export default function QuizApp() {
     return (
       <QuestionCountScreen
         studentName={selectedStudent?.student_name || ""}
-        subject={selectedSubject || ""}
+        subjectKey={selectedSubject || ""}
         balance={balance?.remaining_questions ?? null}
         onSelect={handleQuestionCountSelect}
         onBack={() => { setError(null); setScreen("subject_select"); }}
@@ -887,6 +965,7 @@ export default function QuizApp() {
         studentName={selectedStudent?.student_name || ""}
         studentId={selectedStudent?.id || null}
         sessionId={sessionId}
+        sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
         onLogout={handleLogout}
         balance={balance}
@@ -904,113 +983,43 @@ export default function QuizApp() {
   }
 
   const shortAnswer = isShortAnswer(currentQuestion);
-  const canSubmit = shortAnswer
-    ? textAnswer.trim().length > 0
-    : selectedAnswer != null;
+  const canSubmit =
+    shortAnswer && textAnswer.trim().length > 0 && !submitting;
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col"
+      className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
       onContextMenu={preventContextMenu}
     >
       <Header
         studentName={selectedStudent?.student_name}
         onLogout={handleLogout}
       />
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="w-full max-w-2xl">
-          <ProgressBar current={currentIndex + 1} total={questions.length} />
-
-          <div className="mt-6 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 sm:px-8 sm:py-5">
-              <p className="text-indigo-100 text-sm font-medium">
-                第 {currentIndex + 1} 題 / 共 {questions.length} 題
-              </p>
-              <h2 className="mt-2 text-lg sm:text-xl font-semibold text-white leading-relaxed">
-                {currentQuestion.content}
-              </h2>
-              {hasImage(currentQuestion) && (
-                <QuestionImage src={getImagePublicUrl(currentQuestion)!} />
-              )}
-            </div>
-
-            <div className="p-6 sm:p-8 space-y-3">
-              {shortAnswer ? (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    請輸入答案
-                  </label>
-                  <input
-                    type="text"
-                    value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    disabled={submitting}
-                    className={`w-full p-4 rounded-xl border-2 text-base transition-all duration-200 outline-none ${
-                      textAnswer.trim()
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200 focus:border-indigo-400"
-                    } ${submitting ? "opacity-60 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-              ) : (
-                OPTION_LABELS.map((label, i) => {
-                  const optionText = currentQuestion[OPTION_KEYS[i]];
-                  const isSelected = selectedAnswer === label;
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => setSelectedAnswer(label)}
-                      disabled={submitting}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group ${
-                        isSelected
-                          ? "border-indigo-500 bg-indigo-50 shadow-md"
-                          : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
-                      } ${submitting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                    >
-                      <span
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-                          isSelected
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
-                        }`}
-                      >
-                        {label}
-                      </span>
-                      <span
-                        className={`text-base ${isSelected ? "text-indigo-900 font-medium" : "text-gray-700"}`}
-                      >
-                        {optionText}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="px-6 pb-6 sm:px-8 sm:pb-8">
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={!canSubmit || submitting}
-                className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-                  canSubmit && !submitting
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-[0.98]"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Spinner />
-                    提交中...
-                  </span>
-                ) : currentIndex + 1 === questions.length ? (
-                  "提交並查看結果"
-                ) : (
-                  "提交答案"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-0 flex flex-1 flex-col">
+        <StudentQuizExperience
+          currentQuestion={currentQuestion}
+          currentIndex={currentIndex}
+          totalQuestions={questions.length}
+          shortAnswer={shortAnswer}
+          hasImage={hasImage}
+          getImageUrl={getImagePublicUrl}
+          textAnswer={textAnswer}
+          onTextChange={(v) => setTextAnswer(v)}
+          submitting={submitting}
+          onSubmit={handleSubmitAnswer}
+          canSubmit={canSubmit}
+          isLastQuestion={currentIndex + 1 === questions.length}
+          onToggleSound={() => {
+            const n = !quizSoundOn;
+            setQuizSoundOn(n);
+            setQuizSoundEnabled(n);
+          }}
+          soundEnabled={quizSoundOn}
+          encouragementIndex={encourageIndex}
+          transitionKey={quizTransition}
+          onSelectOption={handleSelectMcqOption}
+          showSubmitButton={shortAnswer}
+        />
       </div>
       {showSpeedReminder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -1212,6 +1221,11 @@ function RegisterScreen({
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [privacyStatementText, setPrivacyStatementText] = useState<string | null>(null);
+  const [privacyLoadError, setPrivacyLoadError] = useState<string | null>(null);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -1226,6 +1240,44 @@ function RegisterScreen({
     });
   }, []);
 
+  useEffect(() => {
+    if (!privacyModalOpen) return;
+    const url = getPrivacyStatementTxtUrl();
+    let cancelled = false;
+    setPrivacyLoadError(null);
+    if (!url) {
+      setPrivacyLoading(false);
+      setPrivacyLoadError(
+        "無法取得私隱政策網址：請設定 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_PRIVACY_STATEMENT_URL。"
+      );
+      return;
+    }
+    setPrivacyLoading(true);
+    if (privacyStatementText === null) {
+      fetch(url, { cache: "no-store" })
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        })
+        .then((text) => {
+          if (!cancelled) setPrivacyStatementText(text);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setPrivacyLoadError("無法載入私隱政策全文，請稍後再試或直接開啟官方連結。");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setPrivacyLoading(false);
+        });
+    } else {
+      setPrivacyLoading(false);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [privacyModalOpen, privacyStatementText]);
+
   const areas = [...new Set(schools.map((s) => s.area))];
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
@@ -1234,6 +1286,7 @@ function RegisterScreen({
   const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
+  const privacyStatementUrl = getPrivacyStatementTxtUrl();
   const canSubmit =
     mobileValid &&
     studentName.trim().length > 0 &&
@@ -1242,6 +1295,8 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    privacyAgreed &&
+    privacyStatementUrl.length > 0 &&
     (siteKey ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
@@ -1469,6 +1524,30 @@ function RegisterScreen({
             <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
 
+          <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+            <label className="flex gap-3 cursor-pointer items-start">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(e) => {
+                  setPrivacyAgreed(e.target.checked);
+                  if (error) setError(null);
+                }}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700 leading-snug">
+                本人確認已閱讀並同意本平台的
+                <button
+                  type="button"
+                  onClick={() => setPrivacyModalOpen(true)}
+                  className="text-indigo-600 font-semibold underline underline-offset-2 hover:text-indigo-800"
+                >
+                  私隱政策聲明
+                </button>
+              </span>
+            </label>
+          </div>
+
           <button
             onClick={async () => {
               const { data: emailCheck } = await supabase.rpc("check_email_exists", { p_email: email.trim() });
@@ -1485,7 +1564,7 @@ function RegisterScreen({
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            完成註冊
+            同意並繼續
           </button>
 
           <button
@@ -1496,6 +1575,69 @@ function RegisterScreen({
           </button>
         </div>
       </div>
+
+      {privacyModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          role="presentation"
+          onClick={() => setPrivacyModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="privacy-modal-title"
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 shrink-0">
+              <h2 id="privacy-modal-title" className="text-lg font-bold text-gray-900">
+                私隱政策聲明
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                aria-label="關閉"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 py-4 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+              {privacyLoading && privacyStatementText === null && (
+                <p className="text-gray-500">載入中…</p>
+              )}
+              {privacyLoadError && (
+                <p className="text-red-600 mb-3">{privacyLoadError}</p>
+              )}
+              {privacyStatementText !== null && privacyStatementText}
+              {(privacyLoadError || privacyStatementText === null) && !privacyLoading && privacyStatementUrl && (
+                <p className="mt-4 text-xs text-gray-500 break-all">
+                  官方檔案連結：
+                  <a
+                    href={privacyStatementUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 underline"
+                  >
+                    {privacyStatementUrl}
+                  </a>
+                </p>
+              )}
+            </div>
+            <div className="border-t border-gray-100 px-4 py-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPrivacyModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-800 font-semibold text-sm hover:bg-gray-200"
+              >
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1573,9 +1715,7 @@ function SubjectSelectScreen({
   onLogout: () => void;
   error: string | null;
 }) {
-  const subjects = [
-    { key: "數學", label: "數學", icon: "🔢" },
-  ];
+  const subjects = [...STUDENT_SUBJECT_OPTIONS];
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -1620,19 +1760,20 @@ function SubjectSelectScreen({
 
 function QuestionCountScreen({
   studentName,
-  subject,
+  subjectKey,
   balance,
   onSelect,
   onBack,
   error,
 }: {
   studentName: string;
-  subject: string;
+  subjectKey: string;
   balance: number | null;
   onSelect: (count: number) => void;
   onBack: () => void;
   error: string | null;
 }) {
+  const subjectLine = subjectKey ? subjectDisplayLabel(subjectKey) : "";
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -1644,7 +1785,7 @@ function QuestionCountScreen({
             {studentName}，選擇題數
           </h1>
           <p className="mt-2 text-gray-500">
-            {subject} — 請選擇本次練習的題目數量
+            {subjectLine} — 請選擇本次練習的題目數量
           </p>
           {balance !== null && (
             <p className="mt-1 text-sm text-indigo-600 font-medium">
@@ -1727,11 +1868,19 @@ function ProgressBar({
   );
 }
 
+function getPracticeMascotImageSrc(): string {
+  const o = process.env.NEXT_PUBLIC_MASCOT_IMAGE_URL?.trim();
+  if (o) return o;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+}
+
 function ResultsView({
   answers,
   studentName,
   studentId,
   sessionId,
+  sessionSummary,
   onRestart,
   onLogout,
   balance,
@@ -1740,6 +1889,7 @@ function ResultsView({
   studentName: string;
   studentId: string | null;
   sessionId: string | null;
+  sessionSummary: string | null;
   onRestart: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
@@ -1747,6 +1897,8 @@ function ResultsView({
   const score = answers.filter((a) => a.isCorrect).length;
   const total = answers.length;
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+  const summaryText =
+    sessionSummary?.trim() || buildSessionPracticeSummary(answers, answers[0]?.question.subject || "");
 
   const wrongAnswers = answers
     .map((answer, index) => ({ answer, index }))
@@ -1804,6 +1956,30 @@ function ResultsView({
               剩餘題目：{balance.remaining_questions}
             </p>
           )}
+        </div>
+
+        <div className="mb-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+          <div className="shrink-0 self-center sm:self-end">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getPracticeMascotImageSrc()}
+              alt=""
+              className="h-16 w-16 sm:h-20 sm:w-20"
+              width={80}
+              height={80}
+              draggable={false}
+            />
+          </div>
+          <div className="relative min-w-0 flex-1 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
+            <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
+            <p className="mt-2 text-pretty" style={{ fontFamily: "var(--font-baloo2), system-ui" }}>
+              {summaryText}
+            </p>
+            <div
+              className="absolute -bottom-2 left-6 h-4 w-4 rotate-45 border-b-2 border-r-2 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50"
+              aria-hidden
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -1886,18 +2062,22 @@ function ResultsView({
                     </p>
                   </div>
                   <div className="px-4 py-3 space-y-2">
-                    <p className="text-sm text-gray-700">
-                      {answer.question.content}
-                    </p>
+                    <QuestionContentParagraphs
+                      content={answer.question.content}
+                      className="text-sm text-gray-700"
+                      paragraphGapClass="mt-3"
+                    />
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
                     )}
                     {answer.question.explanation ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
-                        {answer.question.explanation}
-                      </p>
+                      <QuestionContentParagraphs
+                        content={answer.question.explanation}
+                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
+                        paragraphGapClass="mt-2"
+                      />
                     ) : (
                       <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
@@ -2261,6 +2441,7 @@ function ProfileEditScreen({
     avatar_style: string;
     grade_level: string;
     school_id: string | null;
+    gender: string | null;
   }[]>([]);
 
   const [schools, setSchools] = useState<{ id: string; area: string; district: string; name_zh: string | null; name_en: string }[]>([]);
@@ -2287,12 +2468,32 @@ function ProfileEditScreen({
       if (profileRes.data) {
         const d = profileRes.data as {
           parent: { id: string; mobile_number: string; parent_name: string | null; email: string | null };
-          students: { id: string; student_name: string; pin_code: string; avatar_style: string; grade_level: string; school_id: string | null }[];
+          students: {
+            id: string;
+            student_name: string;
+            pin_code: string;
+            avatar_style: string;
+            grade_level: string;
+            school_id: string | null;
+            gender?: string | null;
+          }[];
         };
         setParentId(d.parent.id);
         setParentName(d.parent.parent_name || "");
         setParentEmail(d.parent.email || "");
-        setStudentEdits(d.students.map((s) => ({ ...s, pin_code: s.pin_code || "" })));
+        setStudentEdits(
+          d.students.map((s) => {
+            const g = s.gender?.trim() ? s.gender.trim().toUpperCase() : "";
+            const fromGender =
+              g === "M" ? "Boy" : g === "F" ? "Girl" : s.avatar_style || "Boy";
+            return {
+              ...s,
+              pin_code: s.pin_code || "",
+              gender: s.gender ?? null,
+              avatar_style: fromGender,
+            };
+          })
+        );
         setSharedPin(d.students[0]?.pin_code || "");
       }
       setLoading(false);
@@ -2321,6 +2522,7 @@ function ProfileEditScreen({
           p_avatar_style: s.avatar_style,
           p_grade_level: s.grade_level,
           p_school_id: s.school_id,
+          p_gender: s.avatar_style === "Boy" ? "M" : s.avatar_style === "Girl" ? "F" : null,
         });
       }
 
@@ -2698,6 +2900,7 @@ function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
 }
 
 function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [balanceSubject, setBalanceSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [data, setData] = useState<ParentBalanceView | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -2708,10 +2911,11 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const { data: res } = await supabase.rpc("get_parent_balance_view", {
         p_mobile: mobileNumber.trim(),
-        p_subject: "數學",
+        p_subject: balanceSubject,
         p_year: viewMonth.year,
         p_month: viewMonth.month,
       });
@@ -2721,7 +2925,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
       }
     })();
     return () => { cancelled = true; };
-  }, [mobileNumber, viewMonth, fetchKey]);
+  }, [mobileNumber, viewMonth, fetchKey, balanceSubject]);
 
   const prevMonth = () => {
     setLoading(true);
@@ -2753,9 +2957,29 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {STUDENT_SUBJECT_OPTIONS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => {
+                if (s.key === balanceSubject) return;
+                setBalanceSubject(s.key);
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                balanceSubject === s.key
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
-            <p className="text-indigo-100 text-xs font-medium">題目餘額</p>
+            <p className="text-indigo-100 text-xs font-medium">題目餘額（{subjectDisplayLabel(balanceSubject)}）</p>
             <p className="text-white text-4xl font-extrabold mt-1">{data.total_balance}</p>
             <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
           </div>
@@ -2910,9 +3134,12 @@ function RoleSelectScreen({
 function ParentGradeRankPanel({
   studentName,
   rank,
+  subjectUiLabel,
 }: {
   studentName: string;
   rank: ParentGradeRankPayload | null;
+  /** Current dashboard subject tab (rank + charts match this subject) */
+  subjectUiLabel: string;
 }) {
   const notReady = (
     <div className="relative overflow-hidden rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-rose-100/80 via-amber-100/80 to-emerald-100/80 h-14" aria-hidden>
@@ -2927,9 +3154,12 @@ function ParentGradeRankPanel({
   if (!rank || !rank.has_snapshot) {
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
+        </p>
         <p className="text-sm text-amber-800/90">暫無同級排名資料（系統每日更新）。</p>
         <p className="mt-1 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨批次更新。
         </p>
       </div>
     );
@@ -2950,12 +3180,15 @@ function ParentGradeRankPanel({
   if (!eligible) {
     return (
       <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
+        </p>
         <p className="text-sm text-gray-800">
           {displayName} 完成累積 100 題練習後，即可與同級同學比較表現。
         </p>
         {notReady}
         <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。{updatedStr ? ` 資料更新：${updatedStr}。` : ""}
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨更新。{updatedStr ? ` 資料更新：${updatedStr}。` : ""}
         </p>
       </div>
     );
@@ -2964,10 +3197,13 @@ function ParentGradeRankPanel({
   if (total === 0 || rnk == null) {
     return (
       <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+          「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
+        </p>
         <p className="text-sm text-amber-800/90">同級暫時沒有足夠學生可顯示排名。</p>
         {notReady}
         <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-          僅計算已累積完成至少 100 題的學生；排名以「最近 10 次練習」的平均正確率比較，每日凌晨更新。
+          僅計算<strong>{subjectUiLabel}</strong>科目已累積完成至少 100 題的學生；排名以該科目「最近 10 次練習」的平均正確率比較，每日凌晨更新。
         </p>
       </div>
     );
@@ -2980,6 +3216,9 @@ function ParentGradeRankPanel({
 
   return (
     <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+      <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+        「同級排名」按<strong>{subjectUiLabel}</strong>科目計算（與下方練習列表、趨勢圖同一科目）。
+      </p>
       <p className="text-sm text-gray-800 font-medium">
         {displayName} 在同級活躍用戶中排第 {rnk} 名（共 {total} 人）
       </p>
@@ -3002,7 +3241,7 @@ function ParentGradeRankPanel({
         />
       </div>
       <p className="mt-2 text-[11px] text-gray-400 leading-snug">
-        僅納入累積完成至少 100 題練習的同級學生；以「最近 10 次練習」各次正確率之平均排序，表現愈高排名愈前。箭頭表示相對位置（紅：待加強，綠：表現佳）。每日凌晨批次更新，非即時。
+        僅納入該科目累積完成至少 100 題的同級學生；以該科目「最近 10 次練習」各次正確率之平均排序，表現愈高排名愈前。箭頭表示相對位置（紅：待加強，綠：表現佳）。每日凌晨批次更新，非即時。
       </p>
     </div>
   );
@@ -3037,7 +3276,7 @@ function ParentDashboard({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chartsExpanded, setChartsExpanded] = useState(false);
-  const subjects = [{ key: "數學", label: "數學" }];
+  const subjects = STUDENT_SUBJECT_OPTIONS.map(({ key, label }) => ({ key, label }));
   const monthLabel = `${year} 年 ${month} 月`;
 
   const prevMonth = () => {
@@ -3083,7 +3322,11 @@ function ParentDashboard({
           ))}
         </div>
 
-        <ParentGradeRankPanel studentName={studentName} rank={gradeRank} />
+        <ParentGradeRankPanel
+          studentName={studentName}
+          rank={gradeRank}
+          subjectUiLabel={subjectDisplayLabel(subject)}
+        />
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
@@ -3238,7 +3481,7 @@ function ParentSessionDetail({
         </button>
 
         <div className={`text-center p-5 rounded-2xl border-2 ${scoreBg} mb-6`}>
-          <p className="text-sm text-gray-500">{dateStr} · {session.subject} · 用時 {timeStr}</p>
+          <p className="text-sm text-gray-500">{dateStr} · {subjectDisplayLabel(session.subject)} · 用時 {timeStr}</p>
           <p className={`mt-2 text-4xl font-extrabold ${scoreColor}`}>{score} / {total}</p>
           <p className="mt-1 text-base text-gray-600">{percentage}% 正確 · 答對 {score} 題 · 答錯 {incorrect} 題</p>
         </div>
@@ -3295,14 +3538,22 @@ function ParentSessionDetail({
                     </p>
                   </div>
                   <div className="px-4 py-3 space-y-2">
-                    <p className="text-sm text-gray-700">{answer.question.content}</p>
+                    <QuestionContentParagraphs
+                      content={answer.question.content}
+                      className="text-sm text-gray-700"
+                      paragraphGapClass="mt-3"
+                    />
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
                     )}
                     {answer.question.explanation ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">{answer.question.explanation}</p>
+                      <QuestionContentParagraphs
+                        content={answer.question.explanation}
+                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
+                        paragraphGapClass="mt-2"
+                      />
                     ) : (
                       <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}

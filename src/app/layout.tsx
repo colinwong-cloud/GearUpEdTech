@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_TC } from "next/font/google";
+import { Geist, Geist_Mono, Baloo_2, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 import { getLoginMarketingLogoUrl, getSiteIconUrl } from "@/lib/login-marketing-assets";
 
@@ -13,11 +13,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/** Casual Traditional Chinese for login marketing copy */
+/** Casual Traditional Chinese for login marketing / brief copy */
 const notoSansTc = Noto_Sans_TC({
   variable: "--font-noto-sans-tc",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
+});
+
+const baloo2 = Baloo_2({
+  variable: "--font-baloo2",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
@@ -59,7 +65,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-Hant"
-      className={`${geistSans.variable} ${geistMono.variable} ${notoSansTc.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSansTc.variable} ${baloo2.variable} h-full antialiased`}
     >
       <head>
         <style dangerouslySetInnerHTML={{ __html: `body{background-image:url(${bgUrl});}` }} />
