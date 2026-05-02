@@ -291,6 +291,18 @@ function preventContextMenu(e: React.MouseEvent) {
   e.preventDefault();
 }
 
+function preventQuizClipboard(e: React.ClipboardEvent) {
+  const el = e.target;
+  if (el instanceof HTMLInputElement && el.type === "text") {
+    return;
+  }
+  e.preventDefault();
+}
+
+function preventQuizDragStart(e: React.DragEvent) {
+  e.preventDefault();
+}
+
 export default function QuizApp() {
   const [screen, setScreen] = useState<AppScreen>("login_mobile");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -990,6 +1002,9 @@ export default function QuizApp() {
     <div
       className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
       onContextMenu={preventContextMenu}
+      onCopy={preventQuizClipboard}
+      onCut={preventQuizClipboard}
+      onDragStart={preventQuizDragStart}
     >
       <Header
         studentName={selectedStudent?.student_name}
