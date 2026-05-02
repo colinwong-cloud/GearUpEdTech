@@ -13,7 +13,8 @@ export { computeTypeStats, rate, tipForParentWeak } from "./session-practice-sum
 /**
  * 學生結果頁：直接對學生說話，約 50–80 字、繁體、鼓勵。
  */
-export function buildSessionPracticeSummary(answers: AnswerLike[], _subject: string): string {
+export function buildSessionPracticeSummary(answers: AnswerLike[], _subjectKey: string): string {
+  void _subjectKey;
   if (answers.length === 0) {
     return "今次沒有作答，下次再一齊加油，小步也會是進步！";
   }
@@ -61,7 +62,7 @@ export function buildSessionPracticeSummary(answers: AnswerLike[], _subject: str
   s = s.replace(/\s+/g, "");
   if (s.length < TARGET_LO) s += "慢慢嚟，你一定越來越好。";
   if (s.length > TARGET_HI) s = s.slice(0, TARGET_HI);
-  let lastP = s.lastIndexOf("。");
+  const lastP = s.lastIndexOf("。");
   if (lastP >= TARGET_LO - 5 && lastP < s.length) s = s.slice(0, lastP + 1);
   if (s.length < TARGET_LO) s = (s + "繼續努力。").slice(0, TARGET_HI);
   if (s.length < TARGET_LO) s += " 加油！";
@@ -73,9 +74,10 @@ export function buildSessionPracticeSummary(answers: AnswerLike[], _subject: str
  */
 export function buildSessionPracticeSummaryForParent(
   answers: AnswerLike[],
-  _subject: string,
+  _subjectKey: string,
   studentName: string
 ): string {
+  void _subjectKey;
   const name = studentName.trim() || "同學";
   if (answers.length === 0) {
     return `敬啟者：${name}今節未有作答紀錄，建議下次預留完整時間完成，以便檢視學習狀況。`;
@@ -110,7 +112,7 @@ export function buildSessionPracticeSummaryForParent(
   s = s.replace(/\s+/g, "");
   if (s.length < TARGET_LO) s += "祝學習愉快。";
   if (s.length > TARGET_HI) s = s.slice(0, TARGET_HI);
-  let lastPeriod = s.lastIndexOf("。");
+  const lastPeriod = s.lastIndexOf("。");
   if (lastPeriod >= TARGET_LO - 8 && lastPeriod < s.length) s = s.slice(0, lastPeriod + 1);
   if (s.length < TARGET_LO) s = (s + "祝好。").slice(0, TARGET_HI);
   return s;

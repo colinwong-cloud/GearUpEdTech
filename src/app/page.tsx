@@ -1259,35 +1259,38 @@ function RegisterScreen({
     if (!privacyModalOpen) return;
     const url = getPrivacyStatementTxtUrl();
     let cancelled = false;
-    setPrivacyLoadError(null);
-    if (!url) {
-      setPrivacyLoading(false);
-      setPrivacyLoadError(
-        "無法取得私隱政策網址：請設定 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_PRIVACY_STATEMENT_URL。"
-      );
-      return;
-    }
-    setPrivacyLoading(true);
-    if (privacyStatementText === null) {
-      fetch(url, { cache: "no-store" })
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.text();
-        })
-        .then((text) => {
-          if (!cancelled) setPrivacyStatementText(text);
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setPrivacyLoadError("無法載入私隱政策全文，請稍後再試或直接開啟官方連結。");
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setPrivacyLoading(false);
-        });
-    } else {
-      setPrivacyLoading(false);
-    }
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setPrivacyLoadError(null);
+      if (!url) {
+        setPrivacyLoading(false);
+        setPrivacyLoadError(
+          "無法取得私隱政策網址：請設定 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_PRIVACY_STATEMENT_URL。"
+        );
+        return;
+      }
+      setPrivacyLoading(true);
+      if (privacyStatementText === null) {
+        fetch(url, { cache: "no-store" })
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.text();
+          })
+          .then((text) => {
+            if (!cancelled) setPrivacyStatementText(text);
+          })
+          .catch(() => {
+            if (!cancelled) {
+              setPrivacyLoadError("無法載入私隱政策全文，請稍後再試或直接開啟官方連結。");
+            }
+          })
+          .finally(() => {
+            if (!cancelled) setPrivacyLoading(false);
+          });
+      } else {
+        setPrivacyLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -1852,32 +1855,6 @@ function QuestionCountScreen({
         >
           返回
         </button>
-      </div>
-    </div>
-  );
-}
-
-function ProgressBar({
-  current,
-  total,
-}: {
-  current: number;
-  total: number;
-}) {
-  const percent = (current / total) * 100;
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm font-medium text-gray-600">
-        <span>進度</span>
-        <span>
-          {current} / {total}
-        </span>
-      </div>
-      <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${percent}%` }}
-        />
       </div>
     </div>
   );
@@ -2926,8 +2903,8 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    (async () => {
+    void (async () => {
+      setLoading(true);
       const { data: res } = await supabase.rpc("get_parent_balance_view", {
         p_mobile: mobileNumber.trim(),
         p_subject: balanceSubject,
@@ -2939,7 +2916,9 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [mobileNumber, viewMonth, fetchKey, balanceSubject]);
 
   const prevMonth = () => {
