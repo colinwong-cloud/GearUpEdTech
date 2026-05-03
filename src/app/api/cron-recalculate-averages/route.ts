@@ -3,17 +3,23 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseClients() {
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    process.env.SUPABASE_URL?.trim() ||
+    "";
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    "";
+  if (!url || !anonKey) return null;
 
-const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  serviceKey
-);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  return {
+    supabase: createClient(url, anonKey),
+    supabaseAdmin: createClient(url, serviceKey),
+  };
+}
 
 function missingRpcError(e: { message: string } | null | undefined): boolean {
   if (!e) return false;
@@ -117,6 +123,15 @@ async function recomputeOneGrade(client: Rpc, gl: string): Promise<RecomputeResu
  * - part=all → both (can hit DB limits; prefer two crons: rank + grade)
  */
 export async function GET(req: NextRequest) {
+  const clients = getSupabaseClients();
+  if (!clients) {
+    return NextResponse.json(
+      { error: "Supabase env not configured" },
+      { status: 503 }
+    );
+  }
+  const { supabase, supabaseAdmin } = clients;
+
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
