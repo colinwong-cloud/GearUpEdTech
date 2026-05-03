@@ -179,15 +179,21 @@ BEGIN
   INTO v_transactions
   FROM (
     SELECT
-      bt.id,
-      bt.change_amount,
-      bt.balance_after,
-      bt.description,
-      bt.session_id,
-      bt.created_at,
-      s.student_name
+      md5(
+        to_char(date_trunc('day', bt.created_at), 'YYYY-MM-DD')
+        || '|' || lower(trim(bt.subject))
+      ) AS id,
+      SUM(bt.change_amount)::int AS change_amount,
+      NULL::int AS balance_after,
+      CASE
+        WHEN SUM(bt.change_amount) < 0 THEN '練習作答扣除（按日）'
+        WHEN SUM(bt.change_amount) > 0 THEN '新增題目（按日）'
+        ELSE '題目調整（按日）'
+      END AS description,
+      NULL::uuid AS session_id,
+      date_trunc('day', bt.created_at) AS created_at,
+      CASE WHEN v_key = 'math' THEN 'Math' ELSE trim(p_subject) END AS subject
     FROM balance_transactions bt
-    JOIN students s ON s.id = bt.student_id
     WHERE bt.student_id = ANY(v_student_ids)
       AND (
         lower(trim(bt.subject)) = v_key
@@ -195,6 +201,7 @@ BEGIN
       )
       AND bt.created_at >= v_start
       AND bt.created_at < v_end
+    GROUP BY date_trunc('day', bt.created_at), lower(trim(bt.subject))
   ) t;
 
   RETURN json_build_object(
