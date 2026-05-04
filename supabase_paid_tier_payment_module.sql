@@ -807,10 +807,12 @@ DECLARE
   v_student_ids UUID[];
   v_tier JSON;
   v_is_paid BOOLEAN := false;
+  v_key TEXT;
   v_start DATE;
   v_end DATE;
   v_used_month INTEGER := 0;
   v_total_balance INTEGER := 0;
+  v_opening_balance INTEGER := 0;
   v_transactions JSON;
 BEGIN
   SELECT *
@@ -838,16 +840,58 @@ BEGIN
   SELECT public.get_parent_tier_status(p_mobile) INTO v_tier;
   v_is_paid := coalesce((v_tier->>'is_paid')::BOOLEAN, false);
 
-  IF v_is_paid THEN
-    RETURN json_build_object(
-      'total_balance', -1,
-      'opening_balance', -1,
-      'transactions', '[]'::json
-    );
+  v_key := lower(trim(coalesce(p_subject, '')));
+  IF v_key = '' THEN
+    v_key := 'math';
   END IF;
 
   v_start := make_date(p_year, p_month, 1);
   v_end := (v_start + interval '1 month')::DATE;
+
+  IF v_is_paid THEN
+    SELECT COALESCE(
+      (SELECT bt.balance_after
+       FROM public.balance_transactions bt
+       WHERE bt.student_id = ANY(v_student_ids)
+         AND (
+           lower(trim(bt.subject)) = v_key
+           OR (v_key = 'math' AND lower(trim(bt.subject)) IN ('math', '數學'))
+         )
+         AND bt.created_at < v_start
+       ORDER BY bt.created_at DESC
+       LIMIT 1),
+      -1
+    ) INTO v_opening_balance;
+
+    SELECT COALESCE(json_agg(row_to_json(t) ORDER BY t.created_at), '[]'::json)
+    INTO v_transactions
+    FROM (
+      SELECT
+        bt.id,
+        bt.subject,
+        bt.change_amount,
+        bt.balance_after,
+        bt.description,
+        bt.session_id,
+        bt.created_at,
+        s.student_name
+      FROM public.balance_transactions bt
+      JOIN public.students s ON s.id = bt.student_id
+      WHERE bt.student_id = ANY(v_student_ids)
+        AND (
+          lower(trim(bt.subject)) = v_key
+          OR (v_key = 'math' AND lower(trim(bt.subject)) IN ('math', '數學'))
+        )
+        AND bt.created_at >= v_start
+        AND bt.created_at < v_end
+    ) t;
+
+    RETURN json_build_object(
+      'total_balance', -1,
+      'opening_balance', v_opening_balance,
+      'transactions', v_transactions
+    );
+  END IF;
 
   SELECT COALESCE(SUM(-bt.change_amount), 0)::INT
   INTO v_used_month
@@ -860,11 +904,26 @@ BEGIN
 
   v_total_balance := GREATEST(200 - v_used_month, 0);
 
+  SELECT COALESCE(
+    (SELECT bt.balance_after
+     FROM public.balance_transactions bt
+     WHERE bt.student_id = ANY(v_student_ids)
+       AND (
+         lower(trim(bt.subject)) = v_key
+         OR (v_key = 'math' AND lower(trim(bt.subject)) IN ('math', '數學'))
+       )
+       AND bt.created_at < v_start
+     ORDER BY bt.created_at DESC
+     LIMIT 1),
+    200
+  ) INTO v_opening_balance;
+
   SELECT COALESCE(json_agg(row_to_json(t) ORDER BY t.created_at), '[]'::json)
   INTO v_transactions
   FROM (
     SELECT
       bt.id,
+      bt.subject,
       bt.change_amount,
       bt.balance_after,
       bt.description,
@@ -874,6 +933,10 @@ BEGIN
     FROM public.balance_transactions bt
     JOIN public.students s ON s.id = bt.student_id
     WHERE bt.student_id = ANY(v_student_ids)
+      AND (
+        lower(trim(bt.subject)) = v_key
+        OR (v_key = 'math' AND lower(trim(bt.subject)) IN ('math', '數學'))
+      )
       AND bt.created_at >= v_start
       AND bt.created_at < v_end
       AND bt.description IN ('FREE_TIER_USAGE', '練習作答扣除')
@@ -881,7 +944,7 @@ BEGIN
 
   RETURN json_build_object(
     'total_balance', v_total_balance,
-    'opening_balance', 200,
+    'opening_balance', v_opening_balance,
     'transactions', v_transactions
   );
 END;
