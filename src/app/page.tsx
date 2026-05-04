@@ -44,6 +44,25 @@ const MAX_IMAGE = 1;
 const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
+const MONTHLY_PAID_PRICE_HKD = 99;
+
+function getRankSampleImageUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_RANK_SAMPLE_IMAGE_URL?.trim();
+  if (explicit) return explicit;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return base
+    ? `${base}/storage/v1/object/public/Webpage_images/logo/rank_sample.png`
+    : "/rank_sample.png";
+}
+
+function getPaymentTermsUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_PAYMENT_TERMS_URL?.trim();
+  if (explicit) return explicit;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return base
+    ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
+    : "/payment_terms_condition.txt";
+}
 
 type AppScreen =
   | "login_mobile"
@@ -61,7 +80,8 @@ type AppScreen =
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
-  | "forgot_password";
+  | "forgot_password"
+  | "payment";
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
@@ -142,6 +162,22 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+type ParentTier = "free" | "paid";
+
+interface ParentTierStatus {
+  tier: ParentTier;
+  is_paid: boolean;
+  paid_until?: string | null;
+  tier_label: string;
+}
+
+interface DiscountValidationResult {
+  valid: boolean;
+  code: string | null;
+  discount_percent: number;
+  salesperson: string | null;
 }
 
 function isShortAnswer(q: Question): boolean {
@@ -343,6 +379,47 @@ export default function QuizApp() {
   
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
   const [gradeRank, setGradeRank] = useState<ParentGradeRankPayload | null>(null);
+  const [parentTierStatus, setParentTierStatus] = useState<ParentTierStatus>({
+    tier: "free",
+    is_paid: false,
+    paid_until: null,
+    tier_label: "免費用戶",
+  });
+
+  const refreshParentTierStatus = useCallback(async () => {
+    const mobile = mobileNumber.trim();
+    if (!mobile) {
+      setParentTierStatus({
+        tier: "free",
+        is_paid: false,
+        paid_until: null,
+        tier_label: "免費用戶",
+      });
+      return;
+    }
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("get_parent_tier_status", {
+        p_mobile: mobile,
+      });
+      if (rpcErr) throw rpcErr;
+      const result = data as ParentTierStatus | null;
+      if (result) {
+        setParentTierStatus({
+          tier: result.tier === "paid" ? "paid" : "free",
+          is_paid: Boolean(result.is_paid),
+          paid_until: result.paid_until ?? null,
+          tier_label: result.tier_label || (result.is_paid ? "月費用戶" : "免費用戶"),
+        });
+      }
+    } catch {
+      setParentTierStatus({
+        tier: "free",
+        is_paid: false,
+        paid_until: null,
+        tier_label: "免費用戶",
+      });
+    }
+  }, [mobileNumber]);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
@@ -360,6 +437,10 @@ export default function QuizApp() {
       const result = (await res.json()) as {
         parent_found?: boolean;
         students?: Student[];
+        tier?: ParentTier;
+        is_paid?: boolean;
+        paid_until?: string | null;
+        tier_label?: string;
         error?: string;
       };
       if (!res.ok) {
@@ -371,6 +452,14 @@ export default function QuizApp() {
         throw new Error("密碼不正確，請重試。");
 
       setStudents(result.students);
+      setParentTierStatus({
+        tier: result.tier === "paid" ? "paid" : "free",
+        is_paid: Boolean(result.is_paid),
+        paid_until: result.paid_until ?? null,
+        tier_label:
+          result.tier_label ||
+          (result.tier === "paid" || result.is_paid ? "月費用戶" : "免費用戶"),
+      });
       setScreen("login_role");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登入失敗，請重試。");
@@ -405,6 +494,7 @@ export default function QuizApp() {
 
         setSelectedStudent(data as Student);
         setStudents([data as Student]);
+        await refreshParentTierStatus();
         setScreen("subject_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
@@ -412,7 +502,7 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [mobileNumber]
+    [mobileNumber, refreshParentTierStatus]
   );
 
   const handleStudentSelect = useCallback((student: Student) => {
@@ -438,6 +528,7 @@ export default function QuizApp() {
         if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
         const newStudent = data as Student;
         setStudents((prev) => [...prev, newStudent]);
+        await refreshParentTierStatus();
         setScreen("account_menu");
       } catch (err) {
         setError(err instanceof Error ? err.message : "新增學生失敗，請重試。");
@@ -445,7 +536,7 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [mobileNumber]
+    [mobileNumber, refreshParentTierStatus]
   );
 
   const loadParentSessions = async (
@@ -782,6 +873,12 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    setParentTierStatus({
+      tier: "free",
+      is_paid: false,
+      paid_until: null,
+      tier_label: "免費用戶",
+    });
     setError(null);
   };
 
@@ -820,6 +917,8 @@ export default function QuizApp() {
           }
         }}
         onAccount={() => setScreen("account_menu")}
+        tierStatus={parentTierStatus}
+        onUpgrade={() => setScreen("payment")}
         onBack={handleLogout}
       />
     );
@@ -831,6 +930,8 @@ export default function QuizApp() {
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onUpgrade={() => setScreen("payment")}
+        tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
       />
     );
@@ -907,8 +1008,33 @@ export default function QuizApp() {
           if (selectedStudent) loadParentSessions(selectedStudent.id, s, parentMonth.year, parentMonth.month);
         }}
         onViewDetail={handleViewSessionDetail}
+        tierStatus={parentTierStatus}
+        onUpgrade={() => setScreen("payment")}
         onBack={() => setScreen("login_role")}
         onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (screen === "payment") {
+    return (
+      <PaymentScreen
+        mobileNumber={mobileNumber}
+        tierStatus={parentTierStatus}
+        onBack={() => setScreen("login_role")}
+        onPaid={async () => {
+          await refreshParentTierStatus();
+          if (selectedStudent) {
+            await loadParentSessions(
+              selectedStudent.id,
+              parentSubject,
+              parentMonth.year,
+              parentMonth.month
+            );
+          } else {
+            setScreen("login_role");
+          }
+        }}
       />
     );
   }
@@ -2392,11 +2518,15 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onUpgrade,
+  tierStatus,
   onBack,
 }: {
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onUpgrade: () => void;
+  tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
   return (
@@ -2407,6 +2537,16 @@ function AccountMenuScreen({
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
+          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
+            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-gray-700"}`}>
+              會員狀態：{tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+            </p>
+            {tierStatus.is_paid && tierStatus.paid_until && (
+              <p className="mt-1 text-xs text-emerald-700/80">
+                有效至：{new Date(tierStatus.paid_until).toLocaleDateString("zh-HK")}
+              </p>
+            )}
+          </div>
           <button onClick={onBalance}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
@@ -2431,6 +2571,13 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
             </div>
           </button>
+          {!tierStatus.is_paid && (
+            <button onClick={onUpgrade}
+              className="w-full bg-indigo-50 rounded-2xl shadow-sm border border-indigo-200 p-4 text-left hover:bg-indigo-100 transition-all duration-200">
+              <p className="text-sm font-semibold text-indigo-700">成為月費會員(每月$99)</p>
+              <p className="text-xs text-indigo-600 mt-1">即可以獲得學生排名資訊。</p>
+            </button>
+          )}
         </div>
         <button onClick={onBack} className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
       </div>
@@ -3092,11 +3239,15 @@ function RoleSelectScreen({
   onStudent,
   onParent,
   onAccount,
+  onUpgrade,
+  tierStatus,
   onBack,
 }: {
   onStudent: () => void;
   onParent: () => void;
   onAccount: () => void;
+  onUpgrade: () => void;
+  tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
   return (
@@ -3108,7 +3259,20 @@ function RoleSelectScreen({
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">選擇身份</h1>
           <p className="mt-2 text-gray-500">請選擇登入身份</p>
+          <div className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+            tierStatus.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+          }`}>
+            {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+          </div>
         </div>
+        {!tierStatus.is_paid && (
+          <button
+            onClick={onUpgrade}
+            className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
+          >
+            成為月費會員(每月$99)，即可以獲得學生排名資訊。
+          </button>
+        )}
         <div className="space-y-3">
           <button
             onClick={onStudent}
@@ -3285,6 +3449,8 @@ function ParentDashboard({
   onMonthChange,
   onSubjectChange,
   onViewDetail,
+  tierStatus,
+  onUpgrade,
   onBack,
   onLogout,
 }: {
@@ -3298,6 +3464,8 @@ function ParentDashboard({
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
   onViewDetail: (s: SessionSummary) => void;
+  tierStatus: ParentTierStatus;
+  onUpgrade: () => void;
   onBack: () => void;
   onLogout: () => void;
 }) {
@@ -3349,11 +3517,28 @@ function ParentDashboard({
           ))}
         </div>
 
-        <ParentGradeRankPanel
-          studentName={studentName}
-          rank={gradeRank}
-          subjectUiLabel={subjectDisplayLabel(subject)}
-        />
+        {tierStatus.is_paid ? (
+          <ParentGradeRankPanel
+            studentName={studentName}
+            rank={gradeRank}
+            subjectUiLabel={subjectDisplayLabel(subject)}
+          />
+        ) : (
+          <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-700">成為月費會員(每月$99)，即可以獲得學生排名資訊。</p>
+            <img
+              src={getRankSampleImageUrl()}
+              alt="排名範例"
+              className="mt-3 w-full rounded-xl border border-gray-200"
+            />
+            <button
+              onClick={onUpgrade}
+              className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得排名資訊
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
@@ -3438,7 +3623,7 @@ function ParentDashboard({
           </>
         )}
 
-        {chartData && chartData.type_sessions.length > 0 && (
+        {tierStatus.is_paid && chartData && chartData.type_sessions.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setChartsExpanded(!chartsExpanded)}
@@ -3453,6 +3638,17 @@ function ParentDashboard({
             {chartsExpanded && (
               <TypeCharts chartData={chartData} />
             )}
+          </div>
+        )}
+        {!tierStatus.is_paid && (
+          <div className="mt-6 rounded-2xl border border-indigo-100 bg-white p-4">
+            <p className="text-sm text-gray-700">成為月費會員(每月$99)，即可獲得學生於各題型的正確率資訊。</p>
+            <button
+              onClick={onUpgrade}
+              className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得資訊
+            </button>
           </div>
         )}
 
@@ -3628,5 +3824,253 @@ function Spinner({ size = "sm" }: { size?: "sm" | "lg" }) {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
       />
     </svg>
+  );
+}
+
+function PaymentScreen({
+  mobileNumber,
+  tierStatus,
+  onBack,
+  onPaid,
+}: {
+  mobileNumber: string;
+  tierStatus: ParentTierStatus;
+  onBack: () => void;
+  onPaid: () => void;
+}) {
+  const [discountCode, setDiscountCode] = useState("");
+  const [discount, setDiscount] = useState<DiscountValidationResult | null>(null);
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cards");
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsText, setTermsText] = useState("");
+  const [loadingTerms, setLoadingTerms] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const originalPrice = MONTHLY_PAID_PRICE_HKD;
+  const discountPercent = discount?.valid ? discount.discount_percent : 0;
+  const finalAmount = Math.max(originalPrice * (1 - discountPercent / 100), 0);
+
+  const validateDiscount = useCallback(async () => {
+    const code = discountCode.trim().toUpperCase();
+    if (!code) {
+      setDiscount(null);
+      return;
+    }
+    setValidatingCode(true);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("validate_discount_code", {
+        p_code: code,
+      });
+      if (rpcErr) throw rpcErr;
+      setDiscount((data as DiscountValidationResult) ?? null);
+    } catch {
+      setDiscount({
+        valid: false,
+        code,
+        discount_percent: 0,
+        salesperson: null,
+      });
+    } finally {
+      setValidatingCode(false);
+    }
+  }, [discountCode]);
+
+  const openTerms = useCallback(async () => {
+    setShowTerms(true);
+    if (termsText || loadingTerms) return;
+    setLoadingTerms(true);
+    try {
+      const resp = await fetch(
+        getPaymentTermsUrl(),
+        { cache: "no-store" }
+      );
+      const text = await resp.text();
+      setTermsText(text);
+    } catch {
+      setTermsText("未能載入付款條款，請稍後再試。");
+    } finally {
+      setLoadingTerms(false);
+    }
+  }, [termsText, loadingTerms]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!agreed) {
+      setMsg("請先同意付款條款。");
+      return;
+    }
+    setProcessing(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mobile_number: mobileNumber.trim(),
+          discount_code: discount?.valid ? discount.code : null,
+          payment_method: paymentMethod,
+        }),
+      });
+      const payload = (await res.json()) as {
+        checkout_url?: string;
+        message?: string;
+        paid?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(payload.error || "未能建立付款訂單");
+      if (payload.checkout_url) {
+        window.location.href = payload.checkout_url;
+        return;
+      }
+      if (payload.paid) {
+        setMsg(payload.message || "付款成功，已升級月費用戶。");
+        await onPaid();
+        return;
+      }
+      setMsg(payload.message || "已建立付款訂單，請稍後再試。");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "付款流程發生錯誤");
+    } finally {
+      setProcessing(false);
+    }
+  }, [agreed, discount, mobileNumber, onPaid, paymentMethod]);
+
+  const canPay = agreed && !processing && !validatingCode;
+  const methods = [
+    { value: "cards", label: "Cards" },
+    { value: "apple_pay", label: "Apple Pay" },
+    { value: "google_pay", label: "Google Pay" },
+    { value: "alipay", label: "Alipay" },
+    { value: "wechat_pay", label: "WeChat Pay" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
+      <div className="mx-auto max-w-lg space-y-4">
+        <div className="flex items-center justify-between">
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            tierStatus.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+          }`}>
+            {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h1 className="text-xl font-bold text-gray-900">月費會員付款</h1>
+          <p className="mt-1 text-sm text-gray-500">電話號碼：{mobileNumber}</p>
+
+          <div className="mt-4 rounded-xl border border-gray-200 p-4">
+            <p className="text-sm font-semibold text-gray-800">月費會員（每月）</p>
+            <p className="mt-1 text-2xl font-bold text-indigo-700">HKD $99</p>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">折扣碼</label>
+            <div className="flex gap-2">
+              <input
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+                placeholder="輸入6位折扣碼"
+                className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+              />
+              <button
+                type="button"
+                onClick={validateDiscount}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                套用
+              </button>
+            </div>
+            {validatingCode && <p className="mt-1 text-xs text-gray-500">驗證中...</p>}
+            {discount && (
+              <p className={`mt-1 text-xs ${discount.valid ? "text-emerald-600" : "text-red-500"}`}>
+                {discount.valid
+                  ? `折扣碼有效：${discount.discount_percent}%（負責銷售：${discount.salesperson || "—"}）`
+                  : "折扣碼無效"}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+            <p>原價：HKD $99</p>
+            <p>折扣：{discountPercent}%</p>
+            <p className="mt-1 font-semibold text-gray-900">應付：HKD ${finalAmount.toFixed(2)}</p>
+          </div>
+
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">付款方式</p>
+            <div className="space-y-2">
+              {methods.map((method) => (
+                <label key={method.value} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() => setPaymentMethod(method.value)}
+                  />
+                  {method.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-gray-200 p-3">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                本人確認已閱讀並同意本平台的
+                <button
+                  type="button"
+                  onClick={openTerms}
+                  className="ml-1 text-indigo-600 underline hover:text-indigo-700"
+                >
+                  付款條款及細則
+                </button>
+              </span>
+            </label>
+          </div>
+
+          {msg && <p className="mt-3 text-sm text-gray-700">{msg}</p>}
+
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!canPay}
+            className={`mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold ${
+              canPay ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-gray-200 text-gray-400"
+            }`}
+          >
+            {processing ? "處理中..." : "確認並前往 Airwallex 付款"}
+          </button>
+        </div>
+      </div>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-800">付款條款及細則</h2>
+              <button onClick={() => setShowTerms(false)} className="text-sm text-gray-500 hover:text-gray-700">關閉</button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto px-4 py-3">
+              {loadingTerms ? (
+                <p className="text-sm text-gray-500">載入中...</p>
+              ) : (
+                <pre className="whitespace-pre-wrap text-sm text-gray-700">{termsText}</pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
