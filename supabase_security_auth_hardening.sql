@@ -286,15 +286,20 @@ BEGIN
 
   v_pin_hash := crypt(p_pin_code, gen_salt('bf'));
 
+  -- Shared login PIN is intentionally synchronized across siblings.
+  UPDATE students
+  SET pin_code = v_pin_hash
+  WHERE parent_id = v_parent_id;
+
+  -- Profile fields should only update the selected student row.
   UPDATE students
   SET
     student_name = p_student_name,
-    pin_code = v_pin_hash,
     avatar_style = p_avatar_style,
     grade_level = p_grade_level,
     school_id = p_school_id,
     gender = NULLIF(UPPER(TRIM(p_gender)), '')
-  WHERE parent_id = v_parent_id;
+  WHERE id = p_student_id;
 END;
 $$;
 

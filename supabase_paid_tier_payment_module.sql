@@ -954,3 +954,53 @@ GRANT EXECUTE ON FUNCTION public.get_parent_tier_status(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.validate_discount_code(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.apply_parent_paid_month(TEXT, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.finalize_parent_payment(UUID, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.update_student_profile(
+  p_student_id UUID,
+  p_student_name TEXT,
+  p_pin_code TEXT,
+  p_avatar_style TEXT,
+  p_grade_level TEXT,
+  p_school_id UUID DEFAULT NULL,
+  p_gender TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_parent_id UUID;
+  v_pin_hash TEXT;
+BEGIN
+  IF p_pin_code IS NULL OR p_pin_code !~ '^[A-Za-z0-9]{6}$' THEN
+    RAISE EXCEPTION 'PIN must be exactly 6 alphanumeric characters';
+  END IF;
+
+  SELECT parent_id
+  INTO v_parent_id
+  FROM public.students
+  WHERE id = p_student_id;
+
+  IF v_parent_id IS NULL THEN
+    RAISE EXCEPTION 'Student not found';
+  END IF;
+
+  v_pin_hash := crypt(p_pin_code, gen_salt('bf'));
+
+  -- Keep shared PIN behavior for all siblings under the same parent.
+  UPDATE public.students
+  SET pin_code = v_pin_hash
+  WHERE parent_id = v_parent_id;
+
+  -- Update profile fields only for the selected student.
+  UPDATE public.students
+  SET
+    student_name = p_student_name,
+    avatar_style = p_avatar_style,
+    grade_level = p_grade_level,
+    school_id = p_school_id,
+    gender = NULLIF(UPPER(TRIM(p_gender)), '')
+  WHERE id = p_student_id;
+END;
+$$;
