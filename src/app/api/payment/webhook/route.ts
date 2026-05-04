@@ -20,6 +20,37 @@ type AirwallexWebhookEnvelope = {
 
 const SUCCESS_STATES = new Set(["SUCCEEDED", "SUCCESS", "PAID"]);
 
+function readString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function extractMerchantOrderId(object: Record<string, unknown>): string | null {
+  const direct = readString(object.merchant_order_id) || readString(object.reference);
+  if (direct) return direct;
+
+  const metadata =
+    object.metadata && typeof object.metadata === "object"
+      ? (object.metadata as Record<string, unknown>)
+      : null;
+  const fromMetadata =
+    (metadata && readString(metadata.merchant_order_id)) ||
+    (metadata && readString(metadata.order_id)) ||
+    null;
+  if (fromMetadata) return fromMetadata;
+
+  const order =
+    object.order && typeof object.order === "object"
+      ? (object.order as Record<string, unknown>)
+      : null;
+  return (
+    (order && readString(order.merchant_order_id)) ||
+    (order && readString(order.reference)) ||
+    null
+  );
+}
+
 function getSupabaseAdmin() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -66,6 +97,7 @@ export async function POST(req: NextRequest) {
   const eventType = event.name?.trim() || "unknown";
   const object = event.data?.object || {};
   const paymentIntentId = String(object.id || "").trim();
+  const merchantOrderId = extractMerchantOrderId(object as Record<string, unknown>);
   const paymentStatus = String(object.status || "").toUpperCase();
   const attemptId = String(object.latest_payment_attempt?.id || "").trim();
   const isPaid = SUCCESS_STATES.has(paymentStatus);
@@ -106,6 +138,7 @@ export async function POST(req: NextRequest) {
     paid: isPaid,
     paymentAttemptId: attemptId || null,
     rawPayload: event as unknown as Record<string, unknown>,
+    merchantOrderId,
   });
 
   if (webhookEventId) {
