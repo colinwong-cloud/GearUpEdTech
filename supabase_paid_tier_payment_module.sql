@@ -109,8 +109,57 @@ CREATE TABLE IF NOT EXISTS public.parent_payment_orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'parent_payment_orders'
+      AND column_name = 'finalized_at'
+  ) THEN
+    ALTER TABLE public.parent_payment_orders
+      ADD COLUMN finalized_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'parent_payment_orders'
+      AND column_name = 'airwallex_payment_attempt_id'
+  ) THEN
+    ALTER TABLE public.parent_payment_orders
+      ADD COLUMN airwallex_payment_attempt_id TEXT NULL;
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_parent_payment_orders_mobile
   ON public.parent_payment_orders (mobile_number, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_parent_payment_orders_intent_id
+  ON public.parent_payment_orders (airwallex_payment_intent_id)
+  WHERE airwallex_payment_intent_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS public.airwallex_webhook_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id TEXT NOT NULL UNIQUE,
+  event_type TEXT NOT NULL,
+  payment_intent_id TEXT NULL,
+  order_id UUID NULL REFERENCES public.parent_payment_orders(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'received'
+    CHECK (status IN ('received', 'processed', 'ignored', 'failed')),
+  payload JSONB NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ NULL,
+  error_message TEXT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_airwallex_webhook_events_intent
+  ON public.airwallex_webhook_events (payment_intent_id, received_at DESC);
 
 CREATE OR REPLACE FUNCTION public.validate_discount_code(p_code TEXT)
 RETURNS JSON
@@ -248,6 +297,65 @@ BEGIN
     'reference', p_reference,
     'paid_until', v_new_until,
     'tier', 'paid'
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.finalize_parent_payment(
+  p_order_id UUID,
+  p_payment_intent_id TEXT,
+  p_payment_attempt_id TEXT DEFAULT NULL,
+  p_paid BOOLEAN DEFAULT true,
+  p_raw_response JSONB DEFAULT '{}'::jsonb
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order RECORD;
+  v_now TIMESTAMPTZ := now();
+BEGIN
+  SELECT *
+  INTO v_order
+  FROM public.parent_payment_orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF v_order IS NULL THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_order.finalized_at IS NOT NULL THEN
+    RETURN json_build_object(
+      'ok', true,
+      'already_finalized', true,
+      'status', v_order.status,
+      'mobile_number', v_order.mobile_number
+    );
+  END IF;
+
+  UPDATE public.parent_payment_orders
+  SET
+    status = CASE WHEN p_paid THEN 'paid' ELSE 'failed' END,
+    paid_at = CASE WHEN p_paid THEN coalesce(v_order.paid_at, v_now) ELSE NULL END,
+    finalized_at = v_now,
+    airwallex_payment_intent_id = COALESCE(NULLIF(trim(p_payment_intent_id), ''), v_order.airwallex_payment_intent_id),
+    airwallex_payment_attempt_id = COALESCE(NULLIF(trim(coalesce(p_payment_attempt_id, '')), ''), v_order.airwallex_payment_attempt_id),
+    raw_response = COALESCE(p_raw_response, '{}'::jsonb),
+    updated_at = v_now
+  WHERE id = v_order.id;
+
+  IF p_paid THEN
+    PERFORM public.apply_parent_paid_month(v_order.mobile_number, COALESCE(NULLIF(trim(p_payment_intent_id), ''), v_order.merchant_order_id));
+  END IF;
+
+  RETURN json_build_object(
+    'ok', true,
+    'already_finalized', false,
+    'status', CASE WHEN p_paid THEN 'paid' ELSE 'failed' END,
+    'mobile_number', v_order.mobile_number
   );
 END;
 $$;
@@ -782,3 +890,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_parent_tier_status(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.validate_discount_code(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.apply_parent_paid_month(TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.finalize_parent_payment(UUID, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;

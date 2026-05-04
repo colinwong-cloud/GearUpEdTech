@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { finalizePaymentByIntent } from "@/lib/server/payment-finalize";
 
 type AirwallexLoginResponse = {
   token?: string;
@@ -123,49 +124,24 @@ export async function POST(req: NextRequest) {
     const isPaid =
       AIRWALLEX_SUCCESS_STATES.has(normalizedStatus) ||
       AIRWALLEX_SUCCESS_STATES.has(latestStatus);
-
-    const { data: orderRows, error: orderErr } = await supabaseAdmin
-      .from("parent_payment_orders")
-      .select("id,mobile_number,status")
-      .eq("airwallex_payment_intent_id", paymentIntentId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (orderErr) throw orderErr;
-    const order = orderRows?.[0];
-    if (!order) {
+    const finalized = await finalizePaymentByIntent({
+      supabaseAdmin,
+      paymentIntentId,
+      paid: isPaid,
+      paymentAttemptId: intent.latest_payment_attempt?.id || null,
+      rawPayload: intent as unknown as Record<string, unknown>,
+    });
+    if (!finalized.ok) {
       return NextResponse.json(
-        { error: "Payment order not found" },
-        { status: 404 }
+        { error: finalized.error || "Payment order not found" },
+        { status: finalized.statusCode ?? 500 }
       );
-    }
-
-    const nextStatus = isPaid ? "paid" : "failed";
-    const { error: updateErr } = await supabaseAdmin
-      .from("parent_payment_orders")
-      .update({
-        status: nextStatus,
-        paid_at: isPaid ? new Date().toISOString() : null,
-        raw_response: intent as unknown as Record<string, unknown>,
-      })
-      .eq("id", order.id);
-
-    if (updateErr) throw updateErr;
-
-    if (isPaid) {
-      const { error: applyErr } = await supabaseAdmin.rpc(
-        "apply_parent_paid_month",
-        {
-          p_mobile: order.mobile_number,
-          p_reference: paymentIntentId,
-        }
-      );
-      if (applyErr) throw applyErr;
     }
 
     return NextResponse.json({
       paid: isPaid,
       status: normalizedStatus || latestStatus || "UNKNOWN",
+      already_finalized: finalized.alreadyFinalized,
     });
   } catch (err) {
     return NextResponse.json(

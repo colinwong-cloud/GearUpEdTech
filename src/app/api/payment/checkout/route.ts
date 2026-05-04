@@ -3,6 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const AIRWALLEX_BASE = process.env.AIRWALLEX_BASE_URL?.trim() || "https://api-demo.airwallex.com";
 const PRICE_HKD = 99;
+const AIRWALLEX_METHOD_MAP: Record<string, string[]> = {
+  cards: ["card"],
+  apple_pay: ["applepay"],
+  google_pay: ["googlepay"],
+  alipay: ["alipaycn", "alipayhk"],
+  wechat_pay: ["wechatpay"],
+};
 
 type DiscountResult = {
   valid: boolean;
@@ -53,6 +60,43 @@ async function getAirwallexAccessToken() {
     throw new Error(payload.message || "Failed to authenticate with Airwallex");
   }
   return payload.token;
+}
+
+function getBaseAppUrl(req: NextRequest): string {
+  const configured = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  const origin =
+    req.headers.get("origin") ||
+    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+  return origin.replace(/\/$/, "");
+}
+
+function getAirwallexMethods(paymentMethod: string): string[] {
+  return AIRWALLEX_METHOD_MAP[paymentMethod] ?? ["card"];
+}
+
+function buildHostedCheckoutFallbackUrl({
+  appBaseUrl,
+  intentId,
+  clientSecret,
+  mobile,
+  paymentMethod,
+}: {
+  appBaseUrl: string;
+  intentId: string;
+  clientSecret: string;
+  mobile: string;
+  paymentMethod: string;
+}) {
+  const params = new URLSearchParams({
+    intent_id: intentId,
+    client_secret: clientSecret,
+    mobile,
+    payment_method: paymentMethod,
+    currency: "HKD",
+    country_code: "HK",
+  });
+  return `${appBaseUrl}/payment-airwallex?${params.toString()}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -157,10 +201,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const accessToken = await getAirwallexAccessToken();
-    const origin =
-      req.headers.get("origin") ||
-      `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-
+    const appBaseUrl = getBaseAppUrl(req);
+    const callbackBase =
+      `${appBaseUrl}/payment-callback?mobile=${encodeURIComponent(mobile)}` +
+      `&order_id=${encodeURIComponent(merchantOrderId)}`;
+    const pendingReturnUrl = `${callbackBase}&result=pending`;
     const createIntentRes = await fetch(`${AIRWALLEX_BASE}/api/v1/pa/payment_intents/create`, {
       method: "POST",
       headers: {
@@ -172,7 +217,7 @@ export async function POST(req: NextRequest) {
         currency: "HKD",
         merchant_order_id: merchantOrderId,
         request_id: requestId,
-        return_url: `${origin}/?payment=success`,
+        return_url: pendingReturnUrl,
         metadata: {
           mobile_number: mobile,
           payment_method: paymentMethod,
@@ -190,10 +235,58 @@ export async function POST(req: NextRequest) {
     if (!createIntentRes.ok || !createIntentPayload.id || !createIntentPayload.client_secret) {
       throw new Error(createIntentPayload.message || "Failed to create Airwallex payment intent");
     }
+    const resolvedSuccessUrl =
+      `${callbackBase}&result=success&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
+    const resolvedCancelUrl =
+      `${callbackBase}&result=cancel&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
+    const resolvedFailUrl =
+      `${callbackBase}&result=failed&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
 
-    const checkoutUrl = `${origin}/airwallex-checkout?intent_id=${encodeURIComponent(
-      createIntentPayload.id
-    )}&client_secret=${encodeURIComponent(createIntentPayload.client_secret)}&currency=HKD&country_code=HK`;
+    let checkoutPayload: Record<string, unknown> = {};
+    let checkoutUrl: string | null = null;
+    try {
+      const checkoutRes = await fetch(`${AIRWALLEX_BASE}/api/v1/pa/payment_links/create`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "GearUp 月費會員",
+          reusable: false,
+          payment_intent_id: createIntentPayload.id,
+          success_url: resolvedSuccessUrl,
+          fail_url: resolvedFailUrl,
+          cancel_url: resolvedCancelUrl,
+          methods: getAirwallexMethods(paymentMethod),
+        }),
+        cache: "no-store",
+      });
+
+      checkoutPayload = (await checkoutRes.json()) as Record<string, unknown>;
+      if (checkoutRes.ok) {
+        const rawUrl =
+          (checkoutPayload.url as string | undefined) ||
+          (checkoutPayload.hosted_payment_url as string | undefined);
+        if (rawUrl) checkoutUrl = rawUrl;
+      }
+    } catch {
+      // fallback handled below
+    }
+
+    if (!checkoutUrl) {
+      checkoutUrl = buildHostedCheckoutFallbackUrl({
+        appBaseUrl,
+        intentId: createIntentPayload.id,
+        clientSecret: createIntentPayload.client_secret,
+        mobile,
+        paymentMethod,
+      });
+      checkoutPayload = {
+        ...checkoutPayload,
+        fallback: "payment-airwallex-page",
+      };
+    }
 
     const { error: insertErr } = await supabase
       .from("parent_payment_orders")
@@ -209,7 +302,13 @@ export async function POST(req: NextRequest) {
         payment_method: paymentMethod,
         status: "created",
         airwallex_payment_intent_id: createIntentPayload.id,
-        raw_response: createIntentPayload,
+        raw_response: {
+          intent: createIntentPayload,
+          checkout: checkoutPayload,
+          success_url: resolvedSuccessUrl,
+          cancel_url: resolvedCancelUrl,
+          fail_url: resolvedFailUrl,
+        },
       });
     if (insertErr) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
