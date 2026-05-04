@@ -301,95 +301,120 @@ export async function POST(req: NextRequest) {
     const callbackBase =
       `${appBaseUrl}/payment-callback?mobile=${encodeURIComponent(mobile)}` +
       `&order_id=${encodeURIComponent(merchantOrderId)}`;
-    const pendingReturnUrl = `${callbackBase}&result=pending`;
-    const createIntentRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/create`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: finalAmount,
-        currency: "HKD",
-        merchant_order_id: merchantOrderId,
-        request_id: requestId,
-        return_url: pendingReturnUrl,
-        metadata: {
-          mobile_number: mobile,
-          payment_method: paymentMethod,
-          discount_code: discountCodeApplied,
-        },
-      }),
-      cache: "no-store",
-    });
-
-    const createIntentBody = await readApiBody(createIntentRes);
-    const createIntentPayload = (createIntentBody.json || {}) as {
-      id?: string;
-      client_secret?: string;
-    };
-    if (!createIntentRes.ok || !createIntentPayload.id || !createIntentPayload.client_secret) {
-      throw new Error(
-        formatAirwallexError({
-          action: "payment_intents/create",
-          status: createIntentRes.status,
-          body: createIntentBody,
-        })
-      );
-    }
-    const resolvedSuccessUrl =
-      `${callbackBase}&result=success&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-    const resolvedCancelUrl =
-      `${callbackBase}&result=cancel&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-    const resolvedFailUrl =
-      `${callbackBase}&result=failed&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-
     let checkoutPayload: Record<string, unknown> = {};
     let checkoutUrl: string | null = null;
+    let resolvedSuccessUrl: string | null = null;
+    let resolvedCancelUrl: string | null = null;
+    let resolvedFailUrl: string | null = null;
+    let resolvedIntentId: string | null = null;
+
+    // Prefer documented Payment Link flow first to maximize API compatibility.
     try {
-      const checkoutRes = await fetch(`${airwallexBase}/api/v1/pa/payment_links/create`, {
+      const paymentLinkRes = await fetch(`${airwallexBase}/api/v1/pa/payment_links/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           title: "GearUp 月費會員",
           reusable: false,
-          payment_intent_id: createIntentPayload.id,
-          success_url: resolvedSuccessUrl,
-          fail_url: resolvedFailUrl,
-          cancel_url: resolvedCancelUrl,
-          methods: getAirwallexMethods(paymentMethod),
+          amount: finalAmount,
+          currency: "HKD",
+          reference: merchantOrderId,
+          metadata: {
+            merchant_order_id: merchantOrderId,
+            request_id: requestId,
+            mobile_number: mobile,
+            payment_method: paymentMethod,
+            discount_code: discountCodeApplied,
+          },
         }),
         cache: "no-store",
       });
 
-      const checkoutBody = await readApiBody(checkoutRes);
-      checkoutPayload = checkoutBody.json || {};
-      if (checkoutRes.ok) {
+      const paymentLinkBody = await readApiBody(paymentLinkRes);
+      checkoutPayload = paymentLinkBody.json || {};
+      if (paymentLinkRes.ok) {
         const rawUrl =
           (checkoutPayload.url as string | undefined) ||
           (checkoutPayload.hosted_payment_url as string | undefined);
         if (rawUrl) checkoutUrl = rawUrl;
+        const latestIntentId =
+          typeof checkoutPayload.latest_successful_payment_intent_id === "string"
+            ? checkoutPayload.latest_successful_payment_intent_id
+            : null;
+        if (latestIntentId) {
+          resolvedIntentId = latestIntentId;
+        }
       } else {
         checkoutPayload = {
           ...checkoutPayload,
           error: formatAirwallexError({
             action: "payment_links/create",
-            status: checkoutRes.status,
-            body: checkoutBody,
+            status: paymentLinkRes.status,
+            body: paymentLinkBody,
           }),
+          flow: "payment_link_failed",
         };
       }
     } catch {
       // fallback handled below
     }
 
+    // Fallback to intent + hosted checkout launcher when payment link API does not produce a URL.
     if (!checkoutUrl) {
+      const pendingReturnUrl = `${callbackBase}&result=pending`;
+      const createIntentRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/create`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          amount: finalAmount,
+          currency: "HKD",
+          merchant_order_id: merchantOrderId,
+          request_id: requestId,
+          return_url: pendingReturnUrl,
+          metadata: {
+            merchant_order_id: merchantOrderId,
+            request_id: requestId,
+            mobile_number: mobile,
+            payment_method: paymentMethod,
+            discount_code: discountCodeApplied,
+          },
+        }),
+        cache: "no-store",
+      });
+
+      const createIntentBody = await readApiBody(createIntentRes);
+      const createIntentPayload = (createIntentBody.json || {}) as {
+        id?: string;
+        client_secret?: string;
+      };
+      if (!createIntentRes.ok || !createIntentPayload.id || !createIntentPayload.client_secret) {
+        throw new Error(
+          formatAirwallexError({
+            action: "payment_intents/create",
+            status: createIntentRes.status,
+            body: createIntentBody,
+          })
+        );
+      }
+
+      resolvedIntentId = createIntentPayload.id;
+      resolvedSuccessUrl =
+        `${callbackBase}&result=success&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
+      resolvedCancelUrl =
+        `${callbackBase}&result=cancel&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
+      resolvedFailUrl =
+        `${callbackBase}&result=failed&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
       checkoutUrl = buildHostedCheckoutFallbackUrl({
         appBaseUrl,
-        intentId: createIntentPayload.id,
+        intentId: resolvedIntentId,
         clientSecret: createIntentPayload.client_secret,
         mobile,
         paymentMethod,
@@ -397,6 +422,11 @@ export async function POST(req: NextRequest) {
       checkoutPayload = {
         ...checkoutPayload,
         fallback: "payment-airwallex-page",
+        intent: createIntentPayload,
+        success_url: resolvedSuccessUrl,
+        cancel_url: resolvedCancelUrl,
+        fail_url: resolvedFailUrl,
+        methods: getAirwallexMethods(paymentMethod),
       };
     }
 
@@ -413,9 +443,9 @@ export async function POST(req: NextRequest) {
         final_amount_hkd: finalAmount,
         payment_method: paymentMethod,
         status: "created",
-        airwallex_payment_intent_id: createIntentPayload.id,
+        airwallex_payment_intent_id: resolvedIntentId,
         raw_response: {
-          intent: createIntentPayload,
+          flow: checkoutPayload.fallback ? "intent_fallback" : "payment_link",
           checkout: checkoutPayload,
           success_url: resolvedSuccessUrl,
           cancel_url: resolvedCancelUrl,
@@ -428,7 +458,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       checkout_url: checkoutUrl,
-      intent_id: createIntentPayload.id,
+      intent_id: resolvedIntentId,
     });
   } catch (err) {
     return NextResponse.json(

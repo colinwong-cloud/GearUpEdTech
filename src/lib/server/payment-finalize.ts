@@ -52,7 +52,25 @@ export function getSupabaseAdmin(): SupabaseClient | null {
 
 export function getAirwallexBaseUrl(): string {
   const explicit = process.env.AIRWALLEX_BASE_URL?.trim();
-  if (explicit) return explicit;
+  if (explicit) {
+    const normalized = explicit.toLowerCase();
+    if (normalized === "prod" || normalized === "production" || normalized === "live") {
+      return "https://api.airwallex.com";
+    }
+    if (normalized === "demo" || normalized === "sandbox" || normalized === "test") {
+      return "https://api-demo.airwallex.com";
+    }
+    if (normalized === "api.airwallex.com") {
+      return "https://api.airwallex.com";
+    }
+    if (normalized === "api-demo.airwallex.com") {
+      return "https://api-demo.airwallex.com";
+    }
+    if (explicit.startsWith("http://") || explicit.startsWith("https://")) {
+      return explicit.replace(/\/$/, "");
+    }
+    return `https://${explicit.replace(/\/$/, "")}`;
+  }
   const env = process.env.AIRWALLEX_ENV?.trim().toLowerCase();
   if (env === "prod" || env === "production") {
     return "https://api.airwallex.com";
