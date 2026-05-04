@@ -154,6 +154,7 @@ interface BalanceTransaction {
   change_amount: number;
   balance_after: number;
   description: string;
+  subject: string;
   session_id: string | null;
   created_at: string;
 }
@@ -161,7 +162,7 @@ interface BalanceTransaction {
 interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
-  transactions: (BalanceTransaction & { student_name: string })[];
+  transactions: BalanceTransaction[];
 }
 
 type ParentTier = "free" | "paid";
@@ -3123,6 +3124,51 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   };
 
   const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
+  const groupedTransactions = (() => {
+    if (!data) return [];
+
+    const buckets = new Map<
+      string,
+      {
+        id: string;
+        date: Date;
+        subject: string;
+        change_amount: number;
+      }
+    >();
+
+    for (const tx of data.transactions) {
+      const d = new Date(tx.created_at);
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      const dateKey = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const subject = subjectDisplayLabel(balanceSubject);
+      const key = `${dateKey}|${subject}`;
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.change_amount += tx.change_amount;
+      } else {
+        buckets.set(key, {
+          id: key,
+          date: new Date(y, m - 1, day),
+          subject,
+          change_amount: tx.change_amount,
+        });
+      }
+    }
+
+    let runningBalance = data.opening_balance;
+    return [...buckets.values()]
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map((row) => {
+        runningBalance += row.change_amount;
+        return {
+          ...row,
+          balance_after: runningBalance,
+        };
+      });
+  })();
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
@@ -3171,14 +3217,13 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
         {loading ? (
           <div className="text-center py-8"><Spinner size="lg" /></div>
-        ) : data && data.transactions.length > 0 ? (
+        ) : data && groupedTransactions.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">學生</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">科目</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
                 </tr>
@@ -3187,19 +3232,17 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                 <tr className="bg-gray-50/50">
                   <td className="px-3 py-2 text-xs text-gray-400">{viewMonth.month}/1</td>
                   <td className="px-3 py-2 text-xs text-gray-400">—</td>
-                  <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
                   <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
                   <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{data.opening_balance}</td>
                 </tr>
-                {data.transactions.map((tx) => {
-                  const d = new Date(tx.created_at);
+                {groupedTransactions.map((tx) => {
+                  const d = tx.date;
                   const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
                   const isPositive = tx.change_amount > 0;
                   return (
                     <tr key={tx.id}>
                       <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{tx.student_name}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{tx.subject}</td>
                       <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
                         {isPositive ? "+" : ""}{tx.change_amount}
                       </td>

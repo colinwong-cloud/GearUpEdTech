@@ -2,15 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseClients() {
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    process.env.SUPABASE_URL?.trim() ||
+    "";
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
 
-const supabaseService = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+  if (!url || !anonKey) return null;
+  return {
+    supabase: createClient(url, anonKey),
+    supabaseService: createClient(url, serviceKey),
+  };
+}
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -195,6 +203,15 @@ function buildEmailHtml(data: QuizEmailData): string {
 }
 
 export async function POST(req: NextRequest) {
+  const clients = getSupabaseClients();
+  if (!clients) {
+    return NextResponse.json(
+      { error: "Supabase env not configured" },
+      { status: 503 }
+    );
+  }
+  const { supabase, supabaseService } = clients;
+
   try {
     const body = (await req.json()) as {
       student_id?: string;
