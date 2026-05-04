@@ -918,6 +918,12 @@ export default function QuizApp() {
         onStudent={() => setScreen("login_student")}
         onParent={() => {
           const firstStudent = students[0];
+          if (firstStudent?.parent_id && firstStudent?.id) {
+            void supabase.rpc("log_parent_dashboard_view", {
+              p_parent_id: firstStudent.parent_id,
+              p_student_id: firstStudent.id,
+            });
+          }
           if (students.length > 1) {
             setScreen("parent_student_select");
           } else if (firstStudent) {
@@ -983,6 +989,12 @@ export default function QuizApp() {
         students={students}
         onSelect={(student) => {
           setSelectedStudent(student);
+          if (student.parent_id && student.id) {
+            void supabase.rpc("log_parent_dashboard_view", {
+              p_parent_id: student.parent_id,
+              p_student_id: student.id,
+            });
+          }
           loadParentSessions(student.id, parentSubject, parentMonth.year, parentMonth.month);
         }}
         onBack={() => setScreen("login_role")}

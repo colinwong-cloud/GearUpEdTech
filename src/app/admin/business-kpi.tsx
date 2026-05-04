@@ -55,6 +55,8 @@ type MonthlyPayload = {
   mt_year: number;
   mt_month: number;
   mt_new_students: number;
+  mt_practice_sessions: number;
+  mt_session_answers: number;
   mt_practice_students: number;
   mt_parent_views: number;
   alltime_students: number;
@@ -313,12 +315,12 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                   <tr className="border-b border-gray-100">
                     <td className="p-2">曾完成之練習節數（有作答）</td>
                     <td className="p-2 font-mono">{monthly.alltime_practice_sessions}</td>
-                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">{monthly.mt_practice_sessions}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="p-2">作答筆數（session_answers）</td>
                     <td className="p-2 font-mono">{monthly.alltime_session_answers}</td>
-                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">{monthly.mt_session_answers}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="p-2">曾練習學生（人 • MTD 不重複）</td>
