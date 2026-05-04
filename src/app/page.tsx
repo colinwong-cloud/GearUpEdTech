@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
@@ -162,6 +162,15 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+interface GroupedBalanceTransaction {
+  id: string;
+  date: string;
+  student_name: string;
+  description: string;
+  change_amount: number;
+  balance_after: number | null;
 }
 
 type ParentTier = "free" | "paid";
@@ -3125,6 +3134,42 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   };
 
   const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
+  const groupedTransactions = useMemo<GroupedBalanceTransaction[]>(() => {
+    if (!data?.transactions?.length) return [];
+    const grouped = new Map<string, GroupedBalanceTransaction>();
+
+    for (const tx of data.transactions) {
+      const createdAt = new Date(tx.created_at);
+      const dateKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}-${String(createdAt.getDate()).padStart(2, "0")}`;
+      const studentName = tx.student_name || "—";
+      const key = `${dateKey}|${studentName}`;
+      const existing = grouped.get(key);
+
+      const currentBalanceAfter =
+        typeof tx.balance_after === "number" ? tx.balance_after : 0;
+      if (!existing) {
+        grouped.set(key, {
+          id: key,
+          date: dateKey,
+          student_name: studentName,
+          description: "當日合計扣除",
+          change_amount: tx.change_amount,
+          balance_after: currentBalanceAfter,
+        });
+      } else {
+        existing.change_amount += tx.change_amount;
+        // Keep the end-of-day family balance (smallest number for deductions).
+        if (
+          existing.balance_after == null ||
+          currentBalanceAfter < existing.balance_after
+        ) {
+          existing.balance_after = currentBalanceAfter;
+        }
+      }
+    }
+
+    return [...grouped.values()].sort((a, b) => a.date < b.date ? 1 : -1);
+  }, [data]);
   const isUnlimited = Boolean(data && data.total_balance < 0);
   const totalBalanceLabel = isUnlimited ? "Unlimited" : String(data?.total_balance ?? 0);
   const openingBalanceLabel = isUnlimited ? "Unlimited" : String(data?.opening_balance ?? 0);
@@ -3176,7 +3221,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
         {loading ? (
           <div className="text-center py-8"><Spinner size="lg" /></div>
-        ) : data && data.transactions.length > 0 ? (
+        ) : data && groupedTransactions.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
@@ -3196,9 +3241,9 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                   <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
                   <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{openingBalanceLabel}</td>
                 </tr>
-                {data.transactions.map((tx) => {
-                  const d = new Date(tx.created_at);
-                  const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                {groupedTransactions.map((tx) => {
+                  const [yy, mm, dd] = tx.date.split("-");
+                  const dateStr = `${Number(mm)}/${Number(dd)}`;
                   const isPositive = tx.change_amount > 0;
                   return (
                     <tr key={tx.id}>
