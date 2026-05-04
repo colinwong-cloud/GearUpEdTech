@@ -1072,7 +1072,7 @@ export default function QuizApp() {
       <StudentSelectScreen
         students={students}
         onSelect={handleStudentSelect}
-        onBack={handleLogout}
+        onBack={() => setScreen("login_role")}
       />
     );
   }
