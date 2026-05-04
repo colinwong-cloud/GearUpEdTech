@@ -3841,7 +3841,6 @@ function PaymentScreen({
   const [discountCode, setDiscountCode] = useState("");
   const [discount, setDiscount] = useState<DiscountValidationResult | null>(null);
   const [validatingCode, setValidatingCode] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("cards");
   const [agreed, setAgreed] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [termsText, setTermsText] = useState("");
@@ -3910,7 +3909,6 @@ function PaymentScreen({
         body: JSON.stringify({
           mobile_number: mobileNumber.trim(),
           discount_code: discount?.valid ? discount.code : null,
-          payment_method: paymentMethod,
         }),
       });
       const payload = (await res.json()) as {
@@ -3935,17 +3933,9 @@ function PaymentScreen({
     } finally {
       setProcessing(false);
     }
-  }, [agreed, discount, mobileNumber, onPaid, paymentMethod]);
+  }, [agreed, discount, mobileNumber, onPaid]);
 
   const canPay = agreed && !processing && !validatingCode;
-  const methods = [
-    { value: "cards", label: "Cards" },
-    { value: "apple_pay", label: "Apple Pay" },
-    { value: "google_pay", label: "Google Pay" },
-    { value: "alipay", label: "Alipay" },
-    { value: "wechat_pay", label: "WeChat Pay" },
-  ];
-
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
       <div className="mx-auto max-w-lg space-y-4">
@@ -4000,23 +3990,9 @@ function PaymentScreen({
             <p className="mt-1 font-semibold text-gray-900">應付：HKD ${finalAmount.toFixed(2)}</p>
           </div>
 
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">付款方式</p>
-            <div className="space-y-2">
-              {methods.map((method) => (
-                <label key={method.value} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={method.value}
-                    checked={paymentMethod === method.value}
-                    onChange={() => setPaymentMethod(method.value)}
-                  />
-                  {method.label}
-                </label>
-              ))}
-            </div>
-          </div>
+          <p className="mt-4 text-xs text-gray-500">
+            付款方式將於 Airwallex 付款頁面中選擇。
+          </p>
 
           <div className="mt-4 rounded-xl border border-gray-200 p-3">
             <label className="flex items-start gap-2 text-sm text-gray-700">
