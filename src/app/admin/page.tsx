@@ -11,7 +11,12 @@ type AdminConsoleAction =
   | "set_setting"
   | "set_email_notification"
   | "search_questions"
-  | "update_question";
+  | "update_question"
+  | "discount_code_list"
+  | "discount_code_create"
+  | "discount_code_update"
+  | "discount_code_delete"
+  | "discount_code_usage_summary";
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
@@ -40,7 +45,7 @@ async function adminConsoleRequest<T>(
   return body.data as T;
 }
 
-type Tab = "quota" | "delete" | "email" | "questions" | "business";
+type Tab = "quota" | "delete" | "email" | "questions" | "business" | "discount_codes";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -66,6 +71,43 @@ interface QuestionResult {
   correct_answer: string;
   explanation: string | null;
   image_url: string | null;
+}
+
+interface DiscountCodeRecord {
+  id: string;
+  code: string;
+  discount_percent: number;
+  salesperson: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface DiscountCodeUsageSummaryRow {
+  usage_month: string;
+  salesperson: string;
+  usage_count: number;
+  paid_count: number;
+  gross_amount_hkd: number;
+  final_amount_hkd: number;
+  discount_amount_hkd: number;
+}
+
+interface DiscountCodeUsageRawRecord {
+  id: string;
+  usage_date: string;
+  usage_month: string;
+  created_at: string;
+  paid_at: string | null;
+  discount_code: string;
+  salesperson: string | null;
+  discount_percent: number;
+  amount_hkd: number;
+  final_amount_hkd: number;
+  discount_amount_hkd: number;
+  status: string;
+  mobile_number: string;
+  merchant_order_id: string;
+  payment_method: string | null;
 }
 
 export default function AdminPage() {
@@ -198,6 +240,7 @@ export default function AdminPage() {
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
     { key: "questions", label: "題目管理" },
+    { key: "discount_codes", label: "折扣碼維護" },
   ];
 
   return (
@@ -226,6 +269,7 @@ export default function AdminPage() {
         {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
         {tab === "email" && <EmailSection sessionToken={sessionToken} />}
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
+        {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
@@ -660,6 +704,455 @@ function QuestionsSection({ sessionToken }: { sessionToken: string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function toLocalDateTimeInputValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function normalizeCodeInput(raw: string): string {
+  return raw.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+}
+
+function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
+  const headers = [
+    "id",
+    "usage_date",
+    "usage_month",
+    "created_at",
+    "paid_at",
+    "discount_code",
+    "salesperson",
+    "discount_percent",
+    "amount_hkd",
+    "final_amount_hkd",
+    "discount_amount_hkd",
+    "status",
+    "mobile_number",
+    "merchant_order_id",
+    "payment_method",
+  ];
+  const escape = (value: unknown): string => {
+    const text = value === null || value === undefined ? "" : String(value);
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+  const body = rows.map((row) =>
+    [
+      row.id,
+      row.usage_date,
+      row.usage_month,
+      row.created_at,
+      row.paid_at,
+      row.discount_code,
+      row.salesperson,
+      row.discount_percent,
+      row.amount_hkd,
+      row.final_amount_hkd,
+      row.discount_amount_hkd,
+      row.status,
+      row.mobile_number,
+      row.merchant_order_id,
+      row.payment_method,
+    ]
+      .map(escape)
+      .join(",")
+  );
+  return [headers.join(","), ...body].join("\n");
+}
+
+function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
+  const [search, setSearch] = useState("");
+  const [codes, setCodes] = useState<DiscountCodeRecord[]>([]);
+  const [codesLoading, setCodesLoading] = useState(false);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formCode, setFormCode] = useState("");
+  const [formPercent, setFormPercent] = useState("");
+  const [formSalesperson, setFormSalesperson] = useState("");
+  const [formActive, setFormActive] = useState(true);
+  const [formCreatedAt, setFormCreatedAt] = useState("");
+
+  const [monthFilter, setMonthFilter] = useState("");
+  const [salespersonFilter, setSalespersonFilter] = useState("");
+  const [salespersonOptions, setSalespersonOptions] = useState<string[]>([]);
+  const [summaryRows, setSummaryRows] = useState<DiscountCodeUsageSummaryRow[]>([]);
+  const [rawRows, setRawRows] = useState<DiscountCodeUsageRawRecord[]>([]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormCode("");
+    setFormPercent("");
+    setFormSalesperson("");
+    setFormActive(true);
+    setFormCreatedAt("");
+  };
+
+  const loadCodes = async (q = search) => {
+    setCodesLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<DiscountCodeRecord[]>(
+        "discount_code_list",
+        { q: q.trim() },
+        sessionToken
+      );
+      setCodes(data || []);
+    } catch {
+      setMsg("折扣碼列表載入失敗");
+    } finally {
+      setCodesLoading(false);
+    }
+  };
+
+  const loadUsage = async () => {
+    setUsageLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<{
+        summary: DiscountCodeUsageSummaryRow[];
+        records: DiscountCodeUsageRawRecord[];
+        salespersons: string[];
+      }>(
+        "discount_code_usage_summary",
+        {
+          month: monthFilter || null,
+          salesperson: salespersonFilter || null,
+        },
+        sessionToken
+      );
+      setSummaryRows(data.summary || []);
+      setRawRows(data.records || []);
+      setSalespersonOptions(data.salespersons || []);
+    } catch {
+      setMsg("折扣碼使用紀錄載入失敗");
+    } finally {
+      setUsageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCodes("");
+    loadUsage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionToken]);
+
+  const handleEdit = (row: DiscountCodeRecord) => {
+    setEditingId(row.id);
+    setFormCode(row.code);
+    setFormPercent(String(row.discount_percent));
+    setFormSalesperson(row.salesperson);
+    setFormActive(Boolean(row.is_active));
+    setFormCreatedAt(toLocalDateTimeInputValue(row.created_at));
+    setMsg("");
+  };
+
+  const handleSave = async () => {
+    const payload = {
+      code: normalizeCodeInput(formCode),
+      discount_percent: Number(formPercent),
+      salesperson: formSalesperson.trim(),
+      is_active: formActive,
+      created_at: formCreatedAt ? new Date(formCreatedAt).toISOString() : null,
+    };
+
+    if (!/^[A-Za-z0-9]{6}$/.test(payload.code)) {
+      setMsg("折扣碼必須為 6 位英數字");
+      return;
+    }
+    if (!Number.isFinite(payload.discount_percent) || payload.discount_percent < 0 || payload.discount_percent > 100) {
+      setMsg("折扣百分比必須介乎 0 至 100");
+      return;
+    }
+    if (!payload.salesperson) {
+      setMsg("請輸入業務員名稱");
+      return;
+    }
+
+    setSaveLoading(true);
+    setMsg("");
+    try {
+      if (editingId) {
+        await adminConsoleRequest("discount_code_update", { id: editingId, ...payload }, sessionToken);
+        setMsg("折扣碼已更新");
+      } else {
+        await adminConsoleRequest("discount_code_create", payload, sessionToken);
+        setMsg("折扣碼已新增");
+      }
+      resetForm();
+      await Promise.all([loadCodes(), loadUsage()]);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "儲存失敗");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("確定要刪除此折扣碼？")) return;
+    setDeletingId(id);
+    setMsg("");
+    try {
+      await adminConsoleRequest("discount_code_delete", { id }, sessionToken);
+      setMsg("折扣碼已刪除");
+      if (editingId === id) resetForm();
+      await Promise.all([loadCodes(), loadUsage()]);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "刪除失敗");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const exportCsv = () => {
+    if (rawRows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const csv = buildCsv(rawRows);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `discount-code-usage-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-gray-800">折扣碼維護</h2>
+
+      {msg && (
+        <p className={`text-sm ${msg.includes("失敗") || msg.includes("錯誤") ? "text-red-500" : "text-emerald-600"}`}>
+          {msg}
+        </p>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">{editingId ? "修改折扣碼" : "新增折扣碼"}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">折扣碼（6位英數字）</label>
+            <input
+              value={formCode}
+              onChange={(e) => setFormCode(normalizeCodeInput(e.target.value))}
+              placeholder="例如 ASD516"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">折扣百分比 (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              value={formPercent}
+              onChange={(e) => setFormPercent(e.target.value)}
+              placeholder="例如 50"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">業務員</label>
+            <input
+              value={formSalesperson}
+              onChange={(e) => setFormSalesperson(e.target.value)}
+              placeholder="例如 Colin Wong"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">建立時間</label>
+            <input
+              type="datetime-local"
+              value={formCreatedAt}
+              onChange={(e) => setFormCreatedAt(e.target.value)}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={formActive} onChange={(e) => setFormActive(e.target.checked)} />
+          啟用
+        </label>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saveLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {saveLoading ? "儲存中..." : editingId ? "更新折扣碼" : "新增折扣碼"}
+          </button>
+          {editingId && (
+            <button
+              onClick={resetForm}
+              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300"
+            >
+              取消編輯
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadCodes()}
+            placeholder="搜尋折扣碼或業務員"
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadCodes()}
+            disabled={codesLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {codesLoading ? "搜尋中..." : "搜尋"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">折扣碼</th>
+                <th className="py-2 pr-3">折扣 (%)</th>
+                <th className="py-2 pr-3">業務員</th>
+                <th className="py-2 pr-3">啟用</th>
+                <th className="py-2 pr-3">建立時間</th>
+                <th className="py-2 pr-3">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {codes.map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-mono">{row.code}</td>
+                  <td className="py-2 pr-3">{Number(row.discount_percent).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{row.salesperson}</td>
+                  <td className="py-2 pr-3">{row.is_active ? "是" : "否"}</td>
+                  <td className="py-2 pr-3">{new Date(row.created_at).toLocaleString("zh-HK")}</td>
+                  <td className="py-2 pr-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(row)}
+                        className="px-2 py-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-semibold"
+                      >
+                        修改
+                      </button>
+                      <button
+                        onClick={() => handleDelete(row.id)}
+                        disabled={deletingId === row.id}
+                        className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold disabled:opacity-50"
+                      >
+                        {deletingId === row.id ? "刪除中..." : "刪除"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {codes.length === 0 && !codesLoading && (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-gray-400">找不到折扣碼資料</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">折扣碼使用摘要</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            type="month"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <select
+            value={salespersonFilter}
+            onChange={(e) => setSalespersonFilter(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          >
+            <option value="">全部業務員</option>
+            {salespersonOptions.map((sp) => (
+              <option key={sp} value={sp}>{sp}</option>
+            ))}
+          </select>
+          <button
+            onClick={loadUsage}
+            disabled={usageLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {usageLoading ? "載入中..." : "套用篩選"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">月份</th>
+                <th className="py-2 pr-3">業務員</th>
+                <th className="py-2 pr-3">使用次數</th>
+                <th className="py-2 pr-3">成功付款次數</th>
+                <th className="py-2 pr-3">原價總額 (HKD)</th>
+                <th className="py-2 pr-3">實付總額 (HKD)</th>
+                <th className="py-2 pr-3">折扣總額 (HKD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row) => (
+                <tr key={`${row.usage_month}-${row.salesperson}`} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">{row.usage_month}</td>
+                  <td className="py-2 pr-3">{row.salesperson}</td>
+                  <td className="py-2 pr-3">{row.usage_count}</td>
+                  <td className="py-2 pr-3">{row.paid_count}</td>
+                  <td className="py-2 pr-3">{Number(row.gross_amount_hkd).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{Number(row.final_amount_hkd).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{Number(row.discount_amount_hkd).toFixed(2)}</td>
+                </tr>
+              ))}
+              {summaryRows.length === 0 && !usageLoading && (
+                <tr>
+                  <td colSpan={7} className="py-4 text-center text-gray-400">沒有符合條件的摘要資料</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <p className="text-xs text-gray-500">可匯出目前篩選條件下的完整原始使用紀錄（CSV）</p>
+          <button
+            onClick={exportCsv}
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+          >
+            匯出 CSV
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
