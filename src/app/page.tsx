@@ -1344,7 +1344,7 @@ function LoginMobileScreen({
             </div>
           </div>
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
-            Question / comments? Drop a message to{" "}
+            有問題或意見？歡迎電郵至{" "}
             <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
               cs@hkedutech.com
             </a>
