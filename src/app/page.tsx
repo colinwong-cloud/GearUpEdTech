@@ -2696,7 +2696,9 @@ function ProfileEditScreen({
       }
 
       setMsg("資料已更新");
-      setTimeout(onSaved, 1000);
+      setTimeout(() => {
+        onSaved();
+      }, 1000);
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "儲存失敗，請重試");
     } finally {
