@@ -259,7 +259,7 @@ CREATE OR REPLACE FUNCTION public.login_by_mobile(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_parent RECORD;
@@ -344,7 +344,7 @@ CREATE OR REPLACE FUNCTION public.register_student(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_parent_id UUID;
@@ -411,7 +411,7 @@ CREATE OR REPLACE FUNCTION public.add_student_to_parent(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_parent_id UUID;
