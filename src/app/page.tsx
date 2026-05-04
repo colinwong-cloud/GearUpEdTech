@@ -1343,45 +1343,56 @@ function LoginMobileScreen({
               </button>
             </div>
           </div>
-          <div className="mt-6 bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-6">
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
+            Question / comments? Drop a message to{" "}
+            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@hkedutech.com
+            </a>
+          </div>
+          <div
+            className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
+            style={{ fontFamily: "var(--font-baloo2), var(--font-noto-sans-tc), system-ui, sans-serif" }}
+          >
             <section className="space-y-3">
-              <h2 className="text-lg font-bold text-gray-900">平台簡介</h2>
+              <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
+                平台簡介
+              </div>
               <p className="text-sm leading-7 text-gray-700">
                 增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI
                 個人化學習與香港本地課程掛鉤的平台。
               </p>
               <ul className="space-y-3 text-sm leading-7 text-gray-700">
-                <li>
+                <li className="rounded-2xl border border-amber-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
                   不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
                 </li>
-                <li>
+                <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">AI 智能精準補漏，提升學習效率：</span>
                   利用 AI
                   演算法追蹤學生的薄弱環節，並提供即時自動批改與詳細解說，幫助孩子從錯誤中學習，確保每分鐘的練習都能發揮最大效用。
                 </li>
-                <li>
+                <li className="rounded-2xl border border-violet-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">100% 貼合香港教育局課程：</span>
                   內容完全根據香港教育局（EDB）課程指引編寫，涵蓋中、英、數三科核心學科，確保學習內容與學校進度同步，直接有效提升校內成績。
                 </li>
               </ul>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-amber-200" />
 
             <section className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900">常見問題（FAQ）</h2>
+              <div className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">
+                常見問題（FAQ）
+              </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-2xl border border-sky-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">1. 平台涵蓋哪些年級和科目？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   平台專為香港小學 P1 至 P6 學生設計。核心科目包括中文、英文及數學，全方位照顧小學階段的學術需求。
                 </p>
               </div>
 
-              <hr className="border-gray-100" />
-
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-2xl border border-violet-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">2. 相比其他平台，你們的優勢在哪裡？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   目前的競爭對手主要集中於線上練習，家長未能掌握學生學習強弱，以致與同級其他同學的成績差異。
@@ -1394,9 +1405,7 @@ function LoginMobileScreen({
                 </ol>
               </div>
 
-              <hr className="border-gray-100" />
-
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-2xl border border-amber-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">3. 家長如何了解孩子的學習進度？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   平台設有專為家長設計的進度報告與數據儀表板。您可以即時查看孩子的正確率、完成進度以及 AI
@@ -1404,9 +1413,7 @@ function LoginMobileScreen({
                 </p>
               </div>
 
-              <hr className="border-gray-100" />
-
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-2xl border border-emerald-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">4. 平台的收費模式是怎樣的？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   我們提供超靈活的月費計劃，無需長期綁約，讓您可以根據孩子的學習進度隨時開始或暫停，給予家長最輕鬆、無壓力的學習彈性。每月
@@ -1414,9 +1421,7 @@ function LoginMobileScreen({
                 </p>
               </div>
 
-              <hr className="border-gray-100" />
-
-              <div className="space-y-1">
+              <div className="space-y-1 rounded-2xl border border-rose-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">5. 練習內容是否設有自動批改功能？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   是的。平台提供即時自動批改系統，學生提交答案後會立即獲得回饋與解釋。這不僅能減輕家長對稿的時間負擔，也能讓學生在記憶最清晰時糾正錯誤概念。
