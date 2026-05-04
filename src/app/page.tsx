@@ -1343,6 +1343,87 @@ function LoginMobileScreen({
               </button>
             </div>
           </div>
+          <div className="mt-6 bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-6">
+            <section className="space-y-3">
+              <h2 className="text-lg font-bold text-gray-900">平台簡介</h2>
+              <p className="text-sm leading-7 text-gray-700">
+                增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI
+                個人化學習與香港本地課程掛鉤的平台。
+              </p>
+              <ul className="space-y-3 text-sm leading-7 text-gray-700">
+                <li>
+                  <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
+                  不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
+                </li>
+                <li>
+                  <span className="font-semibold text-gray-900">AI 智能精準補漏，提升學習效率：</span>
+                  利用 AI
+                  演算法追蹤學生的薄弱環節，並提供即時自動批改與詳細解說，幫助孩子從錯誤中學習，確保每分鐘的練習都能發揮最大效用。
+                </li>
+                <li>
+                  <span className="font-semibold text-gray-900">100% 貼合香港教育局課程：</span>
+                  內容完全根據香港教育局（EDB）課程指引編寫，涵蓋中、英、數三科核心學科，確保學習內容與學校進度同步，直接有效提升校內成績。
+                </li>
+              </ul>
+            </section>
+
+            <hr className="border-gray-200" />
+
+            <section className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900">常見問題（FAQ）</h2>
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-gray-900">1. 平台涵蓋哪些年級和科目？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  平台專為香港小學 P1 至 P6 學生設計。核心科目包括中文、英文及數學，全方位照顧小學階段的學術需求。
+                </p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-900">2. 相比其他平台，你們的優勢在哪裡？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  目前的競爭對手主要集中於線上練習，家長未能掌握學生學習強弱，以致與同級其他同學的成績差異。
+                </p>
+                <p className="text-sm leading-7 text-gray-700">我們的優勢在於：</p>
+                <ol className="list-decimal space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                  <li>既有 AI 驅動的每日練習，且在中文、英文及數學三科捆綁訂閱上的價格更具競爭力。</li>
+                  <li>平台有詳細的家長報告，讓您充分掌握學生與其他同級學生的練習成績差異，讓您知己知彼。</li>
+                  <li>每月免費 200 題不同科目練習。</li>
+                </ol>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-gray-900">3. 家長如何了解孩子的學習進度？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  平台設有專為家長設計的進度報告與數據儀表板。您可以即時查看孩子的正確率、完成進度以及 AI
+                  分析出的強項與弱項，隨時隨地掌握學習情況。
+                </p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-gray-900">4. 平台的收費模式是怎樣的？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  我們提供超靈活的月費計劃，無需長期綁約，讓您可以根據孩子的學習進度隨時開始或暫停，給予家長最輕鬆、無壓力的學習彈性。每月
+                  $99 港幣即可享用中、英、數三科全開的專業版無限題練習。月費會員更可將學生成績與全港或按各區學生成績作比較，得知與其他學生的練習成績差異。
+                </p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-gray-900">5. 練習內容是否設有自動批改功能？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  是的。平台提供即時自動批改系統，學生提交答案後會立即獲得回饋與解釋。這不僅能減輕家長對稿的時間負擔，也能讓學生在記憶最清晰時糾正錯誤概念。
+                </p>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
       <footer
