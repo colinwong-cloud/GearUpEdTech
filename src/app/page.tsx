@@ -152,7 +152,7 @@ interface ParentGradeRankPayload {
 interface BalanceTransaction {
   id: string;
   change_amount: number;
-  balance_after: number;
+  balance_after: number | null;
   description: string;
   session_id: string | null;
   created_at: string;
@@ -3123,6 +3123,9 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   };
 
   const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
+  const isUnlimited = Boolean(data && data.total_balance < 0);
+  const totalBalanceLabel = isUnlimited ? "Unlimited" : String(data?.total_balance ?? 0);
+  const openingBalanceLabel = isUnlimited ? "Unlimited" : String(data?.opening_balance ?? 0);
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
@@ -3154,7 +3157,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
             <p className="text-indigo-100 text-xs font-medium">題目餘額（{subjectDisplayLabel(balanceSubject)}）</p>
-            <p className="text-white text-4xl font-extrabold mt-1">{data.total_balance}</p>
+            <p className="text-white text-4xl font-extrabold mt-1">{totalBalanceLabel}</p>
             <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
           </div>
         )}
@@ -3189,7 +3192,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                   <td className="px-3 py-2 text-xs text-gray-400">—</td>
                   <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
                   <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
-                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{data.opening_balance}</td>
+                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{openingBalanceLabel}</td>
                 </tr>
                 {data.transactions.map((tx) => {
                   const d = new Date(tx.created_at);
@@ -3203,7 +3206,9 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                       <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
                         {isPositive ? "+" : ""}{tx.change_amount}
                       </td>
-                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{tx.balance_after}</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
+                        {tx.balance_after === null ? "—" : tx.balance_after}
+                      </td>
                     </tr>
                   );
                 })}
