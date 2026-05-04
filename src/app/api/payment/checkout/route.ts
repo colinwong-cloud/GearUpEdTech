@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 
 const DEFAULT_AIRWALLEX_BASE = "https://api-demo.airwallex.com";
 const PRICE_HKD = 99;
@@ -112,6 +113,13 @@ type CheckoutBody = {
   payment_method?: string | null;
 };
 
+type PendingOrderRow = {
+  id: string;
+  merchant_order_id: string;
+  airwallex_payment_intent_id: string | null;
+  raw_response: Record<string, unknown> | null;
+};
+
 function getServerSupabase() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -120,6 +128,119 @@ function getServerSupabase() {
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   if (!url || !serviceRole) return null;
   return createClient(url, serviceRole);
+}
+
+function readString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function readObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
+  const checkout = readObject(rawResponse?.checkout);
+  if (!checkout) {
+    return { checkoutUrl: null, paymentLinkId: null };
+  }
+  return {
+    checkoutUrl:
+      readString(checkout.url) || readString(checkout.hosted_payment_url),
+    paymentLinkId:
+      readString(checkout.id) || readString(checkout.payment_link_id),
+  };
+}
+
+function isPaidStatus(status: unknown): boolean {
+  const normalized = readString(status)?.toUpperCase() || "";
+  return normalized === "PAID" || normalized === "SUCCEEDED" || normalized === "SUCCESS";
+}
+
+async function reconcilePendingOrder({
+  supabase,
+  order,
+  airwallexBase,
+  accessToken,
+}: {
+  supabase: ReturnType<typeof getServerSupabase> extends infer T ? Exclude<T, null> : never;
+  order: PendingOrderRow;
+  airwallexBase: string;
+  accessToken: string;
+}): Promise<{ paid: boolean; checkoutUrl: string | null; intentId: string | null }> {
+  const stored = getStoredCheckoutInfo(order.raw_response);
+  const checkoutUrl = stored.checkoutUrl;
+
+  if (order.airwallex_payment_intent_id) {
+    const verify = await verifyAndFinalizeParentPayment({
+      supabaseAdmin: supabase,
+      paymentIntentId: order.airwallex_payment_intent_id,
+      merchantOrderId: order.merchant_order_id,
+    });
+    return {
+      paid: verify.paid,
+      checkoutUrl,
+      intentId: verify.payment_intent_id,
+    };
+  }
+
+  if (!stored.paymentLinkId) {
+    return { paid: false, checkoutUrl, intentId: null };
+  }
+
+  const linkRes = await fetch(
+    `${airwallexBase}/api/v1/pa/payment_links/${encodeURIComponent(stored.paymentLinkId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const linkBody = await readApiBody(linkRes);
+  const linkPayload = linkBody.json || {};
+  const latestIntentId = readString(linkPayload.latest_successful_payment_intent_id);
+
+  if (latestIntentId) {
+    const verify = await verifyAndFinalizeParentPayment({
+      supabaseAdmin: supabase,
+      paymentIntentId: latestIntentId,
+      merchantOrderId: order.merchant_order_id,
+    });
+    return {
+      paid: verify.paid,
+      checkoutUrl: readString(linkPayload.url) || checkoutUrl,
+      intentId: verify.payment_intent_id,
+    };
+  }
+
+  if (linkRes.ok && isPaidStatus(linkPayload.status)) {
+    const { error: finalizeErr } = await supabase.rpc("finalize_parent_payment", {
+      p_order_id: order.id,
+      p_payment_intent_id: "",
+      p_payment_attempt_id: null,
+      p_paid: true,
+      p_raw_response: linkPayload,
+    });
+    if (!finalizeErr) {
+      return {
+        paid: true,
+        checkoutUrl: readString(linkPayload.url) || checkoutUrl,
+        intentId: null,
+      };
+    }
+  }
+
+  return {
+    paid: false,
+    checkoutUrl: readString(linkPayload.url) || checkoutUrl,
+    intentId: latestIntentId,
+  };
 }
 
 async function getAirwallexAccessToken(airwallexBase: string) {
@@ -230,6 +351,48 @@ export async function POST(req: NextRequest) {
       paid: true,
       message: "你已是月費用戶，毋須重複付款。",
     });
+  }
+
+  try {
+    const airwallexBase = getAirwallexBaseUrl();
+    const accessToken = await getAirwallexAccessToken(airwallexBase);
+    const { data: pendingOrders, error: pendingErr } = await supabase
+      .from("parent_payment_orders")
+      .select("id,merchant_order_id,airwallex_payment_intent_id,raw_response")
+      .eq("mobile_number", mobile)
+      .eq("status", "created")
+      .is("finalized_at", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (!pendingErr && Array.isArray(pendingOrders) && pendingOrders.length > 0) {
+      let latestCheckoutUrl: string | null = null;
+      for (const rawOrder of pendingOrders as PendingOrderRow[]) {
+        const result = await reconcilePendingOrder({
+          supabase,
+          order: rawOrder,
+          airwallexBase,
+          accessToken,
+        });
+        if (!latestCheckoutUrl && result.checkoutUrl) {
+          latestCheckoutUrl = result.checkoutUrl;
+        }
+        if (result.paid) {
+          return NextResponse.json({
+            paid: true,
+            message: "付款成功，帳戶已升級為月費用戶。",
+          });
+        }
+      }
+      if (latestCheckoutUrl) {
+        return NextResponse.json({
+          checkout_url: latestCheckoutUrl,
+          intent_id: null,
+        });
+      }
+    }
+  } catch {
+    // If reconciliation check fails, continue normal checkout creation flow.
   }
 
   let discountPercent = 0;
