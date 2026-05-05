@@ -99,7 +99,7 @@ SET
   email = EXCLUDED.email,
   parent_name = EXCLUDED.parent_name;
 
-CREATE TEMP TABLE tmp_seed_99990004_schools ON COMMIT DROP AS
+CREATE TEMP TABLE tmp_seed_99990004_schools ON COMMIT PRESERVE ROWS AS
 SELECT DISTINCT ON (district)
   s.id AS school_id,
   s.district,
