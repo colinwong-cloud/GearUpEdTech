@@ -10,6 +10,7 @@ type AirwallexWebhookEnvelope = {
     object?: {
       id?: string;
       status?: string;
+      payment_intent_id?: string;
       latest_payment_attempt?: { id?: string; status?: string };
       [key: string]: unknown;
     };
@@ -18,7 +19,13 @@ type AirwallexWebhookEnvelope = {
   [key: string]: unknown;
 };
 
-const SUCCESS_STATES = new Set(["SUCCEEDED", "SUCCESS", "PAID"]);
+const SUCCESS_STATES = new Set([
+  "SUCCEEDED",
+  "SUCCESS",
+  "PAID",
+  "CAPTURE_REQUESTED",
+  "SETTLED",
+]);
 
 function readString(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -96,10 +103,15 @@ export async function POST(req: NextRequest) {
   const eventId = event.id?.trim() || "";
   const eventType = event.name?.trim() || "unknown";
   const object = event.data?.object || {};
-  const paymentIntentId = String(object.id || "").trim();
+  const isAttemptEvent = eventType.startsWith("payment_attempt.");
+  const paymentIntentId = String(
+    isAttemptEvent ? object.payment_intent_id || "" : object.id || ""
+  ).trim();
   const merchantOrderId = extractMerchantOrderId(object as Record<string, unknown>);
   const paymentStatus = String(object.status || "").toUpperCase();
-  const attemptId = String(object.latest_payment_attempt?.id || "").trim();
+  const attemptId = String(
+    isAttemptEvent ? object.id || "" : object.latest_payment_attempt?.id || ""
+  ).trim();
   const isPaid = SUCCESS_STATES.has(paymentStatus);
 
   if (!eventId || !paymentIntentId) {
