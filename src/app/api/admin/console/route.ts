@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
+import {
+  getAirwallexAccessToken,
+  getAirwallexBaseUrl,
+} from "@/lib/server/payment-finalize";
 
 type AdminAction =
   | "search_parent"
@@ -16,7 +20,10 @@ type AdminAction =
   | "discount_code_update"
   | "discount_code_delete"
   | "discount_code_usage_summary"
-  | "payment_status_enquiry";
+  | "payment_status_enquiry"
+  | "payment_cancel_future_payment"
+  | "payment_refund_last_preview"
+  | "payment_refund_last_confirm";
 
 type RequestBody = {
   action?: AdminAction;
@@ -25,6 +32,9 @@ type RequestBody = {
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
+const REFUND_SUCCESS_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED"]);
+const PAYMENT_OPS_TABLE_HINT =
+  "缺少付款管理資料表，請先在 Supabase 執行 supabase_admin_payment_ops.sql。";
 
 function normalizeIsoDateTime(raw: unknown): string | null {
   if (raw === null || raw === undefined || String(raw).trim() === "") return null;
@@ -99,6 +109,306 @@ function formatPaymentMethodDisplay({
   return token;
 }
 
+function readString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+type AirwallexApiBody = {
+  json: Record<string, unknown> | null;
+  text: string;
+};
+
+async function readAirwallexApiBody(res: Response): Promise<AirwallexApiBody> {
+  const text = await res.text();
+  if (!text) return { json: null, text: "" };
+  try {
+    return {
+      json: JSON.parse(text) as Record<string, unknown>,
+      text,
+    };
+  } catch {
+    return { json: null, text };
+  }
+}
+
+function formatAirwallexError({
+  action,
+  status,
+  body,
+}: {
+  action: string;
+  status: number;
+  body: AirwallexApiBody;
+}): string {
+  const json = body.json || {};
+  const code = typeof json.code === "string" ? json.code : "";
+  const message = typeof json.message === "string" ? json.message : "";
+  if (code || message) {
+    return `Airwallex ${action} failed (${status})${code ? ` [${code}]` : ""}: ${message || "Unknown error"}`;
+  }
+  const snippet = body.text.replace(/\s+/g, " ").slice(0, 220);
+  return `Airwallex ${action} failed (${status})${snippet ? `: ${snippet}` : ""}`;
+}
+
+function normalizeRefundStatus(status: string | null): string {
+  const normalized = (status || "").trim().toUpperCase();
+  if (!normalized) return "initiated";
+  return normalized.toLowerCase();
+}
+
+function isMissingPaymentOpsTableError(message: string): boolean {
+  return /parent_payment_refunds|admin_payment_actions|42P01|does not exist/i.test(message);
+}
+
+type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
+
+type ParentRow = {
+  id: string;
+  mobile_number: string;
+  parent_name: string | null;
+  subscription_tier: string | null;
+  paid_started_at: string | null;
+  paid_until: string | null;
+};
+
+type RecurringProfileRow = {
+  id: string;
+  parent_id: string | null;
+  status: string | null;
+  airwallex_payment_consent_id: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
+};
+
+type PaidOrderRow = {
+  id: string;
+  parent_id: string | null;
+  mobile_number: string;
+  status: string;
+  paid_at: string | null;
+  created_at: string;
+  final_amount_hkd: number | string | null;
+  payment_method: string | null;
+  payment_method_label?: string | null;
+  payment_method_type?: string | null;
+  payment_method_brand?: string | null;
+  is_recurring_payment?: boolean | null;
+  airwallex_payment_intent_id?: string | null;
+  airwallex_payment_attempt_id?: string | null;
+};
+
+async function ensurePaymentOpsTables(admin: AdminClient) {
+  const { error: refundProbeErr } = await admin
+    .from("parent_payment_refunds")
+    .select("id")
+    .limit(1);
+  if (refundProbeErr && isMissingPaymentOpsTableError(refundProbeErr.message)) {
+    throw new Error(PAYMENT_OPS_TABLE_HINT);
+  }
+  if (refundProbeErr) throw refundProbeErr;
+
+  const { error: actionProbeErr } = await admin
+    .from("admin_payment_actions")
+    .select("id")
+    .limit(1);
+  if (actionProbeErr && isMissingPaymentOpsTableError(actionProbeErr.message)) {
+    throw new Error(PAYMENT_OPS_TABLE_HINT);
+  }
+  if (actionProbeErr) throw actionProbeErr;
+}
+
+async function getParentByMobile(admin: AdminClient, mobile: string): Promise<ParentRow | null> {
+  const { data, error } = await admin
+    .from("parents")
+    .select("id,mobile_number,parent_name,subscription_tier,paid_started_at,paid_until")
+    .eq("mobile_number", mobile)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ParentRow | null) ?? null;
+}
+
+async function getRecurringProfileByMobile(
+  admin: AdminClient,
+  mobile: string
+): Promise<RecurringProfileRow | null> {
+  const { data, error } = await admin
+    .from("parent_recurring_profiles")
+    .select(
+      "id,parent_id,status,airwallex_payment_consent_id,payment_method_label,payment_method_type,payment_method_brand"
+    )
+    .eq("mobile_number", mobile)
+    .maybeSingle();
+  if (error) {
+    if (isMissingPaymentOpsTableError(error.message)) return null;
+    const recurringErrMsg = error.message || "";
+    if (/parent_recurring_profiles|42P01|does not exist/i.test(recurringErrMsg)) {
+      return null;
+    }
+    throw error;
+  }
+  return (data as RecurringProfileRow | null) ?? null;
+}
+
+async function getLatestPaidOrder(admin: AdminClient, mobile: string): Promise<PaidOrderRow | null> {
+  const rich = await admin
+    .from("parent_payment_orders")
+    .select(
+      "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
+    )
+    .eq("mobile_number", mobile)
+    .eq("status", "paid")
+    .order("paid_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (rich.error) {
+    const msg = rich.error.message || "";
+    if (
+      /payment_method_label|payment_method_type|payment_method_brand|is_recurring_payment|airwallex_payment_attempt_id/i.test(
+        msg
+      )
+    ) {
+      const fallback = await admin
+        .from("parent_payment_orders")
+        .select(
+          "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+        )
+        .eq("mobile_number", mobile)
+        .eq("status", "paid")
+        .order("paid_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (fallback.error) throw fallback.error;
+      return (fallback.data as PaidOrderRow | null) ?? null;
+    }
+    throw rich.error;
+  }
+  return (rich.data as PaidOrderRow | null) ?? null;
+}
+
+async function logAdminPaymentAction({
+  admin,
+  actionType,
+  status,
+  adminUser,
+  mobile,
+  parentId,
+  paymentOrderId,
+  recurringProfileId,
+  message,
+  payload,
+}: {
+  admin: AdminClient;
+  actionType: "cancel_future_payment" | "refund_last_payment";
+  status: "success" | "failed";
+  adminUser: string;
+  mobile: string;
+  parentId: string | null;
+  paymentOrderId: string | null;
+  recurringProfileId: string | null;
+  message: string | null;
+  payload: Record<string, unknown> | null;
+}) {
+  const { error } = await admin.from("admin_payment_actions").insert({
+    action_type: actionType,
+    status,
+    admin_user: adminUser,
+    mobile_number: mobile,
+    parent_id: parentId,
+    payment_order_id: paymentOrderId,
+    recurring_profile_id: recurringProfileId,
+    message,
+    payload,
+  });
+  if (error) throw error;
+}
+
+async function disablePaymentConsent({
+  consentId,
+}: {
+  consentId: string;
+}): Promise<{ disabled: boolean; status: string | null }> {
+  const baseUrl = getAirwallexBaseUrl();
+  const accessToken = await getAirwallexAccessToken(baseUrl);
+  const res = await fetch(
+    `${baseUrl}/api/v1/pa/payment_consents/${encodeURIComponent(consentId)}/disable`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ request_id: crypto.randomUUID() }),
+      cache: "no-store",
+    }
+  );
+  const body = await readAirwallexApiBody(res);
+  if (!res.ok) {
+    const code = readString(body.json?.code)?.toLowerCase() || "";
+    const message = readString(body.json?.message)?.toLowerCase() || "";
+    if (
+      code === "invalid_status_for_operation" ||
+      message.includes("disabled") ||
+      message.includes("cannot be used")
+    ) {
+      return { disabled: true, status: "DISABLED" };
+    }
+    throw new Error(
+      formatAirwallexError({
+        action: "payment_consents/disable",
+        status: res.status,
+        body,
+      })
+    );
+  }
+  return {
+    disabled: true,
+    status: readString(body.json?.status),
+  };
+}
+
+async function cancelRecurringLocally({
+  admin,
+  profileId,
+}: {
+  admin: AdminClient;
+  profileId: string;
+}) {
+  const { error } = await admin
+    .from("parent_recurring_profiles")
+    .update({
+      status: "cancelled",
+      last_order_status: "cancelled",
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profileId);
+  if (error) throw error;
+}
+
+async function downgradeParentToFree({
+  admin,
+  parentId,
+}: {
+  admin: AdminClient;
+  parentId: string;
+}) {
+  const downgradeAt = new Date(Date.now() - 1000).toISOString();
+  const { error } = await admin
+    .from("parents")
+    .update({
+      subscription_tier: "free",
+      paid_until: downgradeAt,
+    })
+    .eq("id", parentId);
+  if (error) throw error;
+}
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -107,9 +417,11 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!requireAdminSession(req)) {
+  const adminSession = requireAdminSession(req);
+  if (!adminSession) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const adminUser = adminSession.sub || "admin";
 
   const admin = getAdminClient();
   if (!admin) {
@@ -455,12 +767,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
         }
 
-        const { data: parent, error: parentError } = await admin
-          .from("parents")
-          .select("id,mobile_number,parent_name,subscription_tier,paid_started_at,paid_until")
-          .eq("mobile_number", mobile)
-          .maybeSingle();
-        if (parentError) throw parentError;
+        const parent = await getParentByMobile(admin, mobile);
 
         if (!parent) {
           return NextResponse.json({ data: { found: false } });
@@ -470,56 +777,23 @@ export async function POST(req: NextRequest) {
         const isPaidNow =
           paidUntilIso !== null && new Date(paidUntilIso).getTime() >= Date.now();
 
-        let recurringProfile:
-          | {
-              status: string | null;
-              payment_method_label: string | null;
-              payment_method_type: string | null;
-              payment_method_brand: string | null;
-            }
-          | null = null;
-        const recurringRes = await admin
-          .from("parent_recurring_profiles")
-          .select("status,payment_method_label,payment_method_type,payment_method_brand")
-          .eq("mobile_number", mobile)
-          .maybeSingle();
-        if (recurringRes.error) {
-          const recurringErrMsg = recurringRes.error.message || "";
-          if (
-            !/parent_recurring_profiles|42P01|does not exist/i.test(recurringErrMsg)
-          ) {
-            throw recurringRes.error;
-          }
-        } else {
-          recurringProfile = recurringRes.data;
-        }
+        const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
 
         const now = new Date();
         const historyStartIso = new Date(
           Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)
         ).toISOString();
 
-        type PaidOrderRow = {
-          status: string;
-          paid_at: string | null;
-          created_at: string;
-          final_amount_hkd: number | string | null;
-          payment_method: string | null;
-          payment_method_label?: string | null;
-          payment_method_type?: string | null;
-          payment_method_brand?: string | null;
-          is_recurring_payment?: boolean | null;
-        };
-
         let paidOrders: PaidOrderRow[] = [];
         const richOrdersRes = await admin
           .from("parent_payment_orders")
           .select(
-            "status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment"
+            "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
           )
           .eq("mobile_number", mobile)
           .eq("status", "paid")
           .gte("created_at", historyStartIso)
+          .order("paid_at", { ascending: false, nullsFirst: false })
           .order("created_at", { ascending: false })
           .limit(500);
         if (richOrdersRes.error) {
@@ -531,10 +805,13 @@ export async function POST(req: NextRequest) {
           ) {
             const fallbackOrdersRes = await admin
               .from("parent_payment_orders")
-              .select("status,paid_at,created_at,final_amount_hkd,payment_method")
+              .select(
+                "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+              )
               .eq("mobile_number", mobile)
               .eq("status", "paid")
               .gte("created_at", historyStartIso)
+              .order("paid_at", { ascending: false, nullsFirst: false })
               .order("created_at", { ascending: false })
               .limit(500);
             if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
@@ -581,6 +858,34 @@ export async function POST(req: NextRequest) {
           fallback: latestPaidOrder?.payment_method ?? null,
         });
 
+        let latestRefund: {
+          status: string | null;
+          amount_hkd: number;
+          created_at: string | null;
+          airwallex_refund_id: string | null;
+        } | null = null;
+        if (latestPaidOrder?.id) {
+          const { data: refundData, error: refundErr } = await admin
+            .from("parent_payment_refunds")
+            .select("status,amount_hkd,created_at,airwallex_refund_id")
+            .eq("payment_order_id", latestPaidOrder.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (refundErr) {
+            if (!isMissingPaymentOpsTableError(refundErr.message)) {
+              throw refundErr;
+            }
+          } else if (refundData) {
+            latestRefund = {
+              status: readString(refundData.status),
+              amount_hkd: toSafeNumber(refundData.amount_hkd),
+              created_at: normalizeIsoDateTime(refundData.created_at),
+              airwallex_refund_id: readString(refundData.airwallex_refund_id),
+            };
+          }
+        }
+
         return NextResponse.json({
           data: {
             found: true,
@@ -602,10 +907,442 @@ export async function POST(req: NextRequest) {
                   recurring_status: recurringStatus,
                   billed_last_12_months_total_hkd: billedTotal,
                   billed_last_12_months_by_month: billedByMonth,
+                  latest_paid_order: latestPaidOrder
+                    ? {
+                        id: latestPaidOrder.id,
+                        paid_at:
+                          normalizeIsoDateTime(latestPaidOrder.paid_at) ||
+                          normalizeIsoDateTime(latestPaidOrder.created_at),
+                        amount_hkd: toSafeNumber(latestPaidOrder.final_amount_hkd),
+                        payment_method: paymentMethod,
+                      }
+                    : null,
+                  latest_refund: latestRefund,
                 }
               : null,
           },
         });
+      }
+      case "payment_cancel_future_payment": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+        }
+        const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+        if (!recurringProfile) {
+          return NextResponse.json({ error: "此家長沒有可取消的續費設定" }, { status: 400 });
+        }
+
+        let consentDisabled = false;
+        let consentStatus: string | null = null;
+        try {
+          if (
+            recurringProfile.airwallex_payment_consent_id &&
+            String(recurringProfile.status || "").toLowerCase() !== "cancelled"
+          ) {
+            const disabledResult = await disablePaymentConsent({
+              consentId: recurringProfile.airwallex_payment_consent_id,
+            });
+            consentDisabled = disabledResult.disabled;
+            consentStatus = disabledResult.status;
+          }
+
+          if (String(recurringProfile.status || "").toLowerCase() !== "cancelled") {
+            await cancelRecurringLocally({
+              admin,
+              profileId: recurringProfile.id,
+            });
+          }
+
+          await logAdminPaymentAction({
+            admin,
+            actionType: "cancel_future_payment",
+            status: "success",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: null,
+            recurringProfileId: recurringProfile.id,
+            message: "Recurring payment cancelled by admin",
+            payload: {
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              previous_status: recurringProfile.status,
+            },
+          });
+
+          return NextResponse.json({
+            data: {
+              ok: true,
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              recurring_status: "cancelled",
+              message: "已取消未來續費",
+            },
+          });
+        } catch (actionErr) {
+          await logAdminPaymentAction({
+            admin,
+            actionType: "cancel_future_payment",
+            status: "failed",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: null,
+            recurringProfileId: recurringProfile.id,
+            message: actionErr instanceof Error ? actionErr.message : "Unknown error",
+            payload: {
+              previous_status: recurringProfile.status,
+            },
+          });
+          throw actionErr;
+        }
+      }
+      case "payment_refund_last_preview": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ data: { found: false } });
+        }
+
+        const latestOrder = await getLatestPaidOrder(admin, mobile);
+        if (!latestOrder) {
+          return NextResponse.json({
+            data: {
+              found: true,
+              eligible: false,
+              reason: "找不到可退款的最近付款記錄",
+            },
+          });
+        }
+
+        const { data: existingRefund, error: existingRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .select("id,status,amount_hkd,created_at,airwallex_refund_id")
+          .eq("payment_order_id", latestOrder.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existingRefundErr) {
+          if (isMissingPaymentOpsTableError(existingRefundErr.message)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw existingRefundErr;
+        }
+
+        const paymentMethod = formatPaymentMethodDisplay({
+          methodLabel: latestOrder.payment_method_label ?? null,
+          methodType: latestOrder.payment_method_type ?? null,
+          methodBrand: latestOrder.payment_method_brand ?? null,
+          fallback: latestOrder.payment_method ?? null,
+        });
+
+        const existingStatus = readString(existingRefund?.status);
+        const canRetryFailed = existingStatus === "failed";
+        const eligible = !existingRefund || canRetryFailed;
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            eligible,
+            reason: eligible ? null : "最近一筆付款已提交退款，不能重複退款",
+            parent: {
+              id: parent.id,
+              mobile_number: parent.mobile_number,
+              parent_name: parent.parent_name,
+            },
+            order: {
+              id: latestOrder.id,
+              paid_at:
+                normalizeIsoDateTime(latestOrder.paid_at) ||
+                normalizeIsoDateTime(latestOrder.created_at),
+              amount_hkd: toSafeNumber(latestOrder.final_amount_hkd),
+              currency: "HKD",
+              payment_method: paymentMethod,
+            },
+            existing_refund: existingRefund
+              ? {
+                  id: existingRefund.id,
+                  status: existingStatus,
+                  amount_hkd: toSafeNumber(existingRefund.amount_hkd),
+                  created_at: normalizeIsoDateTime(existingRefund.created_at),
+                  airwallex_refund_id: readString(existingRefund.airwallex_refund_id),
+                }
+              : null,
+          },
+        });
+      }
+      case "payment_refund_last_confirm": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        const orderId = String(payload.order_id ?? "").trim();
+        const reason = String(payload.reason ?? "").trim();
+
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!orderId) {
+          return NextResponse.json({ error: "缺少付款記錄 ID" }, { status: 400 });
+        }
+        if (!reason) {
+          return NextResponse.json({ error: "請輸入退款原因" }, { status: 400 });
+        }
+        if (reason.length > 128) {
+          return NextResponse.json({ error: "退款原因不可超過 128 字" }, { status: 400 });
+        }
+
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+        }
+
+        const latestOrder = await getLatestPaidOrder(admin, mobile);
+        if (!latestOrder) {
+          return NextResponse.json({ error: "找不到可退款的付款記錄" }, { status: 409 });
+        }
+        if (latestOrder.id !== orderId) {
+          return NextResponse.json(
+            { error: "只可退款最近一筆付款，請重新載入後再確認。" },
+            { status: 409 }
+          );
+        }
+
+        const refundAmount = toSafeNumber(latestOrder.final_amount_hkd);
+        if (!(refundAmount > 0)) {
+          return NextResponse.json({ error: "退款金額無效" }, { status: 409 });
+        }
+
+        const paymentAttemptId = readString(latestOrder.airwallex_payment_attempt_id);
+        const paymentIntentId = readString(latestOrder.airwallex_payment_intent_id);
+        if (!paymentAttemptId && !paymentIntentId) {
+          return NextResponse.json(
+            { error: "找不到 Airwallex 付款參考，不能退款。" },
+            { status: 409 }
+          );
+        }
+
+        const { data: existingRefund, error: existingRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .select("id,status,airwallex_refund_id")
+          .eq("payment_order_id", latestOrder.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existingRefundErr) {
+          if (isMissingPaymentOpsTableError(existingRefundErr.message)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw existingRefundErr;
+        }
+        if (
+          existingRefund &&
+          String(existingRefund.status || "").toLowerCase() !== "failed"
+        ) {
+          return NextResponse.json(
+            { error: "此付款已提交退款，請勿重複操作。" },
+            { status: 409 }
+          );
+        }
+
+        const refundRequestId = crypto.randomUUID();
+        const { data: insertedRefundRows, error: insertRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .insert({
+            payment_order_id: latestOrder.id,
+            parent_id: parent.id,
+            mobile_number: mobile,
+            admin_user: adminUser,
+            reason,
+            amount_hkd: refundAmount,
+            currency: "HKD",
+            airwallex_request_id: refundRequestId,
+            airwallex_payment_intent_id: paymentIntentId,
+            airwallex_payment_attempt_id: paymentAttemptId,
+            status: "initiated",
+          })
+          .select("id")
+          .limit(1);
+        if (insertRefundErr) {
+          const errMsg = insertRefundErr.message || "";
+          if (/duplicate key|unique/i.test(errMsg)) {
+            return NextResponse.json(
+              { error: "此付款已提交退款，請勿重複操作。" },
+              { status: 409 }
+            );
+          }
+          if (isMissingPaymentOpsTableError(errMsg)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw insertRefundErr;
+        }
+        const refundRowId = readString(insertedRefundRows?.[0]?.id);
+        if (!refundRowId) {
+          throw new Error("建立退款記錄失敗");
+        }
+
+        try {
+          const baseUrl = getAirwallexBaseUrl();
+          const accessToken = await getAirwallexAccessToken(baseUrl);
+          const refundCreateRes = await fetch(`${baseUrl}/api/v1/pa/refunds/create`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              request_id: refundRequestId,
+              reason,
+              amount: refundAmount,
+              payment_attempt_id: paymentAttemptId || undefined,
+              payment_intent_id: paymentAttemptId ? undefined : paymentIntentId,
+            }),
+            cache: "no-store",
+          });
+          const refundCreateBody = await readAirwallexApiBody(refundCreateRes);
+          if (!refundCreateRes.ok) {
+            const failureMessage = formatAirwallexError({
+              action: "refunds/create",
+              status: refundCreateRes.status,
+              body: refundCreateBody,
+            });
+            await admin
+              .from("parent_payment_refunds")
+              .update({
+                status: "failed",
+                failure_code: readString(refundCreateBody.json?.code),
+                failure_message: failureMessage,
+                raw_response: refundCreateBody.json || { raw: refundCreateBody.text },
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", refundRowId);
+            await logAdminPaymentAction({
+              admin,
+              actionType: "refund_last_payment",
+              status: "failed",
+              adminUser,
+              mobile,
+              parentId: parent.id,
+              paymentOrderId: latestOrder.id,
+              recurringProfileId: null,
+              message: failureMessage,
+              payload: {
+                refund_row_id: refundRowId,
+                refund_request_id: refundRequestId,
+              },
+            });
+            throw new Error(failureMessage);
+          }
+
+          const refundId = readString(refundCreateBody.json?.id);
+          const refundStatusUpper =
+            readString(refundCreateBody.json?.status)?.toUpperCase() || "RECEIVED";
+          const normalizedStatus = normalizeRefundStatus(refundStatusUpper);
+          await admin
+            .from("parent_payment_refunds")
+            .update({
+              airwallex_refund_id: refundId,
+              status: normalizedStatus,
+              failure_code: null,
+              failure_message: null,
+              raw_response: refundCreateBody.json || { raw: refundCreateBody.text },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", refundRowId);
+
+          if (!REFUND_SUCCESS_STATUSES.has(refundStatusUpper)) {
+            await logAdminPaymentAction({
+              admin,
+              actionType: "refund_last_payment",
+              status: "failed",
+              adminUser,
+              mobile,
+              parentId: parent.id,
+              paymentOrderId: latestOrder.id,
+              recurringProfileId: null,
+              message: `退款狀態異常：${refundStatusUpper}`,
+              payload: {
+                refund_row_id: refundRowId,
+                refund_id: refundId,
+                refund_status: refundStatusUpper,
+              },
+            });
+            return NextResponse.json(
+              { error: `退款未成功（狀態：${refundStatusUpper}）` },
+              { status: 409 }
+            );
+          }
+
+          const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+          let consentDisabled = false;
+          let consentStatus: string | null = null;
+          if (
+            recurringProfile &&
+            String(recurringProfile.status || "").toLowerCase() !== "cancelled"
+          ) {
+            if (recurringProfile.airwallex_payment_consent_id) {
+              const disableResult = await disablePaymentConsent({
+                consentId: recurringProfile.airwallex_payment_consent_id,
+              });
+              consentDisabled = disableResult.disabled;
+              consentStatus = disableResult.status;
+            }
+            await cancelRecurringLocally({
+              admin,
+              profileId: recurringProfile.id,
+            });
+          }
+
+          await downgradeParentToFree({
+            admin,
+            parentId: parent.id,
+          });
+
+          await logAdminPaymentAction({
+            admin,
+            actionType: "refund_last_payment",
+            status: "success",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: latestOrder.id,
+            recurringProfileId: recurringProfile?.id ?? null,
+            message: "Refunded last payment and downgraded parent to free",
+            payload: {
+              refund_row_id: refundRowId,
+              refund_id: refundId,
+              refund_status: refundStatusUpper,
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              downgraded_to_free: true,
+            },
+          });
+
+          return NextResponse.json({
+            data: {
+              ok: true,
+              refund_id: refundId,
+              refund_status: refundStatusUpper,
+              refund_amount_hkd: refundAmount,
+              parent_tier: "free",
+              recurring_status: "cancelled",
+            },
+          });
+        } catch (refundErr) {
+          if (refundErr instanceof Error && refundErr.message === PAYMENT_OPS_TABLE_HINT) {
+            throw refundErr;
+          }
+          throw refundErr;
+        }
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });

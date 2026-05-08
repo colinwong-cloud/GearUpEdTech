@@ -33,6 +33,21 @@ function readString(value: unknown): string | null {
   return trimmed || null;
 }
 
+function readObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function normalizeRefundStatus(value: string | null): string {
+  const normalized = (value || "").trim().toUpperCase();
+  if (!normalized) return "received";
+  return normalized.toLowerCase();
+}
+
+function isMissingRefundTableError(message: string): boolean {
+  return /parent_payment_refunds|42P01|does not exist/i.test(message);
+}
+
 function extractMerchantOrderId(object: Record<string, unknown>): string | null {
   const direct = readString(object.merchant_order_id) || readString(object.reference);
   if (direct) return direct;
@@ -104,17 +119,22 @@ export async function POST(req: NextRequest) {
   const eventType = event.name?.trim() || "unknown";
   const object = event.data?.object || {};
   const isAttemptEvent = eventType.startsWith("payment_attempt.");
+  const isRefundEvent = eventType.startsWith("refund.");
   const paymentIntentId = String(
-    isAttemptEvent ? object.payment_intent_id || "" : object.id || ""
+    isAttemptEvent || isRefundEvent
+      ? object.payment_intent_id || ""
+      : object.id || ""
   ).trim();
   const merchantOrderId = extractMerchantOrderId(object as Record<string, unknown>);
   const paymentStatus = String(object.status || "").toUpperCase();
   const attemptId = String(
     isAttemptEvent ? object.id || "" : object.latest_payment_attempt?.id || ""
   ).trim();
+  const refundId = isRefundEvent ? String(object.id || "").trim() : "";
+  const refundRequestId = isRefundEvent ? readString(object.request_id) : null;
   const isPaid = SUCCESS_STATES.has(paymentStatus);
 
-  if (!eventId || !paymentIntentId) {
+  if (!eventId || (!paymentIntentId && !isRefundEvent)) {
     return NextResponse.json(
       { error: "Missing webhook event id or payment intent id" },
       { status: 400 }
@@ -127,7 +147,7 @@ export async function POST(req: NextRequest) {
     .insert({
       event_id: eventId,
       event_type: eventType,
-      payment_intent_id: paymentIntentId,
+      payment_intent_id: paymentIntentId || null,
       status: "received",
       payload: event as unknown as Record<string, unknown>,
     })
@@ -143,6 +163,85 @@ export async function POST(req: NextRequest) {
   }
 
   const webhookEventId = insertedEvents?.[0]?.id as string | undefined;
+
+  if (isRefundEvent) {
+    try {
+      const failure = readObject(object.failure_details);
+      const failureCode =
+        readString(failure?.code) || readString((failure?.details as Record<string, unknown> | undefined)?.original_response_code);
+      const failureMessage =
+        readString(failure?.message) ||
+        readString((failure?.details as Record<string, unknown> | undefined)?.original_response_message);
+      const updatePayload = {
+        status: normalizeRefundStatus(readString(object.status)),
+        failure_code: failureCode,
+        failure_message: failureMessage,
+        raw_response: object as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      };
+
+      let matched = false;
+      if (refundId) {
+        const byRefundId = await supabaseAdmin
+          .from("parent_payment_refunds")
+          .update(updatePayload)
+          .eq("airwallex_refund_id", refundId)
+          .select("id")
+          .limit(1);
+        if (byRefundId.error && !isMissingRefundTableError(byRefundId.error.message)) {
+          throw byRefundId.error;
+        }
+        matched = (byRefundId.data?.length ?? 0) > 0;
+      }
+
+      if (!matched && refundRequestId) {
+        const byRequestId = await supabaseAdmin
+          .from("parent_payment_refunds")
+          .update({
+            ...updatePayload,
+            airwallex_refund_id: refundId || null,
+          })
+          .eq("airwallex_request_id", refundRequestId)
+          .select("id")
+          .limit(1);
+        if (byRequestId.error && !isMissingRefundTableError(byRequestId.error.message)) {
+          throw byRequestId.error;
+        }
+      }
+
+      if (webhookEventId) {
+        await supabaseAdmin
+          .from("airwallex_webhook_events")
+          .update({
+            status: "processed",
+            processed_at: new Date().toISOString(),
+            error_message: null,
+          })
+          .eq("id", webhookEventId);
+      }
+      return NextResponse.json({ ok: true, refund: true });
+    } catch (refundErr) {
+      if (webhookEventId) {
+        await supabaseAdmin
+          .from("airwallex_webhook_events")
+          .update({
+            status: "failed",
+            processed_at: new Date().toISOString(),
+            error_message: refundErr instanceof Error ? refundErr.message : "Refund webhook update failed",
+          })
+          .eq("id", webhookEventId);
+      }
+      return NextResponse.json(
+        {
+          error:
+            refundErr instanceof Error
+              ? refundErr.message
+              : "Failed to process refund webhook",
+        },
+        { status: 500 }
+      );
+    }
+  }
 
   const finalized = await finalizePaymentByIntent({
     supabaseAdmin,
