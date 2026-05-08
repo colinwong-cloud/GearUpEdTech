@@ -71,6 +71,24 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
 | 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
 | 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |
+| 2026-05 | **Business KPI 排除測試數據（`9999*` 手機）**：前後端 KPI 邏輯已統一排除測試家長資料；新增一鍵 SQL：`supabase_admin_business_kpi_exclude_test_mobile_9999.sql`（更新 `admin_today_business`、`admin_business_monthly_summary`、`admin_business_school_details`）。另修正「今日新增月費用戶／月費新增趨勢」來源改以 `parents.paid_started_at` 為準（舊環境保留 fallback）。 |
+| 2026-05 | **Admin 折扣碼使用摘要**：`實付總額 / 原價總額 / 折扣總額` 改為僅統計 `status = paid` 訂單，避免把未付款紀錄算入金額。 |
+| 2026-05 | **家長端 UI 微調（已上線）**：① 登入頁新增宣傳句並套用較活潑字型；② 練習結果頁「小香蕉圖示」改為 banner（可用 `NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL` 覆蓋，預設走 Supabase Storage）；③ 身份選擇頁新增客服入口：月費家長顯示 WhatsApp `wa.me/85252861715?text=客戶服務查詢`、免費家長顯示 `cs@hkedutech.com`；④ 家長頁面客服電郵統一為 `cs@hkedutech.com`；⑤ 免費家長升級文案更新。 |
+
+## Handover note — 2026-05-08 (for next working session)
+
+- `main` 已包含當日功能與修正（最後推送 commit：`80308e0`）。
+- 今日重點已完成並部署：
+  - KPI 測試數據排除 + 月費新增統計修正。
+  - Admin 折扣碼摘要金額計算修正。
+  - 多項前端文案／客服／banner UI 微調。
+- **可能仍需人工確認**（若尚未執行）：在 Supabase SQL Editor 執行  
+  `supabase_admin_business_kpi_exclude_test_mobile_9999.sql`  
+  以確保 DB 端 KPI RPC 與前端顯示邏輯完全一致。
+- 下次開工建議先做：
+  1. 在 admin business KPI 頁確認 `9999*` 測試帳戶不再出現在今日、月結、學校圖表。
+  2. 用一個月費家長驗證身份選擇頁 WhatsApp 客服按鈕（含預填文字）。
+  3. 用一個免費家長驗證客服電郵顯示與升級文案。
 
 ## Setup
 
