@@ -5,24 +5,66 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
+type AirwallexPaymentsApi = {
+  redirectToCheckout: (props: Record<string, unknown>) => void;
+};
+
+type AirwallexGlobal = {
+  init?: (opts: {
+    env: "demo" | "prod";
+    enabledElements: string[];
+  }) => Promise<{ payments?: AirwallexPaymentsApi } | void> | { payments?: AirwallexPaymentsApi } | void;
+  payments?: AirwallexPaymentsApi;
+  createElement?: (name: string) => unknown;
+};
+
 declare global {
   interface Window {
-    Airwallex?: {
-      init: (opts: {
-        env: "demo" | "prod";
-        enabledElements: string[];
-      }) => Promise<{
-        payments: {
-          redirectToCheckout: (props: Record<string, unknown>) => void;
-        };
-      }>;
-    };
+    Airwallex?: AirwallexGlobal;
   }
 }
 
 function getAirwallexEnv(): "demo" | "prod" {
   const env = (process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "").trim().toLowerCase();
   return env === "prod" || env === "production" ? "prod" : "demo";
+}
+
+async function resolveAirwallexPaymentsApi(
+  env: "demo" | "prod"
+): Promise<AirwallexPaymentsApi> {
+  const sdk = typeof window !== "undefined" ? window.Airwallex : undefined;
+  if (!sdk) {
+    throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+  }
+
+  let payments: AirwallexPaymentsApi | undefined;
+  if (typeof sdk.init === "function") {
+    const initResult = await sdk.init({
+      env,
+      enabledElements: ["payments"],
+    });
+    const maybeResult =
+      initResult && typeof initResult === "object"
+        ? (initResult as { payments?: AirwallexPaymentsApi })
+        : null;
+    payments = maybeResult?.payments;
+  }
+
+  if (!payments && sdk.payments) {
+    payments = sdk.payments;
+  }
+
+  if (!payments && typeof sdk.createElement === "function") {
+    const maybePayments = sdk.createElement("payments") as AirwallexPaymentsApi | undefined;
+    if (maybePayments && typeof maybePayments.redirectToCheckout === "function") {
+      payments = maybePayments;
+    }
+  }
+
+  if (!payments || typeof payments.redirectToCheckout !== "function") {
+    throw new Error("付款 SDK 初始化失敗，請重新整理後再試。");
+  }
+  return payments;
 }
 
 function PaymentAirwallexContent() {
@@ -94,10 +136,7 @@ function PaymentAirwallexContent() {
     setBooting(true);
     setError(null);
     try {
-      const { payments } = await window.Airwallex.init({
-        env: getAirwallexEnv(),
-        enabledElements: ["payments"],
-      });
+      const payments = await resolveAirwallexPaymentsApi(getAirwallexEnv());
       payments.redirectToCheckout({
         intent_id: intentId,
         client_secret: clientSecret,
