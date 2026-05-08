@@ -1,8 +1,66 @@
--- KPI filter-first split:
--- 1) admin_business_monthly_summary(): lightweight monthly summary only
--- 2) admin_business_school_details(p_district, p_school_id): on-demand school details
+-- Business KPI hotfix: exclude test data where parent mobile starts with 9999
+-- Scope:
+-- 1) admin_today_business
+-- 2) admin_business_monthly_summary
+-- 3) admin_business_school_details
 
 BEGIN;
+
+CREATE OR REPLACE FUNCTION public.admin_today_business()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+VOLATILE
+AS $$
+DECLARE
+  d date := public.hkt_today();
+  st int; s jsonb; q jsonb; n int;
+BEGIN
+  SELECT count(DISTINCT qs.student_id)::int INTO st
+  FROM public.quiz_sessions qs
+  JOIN public.students st2 ON st2.id = qs.student_id
+  JOIN public.parents p ON p.id = st2.parent_id
+  WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
+    AND qs.hkt_practice_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
+
+  SELECT coalesce(jsonb_object_agg(su.subject, su.cnt), '{}') INTO s FROM (
+    SELECT qs.subject, count(*)::int AS cnt
+    FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
+    WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
+      AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
+    GROUP BY qs.subject) su;
+
+  SELECT coalesce(jsonb_object_agg(qu.subject, qu.tq), '{}') INTO q FROM (
+    SELECT qs.subject, coalesce(sum(qs.questions_attempted),0)::int AS tq
+    FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
+    WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
+      AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
+    GROUP BY qs.subject) qu;
+
+  SELECT count(*)::int INTO n
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE s.hkt_reg_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
+
+  RETURN jsonb_build_object(
+    'hkt_date', d,
+    'students_practice_distinct', st,
+    'sessions_by_subject', s, 'questions_by_subject', q,
+    'new_students_today', n
+  );
+END;
+$$;
+REVOKE ALL ON FUNCTION public.admin_today_business() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_today_business() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_business_monthly_summary()
 RETURNS jsonb
@@ -307,7 +365,7 @@ BEGIN
             AND qx.hkt_practice_date IS NOT NULL
             AND qx.hkt_practice_date >= d1
             AND qx.hkt_practice_date <= d2
-                    AND sc.district = v_district
+            AND sc.district = v_district
             AND (p_school_id IS NULL OR st.school_id = p_school_id)
             AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
           GROUP BY st.school_id
@@ -453,9 +511,8 @@ GRANT EXECUTE ON FUNCTION public.admin_business_school_details(text, uuid) TO se
 
 COMMIT;
 
--- Optional verification
 SELECT routine_name
 FROM information_schema.routines
 WHERE routine_schema = 'public'
-  AND routine_name IN ('admin_business_monthly_summary', 'admin_business_school_details')
+  AND routine_name IN ('admin_today_business', 'admin_business_monthly_summary', 'admin_business_school_details')
 ORDER BY routine_name;

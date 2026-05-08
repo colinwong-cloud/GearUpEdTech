@@ -79,25 +79,37 @@ DECLARE
 BEGIN
   SELECT count(DISTINCT qs.student_id)::int INTO st
   FROM public.quiz_sessions qs
+  JOIN public.students st2 ON st2.id = qs.student_id
+  JOIN public.parents p ON p.id = st2.parent_id
   WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
-    AND qs.hkt_practice_date = d;
+    AND qs.hkt_practice_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
 
   SELECT coalesce(jsonb_object_agg(su.subject, su.cnt), '{}') INTO s FROM (
     SELECT qs.subject, count(*)::int AS cnt
     FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
       AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
     GROUP BY qs.subject) su;
 
   SELECT coalesce(jsonb_object_agg(qu.subject, qu.tq), '{}') INTO q FROM (
     SELECT qs.subject, coalesce(sum(qs.questions_attempted),0)::int AS tq
     FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
       AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
     GROUP BY qs.subject) qu;
 
-  SELECT count(*)::int INTO n FROM public.students s
-  WHERE s.hkt_reg_date = d;
+  SELECT count(*)::int INTO n
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE s.hkt_reg_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
 
   RETURN jsonb_build_object(
     'hkt_date', d,

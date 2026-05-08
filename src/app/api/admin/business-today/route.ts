@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const { count, error: freeErr } = await admin
       .from("parents")
       .select("id", { count: "exact", head: true })
+      .not("mobile_number", "like", "9999%")
       .gte("created_at", dayStartIso)
       .lt("created_at", dayEndIso);
     if (!freeErr && typeof count === "number") {
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     const { count, error: paidErr } = await admin
       .from("parent_recurring_profiles")
       .select("id", { count: "exact", head: true })
+      .not("mobile_number", "like", "9999%")
       .gte("created_at", dayStartIso)
       .lt("created_at", dayEndIso);
     if (!paidErr && typeof count === "number") {

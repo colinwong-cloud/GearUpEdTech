@@ -94,7 +94,11 @@ export async function POST(req: NextRequest) {
     const { monthStartIso, todayStartIso } = getHkMonthWindowUtcIso();
     const { count, error: countErr } = await admin
       .from("parent_dashboard_view_log")
-      .select("id", { count: "exact", head: true })
+      .select("id,parent:parents!inner(mobile_number)", {
+        count: "exact",
+        head: true,
+      })
+      .not("parent.mobile_number", "like", "9999%")
       .gte("viewed_at", monthStartIso)
       .lt("viewed_at", todayStartIso);
     if (!countErr && typeof count === "number") {
@@ -108,6 +112,7 @@ export async function POST(req: NextRequest) {
     const { data: parentsRows, error: parentsErr } = await admin
       .from("parents")
       .select("created_at")
+      .not("mobile_number", "like", "9999%")
       .gte("created_at", oldestTrendStartIso)
       .lt("created_at", todayStartIso);
 
@@ -122,6 +127,7 @@ export async function POST(req: NextRequest) {
     const { data: paidRows, error: paidErr } = await admin
       .from("parent_recurring_profiles")
       .select("created_at")
+      .not("mobile_number", "like", "9999%")
       .gte("created_at", oldestTrendStartIso)
       .lt("created_at", todayStartIso);
 
