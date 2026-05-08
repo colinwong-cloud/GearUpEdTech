@@ -17,7 +17,10 @@ type AdminConsoleAction =
   | "discount_code_update"
   | "discount_code_delete"
   | "discount_code_usage_summary"
-  | "payment_status_enquiry";
+  | "payment_status_enquiry"
+  | "payment_cancel_future_payment"
+  | "payment_refund_last_preview"
+  | "payment_refund_last_confirm";
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
@@ -143,7 +146,61 @@ interface PaymentStatusEnquiryResult {
     recurring_status: string | null;
     billed_last_12_months_total_hkd: number;
     billed_last_12_months_by_month: PaymentStatusMonthRow[];
+    latest_paid_order?: {
+      id: string;
+      paid_at: string | null;
+      amount_hkd: number;
+      payment_method: string | null;
+    } | null;
+    latest_refund?: {
+      status: string | null;
+      amount_hkd: number;
+      created_at: string | null;
+      airwallex_refund_id: string | null;
+    } | null;
   } | null;
+}
+
+interface PaymentCancelFutureResult {
+  ok: boolean;
+  consent_disabled: boolean;
+  consent_status: string | null;
+  recurring_status: string;
+  message: string;
+}
+
+interface PaymentRefundPreviewResult {
+  found: boolean;
+  eligible?: boolean;
+  reason?: string | null;
+  parent?: {
+    id: string;
+    mobile_number: string;
+    parent_name: string | null;
+  };
+  order?: {
+    id: string;
+    paid_at: string | null;
+    amount_hkd: number;
+    currency: string;
+    payment_method: string | null;
+  };
+  existing_refund?: {
+    id: string;
+    status: string | null;
+    amount_hkd: number;
+    created_at: string | null;
+    airwallex_refund_id: string | null;
+  } | null;
+}
+
+interface PaymentRefundConfirmResult {
+  ok: boolean;
+  refund_id: string | null;
+  refund_status: string;
+  refund_amount_hkd: number;
+  parent_tier: "free" | "paid";
+  recurring_status: string;
 }
 
 export default function AdminPage() {
@@ -760,8 +817,15 @@ function formatHkdAmount(value: number): string {
 function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [refundPreviewLoading, setRefundPreviewLoading] = useState(false);
+  const [refundConfirmLoading, setRefundConfirmLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [actionMsg, setActionMsg] = useState("");
   const [result, setResult] = useState<PaymentStatusEnquiryResult | null>(null);
+  const [refundPreview, setRefundPreview] = useState<PaymentRefundPreviewResult | null>(null);
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
 
   const handleSearch = async () => {
     if (!mobile.trim()) {
@@ -771,7 +835,11 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
     }
     setLoading(true);
     setMsg("");
+    setActionMsg("");
     setResult(null);
+    setRefundPreview(null);
+    setShowRefundConfirm(false);
+    setRefundReason("");
     try {
       const data = await adminConsoleRequest<PaymentStatusEnquiryResult>(
         "payment_status_enquiry",
@@ -790,7 +858,99 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
     }
   };
 
+  const handleCancelFuturePayment = async () => {
+    if (!result?.parent?.mobile_number) return;
+    const confirmed = window.confirm(
+      `確定要取消 ${result.parent.mobile_number} 的未來續費嗎？此操作會停止之後自動扣款。`
+    );
+    if (!confirmed) return;
+
+    setCancelLoading(true);
+    setActionMsg("");
+    try {
+      const data = await adminConsoleRequest<PaymentCancelFutureResult>(
+        "payment_cancel_future_payment",
+        { mobile_number: result.parent.mobile_number },
+        sessionToken
+      );
+      setActionMsg(data.message || "已取消未來續費");
+      await handleSearch();
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "取消續費失敗");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleOpenRefundConfirm = async () => {
+    if (!result?.parent?.mobile_number) return;
+    setRefundPreviewLoading(true);
+    setActionMsg("");
+    setShowRefundConfirm(false);
+    setRefundPreview(null);
+    setRefundReason("");
+    try {
+      const preview = await adminConsoleRequest<PaymentRefundPreviewResult>(
+        "payment_refund_last_preview",
+        { mobile_number: result.parent.mobile_number },
+        sessionToken
+      );
+      setRefundPreview(preview);
+      setShowRefundConfirm(true);
+      if (!preview.eligible) {
+        setActionMsg(preview.reason || "此家長目前沒有可退款的最近付款。");
+      }
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "載入退款確認資料失敗");
+    } finally {
+      setRefundPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmRefund = async () => {
+    const orderId = refundPreview?.order?.id;
+    const mobileNumber = result?.parent?.mobile_number;
+    if (!orderId || !mobileNumber) return;
+    if (!refundReason.trim()) {
+      setActionMsg("請先輸入退款原因");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `確認退款？\n家長：${mobileNumber}\n金額：HKD ${formatHkdAmount(
+        refundPreview.order?.amount_hkd || 0
+      )}\n原因：${refundReason.trim()}`
+    );
+    if (!confirmed) return;
+
+    setRefundConfirmLoading(true);
+    setActionMsg("");
+    try {
+      const data = await adminConsoleRequest<PaymentRefundConfirmResult>(
+        "payment_refund_last_confirm",
+        {
+          mobile_number: mobileNumber,
+          order_id: orderId,
+          reason: refundReason.trim(),
+        },
+        sessionToken
+      );
+      setActionMsg(
+        `退款已提交（${data.refund_status}）。已降級為免費用戶並停止續費。退款編號：${data.refund_id || "—"}`
+      );
+      setShowRefundConfirm(false);
+      setRefundPreview(null);
+      setRefundReason("");
+      await handleSearch();
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "退款操作失敗");
+    } finally {
+      setRefundConfirmLoading(false);
+    }
+  };
+
   const paymentRows = result?.payment?.billed_last_12_months_by_month ?? [];
+  const latestRefundStatus = result?.payment?.latest_refund?.status || null;
 
   return (
     <div className="space-y-4">
@@ -824,6 +984,15 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
           {msg}
         </p>
       )}
+      {actionMsg && (
+        <p
+          className={`text-sm ${
+            actionMsg.includes("失敗") || actionMsg.includes("錯誤") ? "text-red-500" : "text-emerald-600"
+          }`}
+        >
+          {actionMsg}
+        </p>
+      )}
 
       {result?.found && result.parent && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
@@ -842,6 +1011,23 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
 
           {result.parent.is_paid && result.payment && (
             <>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => void handleCancelFuturePayment()}
+                  disabled={cancelLoading || refundConfirmLoading || refundPreviewLoading}
+                  className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {cancelLoading ? "取消中..." : "取消未來付款"}
+                </button>
+                <button
+                  onClick={() => void handleOpenRefundConfirm()}
+                  disabled={refundPreviewLoading || refundConfirmLoading || cancelLoading}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                >
+                  {refundPreviewLoading ? "載入中..." : "退款最後一筆"}
+                </button>
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-gray-100 p-3">
                   <p className="text-xs text-gray-500 mb-1">當前付款期開始</p>
@@ -868,6 +1054,23 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     {result.payment.recurring_status
                       ? `（${result.payment.recurring_status}）`
                       : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">最近一筆付款</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.latest_paid_order
+                      ? `HKD ${formatHkdAmount(result.payment.latest_paid_order.amount_hkd)} · ${formatDateTimeDisplay(result.payment.latest_paid_order.paid_at)}`
+                      : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">最近一筆退款狀態</p>
+                  <p className="font-semibold text-gray-800">
+                    {latestRefundStatus || "沒有退款紀錄"}
                   </p>
                 </div>
               </div>
@@ -899,6 +1102,61 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   </tbody>
                 </table>
               </div>
+
+              {showRefundConfirm && refundPreview && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                  <p className="text-sm font-bold text-red-700">退款確認</p>
+                  {refundPreview.order ? (
+                    <>
+                      <div className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                        <p>家長：{refundPreview.parent?.mobile_number || result.parent.mobile_number}</p>
+                        <p>付款時間：{formatDateTimeDisplay(refundPreview.order.paid_at)}</p>
+                        <p>付款方式：{refundPreview.order.payment_method || "—"}</p>
+                        <p>
+                          退款金額：<span className="font-semibold">HKD {formatHkdAmount(refundPreview.order.amount_hkd)}</span>
+                        </p>
+                      </div>
+                      {refundPreview.existing_refund && (
+                        <p className="text-xs text-red-600">
+                          最近退款紀錄：{refundPreview.existing_refund.status || "—"}（
+                          {formatDateTimeDisplay(refundPreview.existing_refund.created_at)}）
+                        </p>
+                      )}
+                      <textarea
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        placeholder="請輸入退款原因（必填）"
+                        rows={3}
+                        className="w-full p-2 rounded-lg border border-red-200 text-sm outline-none focus:border-red-400"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void handleConfirmRefund()}
+                          disabled={!refundPreview.eligible || refundConfirmLoading}
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {refundConfirmLoading ? "退款處理中..." : "確認退款（最後一筆）"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowRefundConfirm(false);
+                            setRefundPreview(null);
+                            setRefundReason("");
+                          }}
+                          disabled={refundConfirmLoading}
+                          className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300 disabled:opacity-50"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-red-600">
+                      {refundPreview.reason || "目前沒有可退款的最近付款。"}
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
