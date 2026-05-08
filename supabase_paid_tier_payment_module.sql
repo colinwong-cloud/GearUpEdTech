@@ -102,6 +102,8 @@ CREATE TABLE IF NOT EXISTS public.parent_payment_orders (
   final_amount_hkd NUMERIC(10, 2) NOT NULL CHECK (final_amount_hkd >= 0),
   payment_method TEXT NULL,
   status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'paid', 'failed', 'cancelled')),
+  payment_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  is_recurring_payment BOOLEAN NOT NULL DEFAULT false,
   airwallex_payment_intent_id TEXT NULL,
   paid_at TIMESTAMPTZ NULL,
   raw_response JSONB NULL,
@@ -120,6 +122,34 @@ BEGIN
   ) THEN
     ALTER TABLE public.parent_payment_orders
       ADD COLUMN finalized_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'parent_payment_orders'
+      AND column_name = 'payment_started_at'
+  ) THEN
+    ALTER TABLE public.parent_payment_orders
+      ADD COLUMN payment_started_at TIMESTAMPTZ NOT NULL DEFAULT now();
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'parent_payment_orders'
+      AND column_name = 'is_recurring_payment'
+  ) THEN
+    ALTER TABLE public.parent_payment_orders
+      ADD COLUMN is_recurring_payment BOOLEAN NOT NULL DEFAULT false;
   END IF;
 END $$;
 

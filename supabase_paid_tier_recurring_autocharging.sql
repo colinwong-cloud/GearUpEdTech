@@ -5,6 +5,8 @@
 BEGIN;
 
 ALTER TABLE public.parent_payment_orders
+  ADD COLUMN IF NOT EXISTS payment_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS is_recurring_payment BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS airwallex_customer_id TEXT NULL,
   ADD COLUMN IF NOT EXISTS airwallex_payment_consent_id TEXT NULL,
   ADD COLUMN IF NOT EXISTS airwallex_payment_method_id TEXT NULL,
@@ -69,6 +71,8 @@ FROM information_schema.columns
 WHERE table_schema = 'public'
   AND table_name = 'parent_payment_orders'
   AND column_name IN (
+    'payment_started_at',
+    'is_recurring_payment',
     'airwallex_customer_id',
     'airwallex_payment_consent_id',
     'airwallex_payment_method_id',

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
 
@@ -46,6 +47,21 @@ const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 const MONTHLY_PAID_PRICE_HKD = 99;
 
+declare global {
+  interface Window {
+    Airwallex?: {
+      init: (opts: {
+        env: "demo" | "prod";
+        enabledElements: string[];
+      }) => Promise<{
+        payments: {
+          redirectToCheckout: (props: Record<string, unknown>) => void;
+        };
+      }>;
+    };
+  }
+}
+
 function getRankSampleImageUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_RANK_SAMPLE_IMAGE_URL?.trim();
   if (explicit) return explicit;
@@ -62,6 +78,11 @@ function getPaymentTermsUrl(): string {
   return base
     ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
     : "/payment_terms_condition.txt";
+}
+
+function getAirwallexEnv(): "demo" | "prod" {
+  const env = (process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "").trim().toLowerCase();
+  return env === "prod" || env === "production" ? "prod" : "demo";
 }
 
 type AppScreen =
@@ -3987,6 +4008,7 @@ function PaymentScreen({
   const [loadingTerms, setLoadingTerms] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
 
   const originalPrice = MONTHLY_PAID_PRICE_HKD;
   const discountPercent = discount?.valid ? discount.discount_percent : 0;
@@ -4053,6 +4075,12 @@ function PaymentScreen({
       });
       const payload = (await res.json()) as {
         checkout_url?: string;
+        intent_id?: string;
+        client_secret?: string;
+        currency?: string;
+        country_code?: string;
+        payment_method?: string;
+        methods?: string[];
         message?: string;
         paid?: boolean;
         error?: string;
@@ -4067,17 +4095,68 @@ function PaymentScreen({
         await onPaid();
         return;
       }
+      if (payload.intent_id && payload.client_secret) {
+        if (!window.Airwallex || !sdkReady) {
+          throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+        }
+        const appBaseUrl =
+          (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
+          window.location.origin;
+        const methods =
+          payload.methods && payload.methods.length > 0
+            ? payload.methods
+            : (() => {
+                switch (payload.payment_method || "all") {
+                  case "cards":
+                    return ["card"];
+                  case "apple_pay":
+                    return ["applepay"];
+                  case "google_pay":
+                    return ["googlepay"];
+                  case "alipay":
+                    return ["alipayhk"];
+                  case "wechat_pay":
+                    return ["wechatpay"];
+                  default:
+                    return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+                }
+              })();
+        const { payments } = await window.Airwallex.init({
+          env: getAirwallexEnv(),
+          enabledElements: ["payments"],
+        });
+        payments.redirectToCheckout({
+          intent_id: payload.intent_id,
+          client_secret: payload.client_secret,
+          currency: payload.currency || "HKD",
+          country_code: payload.country_code || "HK",
+          methods,
+          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(payload.intent_id)}`,
+          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(payload.intent_id)}`,
+        });
+        return;
+      }
       setMsg(payload.message || "已建立付款訂單，請稍後再試。");
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "付款流程發生錯誤");
     } finally {
       setProcessing(false);
     }
-  }, [agreed, discount, mobileNumber, onPaid]);
+  }, [agreed, discount, mobileNumber, onPaid, sdkReady]);
 
-  const canPay = agreed && !processing && !validatingCode;
+  const canPay = agreed && !processing && !validatingCode && sdkReady;
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
+      <Script
+        src="https://checkout.airwallex.com/assets/elements.bundle.js"
+        strategy="afterInteractive"
+        onLoad={() => setSdkReady(true)}
+        onError={() => setSdkReady(false)}
+      />
       <div className="mx-auto max-w-lg space-y-4">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
