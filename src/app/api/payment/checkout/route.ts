@@ -186,6 +186,19 @@ function parseLegacyCheckoutUrl(checkoutUrl: string | null) {
   }
 }
 
+function extractCheckoutFromUrl(checkoutUrl: string | null) {
+  const parsed = parseLegacyCheckoutUrl(checkoutUrl);
+  if (!parsed.intentId || !parsed.clientSecret) return null;
+  return {
+    intent_id: parsed.intentId,
+    client_secret: parsed.clientSecret,
+    currency: parsed.currency || "HKD",
+    country_code: parsed.countryCode || "HK",
+    payment_method: parsed.paymentMethod || "all",
+    methods: getAirwallexMethods(parsed.paymentMethod || "all"),
+  };
+}
+
 function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
   const checkout = readObject(rawResponse?.checkout);
   if (!checkout) {
@@ -500,6 +513,10 @@ export async function POST(req: Request) {
         });
       }
       if (latestCheckoutUrl) {
+        const legacy = extractCheckoutFromUrl(latestCheckoutUrl);
+        if (legacy) {
+          return NextResponse.json(legacy);
+        }
         return NextResponse.json({
           checkout_url: latestCheckoutUrl,
           intent_id: null,

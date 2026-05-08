@@ -4209,6 +4209,17 @@ function PaymentScreen({
         return;
       }
       if (payload.checkout_url) {
+        let isLegacyInternalBridge = false;
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          isLegacyInternalBridge = parsed.pathname === "/payment-airwallex";
+        } catch {
+          isLegacyInternalBridge = false;
+        }
+        if (isLegacyInternalBridge) {
+          setMsg("系統正在同步付款資料，請再按一次「確認並前往 Airwallex 付款」。");
+          return;
+        }
         window.location.href = payload.checkout_url;
         return;
       }
