@@ -51,18 +51,23 @@ type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
 };
 
-type AirwallexGlobal = {
+type AirwallexSdkLike = {
   init?: (opts: {
     env: "demo" | "prod";
     enabledElements: string[];
   }) => Promise<{ payments?: AirwallexPaymentsApi } | void> | { payments?: AirwallexPaymentsApi } | void;
   payments?: AirwallexPaymentsApi;
   createElement?: (name: string) => unknown;
+  redirectToCheckout?: (props: Record<string, unknown>) => void;
 };
 
 declare global {
   interface Window {
-    Airwallex?: AirwallexGlobal;
+    Airwallex?: AirwallexSdkLike;
+    AirwallexComponentsSDK?: AirwallexSdkLike;
+    _AirwallexSDKs?: {
+      payment?: AirwallexSdkLike;
+    };
   }
 }
 
@@ -92,9 +97,20 @@ function getAirwallexEnv(): "demo" | "prod" {
 async function resolveAirwallexPaymentsApi(
   env: "demo" | "prod"
 ): Promise<AirwallexPaymentsApi> {
-  const sdk = typeof window !== "undefined" ? window.Airwallex : undefined;
+  const sdk =
+    typeof window !== "undefined"
+      ? window.AirwallexComponentsSDK ||
+        window._AirwallexSDKs?.payment ||
+        window.Airwallex
+      : undefined;
   if (!sdk) {
     throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+  }
+
+  if (typeof sdk.redirectToCheckout === "function") {
+    return {
+      redirectToCheckout: (props) => sdk.redirectToCheckout!(props),
+    };
   }
 
   let payments: AirwallexPaymentsApi | undefined;
@@ -125,6 +141,15 @@ async function resolveAirwallexPaymentsApi(
     throw new Error("付款 SDK 初始化失敗，請重新整理後再試。");
   }
   return payments;
+}
+
+function hasAirwallexSdk(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    window.AirwallexComponentsSDK ||
+      window._AirwallexSDKs?.payment ||
+      window.Airwallex
+  );
 }
 
 function normalizeTurnstileErrorCode(code: unknown): string | null {
@@ -4104,18 +4129,16 @@ function PaymentScreen({
   const [loadingTerms, setLoadingTerms] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(
-    () => typeof window !== "undefined" && Boolean(window.Airwallex)
-  );
+  const [sdkReady, setSdkReady] = useState(() => hasAirwallexSdk());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.Airwallex) {
+    if (hasAirwallexSdk()) {
       setSdkReady(true);
       return;
     }
     const intervalId = window.setInterval(() => {
-      if (window.Airwallex) {
+      if (hasAirwallexSdk()) {
         setSdkReady(true);
         window.clearInterval(intervalId);
       }
@@ -4297,12 +4320,10 @@ function PaymentScreen({
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
       <Script
-        src="https://checkout.airwallex.com/assets/elements.bundle.min.js"
+        src="https://static.airwallex.com/components/sdk/v1/index.js"
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
-        onReady={() =>
-          setSdkReady(typeof window !== "undefined" && Boolean(window.Airwallex))
-        }
+        onReady={() => setSdkReady(hasAirwallexSdk())}
         onError={() => setSdkReady(false)}
       />
       <div className="mx-auto max-w-lg space-y-4">
