@@ -16,7 +16,8 @@ type AdminConsoleAction =
   | "discount_code_create"
   | "discount_code_update"
   | "discount_code_delete"
-  | "discount_code_usage_summary";
+  | "discount_code_usage_summary"
+  | "payment_status_enquiry";
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
@@ -45,7 +46,14 @@ async function adminConsoleRequest<T>(
   return body.data as T;
 }
 
-type Tab = "quota" | "delete" | "email" | "questions" | "business" | "discount_codes";
+type Tab =
+  | "quota"
+  | "delete"
+  | "email"
+  | "questions"
+  | "business"
+  | "discount_codes"
+  | "payment_status";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -108,6 +116,34 @@ interface DiscountCodeUsageRawRecord {
   mobile_number: string;
   merchant_order_id: string;
   payment_method: string | null;
+}
+
+interface PaymentStatusMonthRow {
+  month: string;
+  amount_hkd: number;
+  paid_count: number;
+}
+
+interface PaymentStatusEnquiryResult {
+  found: boolean;
+  parent?: {
+    id: string;
+    mobile_number: string;
+    parent_name: string | null;
+    tier: "free" | "paid";
+    is_paid: boolean;
+    paid_started_at: string | null;
+    paid_until: string | null;
+  };
+  payment?: {
+    current_payment_start_date: string | null;
+    current_payment_end_date: string | null;
+    payment_method: string | null;
+    is_recurring: boolean;
+    recurring_status: string | null;
+    billed_last_12_months_total_hkd: number;
+    billed_last_12_months_by_month: PaymentStatusMonthRow[];
+  } | null;
 }
 
 export default function AdminPage() {
@@ -237,6 +273,7 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "business", label: "業務概覽" },
     { key: "quota", label: "題目配額" },
+    { key: "payment_status", label: "付款狀態查詢" },
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
     { key: "questions", label: "題目管理" },
@@ -266,6 +303,7 @@ export default function AdminPage() {
 
         {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
         {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "payment_status" && <PaymentStatusSection sessionToken={sessionToken} />}
         {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
         {tab === "email" && <EmailSection sessionToken={sessionToken} />}
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
@@ -702,6 +740,167 @@ function QuestionsSection({ sessionToken }: { sessionToken: string }) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatDateTimeDisplay(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("zh-HK", { hour12: false });
+}
+
+function formatHkdAmount(value: number): string {
+  return Number(value || 0).toFixed(2);
+}
+
+function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
+  const [mobile, setMobile] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [result, setResult] = useState<PaymentStatusEnquiryResult | null>(null);
+
+  const handleSearch = async () => {
+    if (!mobile.trim()) {
+      setMsg("請輸入電話號碼");
+      setResult(null);
+      return;
+    }
+    setLoading(true);
+    setMsg("");
+    setResult(null);
+    try {
+      const data = await adminConsoleRequest<PaymentStatusEnquiryResult>(
+        "payment_status_enquiry",
+        { mobile_number: mobile.trim() },
+        sessionToken
+      );
+      if (!data?.found) {
+        setMsg("找不到此電話號碼");
+        return;
+      }
+      setResult(data);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "查詢失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const paymentRows = result?.payment?.billed_last_12_months_by_month ?? [];
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-gray-800">付款狀態查詢</h2>
+      <p className="text-sm text-gray-500">
+        輸入家長電話號碼，可查詢免費／月費狀態；月費家長會顯示付款資料及最近 12 個月帳單金額。
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          value={mobile}
+          onChange={(e) => {
+            setMobile(e.target.value);
+            setMsg("");
+          }}
+          onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
+          placeholder="輸入家長電話號碼"
+          className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+        />
+        <button
+          onClick={() => void handleSearch()}
+          disabled={loading}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {loading ? "查詢中..." : "查詢"}
+        </button>
+      </div>
+
+      {msg && (
+        <p className={`text-sm ${msg.includes("失敗") || msg.includes("找不到") ? "text-red-500" : "text-emerald-600"}`}>
+          {msg}
+        </p>
+      )}
+
+      {result?.found && result.parent && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm text-gray-500">
+              家長：{result.parent.mobile_number}
+              {result.parent.parent_name ? ` (${result.parent.parent_name})` : ""}
+            </p>
+            <p className="text-sm">
+              目前狀態：
+              <span className={`ml-1 font-bold ${result.parent.is_paid ? "text-emerald-600" : "text-gray-600"}`}>
+                {result.parent.is_paid ? "月費用戶" : "免費用戶"}
+              </span>
+            </p>
+          </div>
+
+          {result.parent.is_paid && result.payment && (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">當前付款期開始</p>
+                  <p className="font-semibold text-gray-800">
+                    {formatDateTimeDisplay(result.payment.current_payment_start_date)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">當前付款期結束</p>
+                  <p className="font-semibold text-gray-800">
+                    {formatDateTimeDisplay(result.payment.current_payment_end_date)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">付款方式</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.payment_method || "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">是否自動續費</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.is_recurring ? "是" : "否"}
+                    {result.payment.recurring_status
+                      ? `（${result.payment.recurring_status}）`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                <p className="text-xs text-indigo-700 mb-1">最近 12 個月已入帳總額（HKD）</p>
+                <p className="text-lg font-bold text-indigo-700">
+                  ${formatHkdAmount(result.payment.billed_last_12_months_total_hkd)}
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 pr-3">月份</th>
+                      <th className="py-2 pr-3">已入帳金額 (HKD)</th>
+                      <th className="py-2 pr-3">付款次數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentRows.map((row) => (
+                      <tr key={row.month} className="border-b border-gray-100">
+                        <td className="py-2 pr-3">{row.month}</td>
+                        <td className="py-2 pr-3 font-mono">{formatHkdAmount(row.amount_hkd)}</td>
+                        <td className="py-2 pr-3">{row.paid_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
