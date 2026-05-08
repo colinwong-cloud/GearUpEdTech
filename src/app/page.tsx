@@ -3543,8 +3543,8 @@ function ContactFooter() {
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
       <p className="text-xs text-gray-400">
         有問題或意見？請聯絡{" "}
-        <a href="mailto:colin.wong@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
-          colin.wong@hkedutech.com
+        <a href="mailto:cs@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
+          cs@hkedutech.com
         </a>
       </p>
     </div>
