@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Baloo_2, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
-import { getLoginMarketingLogoUrl, getSiteIconUrl } from "@/lib/login-marketing-assets";
+import {
+  getLoginMarketingLogoUrl,
+  getShareBannerUrl,
+  getSiteIconUrl,
+} from "@/lib/login-marketing-assets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +32,35 @@ const baloo2 = Baloo_2({
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
 const siteIcon = getSiteIconUrl();
+const shareImageUrl = getShareBannerUrl();
+const shareMessage =
+  "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
 
 export const metadata: Metadata = {
-  title: "GearUp Quiz",
-  description: "Interactive quiz platform for students",
+  title: "增分寶 GearUp Quiz",
+  description: shareMessage,
+  openGraph: {
+    title: "增分寶 GearUp Quiz",
+    description: shareMessage,
+    type: "website",
+    locale: "zh_HK",
+    ...(shareImageUrl
+      ? {
+          images: [
+            {
+              url: shareImageUrl,
+              alt: "增分寶 GearUp Quiz 平台橫幅",
+            },
+          ],
+        }
+      : {}),
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "增分寶 GearUp Quiz",
+    description: shareMessage,
+    ...(shareImageUrl ? { images: [shareImageUrl] } : {}),
+  },
   ...(siteIcon || appleTouchIcon
     ? {
         icons: {
