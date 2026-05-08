@@ -4062,7 +4062,30 @@ function PaymentScreen({
   const [loadingTerms, setLoadingTerms] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkReady, setSdkReady] = useState(
+    () => typeof window !== "undefined" && Boolean(window.Airwallex)
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.Airwallex) {
+      setSdkReady(true);
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      if (window.Airwallex) {
+        setSdkReady(true);
+        window.clearInterval(intervalId);
+      }
+    }, 500);
+    const timeoutId = window.setTimeout(() => {
+      window.clearInterval(intervalId);
+    }, 15000);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const originalPrice = MONTHLY_PAID_PRICE_HKD;
   const discountPercent = discount?.valid ? discount.discount_percent : 0;
@@ -4164,7 +4187,7 @@ function PaymentScreen({
         }
       }
       if (resolvedIntentId && resolvedClientSecret) {
-        if (!window.Airwallex || !sdkReady) {
+        if (!window.Airwallex) {
           throw new Error("付款 SDK 尚未準備好，請稍候再試。");
         }
         const appBaseUrl =
@@ -4229,15 +4252,18 @@ function PaymentScreen({
     } finally {
       setProcessing(false);
     }
-  }, [agreed, discount, mobileNumber, onPaid, sdkReady]);
+  }, [agreed, discount, mobileNumber, onPaid]);
 
-  const canPay = agreed && !processing && !validatingCode && sdkReady;
+  const canPay = agreed && !processing && !validatingCode;
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
       <Script
         src="https://checkout.airwallex.com/assets/elements.bundle.js"
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
+        onReady={() =>
+          setSdkReady(typeof window !== "undefined" && Boolean(window.Airwallex))
+        }
         onError={() => setSdkReady(false)}
       />
       <div className="mx-auto max-w-lg space-y-4">
@@ -4318,6 +4344,11 @@ function PaymentScreen({
           </div>
 
           {msg && <p className="mt-3 text-sm text-gray-700">{msg}</p>}
+          {!sdkReady && (
+            <p className="mt-2 text-xs text-amber-600">
+              付款元件載入中，如按鈕後未有反應請稍候 1-2 秒再試。
+            </p>
+          )}
 
           <button
             type="button"

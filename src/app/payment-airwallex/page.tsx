@@ -3,7 +3,7 @@
 import Script from "next/script";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 declare global {
   interface Window {
@@ -35,7 +35,30 @@ function PaymentAirwallexContent() {
   const countryCode = searchParams.get("country_code") || "HK";
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkReady, setSdkReady] = useState(
+    () => typeof window !== "undefined" && Boolean(window.Airwallex)
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.Airwallex) {
+      setSdkReady(true);
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      if (window.Airwallex) {
+        setSdkReady(true);
+        window.clearInterval(intervalId);
+      }
+    }, 500);
+    const timeoutId = window.setTimeout(() => {
+      window.clearInterval(intervalId);
+    }, 15000);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const methods = useMemo(() => {
     switch (paymentMethod) {
@@ -101,6 +124,9 @@ function PaymentAirwallexContent() {
         src="https://checkout.airwallex.com/assets/elements.bundle.js"
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
+        onReady={() =>
+          setSdkReady(typeof window !== "undefined" && Boolean(window.Airwallex))
+        }
       />
       <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">前往 Airwallex 付款</h1>
