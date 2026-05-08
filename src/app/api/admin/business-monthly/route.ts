@@ -18,8 +18,17 @@ export async function POST(req: NextRequest) {
     );
   }
   const admin = createClient(url, key);
-  const { data, error } = await admin.rpc("admin_business_monthly");
+  const { data, error } = await admin.rpc("admin_business_monthly_summary");
   if (error) {
+    if (/admin_business_monthly_summary/i.test(error.message)) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing SQL function admin_business_monthly_summary. Please run supabase_admin_business_kpi_filter_first.sql in Supabase.",
+        },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ data });
