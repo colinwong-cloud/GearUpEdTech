@@ -125,6 +125,7 @@ function PaymentAirwallexContent() {
   const paymentMethod = searchParams.get("payment_method") || "cards";
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
+  const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(() => hasAirwallexSdk());
@@ -185,7 +186,8 @@ function PaymentAirwallexContent() {
     setBooting(true);
     setError(null);
     try {
-      const payments = await resolveAirwallexPaymentsApi(getAirwallexEnv());
+      const env = envOverride === "prod" || envOverride === "production" ? "prod" : getAirwallexEnv();
+      const payments = await resolveAirwallexPaymentsApi(env);
       payments.redirectToCheckout({
         intent_id: intentId,
         client_secret: clientSecret,

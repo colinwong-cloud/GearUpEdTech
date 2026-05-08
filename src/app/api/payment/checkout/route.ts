@@ -119,6 +119,7 @@ type PendingOrderRow = {
   merchant_order_id: string;
   airwallex_payment_intent_id: string | null;
   raw_response: Record<string, unknown> | null;
+  created_at: string;
 };
 
 type AirwallexCustomerCreateResponse = {
@@ -184,19 +185,6 @@ function parseLegacyCheckoutUrl(checkoutUrl: string | null) {
       paymentMethod: null,
     };
   }
-}
-
-function extractCheckoutFromUrl(checkoutUrl: string | null) {
-  const parsed = parseLegacyCheckoutUrl(checkoutUrl);
-  if (!parsed.intentId || !parsed.clientSecret) return null;
-  return {
-    intent_id: parsed.intentId,
-    client_secret: parsed.clientSecret,
-    currency: parsed.currency || "HKD",
-    country_code: parsed.countryCode || "HK",
-    payment_method: parsed.paymentMethod || "all",
-    methods: getAirwallexMethods(parsed.paymentMethod || "all"),
-  };
 }
 
 function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
@@ -321,6 +309,15 @@ async function getAirwallexAccessToken(airwallexBase: string) {
 
 function getAirwallexMethods(paymentMethod: string): string[] {
   return AIRWALLEX_METHOD_MAP[paymentMethod] ?? AIRWALLEX_METHOD_MAP.all;
+}
+
+function getAirwallexEnvByBaseUrl(baseUrl: string): "demo" | "prod" {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === "api.airwallex.com" ? "prod" : "demo";
+  } catch {
+    return "demo";
+  }
 }
 
 function isMissingOrderTrackingColumnError(message: string): boolean {
@@ -459,10 +456,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Reconcile only older pending orders for paid recovery; do not reuse stale intent links.
+    // Client secret and checkout sessions can expire quickly, so always create a fresh intent.
+    const PENDING_RECONCILE_MIN_AGE_MS = 30 * 60 * 1000;
     getAirwallexBaseUrl();
     const { data: pendingOrders, error: pendingErr } = await supabase
       .from("parent_payment_orders")
-      .select("id,merchant_order_id,airwallex_payment_intent_id,raw_response")
+      .select("id,merchant_order_id,airwallex_payment_intent_id,raw_response,created_at")
       .eq("mobile_number", mobile)
       .eq("status", "created")
       .is("finalized_at", null)
@@ -470,57 +470,22 @@ export async function POST(req: Request) {
       .limit(10);
 
     if (!pendingErr && Array.isArray(pendingOrders) && pendingOrders.length > 0) {
-      let latestCheckoutUrl: string | null = null;
-      let latestIntentId: string | null = null;
-      let latestClientSecret: string | null = null;
-      let latestCurrency = "HKD";
-      let latestCountryCode = "HK";
-      let latestPaymentMethod = "all";
-      let latestMethods = AIRWALLEX_METHOD_MAP.all;
       for (const rawOrder of pendingOrders as PendingOrderRow[]) {
+        const createdAtMs = new Date(rawOrder.created_at).getTime();
+        const orderAgeMs = Number.isNaN(createdAtMs) ? 0 : Date.now() - createdAtMs;
+        if (orderAgeMs < PENDING_RECONCILE_MIN_AGE_MS) {
+          continue;
+        }
         const result = await reconcilePendingOrder({
           supabase,
           order: rawOrder,
         });
-        if (!latestCheckoutUrl && result.checkoutUrl) {
-          latestCheckoutUrl = result.checkoutUrl;
-        }
-        if (!latestIntentId && result.intentId) {
-          latestIntentId = result.intentId;
-        }
-        if (!latestClientSecret && result.clientSecret) {
-          latestClientSecret = result.clientSecret;
-        }
-        latestCurrency = result.currency;
-        latestCountryCode = result.countryCode;
-        latestPaymentMethod = result.paymentMethod;
-        latestMethods = result.methods;
         if (result.paid) {
           return NextResponse.json({
             paid: true,
             message: "付款成功，帳戶已升級為月費用戶。",
           });
         }
-      }
-      if (latestIntentId && latestClientSecret) {
-        return NextResponse.json({
-          intent_id: latestIntentId,
-          client_secret: latestClientSecret,
-          currency: latestCurrency,
-          country_code: latestCountryCode,
-          payment_method: latestPaymentMethod,
-          methods: latestMethods,
-        });
-      }
-      if (latestCheckoutUrl) {
-        const legacy = extractCheckoutFromUrl(latestCheckoutUrl);
-        if (legacy) {
-          return NextResponse.json(legacy);
-        }
-        return NextResponse.json({
-          checkout_url: latestCheckoutUrl,
-          intent_id: null,
-        });
       }
     }
   } catch {
@@ -591,6 +556,7 @@ export async function POST(req: Request) {
 
   try {
     const airwallexBase = getAirwallexBaseUrl();
+    const airwallexEnv = getAirwallexEnvByBaseUrl(airwallexBase);
     const accessToken = await getAirwallexAccessToken(airwallexBase);
     const customerId = await getOrCreateAirwallexCustomerId({
       airwallexBase,
@@ -700,6 +666,7 @@ export async function POST(req: Request) {
       methods,
       currency: "HKD",
       country_code: "HK",
+      airwallex_env: airwallexEnv,
     });
   } catch (err) {
     return NextResponse.json(

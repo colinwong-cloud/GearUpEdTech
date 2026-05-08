@@ -4246,6 +4246,7 @@ function PaymentScreen({
         client_secret?: string;
         currency?: string;
         country_code?: string;
+        airwallex_env?: "demo" | "prod";
         payment_method?: string;
         methods?: string[];
         message?: string;
@@ -4262,6 +4263,7 @@ function PaymentScreen({
       let resolvedClientSecret = payload.client_secret || null;
       let resolvedCurrency = payload.currency || "HKD";
       let resolvedCountryCode = payload.country_code || "HK";
+      const resolvedAirwallexEnv = payload.airwallex_env || getAirwallexEnv();
       let resolvedPaymentMethod = payload.payment_method || "all";
       if ((!resolvedIntentId || !resolvedClientSecret) && payload.checkout_url) {
         try {
@@ -4303,7 +4305,7 @@ function PaymentScreen({
                     return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
                 }
               })();
-        const payments = await resolveAirwallexPaymentsApi(getAirwallexEnv());
+        const payments = await resolveAirwallexPaymentsApi(resolvedAirwallexEnv);
         payments.redirectToCheckout({
           intent_id: resolvedIntentId,
           client_secret: resolvedClientSecret,
