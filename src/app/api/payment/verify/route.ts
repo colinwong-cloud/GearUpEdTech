@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { finalizePaymentByIntent } from "@/lib/server/payment-finalize";
+import {
+  finalizePaymentByIntent,
+  getAirwallexBaseUrl,
+} from "@/lib/server/payment-finalize";
 
 type AirwallexLoginResponse = {
   token?: string;
@@ -32,14 +35,6 @@ function getSupabaseAdmin() {
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   if (!url || !serviceRole) return null;
   return createClient(url, serviceRole);
-}
-
-function getAirwallexBaseUrl() {
-  const env = process.env.AIRWALLEX_ENV?.trim().toLowerCase();
-  if (env === "prod" || env === "production") {
-    return "https://api.airwallex.com";
-  }
-  return "https://api-demo.airwallex.com";
 }
 
 async function getAirwallexAccessToken(baseUrl: string): Promise<string> {

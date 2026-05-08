@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 
-const DEFAULT_AIRWALLEX_BASE = "https://api-demo.airwallex.com";
+const DEFAULT_AIRWALLEX_BASE = "https://api.airwallex.com";
 const PRICE_HKD = 99;
 const AIRWALLEX_METHOD_MAP: Record<string, string[]> = {
   all: ["card", "applepay", "googlepay", "alipayhk", "wechatpay"],
@@ -14,6 +14,9 @@ const AIRWALLEX_METHOD_MAP: Record<string, string[]> = {
 };
 
 function resolveAirwallexBaseUrl(rawBase: string | undefined): string {
+  const isProductionRuntime =
+    process.env.NODE_ENV === "production" ||
+    (process.env.VERCEL_ENV || "").toLowerCase() === "production";
   const trimmed = rawBase?.trim() || "";
   if (!trimmed) return DEFAULT_AIRWALLEX_BASE;
 
@@ -22,15 +25,25 @@ function resolveAirwallexBaseUrl(rawBase: string | undefined): string {
     return "https://api.airwallex.com";
   }
   if (normalized === "demo" || normalized === "sandbox" || normalized === "test") {
+    if (isProductionRuntime) return "https://api.airwallex.com";
     return "https://api-demo.airwallex.com";
   }
   if (normalized === "api.airwallex.com") {
     return "https://api.airwallex.com";
   }
   if (normalized === "api-demo.airwallex.com") {
+    if (isProductionRuntime) return "https://api.airwallex.com";
     return "https://api-demo.airwallex.com";
   }
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      if (isProductionRuntime && parsed.hostname.toLowerCase() === "api-demo.airwallex.com") {
+        return "https://api.airwallex.com";
+      }
+    } catch {
+      // keep current fallback below for malformed custom values
+    }
     return trimmed.replace(/\/$/, "");
   }
   return `https://${trimmed.replace(/\/$/, "")}`;
