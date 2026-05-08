@@ -39,7 +39,7 @@ BEGIN
       AND s.id <> p_student_id
       AND upper(trim(s.grade_level)) = upper(trim(p_grade_level))
   ) THEN
-    RAISE EXCEPTION '每個年級只可新增一位學生';
+    RAISE EXCEPTION '因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com';
   END IF;
 
   v_pin_hash := crypt(p_pin_code, gen_salt('bf'));
