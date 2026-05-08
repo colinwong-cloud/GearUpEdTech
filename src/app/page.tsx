@@ -92,7 +92,8 @@ function getPaymentTermsUrl(): string {
 
 function getAirwallexEnv(): "demo" | "prod" {
   const env = (process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "").trim().toLowerCase();
-  return env === "prod" || env === "production" ? "prod" : "demo";
+  if (env === "demo" || env === "sandbox" || env === "test") return "demo";
+  return "prod";
 }
 
 async function resolveAirwallexPaymentsApi(

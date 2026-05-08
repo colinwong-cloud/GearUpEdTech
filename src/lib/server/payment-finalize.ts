@@ -307,6 +307,9 @@ export function getSupabaseAdmin(): SupabaseClient | null {
 }
 
 export function getAirwallexBaseUrl(): string {
+  const isProductionRuntime =
+    process.env.NODE_ENV === "production" ||
+    (process.env.VERCEL_ENV || "").toLowerCase() === "production";
   const explicit = process.env.AIRWALLEX_BASE_URL?.trim();
   if (explicit) {
     const normalized = explicit.toLowerCase();
@@ -314,24 +317,37 @@ export function getAirwallexBaseUrl(): string {
       return "https://api.airwallex.com";
     }
     if (normalized === "demo" || normalized === "sandbox" || normalized === "test") {
+      if (isProductionRuntime) return "https://api.airwallex.com";
       return "https://api-demo.airwallex.com";
     }
     if (normalized === "api.airwallex.com") {
       return "https://api.airwallex.com";
     }
     if (normalized === "api-demo.airwallex.com") {
+      if (isProductionRuntime) return "https://api.airwallex.com";
       return "https://api-demo.airwallex.com";
     }
     if (explicit.startsWith("http://") || explicit.startsWith("https://")) {
+      try {
+        const parsed = new URL(explicit);
+        if (isProductionRuntime && parsed.hostname.toLowerCase() === "api-demo.airwallex.com") {
+          return "https://api.airwallex.com";
+        }
+      } catch {
+        // keep previous behavior for malformed custom host
+      }
       return explicit.replace(/\/$/, "");
     }
     return `https://${explicit.replace(/\/$/, "")}`;
   }
   const env = process.env.AIRWALLEX_ENV?.trim().toLowerCase();
-  if (env === "prod" || env === "production") {
+  if (env === "prod" || env === "production" || isProductionRuntime) {
     return "https://api.airwallex.com";
   }
-  return "https://api-demo.airwallex.com";
+  if (env === "demo" || env === "sandbox" || env === "test") {
+    return "https://api-demo.airwallex.com";
+  }
+  return "https://api.airwallex.com";
 }
 
 export function hasAirwallexApiCredentials(): boolean {
