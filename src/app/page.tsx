@@ -520,15 +520,19 @@ export default function QuizApp() {
   }, []);
 
   const handleAddStudentSubmit = useCallback(
-    async (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
+    async (form: { studentName: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
       if (!mobileNumber.trim()) return;
+      if (!pinInput.trim()) {
+        setError("登入狀態已失效，請重新登入後再試。");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
         const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
           p_mobile_number: mobileNumber.trim(),
           p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
+          p_pin_code: pinInput.trim(),
           p_avatar_style: form.avatarStyle,
           p_grade_level: form.gradeLevel,
           p_school_id: form.schoolId,
@@ -540,12 +544,19 @@ export default function QuizApp() {
         await refreshParentTierStatus();
         setScreen("account_menu");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "新增學生失敗，請重試。");
+        const fallbackError = "新增學生失敗，請重試。";
+        const rawMessage = err instanceof Error ? err.message : fallbackError;
+        const isDuplicateGradeError = /每個年級只可新增一位學生|同年級|same grade/i.test(rawMessage);
+        setError(
+          isDuplicateGradeError
+            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com"
+            : rawMessage
+        );
       } finally {
         setLoading(false);
       }
     },
-    [mobileNumber, refreshParentTierStatus]
+    [mobileNumber, pinInput, refreshParentTierStatus]
   );
 
   const loadParentSessions = async (
@@ -2472,13 +2483,12 @@ function AddStudentScreen({
   setError,
 }: {
   mobileNumber: string;
-  onSubmit: (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
+  onSubmit: (form: { studentName: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
   onBack: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
   const [studentName, setStudentName] = useState("");
-  const [pinCode, setPinCode] = useState("");
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -2500,12 +2510,9 @@ function AddStudentScreen({
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
-  const PIN_RE = /^[A-Za-z0-9]{6}$/;
-  const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
     studentName.trim().length > 0 &&
-    pinValid &&
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
@@ -2530,23 +2537,6 @@ function AddStudentScreen({
             <input value={studentName} onChange={(e) => { setStudentName(e.target.value); if (error) setError(null); }}
               placeholder="輸入學生姓名"
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">密碼（6 位英文或數字）</label>
-            <input
-              type="password"
-              value={pinCode}
-              onChange={(e) => {
-                setPinCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
-                if (error) setError(null);
-              }}
-              maxLength={6}
-              placeholder="輸入6位密碼"
-              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
-            />
-            {pinCode.length > 0 && !pinValid && (
-              <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
-            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
@@ -2609,7 +2599,7 @@ function AddStudentScreen({
 
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
-          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
+          <button onClick={() => onSubmit({ studentName: studentName.trim(), avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             新增學生
