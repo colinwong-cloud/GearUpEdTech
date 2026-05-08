@@ -2260,11 +2260,14 @@ function QuestionCountScreen({
   );
 }
 
-function getPracticeMascotImageSrc(): string {
-  const o = process.env.NEXT_PUBLIC_MASCOT_IMAGE_URL?.trim();
-  if (o) return o;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+function getPracticeResultBannerSrc(): string {
+  const override = process.env.NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL?.trim();
+  if (override) return override;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+  if (base) {
+    return `${base}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png`;
+  }
+  return "/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png";
 }
 
 function ResultsView({
@@ -2354,11 +2357,11 @@ function ResultsView({
           <div className="shrink-0 self-center sm:self-end">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={getPracticeMascotImageSrc()}
-              alt=""
-              className="h-16 w-16 sm:h-20 sm:w-20"
-              width={80}
-              height={80}
+              src={getPracticeResultBannerSrc()}
+              alt="GearUp 增分寶 Banner"
+              className="h-auto w-44 max-w-[70vw] sm:w-56"
+              width={560}
+              height={140}
               draggable={false}
             />
           </div>
