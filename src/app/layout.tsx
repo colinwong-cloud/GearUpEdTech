@@ -31,7 +31,7 @@ const baloo2 = Baloo_2({
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
 const siteIcon = getSiteIconUrl();
-const shareImagePath = "/api/share-banner?v=20260508a";
+const shareImagePath = "/share/gearup-share-banner.jpg?v=20260508b";
 const metadataBase = (() => {
   const configured = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
   if (configured) {
