@@ -46,6 +46,7 @@ const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 const MONTHLY_PAID_PRICE_HKD = 99;
+const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -150,6 +151,30 @@ function hasAirwallexSdk(): boolean {
       window._AirwallexSDKs?.payment ||
       window.Airwallex
   );
+}
+
+function ensureAirwallexScript(): void {
+  if (typeof document === "undefined") return;
+  const existing = document.querySelector<HTMLScriptElement>(
+    `script[src="${AIRWALLEX_SDK_SRC}"]`
+  );
+  if (existing) return;
+  const script = document.createElement("script");
+  script.src = AIRWALLEX_SDK_SRC;
+  script.async = true;
+  script.setAttribute("data-airwallex-sdk", "true");
+  document.head.appendChild(script);
+}
+
+async function waitForAirwallexSdkReady(timeoutMs = 10000): Promise<boolean> {
+  if (hasAirwallexSdk()) return true;
+  ensureAirwallexScript();
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (hasAirwallexSdk()) return true;
+  }
+  return hasAirwallexSdk();
 }
 
 function normalizeTurnstileErrorCode(code: unknown): string | null {
@@ -4252,7 +4277,8 @@ function PaymentScreen({
         }
       }
       if (resolvedIntentId && resolvedClientSecret) {
-        if (!window.Airwallex) {
+        const sdkReadyNow = await waitForAirwallexSdkReady();
+        if (!sdkReadyNow) {
           throw new Error("付款 SDK 尚未準備好，請稍候再試。");
         }
         const appBaseUrl =
@@ -4320,9 +4346,9 @@ function PaymentScreen({
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
       <Script
-        src="https://static.airwallex.com/components/sdk/v1/index.js"
+        src={AIRWALLEX_SDK_SRC}
         strategy="afterInteractive"
-        onLoad={() => setSdkReady(true)}
+        onLoad={() => setSdkReady(hasAirwallexSdk())}
         onReady={() => setSdkReady(hasAirwallexSdk())}
         onError={() => setSdkReady(false)}
       />
