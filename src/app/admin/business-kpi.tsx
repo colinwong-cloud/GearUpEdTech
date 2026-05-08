@@ -28,6 +28,8 @@ type TodayPayload = {
   sessions_by_subject: Record<string, number>;
   questions_by_subject: Record<string, number>;
   new_students_today: number;
+  free_tier_new_users_today?: number;
+  paid_tier_new_users_today?: number;
 };
 
 type TrendPoint = {
@@ -40,6 +42,8 @@ type TrendPoint = {
   male: number;
   female: number;
   undisclosed: number;
+  free_tier_new_users?: number;
+  paid_tier_new_users?: number;
 };
 
 type SchoolByGrade = {
@@ -59,6 +63,8 @@ type MonthlyPayload = {
   mt_session_answers: number;
   mt_practice_students: number;
   mt_parent_views: number;
+  mt_new_free_tier_users?: number;
+  mt_new_paid_tier_users?: number;
   alltime_students: number;
   alltime_parents: number;
   alltime_practice_sessions: number;
@@ -205,6 +211,8 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
       .map((row) => ({
         ...row,
         label: row.key,
+        free_tier_new_users: row.free_tier_new_users ?? 0,
+        paid_tier_new_users: row.paid_tier_new_users ?? 0,
       }));
   }, [monthly]);
 
@@ -271,6 +279,18 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
               <li>
                 今日新註冊學生：
                 <span className="font-bold text-indigo-600 ml-1">{today.new_students_today}</span>
+              </li>
+              <li>
+                今日新增免費用戶：
+                <span className="font-bold text-indigo-600 ml-1">
+                  {today.free_tier_new_users_today ?? 0}
+                </span>
+              </li>
+              <li>
+                今日新增月費用戶：
+                <span className="font-bold text-indigo-600 ml-1">
+                  {today.paid_tier_new_users_today ?? 0}
+                </span>
               </li>
             </ul>
             <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -349,6 +369,20 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                     <td className="p-2 font-mono text-indigo-700">{monthly.mt_new_students}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
+                    <td className="p-2">免費用戶新增（本月）</td>
+                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">
+                      {monthly.mt_new_free_tier_users ?? 0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="p-2">月費用戶新增（本月）</td>
+                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">
+                      {monthly.mt_new_paid_tier_users ?? 0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
                     <td className="p-2">家長帳戶（累積）</td>
                     <td className="p-2 font-mono">{monthly.alltime_parents}</td>
                     <td className="p-2 text-gray-400">—</td>
@@ -399,6 +433,47 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                       }}
                     />
                     <Bar dataKey="registrations" name="新註冊" fill="#4f46e5" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <h3 className="text-sm font-bold text-gray-800">付費 / 免費用戶新增趨勢 — 最近 12 個曆月</h3>
+            <div className="h-64 w-full" style={{ minWidth: 280 }}>
+              {monthRows.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={monthRows}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip
+                      labelFormatter={(_, p) => {
+                        const p0 = p?.[0] as { payload?: { label?: string } } | undefined;
+                        return p0?.payload?.label ?? "";
+                      }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="free_tier_new_users"
+                      name="免費用戶新增"
+                      stroke="#14b8a6"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="paid_tier_new_users"
+                      name="月費用戶新增"
+                      stroke="#8b5cf6"
+                      dot={false}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}

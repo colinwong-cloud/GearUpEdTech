@@ -7,6 +7,9 @@ export const maxDuration = 120;
 
 type MonthlySummaryPayload = {
   mt_parent_views?: number;
+  mt_new_free_tier_users?: number;
+  mt_new_paid_tier_users?: number;
+  trend_12m?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 };
 
@@ -23,6 +26,37 @@ function getHkMonthWindowUtcIso(now = new Date()) {
     monthStartIso: monthStartUtc.toISOString(),
     todayStartIso: todayStartUtc.toISOString(),
   };
+}
+
+function getHkIsoMonthKey(isoString: string | null | undefined): string | null {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  const hkDate = new Date(date.getTime() + HK_OFFSET_MS);
+  const y = hkDate.getUTCFullYear();
+  const m = hkDate.getUTCMonth() + 1;
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+function getOldestTrendMonthStartIso(
+  trend: Array<Record<string, unknown>> | undefined,
+  fallbackMonthStartIso: string
+) {
+  if (!trend || trend.length === 0) return fallbackMonthStartIso;
+  const keys = trend
+    .map((row) => (typeof row.key === "string" ? row.key : ""))
+    .filter(Boolean)
+    .sort();
+  const oldest = keys[0];
+  if (!oldest || !/^\d{4}-\d{2}$/.test(oldest)) return fallbackMonthStartIso;
+  const [yRaw, mRaw] = oldest.split("-");
+  const y = Number(yRaw);
+  const m = Number(mRaw);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
+    return fallbackMonthStartIso;
+  }
+  const startUtc = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0) - HK_OFFSET_MS);
+  return startUtc.toISOString();
 }
 
 export async function POST(req: NextRequest) {
@@ -53,6 +87,8 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = (data as MonthlySummaryPayload | null) ?? {};
+  const trend = Array.isArray(payload.trend_12m) ? payload.trend_12m : [];
+
   try {
     // Fallback safeguard for legacy installs: derive MTD parent views by viewed_at.
     const { monthStartIso, todayStartIso } = getHkMonthWindowUtcIso();
@@ -64,8 +100,57 @@ export async function POST(req: NextRequest) {
     if (!countErr && typeof count === "number") {
       payload.mt_parent_views = count;
     }
+
+    const oldestTrendStartIso = getOldestTrendMonthStartIso(trend, monthStartIso);
+    const freeByMonth = new Map<string, number>();
+    const paidByMonth = new Map<string, number>();
+
+    const { data: parentsRows, error: parentsErr } = await admin
+      .from("parents")
+      .select("created_at")
+      .gte("created_at", oldestTrendStartIso)
+      .lt("created_at", todayStartIso);
+
+    if (!parentsErr && Array.isArray(parentsRows)) {
+      for (const row of parentsRows as Array<{ created_at?: string | null }>) {
+        const key = getHkIsoMonthKey(row.created_at);
+        if (!key) continue;
+        freeByMonth.set(key, (freeByMonth.get(key) || 0) + 1);
+      }
+    }
+
+    const { data: paidRows, error: paidErr } = await admin
+      .from("parent_recurring_profiles")
+      .select("created_at")
+      .gte("created_at", oldestTrendStartIso)
+      .lt("created_at", todayStartIso);
+
+    if (!paidErr && Array.isArray(paidRows)) {
+      for (const row of paidRows as Array<{ created_at?: string | null }>) {
+        const key = getHkIsoMonthKey(row.created_at);
+        if (!key) continue;
+        paidByMonth.set(key, (paidByMonth.get(key) || 0) + 1);
+      }
+    }
+
+    const monthKey = getHkIsoMonthKey(monthStartIso);
+    payload.mt_new_free_tier_users = monthKey ? freeByMonth.get(monthKey) || 0 : 0;
+    payload.mt_new_paid_tier_users = monthKey ? paidByMonth.get(monthKey) || 0 : 0;
+
+    if (trend.length > 0) {
+      payload.trend_12m = trend.map((row) => {
+        const key = typeof row.key === "string" ? row.key : "";
+        return {
+          ...row,
+          free_tier_new_users: key ? freeByMonth.get(key) || 0 : 0,
+          paid_tier_new_users: key ? paidByMonth.get(key) || 0 : 0,
+        };
+      });
+    }
   } catch {
     // Keep summary response available even if fallback count fails.
+    payload.mt_new_free_tier_users = payload.mt_new_free_tier_users ?? 0;
+    payload.mt_new_paid_tier_users = payload.mt_new_paid_tier_users ?? 0;
   }
 
   return NextResponse.json({ data: payload });
