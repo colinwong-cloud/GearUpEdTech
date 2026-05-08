@@ -121,7 +121,7 @@ function PaymentAirwallexContent() {
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4">
       <Script
-        src="https://checkout.airwallex.com/assets/elements.bundle.js"
+        src="https://checkout.airwallex.com/assets/elements.bundle.min.js"
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
         onReady={() =>
