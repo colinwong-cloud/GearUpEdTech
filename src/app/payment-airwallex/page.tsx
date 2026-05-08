@@ -4,6 +4,7 @@ import Script from "next/script";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -92,6 +93,30 @@ function hasAirwallexSdk(): boolean {
   );
 }
 
+function ensureAirwallexScript(): void {
+  if (typeof document === "undefined") return;
+  const existing = document.querySelector<HTMLScriptElement>(
+    `script[src="${AIRWALLEX_SDK_SRC}"]`
+  );
+  if (existing) return;
+  const script = document.createElement("script");
+  script.src = AIRWALLEX_SDK_SRC;
+  script.async = true;
+  script.setAttribute("data-airwallex-sdk", "true");
+  document.head.appendChild(script);
+}
+
+async function waitForAirwallexSdkReady(timeoutMs = 10000): Promise<boolean> {
+  if (hasAirwallexSdk()) return true;
+  ensureAirwallexScript();
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (hasAirwallexSdk()) return true;
+  }
+  return hasAirwallexSdk();
+}
+
 function PaymentAirwallexContent() {
   const searchParams = useSearchParams();
   const intentId = searchParams.get("intent_id") || "";
@@ -151,7 +176,8 @@ function PaymentAirwallexContent() {
       setError("缺少付款參數，請返回重試。");
       return;
     }
-    if (!window.Airwallex) {
+    const ready = await waitForAirwallexSdkReady();
+    if (!ready) {
       setError("付款 SDK 載入失敗，請重新整理再試。");
       return;
     }
@@ -183,9 +209,9 @@ function PaymentAirwallexContent() {
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4">
       <Script
-        src="https://static.airwallex.com/components/sdk/v1/index.js"
+        src={AIRWALLEX_SDK_SRC}
         strategy="afterInteractive"
-        onLoad={() => setSdkReady(true)}
+        onLoad={() => setSdkReady(hasAirwallexSdk())}
         onReady={() => setSdkReady(hasAirwallexSdk())}
       />
       <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
