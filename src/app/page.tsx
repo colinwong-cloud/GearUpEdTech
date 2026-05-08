@@ -3881,7 +3881,7 @@ function ParentDashboard({
           />
         ) : (
           <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-700">成為月費會員(每月$99)，即可以獲得學生排名資訊。</p>
+            <p className="text-sm text-gray-700">升級月費會員 ($99)，解鎖全港同級排名！助您精準掌握子女中英數實力水平。附設無限題庫，隨時按弱項強化，讓孩子在同儕中脫穎而出！</p>
             <img
               src={getRankSampleImageUrl()}
               alt="排名範例"
