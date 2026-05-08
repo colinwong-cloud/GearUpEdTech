@@ -737,10 +737,14 @@ export async function POST(req: NextRequest) {
             discount_amount_hkd: 0,
           };
           prev.usage_count += 1;
-          if (rec.status.toLowerCase() === "paid") prev.paid_count += 1;
-          prev.gross_amount_hkd += rec.amount_hkd;
-          prev.final_amount_hkd += rec.final_amount_hkd;
-          prev.discount_amount_hkd += rec.discount_amount_hkd;
+          const isPaid = rec.status.trim().toLowerCase() === "paid";
+          if (isPaid) {
+            prev.paid_count += 1;
+            // Monetary totals should reflect successful payments only.
+            prev.gross_amount_hkd += rec.amount_hkd;
+            prev.final_amount_hkd += rec.final_amount_hkd;
+            prev.discount_amount_hkd += rec.discount_amount_hkd;
+          }
           summaryMap.set(key, prev);
         }
 
