@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
 
@@ -46,6 +47,21 @@ const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 const MONTHLY_PAID_PRICE_HKD = 99;
 
+declare global {
+  interface Window {
+    Airwallex?: {
+      init: (opts: {
+        env: "demo" | "prod";
+        enabledElements: string[];
+      }) => Promise<{
+        payments: {
+          redirectToCheckout: (props: Record<string, unknown>) => void;
+        };
+      }>;
+    };
+  }
+}
+
 function getRankSampleImageUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_RANK_SAMPLE_IMAGE_URL?.trim();
   if (explicit) return explicit;
@@ -62,6 +78,17 @@ function getPaymentTermsUrl(): string {
   return base
     ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
     : "/payment_terms_condition.txt";
+}
+
+function getAirwallexEnv(): "demo" | "prod" {
+  const env = (process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "").trim().toLowerCase();
+  return env === "prod" || env === "production" ? "prod" : "demo";
+}
+
+function normalizeTurnstileErrorCode(code: unknown): string | null {
+  if (typeof code !== "string") return null;
+  const trimmed = code.trim();
+  return trimmed || null;
 }
 
 type AppScreen =
@@ -1490,6 +1517,8 @@ function RegisterScreen({
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [privacyStatementText, setPrivacyStatementText] = useState<string | null>(null);
@@ -1569,7 +1598,7 @@ function RegisterScreen({
     email.trim().length > 0 &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -1784,12 +1813,31 @@ function RegisterScreen({
             <div className="flex justify-center">
               <Turnstile
                 siteKey={siteKey}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onError={() => setTurnstileToken(null)}
-                onExpire={() => setTurnstileToken(null)}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
                 options={{ theme: "light", size: "normal" }}
               />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續註冊
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           {error && (
@@ -2492,6 +2540,8 @@ function AddStudentScreen({
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -2516,7 +2566,7 @@ function AddStudentScreen({
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -2589,8 +2639,33 @@ function AddStudentScreen({
 
           {siteKey && (
             <div className="flex justify-center">
-              <Turnstile siteKey={siteKey} onSuccess={(token) => setTurnstileToken(token)} onError={() => setTurnstileToken(null)} onExpire={() => setTurnstileToken(null)} options={{ theme: "light", size: "normal" }} />
+              <Turnstile
+                siteKey={siteKey}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
+                options={{ theme: "light", size: "normal" }}
+              />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續操作
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
@@ -3987,6 +4062,7 @@ function PaymentScreen({
   const [loadingTerms, setLoadingTerms] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
 
   const originalPrice = MONTHLY_PAID_PRICE_HKD;
   const discountPercent = discount?.valid ? discount.discount_percent : 0;
@@ -4053,18 +4129,98 @@ function PaymentScreen({
       });
       const payload = (await res.json()) as {
         checkout_url?: string;
+        intent_id?: string;
+        client_secret?: string;
+        currency?: string;
+        country_code?: string;
+        payment_method?: string;
+        methods?: string[];
         message?: string;
         paid?: boolean;
         error?: string;
       };
       if (!res.ok) throw new Error(payload.error || "未能建立付款訂單");
-      if (payload.checkout_url) {
-        window.location.href = payload.checkout_url;
-        return;
-      }
       if (payload.paid) {
         setMsg(payload.message || "付款成功，已升級月費用戶。");
         await onPaid();
+        return;
+      }
+      let resolvedIntentId = payload.intent_id || null;
+      let resolvedClientSecret = payload.client_secret || null;
+      let resolvedCurrency = payload.currency || "HKD";
+      let resolvedCountryCode = payload.country_code || "HK";
+      let resolvedPaymentMethod = payload.payment_method || "all";
+      if ((!resolvedIntentId || !resolvedClientSecret) && payload.checkout_url) {
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          resolvedIntentId = resolvedIntentId || parsed.searchParams.get("intent_id");
+          resolvedClientSecret = resolvedClientSecret || parsed.searchParams.get("client_secret");
+          resolvedCurrency = parsed.searchParams.get("currency") || resolvedCurrency;
+          resolvedCountryCode = parsed.searchParams.get("country_code") || resolvedCountryCode;
+          resolvedPaymentMethod =
+            parsed.searchParams.get("payment_method") || resolvedPaymentMethod;
+        } catch {
+          // Ignore legacy URL parsing errors and fallback to redirect below.
+        }
+      }
+      if (resolvedIntentId && resolvedClientSecret) {
+        if (!window.Airwallex || !sdkReady) {
+          throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+        }
+        const appBaseUrl =
+          (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
+          window.location.origin;
+        const methods =
+          payload.methods && payload.methods.length > 0
+            ? payload.methods
+            : (() => {
+                switch (resolvedPaymentMethod || "all") {
+                  case "cards":
+                    return ["card"];
+                  case "apple_pay":
+                    return ["applepay"];
+                  case "google_pay":
+                    return ["googlepay"];
+                  case "alipay":
+                    return ["alipayhk"];
+                  case "wechat_pay":
+                    return ["wechatpay"];
+                  default:
+                    return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+                }
+              })();
+        const { payments } = await window.Airwallex.init({
+          env: getAirwallexEnv(),
+          enabledElements: ["payments"],
+        });
+        payments.redirectToCheckout({
+          intent_id: resolvedIntentId,
+          client_secret: resolvedClientSecret,
+          currency: resolvedCurrency,
+          country_code: resolvedCountryCode,
+          methods,
+          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+        });
+        return;
+      }
+      if (payload.checkout_url) {
+        let isLegacyInternalBridge = false;
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          isLegacyInternalBridge = parsed.pathname === "/payment-airwallex";
+        } catch {
+          isLegacyInternalBridge = false;
+        }
+        if (isLegacyInternalBridge) {
+          setMsg("系統正在同步付款資料，請再按一次「確認並前往 Airwallex 付款」。");
+          return;
+        }
+        window.location.href = payload.checkout_url;
         return;
       }
       setMsg(payload.message || "已建立付款訂單，請稍後再試。");
@@ -4073,11 +4229,17 @@ function PaymentScreen({
     } finally {
       setProcessing(false);
     }
-  }, [agreed, discount, mobileNumber, onPaid]);
+  }, [agreed, discount, mobileNumber, onPaid, sdkReady]);
 
-  const canPay = agreed && !processing && !validatingCode;
+  const canPay = agreed && !processing && !validatingCode && sdkReady;
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
+      <Script
+        src="https://checkout.airwallex.com/assets/elements.bundle.js"
+        strategy="afterInteractive"
+        onLoad={() => setSdkReady(true)}
+        onError={() => setSdkReady(false)}
+      />
       <div className="mx-auto max-w-lg space-y-4">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>

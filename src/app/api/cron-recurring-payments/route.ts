@@ -111,6 +111,24 @@ async function markRecurringProfile(
   }
 }
 
+function isMissingOrderTrackingColumnError(message: string): boolean {
+  return /payment_started_at|is_recurring_payment/i.test(message);
+}
+
+async function insertParentPaymentOrder(
+  supabase: ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never,
+  payload: Record<string, unknown>
+) {
+  let response = await supabase.from("parent_payment_orders").insert(payload);
+  if (response.error && isMissingOrderTrackingColumnError(response.error.message)) {
+    const legacy = { ...payload };
+    delete legacy.payment_started_at;
+    delete legacy.is_recurring_payment;
+    response = await supabase.from("parent_payment_orders").insert(legacy);
+  }
+  return response;
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -177,7 +195,8 @@ export async function GET(req: NextRequest) {
 
       const merchantOrderId = `GU-R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       const requestId = crypto.randomUUID();
-      const { error: createOrderErr } = await supabase.from("parent_payment_orders").insert({
+      const startedAt = new Date().toISOString();
+      const { error: createOrderErr } = await insertParentPaymentOrder(supabase, {
         parent_id: profile.parent_id,
         mobile_number: profile.mobile_number,
         merchant_order_id: merchantOrderId,
@@ -188,6 +207,8 @@ export async function GET(req: NextRequest) {
         final_amount_hkd: amount,
         payment_method: "recurring_auto_charge",
         status: "created",
+        payment_started_at: startedAt,
+        is_recurring_payment: true,
         airwallex_customer_id: profile.airwallex_customer_id,
         airwallex_payment_consent_id: profile.airwallex_payment_consent_id,
         airwallex_payment_method_id: profile.airwallex_payment_method_id,

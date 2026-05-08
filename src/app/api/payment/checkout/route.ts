@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 
@@ -155,14 +155,84 @@ function readObject(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function parseLegacyCheckoutUrl(checkoutUrl: string | null) {
+  if (!checkoutUrl) {
+    return {
+      intentId: null,
+      clientSecret: null,
+      currency: null,
+      countryCode: null,
+      paymentMethod: null,
+    };
+  }
+  try {
+    const parsed = new URL(checkoutUrl, "https://local.checkout");
+    const params = parsed.searchParams;
+    return {
+      intentId: readString(params.get("intent_id")),
+      clientSecret: readString(params.get("client_secret")),
+      currency: readString(params.get("currency")),
+      countryCode: readString(params.get("country_code")),
+      paymentMethod: readString(params.get("payment_method")),
+    };
+  } catch {
+    return {
+      intentId: null,
+      clientSecret: null,
+      currency: null,
+      countryCode: null,
+      paymentMethod: null,
+    };
+  }
+}
+
+function extractCheckoutFromUrl(checkoutUrl: string | null) {
+  const parsed = parseLegacyCheckoutUrl(checkoutUrl);
+  if (!parsed.intentId || !parsed.clientSecret) return null;
+  return {
+    intent_id: parsed.intentId,
+    client_secret: parsed.clientSecret,
+    currency: parsed.currency || "HKD",
+    country_code: parsed.countryCode || "HK",
+    payment_method: parsed.paymentMethod || "all",
+    methods: getAirwallexMethods(parsed.paymentMethod || "all"),
+  };
+}
+
 function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
   const checkout = readObject(rawResponse?.checkout);
   if (!checkout) {
-    return { checkoutUrl: null };
+    const legacyUrl =
+      readString(rawResponse?.checkout_url) ||
+      readString(rawResponse?.hosted_payment_url);
+    const legacy = parseLegacyCheckoutUrl(legacyUrl);
+    return {
+      checkoutUrl: legacyUrl,
+      intentId: legacy.intentId,
+      clientSecret: legacy.clientSecret,
+      currency: legacy.currency || "HKD",
+      countryCode: legacy.countryCode || "HK",
+      paymentMethod: legacy.paymentMethod || "all",
+      methods: getAirwallexMethods(legacy.paymentMethod || "all"),
+    };
   }
+  const intent = readObject(checkout.intent);
+  const checkoutUrl =
+    readString(checkout.url) || readString(checkout.hosted_payment_url);
+  const legacy = parseLegacyCheckoutUrl(checkoutUrl);
+  const fallbackPaymentMethod = legacy.paymentMethod || "all";
+  const methods =
+    Array.isArray(checkout.methods) && checkout.methods.every((m) => typeof m === "string")
+      ? (checkout.methods as string[])
+      : getAirwallexMethods(fallbackPaymentMethod);
   return {
-    checkoutUrl:
-      readString(checkout.url) || readString(checkout.hosted_payment_url),
+    checkoutUrl,
+    intentId: readString(intent?.id) || legacy.intentId,
+    clientSecret: readString(intent?.client_secret) || legacy.clientSecret,
+    currency: readString(checkout.currency) || legacy.currency || "HKD",
+    countryCode: readString(checkout.country_code) || legacy.countryCode || "HK",
+    paymentMethod: readString(checkout.payment_method) || fallbackPaymentMethod,
+    methods,
   };
 }
 
@@ -172,7 +242,16 @@ async function reconcilePendingOrder({
 }: {
   supabase: ReturnType<typeof getServerSupabase> extends infer T ? Exclude<T, null> : never;
   order: PendingOrderRow;
-}): Promise<{ paid: boolean; checkoutUrl: string | null; intentId: string | null }> {
+}): Promise<{
+  paid: boolean;
+  checkoutUrl: string | null;
+  intentId: string | null;
+  clientSecret: string | null;
+  currency: string;
+  countryCode: string;
+  paymentMethod: string;
+  methods: string[];
+}> {
   const stored = getStoredCheckoutInfo(order.raw_response);
   const checkoutUrl = stored.checkoutUrl;
 
@@ -186,9 +265,23 @@ async function reconcilePendingOrder({
       paid: verify.paid,
       checkoutUrl,
       intentId: verify.payment_intent_id,
+      clientSecret: stored.clientSecret,
+      currency: stored.currency,
+      countryCode: stored.countryCode,
+      paymentMethod: stored.paymentMethod,
+      methods: stored.methods,
     };
   }
-  return { paid: false, checkoutUrl, intentId: null };
+  return {
+    paid: false,
+    checkoutUrl,
+    intentId: stored.intentId,
+    clientSecret: stored.clientSecret,
+    currency: stored.currency,
+    countryCode: stored.countryCode,
+    paymentMethod: stored.paymentMethod,
+    methods: stored.methods,
+  };
 }
 
 async function getAirwallexAccessToken(airwallexBase: string) {
@@ -226,41 +319,26 @@ async function getAirwallexAccessToken(airwallexBase: string) {
   return payload.token;
 }
 
-function getBaseAppUrl(req: NextRequest): string {
-  const configured = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
-  const origin =
-    req.headers.get("origin") ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-  return origin.replace(/\/$/, "");
-}
-
 function getAirwallexMethods(paymentMethod: string): string[] {
   return AIRWALLEX_METHOD_MAP[paymentMethod] ?? AIRWALLEX_METHOD_MAP.all;
 }
 
-function buildHostedCheckoutFallbackUrl({
-  appBaseUrl,
-  intentId,
-  clientSecret,
-  mobile,
-  paymentMethod,
-}: {
-  appBaseUrl: string;
-  intentId: string;
-  clientSecret: string;
-  mobile: string;
-  paymentMethod: string;
-}) {
-  const params = new URLSearchParams({
-    intent_id: intentId,
-    client_secret: clientSecret,
-    mobile,
-    payment_method: paymentMethod,
-    currency: "HKD",
-    country_code: "HK",
-  });
-  return `${appBaseUrl}/payment-airwallex?${params.toString()}`;
+function isMissingOrderTrackingColumnError(message: string): boolean {
+  return /payment_started_at|is_recurring_payment/i.test(message);
+}
+
+async function insertParentPaymentOrder(
+  supabase: ReturnType<typeof getServerSupabase> extends infer T ? Exclude<T, null> : never,
+  payload: Record<string, unknown>
+) {
+  let response = await supabase.from("parent_payment_orders").insert(payload);
+  if (response.error && isMissingOrderTrackingColumnError(response.error.message)) {
+    const legacy = { ...payload };
+    delete legacy.payment_started_at;
+    delete legacy.is_recurring_payment;
+    response = await supabase.from("parent_payment_orders").insert(legacy);
+  }
+  return response;
 }
 
 async function getOrCreateAirwallexCustomerId({
@@ -342,7 +420,7 @@ async function getOrCreateAirwallexCustomerId({
   return existingId;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const supabase = getServerSupabase();
   if (!supabase) {
     return NextResponse.json(
@@ -393,6 +471,12 @@ export async function POST(req: NextRequest) {
 
     if (!pendingErr && Array.isArray(pendingOrders) && pendingOrders.length > 0) {
       let latestCheckoutUrl: string | null = null;
+      let latestIntentId: string | null = null;
+      let latestClientSecret: string | null = null;
+      let latestCurrency = "HKD";
+      let latestCountryCode = "HK";
+      let latestPaymentMethod = "all";
+      let latestMethods = AIRWALLEX_METHOD_MAP.all;
       for (const rawOrder of pendingOrders as PendingOrderRow[]) {
         const result = await reconcilePendingOrder({
           supabase,
@@ -401,6 +485,16 @@ export async function POST(req: NextRequest) {
         if (!latestCheckoutUrl && result.checkoutUrl) {
           latestCheckoutUrl = result.checkoutUrl;
         }
+        if (!latestIntentId && result.intentId) {
+          latestIntentId = result.intentId;
+        }
+        if (!latestClientSecret && result.clientSecret) {
+          latestClientSecret = result.clientSecret;
+        }
+        latestCurrency = result.currency;
+        latestCountryCode = result.countryCode;
+        latestPaymentMethod = result.paymentMethod;
+        latestMethods = result.methods;
         if (result.paid) {
           return NextResponse.json({
             paid: true,
@@ -408,7 +502,21 @@ export async function POST(req: NextRequest) {
           });
         }
       }
+      if (latestIntentId && latestClientSecret) {
+        return NextResponse.json({
+          intent_id: latestIntentId,
+          client_secret: latestClientSecret,
+          currency: latestCurrency,
+          country_code: latestCountryCode,
+          payment_method: latestPaymentMethod,
+          methods: latestMethods,
+        });
+      }
       if (latestCheckoutUrl) {
+        const legacy = extractCheckoutFromUrl(latestCheckoutUrl);
+        if (legacy) {
+          return NextResponse.json(legacy);
+        }
         return NextResponse.json({
           checkout_url: latestCheckoutUrl,
           intent_id: null,
@@ -447,9 +555,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (finalAmount <= 0) {
-    const { error: insertErr } = await supabase
-      .from("parent_payment_orders")
-      .insert({
+    const { error: insertErr } = await insertParentPaymentOrder(supabase, {
         parent_id: parentRecord?.id ?? null,
         mobile_number: mobile,
         merchant_order_id: merchantOrderId,
@@ -460,6 +566,8 @@ export async function POST(req: NextRequest) {
         final_amount_hkd: 0,
         payment_method: paymentMethod,
         status: "paid",
+        payment_started_at: new Date().toISOString(),
+        is_recurring_payment: false,
         paid_at: new Date().toISOString(),
         raw_response: { simulated: true, reason: "100_percent_discount" },
       });
@@ -490,10 +598,6 @@ export async function POST(req: NextRequest) {
       mobile,
       email: readString(parentRecord?.email),
     });
-    const appBaseUrl = getBaseAppUrl(req);
-    const callbackBase =
-      `${appBaseUrl}/payment-callback?mobile=${encodeURIComponent(mobile)}` +
-      `&order_id=${encodeURIComponent(merchantOrderId)}`;
     const recurringTerms = {
       payment_amount_type: "FIXED",
       fixed_payment_amount: finalAmount,
@@ -505,7 +609,6 @@ export async function POST(req: NextRequest) {
       billing_cycle_charge_day: new Date().getUTCDate(),
       total_billing_cycles: null,
     };
-    const pendingReturnUrl = `${callbackBase}&result=pending`;
     const createIntentRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/create`, {
       method: "POST",
       headers: {
@@ -519,7 +622,6 @@ export async function POST(req: NextRequest) {
         merchant_order_id: merchantOrderId,
         request_id: requestId,
         customer_id: customerId,
-        return_url: pendingReturnUrl,
         payment_consent: {
           next_triggered_by: "merchant",
           merchant_trigger_reason: "scheduled",
@@ -553,19 +655,7 @@ export async function POST(req: NextRequest) {
     }
 
     const resolvedIntentId = createIntentPayload.id;
-    const resolvedSuccessUrl =
-      `${callbackBase}&result=success&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-    const resolvedCancelUrl =
-      `${callbackBase}&result=cancel&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-    const resolvedFailUrl =
-      `${callbackBase}&result=failed&intent_id=${encodeURIComponent(createIntentPayload.id)}`;
-    const checkoutUrl = buildHostedCheckoutFallbackUrl({
-      appBaseUrl,
-      intentId: resolvedIntentId,
-      clientSecret: createIntentPayload.client_secret,
-      mobile,
-      paymentMethod,
-    });
+    const methods = getAirwallexMethods(paymentMethod);
     const checkoutPayload = {
       flow: "intent_recurring",
       recurring: {
@@ -574,15 +664,13 @@ export async function POST(req: NextRequest) {
         terms_of_use: recurringTerms,
       },
       intent: createIntentPayload,
-      success_url: resolvedSuccessUrl,
-      cancel_url: resolvedCancelUrl,
-      fail_url: resolvedFailUrl,
-      methods: getAirwallexMethods(paymentMethod),
+      payment_method: paymentMethod,
+      methods,
+      currency: "HKD",
+      country_code: "HK",
     };
 
-    const { error: insertErr } = await supabase
-      .from("parent_payment_orders")
-      .insert({
+    const { error: insertErr } = await insertParentPaymentOrder(supabase, {
         parent_id: parentRecord?.id ?? null,
         mobile_number: mobile,
         merchant_order_id: merchantOrderId,
@@ -593,13 +681,12 @@ export async function POST(req: NextRequest) {
         final_amount_hkd: finalAmount,
         payment_method: paymentMethod,
         status: "created",
+        payment_started_at: new Date().toISOString(),
+        is_recurring_payment: true,
         airwallex_customer_id: customerId,
         airwallex_payment_intent_id: resolvedIntentId,
         raw_response: {
           checkout: checkoutPayload,
-          success_url: resolvedSuccessUrl,
-          cancel_url: resolvedCancelUrl,
-          fail_url: resolvedFailUrl,
         },
       });
     if (insertErr) {
@@ -607,8 +694,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      checkout_url: checkoutUrl,
       intent_id: resolvedIntentId,
+      client_secret: createIntentPayload.client_secret,
+      payment_method: paymentMethod,
+      methods,
+      currency: "HKD",
+      country_code: "HK",
     });
   } catch (err) {
     return NextResponse.json(
