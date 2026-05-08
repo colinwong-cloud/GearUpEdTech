@@ -446,63 +446,6 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
               )}
             </div>
 
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
-              <p className="text-sm font-semibold text-indigo-900">
-                學校明細（按地區／學校查詢）
-              </p>
-              <p className="text-xs text-indigo-700">
-                為避免查詢逾時，學校資料不會在頁面載入時自動計算。請先選擇地區，再按「查詢學校資料」。
-              </p>
-              <div className="flex flex-wrap items-end gap-3">
-                <label className="text-sm">
-                  <span className="block text-gray-700 mb-1">地區</span>
-                  <select
-                    value={selectedDistrict}
-                    onChange={(e) => {
-                      setSelectedDistrict(e.target.value);
-                      setSelectedSchoolId("__all__");
-                      setSchoolDetails(null);
-                    }}
-                    className="min-w-[180px] p-2 rounded-lg border border-gray-200 bg-white"
-                  >
-                    <option value="">請選擇地區</option>
-                    {districts.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="text-sm">
-                  <span className="block text-gray-700 mb-1">學校（可選）</span>
-                  <select
-                    value={selectedSchoolId}
-                    onChange={(e) => setSelectedSchoolId(e.target.value)}
-                    disabled={!selectedDistrict || schoolOptions.length === 0}
-                    className="min-w-[220px] p-2 rounded-lg border border-gray-200 bg-white disabled:bg-gray-100 disabled:text-gray-400"
-                  >
-                    <option value="__all__">此地區全部學校</option>
-                    {schoolOptions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => void loadSchoolDetails()}
-                  disabled={sLoading || !selectedDistrict}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {sLoading ? "查詢中…" : "查詢學校資料"}
-                </button>
-              </div>
-              {sErr && <p className="text-sm text-red-600">{sErr}</p>}
-            </div>
-
             <h3 className="text-sm font-bold text-gray-800">曾完成練習學生（人）— 最近 12 個曆月</h3>
             <div className="h-64 w-full" style={{ minWidth: 280 }}>
               {monthRows.length > 0 && (
@@ -597,6 +540,63 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
+            </div>
+
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
+              <p className="text-sm font-semibold text-indigo-900">
+                學校明細（按地區／學校查詢）
+              </p>
+              <p className="text-xs text-indigo-700">
+                為避免查詢逾時，學校資料不會在頁面載入時自動計算。請先選擇地區，再按「查詢學校資料」。
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="text-sm">
+                  <span className="block text-gray-700 mb-1">地區</span>
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => {
+                      setSelectedDistrict(e.target.value);
+                      setSelectedSchoolId("__all__");
+                      setSchoolDetails(null);
+                    }}
+                    className="min-w-[180px] p-2 rounded-lg border border-gray-200 bg-white"
+                  >
+                    <option value="">請選擇地區</option>
+                    {districts.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-sm">
+                  <span className="block text-gray-700 mb-1">學校（可選）</span>
+                  <select
+                    value={selectedSchoolId}
+                    onChange={(e) => setSelectedSchoolId(e.target.value)}
+                    disabled={!selectedDistrict || schoolOptions.length === 0}
+                    className="min-w-[220px] p-2 rounded-lg border border-gray-200 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="__all__">此地區全部學校</option>
+                    {schoolOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => void loadSchoolDetails()}
+                  disabled={sLoading || !selectedDistrict}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {sLoading ? "查詢中…" : "查詢學校資料"}
+                </button>
+              </div>
+              {sErr && <p className="text-sm text-red-600">{sErr}</p>}
             </div>
 
             <h3 className="text-sm font-bold text-gray-800">學校明細圖表（按地區／學校）</h3>
