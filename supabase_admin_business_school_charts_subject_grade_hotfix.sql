@@ -1,163 +1,9 @@
--- KPI filter-first split:
--- 1) admin_business_monthly_summary(): lightweight monthly summary only
--- 2) admin_business_school_details(p_district, p_school_id): on-demand school details
+-- Hotfix: extend admin_business_school_details for school-level KPI charts
+-- Adds:
+-- 1) subject_monthly_correct_pct (Chinese / English / Math)
+-- 2) registrations_by_grade_12m (P1-P6 lines)
 
 BEGIN;
-
-CREATE OR REPLACE FUNCTION public.admin_business_monthly_summary()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-VOLATILE
-AS $$
-DECLARE
-  yst date := public.hkt_today() - 1;
-  ms date := (date_trunc('month', (yst::timestamp))::date);
-  m0 date; m1 date; i int;
-  reg_mtd int; pstu_mtd int; pvi_mtd int;
-  sess_mtd int; ans_mtd int;
-  t jsonb; arr jsonb := '[]'::jsonb;
-  yy int; mm int;
-  reg_tot int; par_tot int; sess_tot int; ans_tot int;
-  districts jsonb := '[]'::jsonb;
-BEGIN
-  SELECT count(*)::int INTO reg_tot FROM public.students;
-  SELECT count(*)::int INTO par_tot FROM public.parents;
-  SELECT count(*)::int INTO sess_tot
-  FROM public.quiz_sessions q
-  WHERE q.student_id IS NOT NULL
-    AND q.questions_attempted > 0;
-  SELECT count(*)::int INTO ans_tot FROM public.session_answers;
-
-  SELECT coalesce(count(*),0) INTO reg_mtd
-  FROM public.students s
-  WHERE s.hkt_reg_date IS NOT NULL
-    AND s.hkt_reg_date >= ms
-    AND s.hkt_reg_date <= yst;
-
-  SELECT coalesce(count(DISTINCT q.student_id),0) INTO pstu_mtd
-  FROM public.quiz_sessions q
-  WHERE q.student_id IS NOT NULL
-    AND q.questions_attempted > 0
-    AND q.hkt_practice_date IS NOT NULL
-    AND q.hkt_practice_date >= ms
-    AND q.hkt_practice_date <= yst;
-
-  SELECT coalesce(count(*),0) INTO pvi_mtd
-  FROM public.parent_dashboard_view_log p
-  WHERE p.hkt_date IS NOT NULL
-    AND p.hkt_date >= ms
-    AND p.hkt_date <= yst;
-
-  SELECT coalesce(count(*), 0) INTO sess_mtd
-  FROM public.quiz_sessions q
-  WHERE q.student_id IS NOT NULL
-    AND q.questions_attempted > 0
-    AND q.hkt_practice_date IS NOT NULL
-    AND q.hkt_practice_date >= ms
-    AND q.hkt_practice_date <= yst;
-
-  SELECT coalesce(count(sa.id), 0) INTO ans_mtd
-  FROM public.session_answers sa
-  JOIN public.quiz_sessions q ON q.id = sa.session_id
-  WHERE q.student_id IS NOT NULL
-    AND q.questions_attempted > 0
-    AND q.hkt_practice_date IS NOT NULL
-    AND q.hkt_practice_date >= ms
-    AND q.hkt_practice_date <= yst;
-
-  FOR i IN 0..11 LOOP
-    m0 := (date_trunc('month', (yst::timestamp - (i || ' months')::interval)))::date;
-    m1 := (m0 + interval '1 month' - interval '1 day')::date;
-    IF m1 > yst THEN m1 := yst; END IF;
-    yy := EXTRACT(YEAR FROM m0)::int;
-    mm := EXTRACT(MONTH FROM m0)::int;
-    t := jsonb_build_object(
-      'y', yy,
-      'm', mm,
-      'key', to_char(m0, 'YYYY-MM'),
-      'registrations', (
-        SELECT coalesce(count(*),0)
-        FROM public.students s2
-        WHERE s2.hkt_reg_date IS NOT NULL
-          AND s2.hkt_reg_date >= m0
-          AND s2.hkt_reg_date <= m1
-      ),
-      'practice_students', (
-        SELECT coalesce(count(DISTINCT q2.student_id),0)
-        FROM public.quiz_sessions q2
-        WHERE q2.student_id IS NOT NULL
-          AND q2.questions_attempted > 0
-          AND q2.hkt_practice_date IS NOT NULL
-          AND q2.hkt_practice_date >= m0
-          AND q2.hkt_practice_date <= m1
-      ),
-      'parent_views', (
-        SELECT coalesce(count(*),0)
-        FROM public.parent_dashboard_view_log p2
-        WHERE p2.hkt_date IS NOT NULL
-          AND p2.hkt_date >= m0
-          AND p2.hkt_date <= m1
-      ),
-      'male', (
-        SELECT coalesce(count(*),0)
-        FROM public.students s3
-        WHERE s3.hkt_reg_date IS NOT NULL
-          AND s3.hkt_reg_date >= m0
-          AND s3.hkt_reg_date <= m1
-          AND upper(trim(coalesce(s3.gender,'')))='M'
-      ),
-      'female', (
-        SELECT coalesce(count(*),0)
-        FROM public.students s3
-        WHERE s3.hkt_reg_date IS NOT NULL
-          AND s3.hkt_reg_date >= m0
-          AND s3.hkt_reg_date <= m1
-          AND upper(trim(coalesce(s3.gender,'')))='F'
-      ),
-      'undisclosed', (
-        SELECT coalesce(count(*),0)
-        FROM public.students s3
-        WHERE s3.hkt_reg_date IS NOT NULL
-          AND s3.hkt_reg_date >= m0
-          AND s3.hkt_reg_date <= m1
-          AND (s3.gender IS NULL OR btrim(s3.gender)='' OR upper(trim(s3.gender)) NOT IN ('M','F'))
-      )
-    );
-    arr := arr || jsonb_build_array(t);
-  END LOOP;
-
-  SELECT coalesce(jsonb_agg(d ORDER BY d), '[]'::jsonb) INTO districts
-  FROM (
-    SELECT DISTINCT sc.district AS d
-    FROM public.schools sc
-    WHERE sc.district IS NOT NULL
-      AND btrim(sc.district) <> ''
-      AND EXISTS (SELECT 1 FROM public.students s WHERE s.school_id = sc.id)
-  ) x;
-
-  RETURN jsonb_build_object(
-    'through_hkt', yst,
-    'mt_year', EXTRACT(YEAR FROM yst)::int,
-    'mt_month', EXTRACT(MONTH FROM yst)::int,
-    'mt_new_students', reg_mtd,
-    'mt_practice_students', pstu_mtd,
-    'mt_parent_views', pvi_mtd,
-    'mt_practice_sessions', sess_mtd,
-    'mt_session_answers', ans_mtd,
-    'alltime_students', reg_tot,
-    'alltime_parents', par_tot,
-    'alltime_practice_sessions', sess_tot,
-    'alltime_session_answers', ans_tot,
-    'trend_12m', arr,
-    'available_districts', districts
-  );
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.admin_business_monthly_summary() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_business_monthly_summary() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_business_school_details(
   p_district text,
@@ -248,7 +94,7 @@ BEGIN
             AND qx.hkt_practice_date IS NOT NULL
             AND qx.hkt_practice_date >= d1
             AND qx.hkt_practice_date <= d2
-                    AND sc.district = v_district
+            AND sc.district = v_district
             AND (p_school_id IS NULL OR st.school_id = p_school_id)
           GROUP BY st.school_id
         ) a ON a.gsid = si.sid
@@ -384,10 +230,3 @@ REVOKE ALL ON FUNCTION public.admin_business_school_details(text, uuid) FROM PUB
 GRANT EXECUTE ON FUNCTION public.admin_business_school_details(text, uuid) TO service_role;
 
 COMMIT;
-
--- Optional verification
-SELECT routine_name
-FROM information_schema.routines
-WHERE routine_schema = 'public'
-  AND routine_name IN ('admin_business_monthly_summary', 'admin_business_school_details')
-ORDER BY routine_name;
