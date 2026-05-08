@@ -5,6 +5,26 @@ import { requireAdminSession } from "@/lib/server/admin-session";
 /* Heavy RPC: allow Vercel long enough to wait for PostgREST (monthly can run ~10–60s after SQL fix). */
 export const maxDuration = 120;
 
+type MonthlySummaryPayload = {
+  mt_parent_views?: number;
+  [key: string]: unknown;
+};
+
+const HK_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function getHkMonthWindowUtcIso(now = new Date()) {
+  const hkNow = new Date(now.getTime() + HK_OFFSET_MS);
+  const y = hkNow.getUTCFullYear();
+  const m = hkNow.getUTCMonth();
+  const d = hkNow.getUTCDate();
+  const monthStartUtc = new Date(Date.UTC(y, m, 1, 0, 0, 0) - HK_OFFSET_MS);
+  const todayStartUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - HK_OFFSET_MS);
+  return {
+    monthStartIso: monthStartUtc.toISOString(),
+    todayStartIso: todayStartUtc.toISOString(),
+  };
+}
+
 export async function POST(req: NextRequest) {
   if (!requireAdminSession(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,5 +51,22 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ data });
+
+  const payload = (data as MonthlySummaryPayload | null) ?? {};
+  try {
+    // Fallback safeguard for legacy installs: derive MTD parent views by viewed_at.
+    const { monthStartIso, todayStartIso } = getHkMonthWindowUtcIso();
+    const { count, error: countErr } = await admin
+      .from("parent_dashboard_view_log")
+      .select("id", { count: "exact", head: true })
+      .gte("viewed_at", monthStartIso)
+      .lt("viewed_at", todayStartIso);
+    if (!countErr && typeof count === "number") {
+      payload.mt_parent_views = count;
+    }
+  } catch {
+    // Keep summary response available even if fallback count fails.
+  }
+
+  return NextResponse.json({ data: payload });
 }
