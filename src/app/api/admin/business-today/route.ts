@@ -60,13 +60,28 @@ export async function POST(req: NextRequest) {
 
   try {
     const { count, error: paidErr } = await admin
+      .from("parents")
+      .select("id", { count: "exact", head: true })
+      .not("mobile_number", "like", "9999%")
+      .gte("paid_started_at", dayStartIso)
+      .lt("paid_started_at", dayEndIso);
+
+    if (!paidErr && typeof count === "number") {
+      payload.paid_tier_new_users_today = count;
+    } else if (paidErr && /paid_started_at/i.test(paidErr.message)) {
+      // Legacy fallback: some installs may not have paid_started_at.
+      const { count: recurringCount, error: recurringErr } = await admin
       .from("parent_recurring_profiles")
       .select("id", { count: "exact", head: true })
       .not("mobile_number", "like", "9999%")
       .gte("created_at", dayStartIso)
       .lt("created_at", dayEndIso);
-    if (!paidErr && typeof count === "number") {
-      payload.paid_tier_new_users_today = count;
+
+      if (!recurringErr && typeof recurringCount === "number") {
+        payload.paid_tier_new_users_today = recurringCount;
+      } else {
+        payload.paid_tier_new_users_today = payload.paid_tier_new_users_today ?? 0;
+      }
     } else if (paidErr) {
       payload.paid_tier_new_users_today = payload.paid_tier_new_users_today ?? 0;
     }

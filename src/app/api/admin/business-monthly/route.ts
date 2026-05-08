@@ -125,17 +125,33 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: paidRows, error: paidErr } = await admin
-      .from("parent_recurring_profiles")
-      .select("created_at")
+      .from("parents")
+      .select("paid_started_at")
       .not("mobile_number", "like", "9999%")
-      .gte("created_at", oldestTrendStartIso)
-      .lt("created_at", todayStartIso);
+      .gte("paid_started_at", oldestTrendStartIso)
+      .lt("paid_started_at", todayStartIso);
 
     if (!paidErr && Array.isArray(paidRows)) {
-      for (const row of paidRows as Array<{ created_at?: string | null }>) {
-        const key = getHkIsoMonthKey(row.created_at);
+      for (const row of paidRows as Array<{ paid_started_at?: string | null }>) {
+        const key = getHkIsoMonthKey(row.paid_started_at);
         if (!key) continue;
         paidByMonth.set(key, (paidByMonth.get(key) || 0) + 1);
+      }
+    } else if (paidErr && /paid_started_at/i.test(paidErr.message)) {
+      // Legacy fallback: if paid_started_at is unavailable, derive from recurring profile creation.
+      const { data: recurringRows, error: recurringErr } = await admin
+        .from("parent_recurring_profiles")
+        .select("created_at")
+        .not("mobile_number", "like", "9999%")
+        .gte("created_at", oldestTrendStartIso)
+        .lt("created_at", todayStartIso);
+
+      if (!recurringErr && Array.isArray(recurringRows)) {
+        for (const row of recurringRows as Array<{ created_at?: string | null }>) {
+          const key = getHkIsoMonthKey(row.created_at);
+          if (!key) continue;
+          paidByMonth.set(key, (paidByMonth.get(key) || 0) + 1);
+        }
       }
     }
 
