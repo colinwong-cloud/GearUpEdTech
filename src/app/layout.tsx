@@ -3,7 +3,6 @@ import { Geist, Geist_Mono, Baloo_2, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 import {
   getLoginMarketingLogoUrl,
-  getShareBannerUrl,
   getSiteIconUrl,
 } from "@/lib/login-marketing-assets";
 
@@ -32,34 +31,46 @@ const baloo2 = Baloo_2({
 
 const appleTouchIcon = getLoginMarketingLogoUrl();
 const siteIcon = getSiteIconUrl();
-const shareImageUrl = getShareBannerUrl();
+const shareImagePath = "/api/share-banner?v=20260508a";
+const metadataBase = (() => {
+  const configured = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
+  if (configured) {
+    try {
+      return new URL(configured);
+    } catch {
+      // fallback below
+    }
+  }
+  return new URL("https://q.hkedutech.com");
+})();
 const shareMessage =
   "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
 
 export const metadata: Metadata = {
+  metadataBase,
   title: "增分寶 GearUp Quiz",
   description: shareMessage,
   openGraph: {
+    url: "/",
     title: "增分寶 GearUp Quiz",
     description: shareMessage,
     type: "website",
     locale: "zh_HK",
-    ...(shareImageUrl
-      ? {
-          images: [
-            {
-              url: shareImageUrl,
-              alt: "增分寶 GearUp Quiz 平台橫幅",
-            },
-          ],
-        }
-      : {}),
+    images: [
+      {
+        url: shareImagePath,
+        width: 1424,
+        height: 752,
+        alt: "增分寶 GearUp Quiz 平台橫幅",
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "增分寶 GearUp Quiz",
     description: shareMessage,
-    ...(shareImageUrl ? { images: [shareImageUrl] } : {}),
+    images: [shareImagePath],
   },
   ...(siteIcon || appleTouchIcon
     ? {
