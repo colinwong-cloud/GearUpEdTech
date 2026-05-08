@@ -4086,16 +4086,30 @@ function PaymentScreen({
         error?: string;
       };
       if (!res.ok) throw new Error(payload.error || "未能建立付款訂單");
-      if (payload.checkout_url) {
-        window.location.href = payload.checkout_url;
-        return;
-      }
       if (payload.paid) {
         setMsg(payload.message || "付款成功，已升級月費用戶。");
         await onPaid();
         return;
       }
-      if (payload.intent_id && payload.client_secret) {
+      let resolvedIntentId = payload.intent_id || null;
+      let resolvedClientSecret = payload.client_secret || null;
+      let resolvedCurrency = payload.currency || "HKD";
+      let resolvedCountryCode = payload.country_code || "HK";
+      let resolvedPaymentMethod = payload.payment_method || "all";
+      if ((!resolvedIntentId || !resolvedClientSecret) && payload.checkout_url) {
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          resolvedIntentId = resolvedIntentId || parsed.searchParams.get("intent_id");
+          resolvedClientSecret = resolvedClientSecret || parsed.searchParams.get("client_secret");
+          resolvedCurrency = parsed.searchParams.get("currency") || resolvedCurrency;
+          resolvedCountryCode = parsed.searchParams.get("country_code") || resolvedCountryCode;
+          resolvedPaymentMethod =
+            parsed.searchParams.get("payment_method") || resolvedPaymentMethod;
+        } catch {
+          // Ignore legacy URL parsing errors and fallback to redirect below.
+        }
+      }
+      if (resolvedIntentId && resolvedClientSecret) {
         if (!window.Airwallex || !sdkReady) {
           throw new Error("付款 SDK 尚未準備好，請稍候再試。");
         }
@@ -4106,7 +4120,7 @@ function PaymentScreen({
           payload.methods && payload.methods.length > 0
             ? payload.methods
             : (() => {
-                switch (payload.payment_method || "all") {
+                switch (resolvedPaymentMethod || "all") {
                   case "cards":
                     return ["card"];
                   case "apple_pay":
@@ -4126,18 +4140,22 @@ function PaymentScreen({
           enabledElements: ["payments"],
         });
         payments.redirectToCheckout({
-          intent_id: payload.intent_id,
-          client_secret: payload.client_secret,
-          currency: payload.currency || "HKD",
-          country_code: payload.country_code || "HK",
+          intent_id: resolvedIntentId,
+          client_secret: resolvedClientSecret,
+          currency: resolvedCurrency,
+          country_code: resolvedCountryCode,
           methods,
           successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
             mobileNumber.trim()
-          )}&intent_id=${encodeURIComponent(payload.intent_id)}`,
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
           cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
             mobileNumber.trim()
-          )}&intent_id=${encodeURIComponent(payload.intent_id)}`,
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
         });
+        return;
+      }
+      if (payload.checkout_url) {
+        window.location.href = payload.checkout_url;
         return;
       }
       setMsg(payload.message || "已建立付款訂單，請稍後再試。");

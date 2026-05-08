@@ -155,32 +155,70 @@ function readObject(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function parseLegacyCheckoutUrl(checkoutUrl: string | null) {
+  if (!checkoutUrl) {
+    return {
+      intentId: null,
+      clientSecret: null,
+      currency: null,
+      countryCode: null,
+      paymentMethod: null,
+    };
+  }
+  try {
+    const parsed = new URL(checkoutUrl, "https://local.checkout");
+    const params = parsed.searchParams;
+    return {
+      intentId: readString(params.get("intent_id")),
+      clientSecret: readString(params.get("client_secret")),
+      currency: readString(params.get("currency")),
+      countryCode: readString(params.get("country_code")),
+      paymentMethod: readString(params.get("payment_method")),
+    };
+  } catch {
+    return {
+      intentId: null,
+      clientSecret: null,
+      currency: null,
+      countryCode: null,
+      paymentMethod: null,
+    };
+  }
+}
+
 function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
   const checkout = readObject(rawResponse?.checkout);
   if (!checkout) {
+    const legacyUrl =
+      readString(rawResponse?.checkout_url) ||
+      readString(rawResponse?.hosted_payment_url);
+    const legacy = parseLegacyCheckoutUrl(legacyUrl);
     return {
-      checkoutUrl: null,
-      intentId: null,
-      clientSecret: null,
-      currency: "HKD",
-      countryCode: "HK",
-      paymentMethod: "all",
-      methods: AIRWALLEX_METHOD_MAP.all,
+      checkoutUrl: legacyUrl,
+      intentId: legacy.intentId,
+      clientSecret: legacy.clientSecret,
+      currency: legacy.currency || "HKD",
+      countryCode: legacy.countryCode || "HK",
+      paymentMethod: legacy.paymentMethod || "all",
+      methods: getAirwallexMethods(legacy.paymentMethod || "all"),
     };
   }
   const intent = readObject(checkout.intent);
+  const checkoutUrl =
+    readString(checkout.url) || readString(checkout.hosted_payment_url);
+  const legacy = parseLegacyCheckoutUrl(checkoutUrl);
+  const fallbackPaymentMethod = legacy.paymentMethod || "all";
   const methods =
     Array.isArray(checkout.methods) && checkout.methods.every((m) => typeof m === "string")
       ? (checkout.methods as string[])
-      : AIRWALLEX_METHOD_MAP.all;
+      : getAirwallexMethods(fallbackPaymentMethod);
   return {
-    checkoutUrl:
-      readString(checkout.url) || readString(checkout.hosted_payment_url),
-    intentId: readString(intent?.id),
-    clientSecret: readString(intent?.client_secret),
-    currency: readString(checkout.currency) || "HKD",
-    countryCode: readString(checkout.country_code) || "HK",
-    paymentMethod: readString(checkout.payment_method) || "all",
+    checkoutUrl,
+    intentId: readString(intent?.id) || legacy.intentId,
+    clientSecret: readString(intent?.client_secret) || legacy.clientSecret,
+    currency: readString(checkout.currency) || legacy.currency || "HKD",
+    countryCode: readString(checkout.country_code) || legacy.countryCode || "HK",
+    paymentMethod: readString(checkout.payment_method) || fallbackPaymentMethod,
     methods,
   };
 }
