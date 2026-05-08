@@ -85,6 +85,12 @@ function getAirwallexEnv(): "demo" | "prod" {
   return env === "prod" || env === "production" ? "prod" : "demo";
 }
 
+function normalizeTurnstileErrorCode(code: unknown): string | null {
+  if (typeof code !== "string") return null;
+  const trimmed = code.trim();
+  return trimmed || null;
+}
+
 type AppScreen =
   | "login_mobile"
   | "register"
@@ -1511,6 +1517,8 @@ function RegisterScreen({
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [privacyStatementText, setPrivacyStatementText] = useState<string | null>(null);
@@ -1590,7 +1598,7 @@ function RegisterScreen({
     email.trim().length > 0 &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -1805,12 +1813,31 @@ function RegisterScreen({
             <div className="flex justify-center">
               <Turnstile
                 siteKey={siteKey}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onError={() => setTurnstileToken(null)}
-                onExpire={() => setTurnstileToken(null)}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
                 options={{ theme: "light", size: "normal" }}
               />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續註冊
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           {error && (
@@ -2513,6 +2540,8 @@ function AddStudentScreen({
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -2537,7 +2566,7 @@ function AddStudentScreen({
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -2610,8 +2639,33 @@ function AddStudentScreen({
 
           {siteKey && (
             <div className="flex justify-center">
-              <Turnstile siteKey={siteKey} onSuccess={(token) => setTurnstileToken(token)} onError={() => setTurnstileToken(null)} onExpire={() => setTurnstileToken(null)} options={{ theme: "light", size: "normal" }} />
+              <Turnstile
+                siteKey={siteKey}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
+                options={{ theme: "light", size: "normal" }}
+              />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續操作
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
