@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
     p_school_id: schoolId,
   });
   if (error) {
+    if (/column reference \"district\" is ambiguous|district.*ambiguous/i.test(error.message)) {
+      return NextResponse.json(
+        {
+          error:
+            "SQL function admin_business_school_details 使用舊版本（district 欄位歧義）。請在 Supabase 執行 supabase_admin_business_school_details_district_ambiguous_hotfix.sql。",
+        },
+        { status: 500 }
+      );
+    }
     if (/admin_business_school_details/i.test(error.message)) {
       return NextResponse.json(
         {

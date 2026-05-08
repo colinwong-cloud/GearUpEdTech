@@ -173,12 +173,12 @@ DECLARE
   yst date := public.hkt_today() - 1;
   d1 date; d2 date; k int;
   sk text;
-  district text := nullif(btrim(coalesce(p_district, '')), '');
+  v_district text := nullif(btrim(coalesce(p_district, '')), '');
   schools_data jsonb := '[]'::jsonb;
   rates_data jsonb := '[]'::jsonb;
   rates_obj jsonb := '{}'::jsonb;
 BEGIN
-  IF district IS NULL THEN
+  IF v_district IS NULL THEN
     RAISE EXCEPTION '請先選擇地區';
   END IF;
 
@@ -199,7 +199,7 @@ BEGIN
         ) gg
       ) AS by_grade
     FROM public.schools sc
-    WHERE sc.district = district
+    WHERE sc.district = v_district
       AND EXISTS (SELECT 1 FROM public.students s5 WHERE s5.school_id = sc.id)
       AND (p_school_id IS NULL OR sc.id = p_school_id)
     ORDER BY coalesce(sc.name_zh, sc.name_en)
@@ -226,7 +226,7 @@ BEGIN
           FROM public.students s
           JOIN public.schools sc ON sc.id = s.school_id
           WHERE s.school_id IS NOT NULL
-            AND sc.district = district
+            AND sc.district = v_district
             AND (p_school_id IS NULL OR s.school_id = p_school_id)
         ) si
         LEFT JOIN (
@@ -242,7 +242,7 @@ BEGIN
             AND qx.hkt_practice_date IS NOT NULL
             AND qx.hkt_practice_date >= d1
             AND qx.hkt_practice_date <= d2
-            AND sc.district = district
+                    AND sc.district = v_district
             AND (p_school_id IS NULL OR st.school_id = p_school_id)
           GROUP BY st.school_id
         ) a ON a.gsid = si.sid
@@ -259,7 +259,7 @@ BEGIN
   END LOOP;
 
   RETURN jsonb_build_object(
-    'district', district,
+    'district', v_district,
     'school_id', CASE WHEN p_school_id IS NULL THEN NULL ELSE p_school_id::text END,
     'schools_students_by_grade', coalesce(schools_data, '[]'::jsonb),
     'school_monthly_correct_pct', rates_data
