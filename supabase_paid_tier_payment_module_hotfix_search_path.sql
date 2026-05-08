@@ -135,7 +135,7 @@ BEGIN
     WHERE s.parent_id = v_parent_id
       AND upper(trim(s.grade_level)) = upper(trim(p_grade_level))
   ) THEN
-    RAISE EXCEPTION '每個年級只可新增一位學生';
+    RAISE EXCEPTION '因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com';
   END IF;
 
   INSERT INTO public.students (parent_id, student_name, pin_code, avatar_style, grade_level, school_id)
@@ -193,7 +193,7 @@ BEGIN
     WHERE s.parent_id = v_parent_id
       AND upper(trim(s.grade_level)) = upper(trim(p_grade_level))
   ) THEN
-    RAISE EXCEPTION '每個年級只可新增一位學生';
+    RAISE EXCEPTION '因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com';
   END IF;
 
   INSERT INTO public.students (parent_id, student_name, pin_code, avatar_style, grade_level, school_id)
