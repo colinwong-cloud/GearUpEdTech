@@ -3566,6 +3566,8 @@ function RoleSelectScreen({
   tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
+  const whatsappHref = `https://wa.me/85252861715?text=${encodeURIComponent("客戶服務查詢")}`;
+
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -3626,7 +3628,45 @@ function RoleSelectScreen({
               <p className="text-sm text-gray-500">題目餘額及管理戶口資料</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M20.52 3.48A11.82 11.82 0 0 0 12.12 0C5.54 0 .18 5.36.18 11.94c0 2.1.55 4.15 1.6 5.97L0 24l6.28-1.65a11.9 11.9 0 0 0 5.84 1.5h.01c6.58 0 11.94-5.36 11.94-11.94 0-3.2-1.25-6.2-3.55-8.43ZM12.13 21.8h-.01a9.86 9.86 0 0 1-5.03-1.38l-.36-.22-3.72.98 1-3.62-.24-.37a9.82 9.82 0 0 1-1.5-5.25c0-5.44 4.42-9.86 9.87-9.86 2.64 0 5.12 1.03 6.98 2.9a9.8 9.8 0 0 1 2.9 6.97c0 5.44-4.43 9.85-9.88 9.85Zm5.4-7.35c-.3-.15-1.8-.89-2.08-.99-.28-.1-.49-.15-.69.15-.2.3-.79.99-.96 1.2-.18.2-.36.23-.67.08-.3-.15-1.29-.47-2.46-1.5-.91-.8-1.52-1.8-1.7-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.34.45-.5.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.69-1.67-.95-2.29-.25-.6-.5-.52-.69-.53h-.59c-.2 0-.53.08-.8.38-.28.3-1.06 1.03-1.06 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.13 4.54.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.8-.74 2.05-1.45.26-.72.26-1.33.18-1.45-.07-.13-.28-.2-.58-.35Z"
+                  />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">客戶服務</p>
+                <p className="text-sm text-gray-500">WhatsApp 即時查詢</p>
+              </div>
+            </a>
+          )}
         </div>
+        {!tierStatus.is_paid && (
+          <p className="mt-4 text-center text-sm text-gray-500">
+            有問題或意見? 歡迎電郵至{" "}
+            <a
+              href="mailto:cs@hkedutech.com"
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              cs@hkedutech.com
+            </a>
+          </p>
+        )}
         <button
           onClick={onBack}
           className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
