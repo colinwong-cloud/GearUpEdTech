@@ -4258,7 +4258,7 @@ function PaymentScreen({
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
       <Script
-        src="https://checkout.airwallex.com/assets/elements.bundle.js"
+        src="https://checkout.airwallex.com/assets/elements.bundle.min.js"
         strategy="afterInteractive"
         onLoad={() => setSdkReady(true)}
         onReady={() =>
