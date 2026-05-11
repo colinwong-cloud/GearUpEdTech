@@ -169,10 +169,14 @@ async function buildTimeoutSafeMonthlyPayload(
       await Promise.all([
         admin
           .from("students")
-          .select("id", { count: "exact", head: true })
+          .select("id,parent:parents!inner(mobile_number)", { count: "exact", head: true })
+          .not("parent.mobile_number", "like", "9999%")
           .gte("hkt_reg_date", monthStartHkt)
           .lte("hkt_reg_date", throughHkt),
-        admin.from("students").select("id", { count: "exact", head: true }),
+        admin
+          .from("students")
+          .select("id,parent:parents!inner(mobile_number)", { count: "exact", head: true })
+          .not("parent.mobile_number", "like", "9999%"),
         admin
           .from("parents")
           .select("id", { count: "exact", head: true })
