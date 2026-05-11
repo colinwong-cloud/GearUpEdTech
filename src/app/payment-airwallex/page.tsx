@@ -127,7 +127,6 @@ function PaymentAirwallexContent() {
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
   const checkoutLocale = searchParams.get("airwallex_locale") || "zh-HK";
-  const customerId = searchParams.get("airwallex_customer_id") || "";
   const finalAmountRaw = Number(searchParams.get("final_amount_hkd") || "99");
   const finalAmount = Number.isFinite(finalAmountRaw) ? Math.max(finalAmountRaw, 0) : 99;
   const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
@@ -227,9 +226,7 @@ function PaymentAirwallexContent() {
         currency,
         country_code: countryCode,
         locale: checkoutLocale,
-        mode: "recurring",
         submitType: "subscribe",
-        customer_id: customerId || undefined,
         methods,
         applePayRequestOptions,
         successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(

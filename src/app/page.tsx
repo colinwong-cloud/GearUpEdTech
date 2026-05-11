@@ -4413,9 +4413,7 @@ function PaymentScreen({
           currency: resolvedCurrency,
           country_code: resolvedCountryCode,
           locale: resolvedLocale,
-          mode: "recurring",
           submitType: "subscribe",
-          customer_id: payload.airwallex_customer_id || undefined,
           methods,
           applePayRequestOptions,
           successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(

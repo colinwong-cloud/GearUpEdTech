@@ -864,6 +864,14 @@ export async function POST(req: Request) {
       countryCode: "HK",
       transactionMode: "recurring",
     });
+    const availableMethodSet = new Set(methodDiagnostics.availableMethods);
+    const effectiveMethods =
+      methodDiagnostics.availableMethods.length > 0
+        ? requestedMethods.filter((method) => availableMethodSet.has(method))
+        : [...requestedMethods];
+    if (effectiveMethods.length === 0) {
+      effectiveMethods.push("card");
+    }
     let applePaySetupWarning: string | null = null;
     if (methodDiagnostics.warning) {
       applePaySetupWarning = `Method diagnostics: ${methodDiagnostics.warning}`;
@@ -875,6 +883,13 @@ export async function POST(req: Request) {
         applePaySetupWarning = applePaySetupWarning
           ? `${applePaySetupWarning} ${unavailableWarning}`
           : unavailableWarning;
+      }
+      if (!effectiveMethods.includes("applepay")) {
+        const filteredWarning =
+          "Apple Pay was requested but not included in effective checkout methods after availability filtering.";
+        applePaySetupWarning = applePaySetupWarning
+          ? `${applePaySetupWarning} ${filteredWarning}`
+          : filteredWarning;
       }
       try {
         await ensureApplePayCapabilityEnabled({
@@ -975,7 +990,7 @@ export async function POST(req: Request) {
       },
       intent: createIntentPayload,
       payment_method: paymentMethod,
-      methods: requestedMethods,
+      methods: effectiveMethods,
       currency: "HKD",
       country_code: "HK",
     };
@@ -1007,7 +1022,7 @@ export async function POST(req: Request) {
       intent_id: resolvedIntentId,
       client_secret: createIntentPayload.client_secret,
       payment_method: paymentMethod,
-      methods: requestedMethods,
+      methods: effectiveMethods,
       currency: "HKD",
       country_code: "HK",
       final_amount_hkd: finalAmount,
