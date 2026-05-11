@@ -327,8 +327,9 @@ export async function POST(req: NextRequest) {
   const trend = Array.isArray(payload.trend_12m) ? payload.trend_12m : [];
 
   try {
-    // Fallback safeguard for legacy installs: derive MTD parent views by viewed_at.
+    // Parent dashboard views should reflect current MTD usage (including today).
     const { monthStartIso, todayStartIso } = getHkMonthWindowUtcIso();
+    const nowIso = new Date().toISOString();
     const { count, error: countErr } = await admin
       .from("parent_dashboard_view_log")
       .select("id,parent:parents!inner(mobile_number)", {
@@ -337,9 +338,19 @@ export async function POST(req: NextRequest) {
       })
       .not("parent.mobile_number", "like", "9999%")
       .gte("viewed_at", monthStartIso)
-      .lt("viewed_at", todayStartIso);
+      .lt("viewed_at", nowIso);
     if (!countErr && typeof count === "number") {
       payload.mt_parent_views = count;
+    } else if (countErr) {
+      // Legacy fallback: if relationship-based filtering fails, keep metric available.
+      const { count: rawCount, error: rawErr } = await admin
+        .from("parent_dashboard_view_log")
+        .select("id", { count: "exact", head: true })
+        .gte("viewed_at", monthStartIso)
+        .lt("viewed_at", nowIso);
+      if (!rawErr && typeof rawCount === "number") {
+        payload.mt_parent_views = rawCount;
+      }
     }
 
     const oldestTrendStartIso = getOldestTrendMonthStartIso(trend, monthStartIso);
