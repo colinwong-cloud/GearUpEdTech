@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
+import {
+  applyAirwallexMethodSafeguards,
+  getAirwallexMethodsForSelection,
+} from "@/lib/airwallex-checkout-methods";
 
 const DEFAULT_AIRWALLEX_BASE = "https://api.airwallex.com";
 const DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = "zh-HK";
 const PRICE_HKD = 99;
-const AIRWALLEX_METHOD_MAP: Record<string, string[]> = {
-  all: ["card", "applepay", "googlepay", "alipayhk", "wechatpay"],
-  cards: ["card"],
-  apple_pay: ["applepay"],
-  google_pay: ["googlepay"],
-  alipay: ["alipayhk"],
-  wechat_pay: ["wechatpay"],
-};
 
 function resolveAirwallexBaseUrl(rawBase: string | undefined): string {
   const isProductionRuntime =
@@ -231,7 +227,7 @@ function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
       currency: legacy.currency || "HKD",
       countryCode: legacy.countryCode || "HK",
       paymentMethod: legacy.paymentMethod || "all",
-      methods: getAirwallexMethods(legacy.paymentMethod || "all"),
+      methods: getAirwallexMethodsForSelection(legacy.paymentMethod || "all"),
     };
   }
   const intent = readObject(checkout.intent);
@@ -242,7 +238,7 @@ function getStoredCheckoutInfo(rawResponse: Record<string, unknown> | null) {
   const methods =
     Array.isArray(checkout.methods) && checkout.methods.every((m) => typeof m === "string")
       ? (checkout.methods as string[])
-      : getAirwallexMethods(fallbackPaymentMethod);
+      : getAirwallexMethodsForSelection(fallbackPaymentMethod);
   return {
     checkoutUrl,
     intentId: readString(intent?.id) || legacy.intentId,
@@ -335,10 +331,6 @@ async function getAirwallexAccessToken(airwallexBase: string) {
     );
   }
   return payload.token;
-}
-
-function getAirwallexMethods(paymentMethod: string): string[] {
-  return AIRWALLEX_METHOD_MAP[paymentMethod] ?? AIRWALLEX_METHOD_MAP.all;
 }
 
 function getAirwallexCheckoutLocale(): string {
@@ -807,7 +799,7 @@ export async function POST(req: Request) {
   }
 
   const finalAmount = Math.round(PRICE_HKD * (1 - discountPercent / 100) * 100) / 100;
-  const requestedMethods = getAirwallexMethods(paymentMethod);
+  const requestedMethods = getAirwallexMethodsForSelection(paymentMethod);
   const checkoutLocale = getAirwallexCheckoutLocale();
   const merchantOrderId = `GU-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const requestId = crypto.randomUUID();
@@ -871,7 +863,13 @@ export async function POST(req: Request) {
       countryCode: "HK",
       transactionMode: "oneoff",
     });
-    const effectiveMethods = [...requestedMethods];
+    const {
+      methods: effectiveMethods,
+      missingRequired: checkoutMethodSafeguardMissing,
+    } = applyAirwallexMethodSafeguards({
+      paymentMethod,
+      methods: requestedMethods,
+    });
     let applePaySetupWarning: string | null = null;
     if (recurringMethodDiagnostics.warning) {
       applePaySetupWarning = `Recurring method diagnostics: ${recurringMethodDiagnostics.warning}`;
@@ -881,6 +879,12 @@ export async function POST(req: Request) {
       applePaySetupWarning = applePaySetupWarning
         ? `${applePaySetupWarning} ${oneoffWarning}`
         : oneoffWarning;
+    }
+    if (checkoutMethodSafeguardMissing.length > 0) {
+      const safeguardWarning = `Checkout safeguard restored required methods: ${checkoutMethodSafeguardMissing.join(", ")}`;
+      applePaySetupWarning = applePaySetupWarning
+        ? `${applePaySetupWarning} ${safeguardWarning}`
+        : safeguardWarning;
     }
     if (requestedMethods.includes("applepay")) {
       if (oneoffMethodDiagnostics.applePayAvailable === false) {
@@ -1031,6 +1035,7 @@ export async function POST(req: Request) {
       airwallex_available_methods: oneoffMethodDiagnostics.availableMethods,
       airwallex_available_methods_oneoff: oneoffMethodDiagnostics.availableMethods,
       airwallex_available_methods_recurring: recurringMethodDiagnostics.availableMethods,
+      checkout_method_safeguard_missing: checkoutMethodSafeguardMissing,
       applepay_available: oneoffMethodDiagnostics.applePayAvailable,
       applepay_setup_warning: applePaySetupWarning,
     });

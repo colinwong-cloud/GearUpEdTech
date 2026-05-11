@@ -74,6 +74,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-05 | **Business KPI 排除測試數據（`9999*` 手機）**：前後端 KPI 邏輯已統一排除測試家長資料；新增一鍵 SQL：`supabase_admin_business_kpi_exclude_test_mobile_9999.sql`（更新 `admin_today_business`、`admin_business_monthly_summary`、`admin_business_school_details`）。另修正「今日新增月費用戶／月費新增趨勢」來源改以 `parents.paid_started_at` 為準（舊環境保留 fallback）。 |
 | 2026-05 | **Admin 折扣碼使用摘要**：`實付總額 / 原價總額 / 折扣總額` 改為僅統計 `status = paid` 訂單，避免把未付款紀錄算入金額。 |
 | 2026-05 | **家長端 UI 微調（已上線）**：① 登入頁新增宣傳句並套用較活潑字型；② 練習結果頁「小香蕉圖示」改為 banner（可用 `NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL` 覆蓋，預設走 Supabase Storage）；③ 身份選擇頁新增客服入口：月費家長顯示 WhatsApp `wa.me/85252861715?text=客戶服務查詢`、免費家長顯示 `cs@hkedutech.com`；④ 家長頁面客服電郵統一為 `cs@hkedutech.com`；⑤ 免費家長升級文案更新。 |
+| 2026-05 | **Airwallex 付款方式修正（Apple Pay / Google Pay / AlipayHK / WeChat Pay / Card）**：修正 `payment_intents/create` metadata 格式錯誤、HPP locale 設為 `zh-HK`、補齊 Apple Pay HPP 參數，並調整方法清單策略，最終確認付款頁可同時顯示 5 大方式。新增方法防呆：`src/lib/airwallex-checkout-methods.ts` + 單元測試 `src/lib/airwallex-checkout-methods.test.ts`，避免後續改動誤刪 `all` 模式必要方法。 |
 
 ## Handover note — 2026-05-08 (for next working session)
 
@@ -89,6 +90,25 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   1. 在 admin business KPI 頁確認 `9999*` 測試帳戶不再出現在今日、月結、學校圖表。
   2. 用一個月費家長驗證身份選擇頁 WhatsApp 客服按鈕（含預填文字）。
   3. 用一個免費家長驗證客服電郵顯示與升級文案。
+
+## Handover note — 2026-05-11 (payment methods + safeguard)
+
+- `main` 已包含 Airwallex 付款模組本日修正（最新推送 commit：`17596ee`）。
+- 今日完成並已部署：
+  - 修正 Airwallex `payment_intents/create` 驗證錯誤（移除不合法 metadata 陣列欄位）。
+  - HPP 語言固定為 `zh-HK`（繁中）。
+  - Apple Pay 啟用與可用性診斷補強（含 `payment_method_types` 診斷回傳）。
+  - 付款方式顯示回復為 5 大方式：`card`, `applepay`, `googlepay`, `alipayhk`, `wechatpay`。
+- 新增防呆（避免未來誤刪方法）：
+  - `src/lib/airwallex-checkout-methods.ts`
+    - `getAirwallexMethodsForSelection()`
+    - `applyAirwallexMethodSafeguards()`
+  - `src/lib/airwallex-checkout-methods.test.ts`（Vitest）
+  - `/api/payment/checkout` 會在 `payment_method = all` 時自動補回缺少的必要方法並附加 warning 診斷訊息。
+- 明日交接建議先驗證：
+  1. 付款頁是否穩定顯示 5 種方法（iPhone Safari / iPhone Chrome / Desktop Chrome 各一次）。
+  2. `npm test` 是否包含新防呆測試通過。
+  3. 用無折扣與有折扣各測 1 單，確認 callback 與升級流程不回歸。
 
 ## Setup
 
