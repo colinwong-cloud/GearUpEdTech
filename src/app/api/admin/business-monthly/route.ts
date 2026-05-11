@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
 
 /* Heavy RPC: allow Vercel long enough to wait for PostgREST (monthly can run ~10–60s after SQL fix). */
@@ -13,7 +13,233 @@ type MonthlySummaryPayload = {
   [key: string]: unknown;
 };
 
+type TrendRow = {
+  y: number;
+  m: number;
+  key: string;
+  registrations: number;
+  practice_students: number;
+  parent_views: number;
+  male: number;
+  female: number;
+  undisclosed: number;
+  free_tier_new_users?: number;
+  paid_tier_new_users?: number;
+};
+
 const HK_OFFSET_MS = 8 * 60 * 60 * 1000;
+const PAGE_SIZE = 1000;
+
+function isStatementTimeoutMessage(message: string): boolean {
+  return /statement timeout|canceling statement due to statement timeout/i.test(message);
+}
+
+function formatUtcDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildTrendSkeleton(now = new Date()): TrendRow[] {
+  const hkNow = new Date(now.getTime() + HK_OFFSET_MS);
+  const y = hkNow.getUTCFullYear();
+  const m = hkNow.getUTCMonth();
+  const d = hkNow.getUTCDate();
+  const throughUtc = new Date(Date.UTC(y, m, d - 1));
+  const monthStartUtc = new Date(Date.UTC(y, m, 1));
+
+  const rows: TrendRow[] = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const cursor = new Date(Date.UTC(monthStartUtc.getUTCFullYear(), monthStartUtc.getUTCMonth() - i, 1));
+    const yy = cursor.getUTCFullYear();
+    const mm = cursor.getUTCMonth() + 1;
+    rows.push({
+      y: yy,
+      m: mm,
+      key: `${yy}-${String(mm).padStart(2, "0")}`,
+      registrations: 0,
+      practice_students: 0,
+      parent_views: 0,
+      male: 0,
+      female: 0,
+      undisclosed: 0,
+      free_tier_new_users: 0,
+      paid_tier_new_users: 0,
+    });
+  }
+
+  // Keep through_hkt alignment with existing SQL (through yesterday).
+  if (throughUtc < new Date(Date.UTC(y, m - 11, 1))) {
+    return rows.slice(-1);
+  }
+  return rows;
+}
+
+async function countDistinctStudentsInMonth({
+  admin,
+  monthStartIso,
+  todayStartIso,
+}: {
+  admin: SupabaseClient;
+  monthStartIso: string;
+  todayStartIso: string;
+}): Promise<number> {
+  const unique = new Set<string>();
+  for (let offset = 0; offset < 200000; offset += PAGE_SIZE) {
+    const { data, error } = await admin
+      .from("quiz_sessions")
+      .select("student_id")
+      .not("student_id", "is", null)
+      .gt("questions_attempted", 0)
+      .gte("created_at", monthStartIso)
+      .lt("created_at", todayStartIso)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const row of data as Array<{ student_id?: string | null }>) {
+      if (row.student_id) unique.add(row.student_id);
+    }
+    if (data.length < PAGE_SIZE) break;
+  }
+  return unique.size;
+}
+
+async function sumQuestionsAttemptedInMonth({
+  admin,
+  monthStartIso,
+  todayStartIso,
+}: {
+  admin: SupabaseClient;
+  monthStartIso: string;
+  todayStartIso: string;
+}): Promise<number> {
+  let total = 0;
+  for (let offset = 0; offset < 200000; offset += PAGE_SIZE) {
+    const { data, error } = await admin
+      .from("quiz_sessions")
+      .select("questions_attempted")
+      .not("student_id", "is", null)
+      .gt("questions_attempted", 0)
+      .gte("created_at", monthStartIso)
+      .lt("created_at", todayStartIso)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error || !data) break;
+    for (const row of data as Array<{ questions_attempted?: number | null }>) {
+      total += Number(row.questions_attempted ?? 0);
+    }
+    if (data.length < PAGE_SIZE) break;
+  }
+  return total;
+}
+
+async function buildTimeoutSafeMonthlyPayload(
+  admin: SupabaseClient
+): Promise<MonthlySummaryPayload> {
+  const hkNow = new Date(Date.now() + HK_OFFSET_MS);
+  const throughUtc = new Date(
+    Date.UTC(hkNow.getUTCFullYear(), hkNow.getUTCMonth(), hkNow.getUTCDate() - 1)
+  );
+  const throughHkt = formatUtcDateOnly(throughUtc);
+  const monthStartUtc = new Date(
+    Date.UTC(hkNow.getUTCFullYear(), hkNow.getUTCMonth(), 1)
+  );
+  const monthStartHkt = formatUtcDateOnly(monthStartUtc);
+  const { monthStartIso, todayStartIso } = getHkMonthWindowUtcIso();
+
+  const payload: MonthlySummaryPayload = {
+    through_hkt: throughHkt,
+    mt_year: throughUtc.getUTCFullYear(),
+    mt_month: throughUtc.getUTCMonth() + 1,
+    mt_new_students: 0,
+    mt_practice_students: 0,
+    mt_parent_views: 0,
+    mt_practice_sessions: 0,
+    mt_session_answers: 0,
+    alltime_students: 0,
+    alltime_parents: 0,
+    alltime_practice_sessions: 0,
+    alltime_session_answers: 0,
+    trend_12m: buildTrendSkeleton(hkNow),
+    available_districts: [],
+    mt_new_free_tier_users: 0,
+    mt_new_paid_tier_users: 0,
+  };
+
+  try {
+    const [{ count: mtStudents }, { count: allStudents }, { count: allParents }, { count: mtSessions }, { count: allSessions }, { count: allAnswers }] =
+      await Promise.all([
+        admin
+          .from("students")
+          .select("id", { count: "exact", head: true })
+          .gte("hkt_reg_date", monthStartHkt)
+          .lte("hkt_reg_date", throughHkt),
+        admin.from("students").select("id", { count: "exact", head: true }),
+        admin
+          .from("parents")
+          .select("id", { count: "exact", head: true })
+          .not("mobile_number", "like", "9999%"),
+        admin
+          .from("quiz_sessions")
+          .select("id", { count: "exact", head: true })
+          .not("student_id", "is", null)
+          .gt("questions_attempted", 0)
+          .gte("created_at", monthStartIso)
+          .lt("created_at", todayStartIso),
+        admin
+          .from("quiz_sessions")
+          .select("id", { count: "exact", head: true })
+          .not("student_id", "is", null)
+          .gt("questions_attempted", 0),
+        admin.from("session_answers").select("id", { count: "exact", head: true }),
+      ]);
+
+    payload.mt_new_students = typeof mtStudents === "number" ? mtStudents : 0;
+    payload.alltime_students = typeof allStudents === "number" ? allStudents : 0;
+    payload.alltime_parents = typeof allParents === "number" ? allParents : 0;
+    payload.mt_practice_sessions = typeof mtSessions === "number" ? mtSessions : 0;
+    payload.alltime_practice_sessions = typeof allSessions === "number" ? allSessions : 0;
+    payload.alltime_session_answers = typeof allAnswers === "number" ? allAnswers : 0;
+  } catch {
+    // Keep timeout-safe payload available even if some counts fail.
+  }
+
+  try {
+    payload.mt_practice_students = await countDistinctStudentsInMonth({
+      admin,
+      monthStartIso,
+      todayStartIso,
+    });
+    payload.mt_session_answers = await sumQuestionsAttemptedInMonth({
+      admin,
+      monthStartIso,
+      todayStartIso,
+    });
+  } catch {
+    payload.mt_practice_students = payload.mt_practice_students ?? 0;
+    payload.mt_session_answers = payload.mt_session_answers ?? 0;
+  }
+
+  try {
+    const { data: districtsRows } = await admin
+      .from("schools")
+      .select("district")
+      .not("district", "is", null)
+      .order("district", { ascending: true })
+      .limit(5000);
+
+    const districts = Array.from(
+      new Set(
+        ((districtsRows ?? []) as Array<{ district?: string | null }>)
+          .map((row) => String(row.district ?? "").trim())
+          .filter((district) => district.length > 0)
+      )
+    );
+    payload.available_districts = districts;
+  } catch {
+    payload.available_districts = payload.available_districts ?? [];
+  }
+
+  return payload;
+}
 
 function getHkMonthWindowUtcIso(now = new Date()) {
   const hkNow = new Date(now.getTime() + HK_OFFSET_MS);
@@ -72,6 +298,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const admin = createClient(url, key);
+  let payload: MonthlySummaryPayload;
   const { data, error } = await admin.rpc("admin_business_monthly_summary");
   if (error) {
     if (/admin_business_monthly_summary/i.test(error.message)) {
@@ -83,10 +310,16 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (isStatementTimeoutMessage(error.message || "")) {
+      payload = await buildTimeoutSafeMonthlyPayload(admin);
+    } else {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  } else {
+    payload = (data as MonthlySummaryPayload | null) ?? {};
   }
 
-  const payload = (data as MonthlySummaryPayload | null) ?? {};
   const trend = Array.isArray(payload.trend_12m) ? payload.trend_12m : [];
 
   try {
