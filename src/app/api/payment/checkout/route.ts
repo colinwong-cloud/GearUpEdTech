@@ -871,17 +871,7 @@ export async function POST(req: Request) {
       countryCode: "HK",
       transactionMode: "oneoff",
     });
-    const oneoffAvailableSet = new Set(oneoffMethodDiagnostics.availableMethods);
-    const recurringAvailableSet = new Set(recurringMethodDiagnostics.availableMethods);
-    const effectiveMethods =
-      oneoffMethodDiagnostics.availableMethods.length > 0
-        ? requestedMethods.filter((method) => oneoffAvailableSet.has(method))
-        : recurringMethodDiagnostics.availableMethods.length > 0
-          ? requestedMethods.filter((method) => recurringAvailableSet.has(method))
-          : [...requestedMethods];
-    if (effectiveMethods.length === 0) {
-      effectiveMethods.push("card");
-    }
+    const effectiveMethods = [...requestedMethods];
     let applePaySetupWarning: string | null = null;
     if (recurringMethodDiagnostics.warning) {
       applePaySetupWarning = `Recurring method diagnostics: ${recurringMethodDiagnostics.warning}`;
@@ -899,13 +889,6 @@ export async function POST(req: Request) {
         applePaySetupWarning = applePaySetupWarning
           ? `${applePaySetupWarning} ${unavailableWarning}`
           : unavailableWarning;
-      }
-      if (!effectiveMethods.includes("applepay")) {
-        const filteredWarning =
-          "Apple Pay was requested but not included in effective checkout methods after availability filtering.";
-        applePaySetupWarning = applePaySetupWarning
-          ? `${applePaySetupWarning} ${filteredWarning}`
-          : filteredWarning;
       }
       try {
         await ensureApplePayCapabilityEnabled({
