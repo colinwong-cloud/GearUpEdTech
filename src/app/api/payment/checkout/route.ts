@@ -153,6 +153,18 @@ type AirwallexRegisteredDomainsResponse = {
   items?: string[];
 };
 
+type AirwallexPaymentMethodTypesResponse = {
+  items?: Array<{
+    name?: string;
+  }>;
+};
+
+type AirwallexMethodAvailabilityDiagnostics = {
+  availableMethods: string[];
+  applePayAvailable: boolean | null;
+  warning: string | null;
+};
+
 function getServerSupabase() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -337,6 +349,11 @@ function getAirwallexCheckoutLocale(): string {
   return locale || DEFAULT_AIRWALLEX_CHECKOUT_LOCALE;
 }
 
+function shouldRegisterApplePayDomainsForCheckout(): boolean {
+  const raw = process.env.AIRWALLEX_REGISTER_APPLEPAY_DOMAINS_FOR_HPP?.trim().toLowerCase() || "";
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
 function normalizeDomainValue(value: string | null | undefined): string | null {
   const trimmed = value?.trim().toLowerCase() || "";
   if (!trimmed) return null;
@@ -516,6 +533,79 @@ async function ensureApplePayActivated({
     accessToken,
     domains: missingDomains,
   });
+}
+
+async function getAirwallexMethodAvailabilityDiagnostics({
+  airwallexBase,
+  accessToken,
+  transactionCurrency,
+  countryCode,
+  transactionMode,
+}: {
+  airwallexBase: string;
+  accessToken: string;
+  transactionCurrency: string;
+  countryCode: string;
+  transactionMode: "oneoff" | "recurring";
+}): Promise<AirwallexMethodAvailabilityDiagnostics> {
+  const params = new URLSearchParams({
+    transaction_currency: transactionCurrency,
+    country_code: countryCode,
+    transaction_mode: transactionMode,
+    active: "true",
+    page_num: "0",
+    page_size: "100",
+  });
+
+  try {
+    const res = await fetch(
+      `${airwallexBase}/api/v1/pa/config/payment_method_types?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+    const body = await readApiBody(res);
+    if (!res.ok) {
+      throw new Error(
+        formatAirwallexError({
+          action: "config/payment_method_types",
+          status: res.status,
+          body,
+        })
+      );
+    }
+
+    const payload = (body.json || {}) as AirwallexPaymentMethodTypesResponse;
+    const availableMethods = Array.isArray(payload.items)
+      ? Array.from(
+          new Set(
+            payload.items
+              .map((item) => readString(item?.name)?.toLowerCase() || "")
+              .filter(Boolean)
+          )
+        )
+      : [];
+
+    return {
+      availableMethods,
+      applePayAvailable: availableMethods.includes("applepay"),
+      warning: null,
+    };
+  } catch (err) {
+    return {
+      availableMethods: [],
+      applePayAvailable: null,
+      warning:
+        err instanceof Error
+          ? err.message
+          : "Unable to determine available Airwallex payment methods",
+    };
+  }
 }
 
 function getAirwallexEnvByBaseUrl(baseUrl: string): "demo" | "prod" {
@@ -767,19 +857,45 @@ export async function POST(req: Request) {
     const airwallexBase = getAirwallexBaseUrl();
     const airwallexEnv = getAirwallexEnvByBaseUrl(airwallexBase);
     const accessToken = await getAirwallexAccessToken(airwallexBase);
+    const methodDiagnostics = await getAirwallexMethodAvailabilityDiagnostics({
+      airwallexBase,
+      accessToken,
+      transactionCurrency: "HKD",
+      countryCode: "HK",
+      transactionMode: "recurring",
+    });
     let applePaySetupWarning: string | null = null;
+    if (methodDiagnostics.warning) {
+      applePaySetupWarning = `Method diagnostics: ${methodDiagnostics.warning}`;
+    }
     if (requestedMethods.includes("applepay")) {
+      if (methodDiagnostics.applePayAvailable === false) {
+        const unavailableWarning =
+          "Apple Pay is not active in Airwallex payment_method_types for HKD/HK recurring checkout.";
+        applePaySetupWarning = applePaySetupWarning
+          ? `${applePaySetupWarning} ${unavailableWarning}`
+          : unavailableWarning;
+      }
       try {
-        await ensureApplePayActivated({
-          req,
+        await ensureApplePayCapabilityEnabled({
           airwallexBase,
           accessToken,
         });
+        if (shouldRegisterApplePayDomainsForCheckout()) {
+          await ensureApplePayActivated({
+            req,
+            airwallexBase,
+            accessToken,
+          });
+        }
       } catch (applePayErr) {
-        applePaySetupWarning =
+        const activationWarning =
           applePayErr instanceof Error
             ? applePayErr.message
             : "Apple Pay activation check failed";
+        applePaySetupWarning = applePaySetupWarning
+          ? `${applePaySetupWarning} ${activationWarning}`
+          : activationWarning;
       }
     }
     const customerId = await getOrCreateAirwallexCustomerId({
@@ -824,6 +940,7 @@ export async function POST(req: Request) {
           payment_method: paymentMethod,
           discount_code: discountCodeApplied,
           applepay_setup_warning: applePaySetupWarning,
+          available_methods_hk_hkd_recurring: methodDiagnostics.availableMethods,
           recurring_type: "monthly",
           recurring_enabled: true,
         },
@@ -898,6 +1015,8 @@ export async function POST(req: Request) {
       airwallex_customer_id: customerId,
       airwallex_env: airwallexEnv,
       airwallex_locale: checkoutLocale,
+      airwallex_available_methods: methodDiagnostics.availableMethods,
+      applepay_available: methodDiagnostics.applePayAvailable,
       applepay_setup_warning: applePaySetupWarning,
     });
   } catch (err) {

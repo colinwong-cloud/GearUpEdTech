@@ -4299,6 +4299,8 @@ function PaymentScreen({
         airwallex_customer_id?: string;
         airwallex_env?: "demo" | "prod";
         airwallex_locale?: string;
+        airwallex_available_methods?: string[];
+        applepay_available?: boolean | null;
         payment_method?: string;
         methods?: string[];
         applepay_setup_warning?: string | null;
@@ -4367,9 +4369,28 @@ function PaymentScreen({
         if (payload.applepay_setup_warning && methods.includes("applepay")) {
           console.warn("[Airwallex Apple Pay setup warning]", payload.applepay_setup_warning);
         }
+        if (methods.includes("applepay")) {
+          const availableMethods = Array.isArray(payload.airwallex_available_methods)
+            ? payload.airwallex_available_methods
+            : [];
+          if (payload.applepay_available === false) {
+            console.warn(
+              "[Airwallex Apple Pay diagnostics] applepay is not active for HKD/HK recurring. Available methods:",
+              availableMethods
+            );
+          }
+          const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+          const isSafari = /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
+          if (!isSafari) {
+            console.warn(
+              "[Airwallex Apple Pay diagnostics] Apple Pay on web is only available on Safari browsers."
+            );
+          }
+        }
         const applePayRequestOptions = methods.includes("applepay")
           ? {
               buttonType: "subscribe",
+              existingPaymentMethodRequired: false,
               countryCode: resolvedCountryCode,
               totalPriceLabel: "GearUp 增分寶",
               lineItems: [

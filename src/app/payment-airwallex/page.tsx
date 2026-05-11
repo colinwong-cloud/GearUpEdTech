@@ -193,9 +193,19 @@ function PaymentAirwallexContent() {
     try {
       const env = envOverride === "prod" || envOverride === "production" ? "prod" : getAirwallexEnv();
       const payments = await resolveAirwallexPaymentsApi(env);
+      if (methods.includes("applepay")) {
+        const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+        const isSafari = /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
+        if (!isSafari) {
+          console.warn(
+            "[Airwallex Apple Pay diagnostics] Apple Pay on web is only available on Safari browsers."
+          );
+        }
+      }
       const applePayRequestOptions = methods.includes("applepay")
         ? {
             buttonType: "subscribe",
+            existingPaymentMethodRequired: false,
             countryCode,
             totalPriceLabel: "GearUp 增分寶",
             lineItems: [
