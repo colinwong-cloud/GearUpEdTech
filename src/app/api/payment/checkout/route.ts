@@ -148,6 +148,10 @@ type AirwallexCustomerListResponse = {
   }>;
 };
 
+type AirwallexRegisteredDomainsResponse = {
+  items?: string[];
+};
+
 function getServerSupabase() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -322,6 +326,187 @@ async function getAirwallexAccessToken(airwallexBase: string) {
 
 function getAirwallexMethods(paymentMethod: string): string[] {
   return AIRWALLEX_METHOD_MAP[paymentMethod] ?? AIRWALLEX_METHOD_MAP.all;
+}
+
+function normalizeDomainValue(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase() || "";
+  if (!trimmed) return null;
+
+  let domainCandidate = trimmed;
+  if (domainCandidate.startsWith("http://") || domainCandidate.startsWith("https://")) {
+    try {
+      domainCandidate = new URL(domainCandidate).hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  domainCandidate = domainCandidate.split(",")[0]?.trim() || "";
+  domainCandidate = domainCandidate.split("/")[0]?.trim() || "";
+  domainCandidate = domainCandidate.split(":")[0]?.trim() || "";
+  if (!domainCandidate || !domainCandidate.includes(".")) return null;
+  if (!/^[a-z0-9.-]+$/.test(domainCandidate)) return null;
+  return domainCandidate;
+}
+
+function getApplePayRegisteredDomains(req: Request): string[] {
+  const domains = new Set<string>();
+  const addDomain = (value: string | null | undefined) => {
+    const normalized = normalizeDomainValue(value);
+    if (normalized) domains.add(normalized);
+  };
+
+  const explicitDomains = process.env.AIRWALLEX_APPLEPAY_REGISTERED_DOMAINS?.trim() || "";
+  if (explicitDomains) {
+    for (const item of explicitDomains.split(/[,\s]+/)) {
+      addDomain(item);
+    }
+  } else {
+    addDomain(process.env.NEXT_PUBLIC_APP_BASE_URL);
+    addDomain(process.env.APP_BASE_URL);
+    addDomain(req.headers.get("x-forwarded-host"));
+    addDomain(req.headers.get("host"));
+  }
+
+  return Array.from(domains);
+}
+
+function isAlreadyEnabledLikeError(status: number, body: ApiBody): boolean {
+  const code = readString(body.json?.code)?.toLowerCase() || "";
+  const message = readString(body.json?.message)?.toLowerCase() || "";
+  return (
+    status === 409 ||
+    code.includes("already") ||
+    message.includes("already") ||
+    message.includes("exists")
+  );
+}
+
+async function ensureApplePayCapabilityEnabled({
+  airwallexBase,
+  accessToken,
+}: {
+  airwallexBase: string;
+  accessToken: string;
+}) {
+  const res = await fetch(
+    `${airwallexBase}/api/v1/account_capabilities/payments_applepay/enable`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const body = await readApiBody(res);
+  if (!res.ok && !isAlreadyEnabledLikeError(res.status, body)) {
+    throw new Error(
+      formatAirwallexError({
+        action: "account_capabilities/payments_applepay/enable",
+        status: res.status,
+        body,
+      })
+    );
+  }
+}
+
+async function listApplePayRegisteredDomains({
+  airwallexBase,
+  accessToken,
+}: {
+  airwallexBase: string;
+  accessToken: string;
+}): Promise<string[]> {
+  const res = await fetch(
+    `${airwallexBase}/api/v1/pa/config/applepay/registered_domains`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const body = await readApiBody(res);
+  if (!res.ok) {
+    throw new Error(
+      formatAirwallexError({
+        action: "config/applepay/registered_domains",
+        status: res.status,
+        body,
+      })
+    );
+  }
+  const payload = (body.json || {}) as AirwallexRegisteredDomainsResponse;
+  if (!Array.isArray(payload.items)) return [];
+  return payload.items
+    .map((item) => normalizeDomainValue(item))
+    .filter((item): item is string => Boolean(item));
+}
+
+async function addApplePayRegisteredDomains({
+  airwallexBase,
+  accessToken,
+  domains,
+}: {
+  airwallexBase: string;
+  accessToken: string;
+  domains: string[];
+}) {
+  if (domains.length === 0) return;
+  const res = await fetch(
+    `${airwallexBase}/api/v1/pa/config/applepay/registered_domains/add_items`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ items: domains }),
+      cache: "no-store",
+    }
+  );
+  const body = await readApiBody(res);
+  if (!res.ok && !isAlreadyEnabledLikeError(res.status, body)) {
+    throw new Error(
+      formatAirwallexError({
+        action: "config/applepay/registered_domains/add_items",
+        status: res.status,
+        body,
+      })
+    );
+  }
+}
+
+async function ensureApplePayActivated({
+  req,
+  airwallexBase,
+  accessToken,
+}: {
+  req: Request;
+  airwallexBase: string;
+  accessToken: string;
+}) {
+  const targetDomains = getApplePayRegisteredDomains(req);
+  if (targetDomains.length === 0) return;
+
+  await ensureApplePayCapabilityEnabled({ airwallexBase, accessToken });
+  const registeredDomains = await listApplePayRegisteredDomains({
+    airwallexBase,
+    accessToken,
+  });
+  const registeredSet = new Set(registeredDomains);
+  const missingDomains = targetDomains.filter((domain) => !registeredSet.has(domain));
+  await addApplePayRegisteredDomains({
+    airwallexBase,
+    accessToken,
+    domains: missingDomains,
+  });
 }
 
 function getAirwallexEnvByBaseUrl(baseUrl: string): "demo" | "prod" {
@@ -523,6 +708,7 @@ export async function POST(req: Request) {
   }
 
   const finalAmount = Math.round(PRICE_HKD * (1 - discountPercent / 100) * 100) / 100;
+  const requestedMethods = getAirwallexMethods(paymentMethod);
   const merchantOrderId = `GU-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const requestId = crypto.randomUUID();
 
@@ -571,6 +757,21 @@ export async function POST(req: Request) {
     const airwallexBase = getAirwallexBaseUrl();
     const airwallexEnv = getAirwallexEnvByBaseUrl(airwallexBase);
     const accessToken = await getAirwallexAccessToken(airwallexBase);
+    let applePaySetupWarning: string | null = null;
+    if (requestedMethods.includes("applepay")) {
+      try {
+        await ensureApplePayActivated({
+          req,
+          airwallexBase,
+          accessToken,
+        });
+      } catch (applePayErr) {
+        applePaySetupWarning =
+          applePayErr instanceof Error
+            ? applePayErr.message
+            : "Apple Pay activation check failed";
+      }
+    }
     const customerId = await getOrCreateAirwallexCustomerId({
       airwallexBase,
       accessToken,
@@ -612,6 +813,7 @@ export async function POST(req: Request) {
           mobile_number: mobile,
           payment_method: paymentMethod,
           discount_code: discountCodeApplied,
+          applepay_setup_warning: applePaySetupWarning,
           recurring_type: "monthly",
           recurring_enabled: true,
         },
@@ -634,7 +836,6 @@ export async function POST(req: Request) {
     }
 
     const resolvedIntentId = createIntentPayload.id;
-    const methods = getAirwallexMethods(paymentMethod);
     const checkoutPayload = {
       flow: "intent_recurring",
       recurring: {
@@ -644,7 +845,7 @@ export async function POST(req: Request) {
       },
       intent: createIntentPayload,
       payment_method: paymentMethod,
-      methods,
+      methods: requestedMethods,
       currency: "HKD",
       country_code: "HK",
     };
@@ -676,10 +877,11 @@ export async function POST(req: Request) {
       intent_id: resolvedIntentId,
       client_secret: createIntentPayload.client_secret,
       payment_method: paymentMethod,
-      methods,
+      methods: requestedMethods,
       currency: "HKD",
       country_code: "HK",
       airwallex_env: airwallexEnv,
+      applepay_setup_warning: applePaySetupWarning,
     });
   } catch (err) {
     return NextResponse.json(
