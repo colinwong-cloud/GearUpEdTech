@@ -857,29 +857,45 @@ export async function POST(req: Request) {
     const airwallexBase = getAirwallexBaseUrl();
     const airwallexEnv = getAirwallexEnvByBaseUrl(airwallexBase);
     const accessToken = await getAirwallexAccessToken(airwallexBase);
-    const methodDiagnostics = await getAirwallexMethodAvailabilityDiagnostics({
+    const recurringMethodDiagnostics = await getAirwallexMethodAvailabilityDiagnostics({
       airwallexBase,
       accessToken,
       transactionCurrency: "HKD",
       countryCode: "HK",
       transactionMode: "recurring",
     });
-    const availableMethodSet = new Set(methodDiagnostics.availableMethods);
+    const oneoffMethodDiagnostics = await getAirwallexMethodAvailabilityDiagnostics({
+      airwallexBase,
+      accessToken,
+      transactionCurrency: "HKD",
+      countryCode: "HK",
+      transactionMode: "oneoff",
+    });
+    const oneoffAvailableSet = new Set(oneoffMethodDiagnostics.availableMethods);
+    const recurringAvailableSet = new Set(recurringMethodDiagnostics.availableMethods);
     const effectiveMethods =
-      methodDiagnostics.availableMethods.length > 0
-        ? requestedMethods.filter((method) => availableMethodSet.has(method))
-        : [...requestedMethods];
+      oneoffMethodDiagnostics.availableMethods.length > 0
+        ? requestedMethods.filter((method) => oneoffAvailableSet.has(method))
+        : recurringMethodDiagnostics.availableMethods.length > 0
+          ? requestedMethods.filter((method) => recurringAvailableSet.has(method))
+          : [...requestedMethods];
     if (effectiveMethods.length === 0) {
       effectiveMethods.push("card");
     }
     let applePaySetupWarning: string | null = null;
-    if (methodDiagnostics.warning) {
-      applePaySetupWarning = `Method diagnostics: ${methodDiagnostics.warning}`;
+    if (recurringMethodDiagnostics.warning) {
+      applePaySetupWarning = `Recurring method diagnostics: ${recurringMethodDiagnostics.warning}`;
+    }
+    if (oneoffMethodDiagnostics.warning) {
+      const oneoffWarning = `One-off method diagnostics: ${oneoffMethodDiagnostics.warning}`;
+      applePaySetupWarning = applePaySetupWarning
+        ? `${applePaySetupWarning} ${oneoffWarning}`
+        : oneoffWarning;
     }
     if (requestedMethods.includes("applepay")) {
-      if (methodDiagnostics.applePayAvailable === false) {
+      if (oneoffMethodDiagnostics.applePayAvailable === false) {
         const unavailableWarning =
-          "Apple Pay is not active in Airwallex payment_method_types for HKD/HK recurring checkout.";
+          "Apple Pay is not active in Airwallex payment_method_types for HKD/HK one-off checkout.";
         applePaySetupWarning = applePaySetupWarning
           ? `${applePaySetupWarning} ${unavailableWarning}`
           : unavailableWarning;
@@ -1029,8 +1045,10 @@ export async function POST(req: Request) {
       airwallex_customer_id: customerId,
       airwallex_env: airwallexEnv,
       airwallex_locale: checkoutLocale,
-      airwallex_available_methods: methodDiagnostics.availableMethods,
-      applepay_available: methodDiagnostics.applePayAvailable,
+      airwallex_available_methods: oneoffMethodDiagnostics.availableMethods,
+      airwallex_available_methods_oneoff: oneoffMethodDiagnostics.availableMethods,
+      airwallex_available_methods_recurring: recurringMethodDiagnostics.availableMethods,
+      applepay_available: oneoffMethodDiagnostics.applePayAvailable,
       applepay_setup_warning: applePaySetupWarning,
     });
   } catch (err) {

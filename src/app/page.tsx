@@ -4375,7 +4375,7 @@ function PaymentScreen({
             : [];
           if (payload.applepay_available === false) {
             console.warn(
-              "[Airwallex Apple Pay diagnostics] applepay is not active for HKD/HK recurring. Available methods:",
+              "[Airwallex Apple Pay diagnostics] applepay is not active for HKD/HK one-off checkout. Available methods:",
               availableMethods
             );
           }
