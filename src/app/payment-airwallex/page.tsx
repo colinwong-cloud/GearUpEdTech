@@ -126,6 +126,10 @@ function PaymentAirwallexContent() {
   const paymentMethod = searchParams.get("payment_method") || "cards";
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
+  const checkoutLocale = searchParams.get("airwallex_locale") || "zh-HK";
+  const customerId = searchParams.get("airwallex_customer_id") || "";
+  const finalAmountRaw = Number(searchParams.get("final_amount_hkd") || "99");
+  const finalAmount = Number.isFinite(finalAmountRaw) ? Math.max(finalAmountRaw, 0) : 99;
   const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,12 +193,35 @@ function PaymentAirwallexContent() {
     try {
       const env = envOverride === "prod" || envOverride === "production" ? "prod" : getAirwallexEnv();
       const payments = await resolveAirwallexPaymentsApi(env);
+      const applePayRequestOptions = methods.includes("applepay")
+        ? {
+            buttonType: "subscribe",
+            countryCode,
+            totalPriceLabel: "GearUp 增分寶",
+            lineItems: [
+              {
+                label: "GearUp 增分寶月費會員",
+                amount: finalAmount.toFixed(2),
+                type: "final",
+                paymentTiming: "recurring",
+                recurringPaymentStartDate: new Date(),
+                recurringPaymentIntervalUnit: "month",
+                recurringPaymentIntervalCount: 1,
+              },
+            ],
+          }
+        : undefined;
       payments.redirectToCheckout({
         intent_id: intentId,
         client_secret: clientSecret,
         currency,
         country_code: countryCode,
+        locale: checkoutLocale,
+        mode: "recurring",
+        submitType: "subscribe",
+        customer_id: customerId || undefined,
         methods,
+        applePayRequestOptions,
         successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
           mobile
         )}&intent_id=${encodeURIComponent(intentId)}`,

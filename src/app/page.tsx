@@ -4295,9 +4295,13 @@ function PaymentScreen({
         client_secret?: string;
         currency?: string;
         country_code?: string;
+        final_amount_hkd?: number;
+        airwallex_customer_id?: string;
         airwallex_env?: "demo" | "prod";
+        airwallex_locale?: string;
         payment_method?: string;
         methods?: string[];
+        applepay_setup_warning?: string | null;
         message?: string;
         paid?: boolean;
         error?: string;
@@ -4335,6 +4339,12 @@ function PaymentScreen({
         const appBaseUrl =
           (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
           window.location.origin;
+        const resolvedLocale =
+          (payload.airwallex_locale || "").trim() || "zh-HK";
+        const resolvedFinalAmount =
+          typeof payload.final_amount_hkd === "number" && Number.isFinite(payload.final_amount_hkd)
+            ? Math.max(payload.final_amount_hkd, 0)
+            : Math.max(finalAmount, 0);
         const methods =
           payload.methods && payload.methods.length > 0
             ? payload.methods
@@ -4354,13 +4364,39 @@ function PaymentScreen({
                     return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
                 }
               })();
+        if (payload.applepay_setup_warning && methods.includes("applepay")) {
+          console.warn("[Airwallex Apple Pay setup warning]", payload.applepay_setup_warning);
+        }
+        const applePayRequestOptions = methods.includes("applepay")
+          ? {
+              buttonType: "subscribe",
+              countryCode: resolvedCountryCode,
+              totalPriceLabel: "GearUp 增分寶",
+              lineItems: [
+                {
+                  label: "GearUp 增分寶月費會員",
+                  amount: resolvedFinalAmount.toFixed(2),
+                  type: "final",
+                  paymentTiming: "recurring",
+                  recurringPaymentStartDate: new Date(),
+                  recurringPaymentIntervalUnit: "month",
+                  recurringPaymentIntervalCount: 1,
+                },
+              ],
+            }
+          : undefined;
         const payments = await resolveAirwallexPaymentsApi(resolvedAirwallexEnv);
         payments.redirectToCheckout({
           intent_id: resolvedIntentId,
           client_secret: resolvedClientSecret,
           currency: resolvedCurrency,
           country_code: resolvedCountryCode,
+          locale: resolvedLocale,
+          mode: "recurring",
+          submitType: "subscribe",
+          customer_id: payload.airwallex_customer_id || undefined,
           methods,
+          applePayRequestOptions,
           successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
             mobileNumber.trim()
           )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
@@ -4391,7 +4427,7 @@ function PaymentScreen({
     } finally {
       setProcessing(false);
     }
-  }, [agreed, discount, mobileNumber, onPaid]);
+  }, [agreed, discount, finalAmount, mobileNumber, onPaid]);
 
   const canPay = agreed && !processing && !validatingCode;
   return (

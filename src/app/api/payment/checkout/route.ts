@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 
 const DEFAULT_AIRWALLEX_BASE = "https://api.airwallex.com";
+const DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = "zh-HK";
 const PRICE_HKD = 99;
 const AIRWALLEX_METHOD_MAP: Record<string, string[]> = {
   all: ["card", "applepay", "googlepay", "alipayhk", "wechatpay"],
@@ -326,6 +327,14 @@ async function getAirwallexAccessToken(airwallexBase: string) {
 
 function getAirwallexMethods(paymentMethod: string): string[] {
   return AIRWALLEX_METHOD_MAP[paymentMethod] ?? AIRWALLEX_METHOD_MAP.all;
+}
+
+function getAirwallexCheckoutLocale(): string {
+  const locale =
+    process.env.AIRWALLEX_CHECKOUT_LOCALE?.trim() ||
+    process.env.NEXT_PUBLIC_AIRWALLEX_CHECKOUT_LOCALE?.trim() ||
+    "";
+  return locale || DEFAULT_AIRWALLEX_CHECKOUT_LOCALE;
 }
 
 function normalizeDomainValue(value: string | null | undefined): string | null {
@@ -709,6 +718,7 @@ export async function POST(req: Request) {
 
   const finalAmount = Math.round(PRICE_HKD * (1 - discountPercent / 100) * 100) / 100;
   const requestedMethods = getAirwallexMethods(paymentMethod);
+  const checkoutLocale = getAirwallexCheckoutLocale();
   const merchantOrderId = `GU-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const requestId = crypto.randomUUID();
 
@@ -838,6 +848,10 @@ export async function POST(req: Request) {
     const resolvedIntentId = createIntentPayload.id;
     const checkoutPayload = {
       flow: "intent_recurring",
+      mode: "recurring",
+      submitType: "subscribe",
+      locale: checkoutLocale,
+      customer_id: customerId,
       recurring: {
         next_triggered_by: "merchant",
         merchant_trigger_reason: "scheduled",
@@ -880,7 +894,10 @@ export async function POST(req: Request) {
       methods: requestedMethods,
       currency: "HKD",
       country_code: "HK",
+      final_amount_hkd: finalAmount,
+      airwallex_customer_id: customerId,
       airwallex_env: airwallexEnv,
+      airwallex_locale: checkoutLocale,
       applepay_setup_warning: applePaySetupWarning,
     });
   } catch (err) {
