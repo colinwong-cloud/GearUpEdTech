@@ -940,7 +940,6 @@ export async function POST(req: Request) {
           payment_method: paymentMethod,
           discount_code: discountCodeApplied,
           applepay_setup_warning: applePaySetupWarning,
-          available_methods_hk_hkd_recurring: methodDiagnostics.availableMethods,
           recurring_type: "monthly",
           recurring_enabled: true,
         },
