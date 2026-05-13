@@ -33,7 +33,9 @@ const appleTouchIcon = getLoginMarketingLogoUrl();
 const siteIcon = getSiteIconUrl();
 const DEFAULT_PUBLIC_SITE_URL = "https://www.gearupquiz.com";
 const metadataBase = (() => {
-  const configured = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
+  const configured =
+    process.env.NEXT_PUBLIC_SHARE_BASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
   if (configured) {
     try {
       return new URL(configured);
@@ -45,7 +47,7 @@ const metadataBase = (() => {
 })();
 const primaryShareImagePath = `${DEFAULT_PUBLIC_SITE_URL}/share/gearup-share-banner.jpg?v=20260508b`;
 const shareMessage =
-  "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
+  "免費中英數練習平台，AI 精準補漏，貼合香港課程。";
 
 export const metadata: Metadata = {
   metadataBase,

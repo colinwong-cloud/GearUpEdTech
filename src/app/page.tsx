@@ -51,8 +51,9 @@ const WECHAT_SDK_SRC = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
 const DEFAULT_SHARE_BASE_URL = "https://www.gearupquiz.com";
 const DEFAULT_SHARE_TITLE = "增分寶 GearUp Quiz";
 const DEFAULT_SHARE_DESCRIPTION =
-  "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
+  "免費中英數練習平台，AI 精準補漏，貼合香港課程。";
 const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
+const DEFAULT_SHARE_CAMPAIGN = "parent_share";
 const WHATSAPP_ICON_PATH = "/social/whatsapp.svg";
 const WECHAT_ICON_PATH = "/social/wechat.svg";
 
@@ -104,9 +105,7 @@ declare global {
 }
 
 function getPublicShareBaseUrl(): string {
-  const explicit =
-    (process.env.NEXT_PUBLIC_SHARE_BASE_URL || "").trim() ||
-    (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim();
+  const explicit = (process.env.NEXT_PUBLIC_SHARE_BASE_URL || "").trim();
   if (!explicit) return DEFAULT_SHARE_BASE_URL;
   try {
     return new URL(explicit).origin;
@@ -130,11 +129,14 @@ function getShareImageAbsoluteUrl(): string {
 }
 
 function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
-  if (channel === "whatsapp" || channel === "wechat") {
-    // Keep raw URL to maximize rich-card preview reliability in messaging apps.
-    return getPublicShareBaseUrl();
-  }
-  return getPublicShareBaseUrl();
+  const url = new URL(getPublicShareBaseUrl());
+  url.searchParams.set("utm_source", channel);
+  url.searchParams.set("utm_medium", "social");
+  url.searchParams.set(
+    "utm_campaign",
+    (process.env.NEXT_PUBLIC_SHARE_CAMPAIGN || "").trim() || DEFAULT_SHARE_CAMPAIGN
+  );
+  return url.toString();
 }
 
 function isWeChatUserAgent(ua: string): boolean {
@@ -1528,9 +1530,12 @@ function LoginMobileScreen({
       share_title: shareTitle,
       share_description: shareDescription,
       share_image: shareImageUrl,
+      share_base_url: getPublicShareBaseUrl(),
+      whatsapp_share_url: whatsappShareUrl,
+      wechat_share_url: wechatShareUrl,
       source_screen: "login_mobile",
     }),
-    [shareTitle, shareDescription, shareImageUrl]
+    [shareTitle, shareDescription, shareImageUrl, whatsappShareUrl, wechatShareUrl]
   );
 
   useEffect(() => {
@@ -1823,7 +1828,7 @@ function LoginMobileScreen({
             )}
           </div>
           {showWechatOverlay && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 pt-16">
               <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-200 text-center">
                 <p className="text-base font-semibold text-gray-900">準備前往 WeChat</p>
                 <p className="mt-2 text-sm leading-6 text-gray-600">
