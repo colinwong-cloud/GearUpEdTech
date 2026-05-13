@@ -75,6 +75,9 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-05 | **Admin 折扣碼使用摘要**：`實付總額 / 原價總額 / 折扣總額` 改為僅統計 `status = paid` 訂單，避免把未付款紀錄算入金額。 |
 | 2026-05 | **家長端 UI 微調（已上線）**：① 登入頁新增宣傳句並套用較活潑字型；② 練習結果頁「小香蕉圖示」改為 banner（可用 `NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL` 覆蓋，預設走 Supabase Storage）；③ 身份選擇頁新增客服入口：月費家長顯示 WhatsApp `wa.me/85252861715?text=客戶服務查詢`、免費家長顯示 `cs@hkedutech.com`；④ 家長頁面客服電郵統一為 `cs@hkedutech.com`；⑤ 免費家長升級文案更新。 |
 | 2026-05 | **Airwallex 付款方式修正（Apple Pay / Google Pay / AlipayHK / WeChat Pay / Card）**：修正 `payment_intents/create` metadata 格式錯誤、HPP locale 設為 `zh-HK`、補齊 Apple Pay HPP 參數，並調整方法清單策略，最終確認付款頁可同時顯示 5 大方式。新增方法防呆：`src/lib/airwallex-checkout-methods.ts` + 單元測試 `src/lib/airwallex-checkout-methods.test.ts`，避免後續改動誤刪 `all` 模式必要方法。 |
+| 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
+| 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
+| 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
 
 ## Handover note — 2026-05-08 (for next working session)
 
@@ -109,6 +112,24 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   1. 付款頁是否穩定顯示 5 種方法（iPhone Safari / iPhone Chrome / Desktop Chrome 各一次）。
   2. `npm test` 是否包含新防呆測試通過。
   3. 用無折扣與有折扣各測 1 單，確認 callback 與升級流程不回歸。
+
+## Handover note — 2026-05-13 (AI-only + paid summary + balance history hotfix)
+
+- `main` 已包含今日三組更新（latest commit：`22d3d5a`）。
+- 今日已完成並部署：
+  1. **Strict AI-only 出題**：只抽 `questions.source = 'AI'`；若題庫不足會阻擋開題並提示。
+  2. **Admin 付款狀態查詢頁**：新增「月費家長月度明細」區塊（月份選擇、家長明細表、CSV 匯出）。
+  3. **家長題目餘額交易紀錄**：修正 paid tier 練習紀錄未入帳問題，交易可在家長「題目餘額」看到。
+
+- **明早第一步（必做）**：在 Supabase SQL Editor 執行  
+  `supabase_fix_paid_tier_balance_history_logging.sql`  
+  > 注意：本檔已修正 `balance_after` NOT NULL 問題，paid tier 以 `-1` 代表 Unlimited。
+
+- 建議明日 smoke test：
+  1. 用 paid 家長（例：`91917838`）做中文 + 數學練習，各作答 2–3 題，確認「題目餘額」當月紀錄有更新（描述 `當日合計扣除`）。
+  2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
+  3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
+  4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
 
 ## Setup
 
