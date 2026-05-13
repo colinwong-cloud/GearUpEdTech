@@ -337,6 +337,23 @@ type AppScreen =
   | "forgot_password"
   | "payment";
 
+const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
+  "login_role",
+  "login_student",
+  "subject_select",
+  "question_count_select",
+  "quiz",
+  "results",
+  "parent_dashboard",
+  "parent_session_detail",
+  "account_menu",
+  "balance_view",
+  "profile_edit",
+  "add_student_form",
+  "parent_student_select",
+  "payment",
+]);
+
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
 interface SessionSummary {
@@ -640,6 +657,16 @@ export default function QuizApp() {
     paid_until: null,
     tier_label: "免費用戶",
   });
+  const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
+
+  useEffect(() => {
+    if (!AUTH_REQUIRED_SCREENS.has(screen)) return;
+    if (hasLoginContext) return;
+    setSelectedStudent(null);
+    setSelectedSubject(null);
+    setBalance(null);
+    setScreen("login_mobile");
+  }, [hasLoginContext, screen]);
 
   const refreshParentTierStatus = useCallback(async () => {
     const mobile = mobileNumber.trim();
@@ -1283,7 +1310,7 @@ export default function QuizApp() {
     return (
       <ForgotPasswordScreen
         mobileNumber={mobileNumber}
-        onBack={() => setScreen("login_role")}
+        onBack={() => setScreen("login_mobile")}
       />
     );
   }
