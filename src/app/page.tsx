@@ -47,6 +47,12 @@ const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
 const MONTHLY_PAID_PRICE_HKD = 99;
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
+const WECHAT_SDK_SRC = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
+const DEFAULT_SHARE_BASE_URL = "https://www.gearupquiz.com";
+const DEFAULT_SHARE_TITLE = "增分寶 GearUp Quiz";
+const DEFAULT_SHARE_DESCRIPTION =
+  "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
+const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -62,6 +68,28 @@ type AirwallexSdkLike = {
   redirectToCheckout?: (props: Record<string, unknown>) => void;
 };
 
+type WechatSdkConfigResponse = {
+  appId: string;
+  timestamp: number;
+  nonceStr: string;
+  signature: string;
+};
+
+type WechatSdkLike = {
+  config: (options: {
+    debug?: boolean;
+    appId: string;
+    timestamp: number;
+    nonceStr: string;
+    signature: string;
+    jsApiList: string[];
+  }) => void;
+  ready: (callback: () => void) => void;
+  error: (callback: (error: unknown) => void) => void;
+  updateAppMessageShareData?: (payload: Record<string, unknown>) => void;
+  updateTimelineShareData?: (payload: Record<string, unknown>) => void;
+};
+
 declare global {
   interface Window {
     Airwallex?: AirwallexSdkLike;
@@ -69,6 +97,99 @@ declare global {
     _AirwallexSDKs?: {
       payment?: AirwallexSdkLike;
     };
+    wx?: WechatSdkLike;
+  }
+}
+
+function getPublicShareBaseUrl(): string {
+  const explicit =
+    (process.env.NEXT_PUBLIC_SHARE_BASE_URL || "").trim() ||
+    (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim();
+  if (!explicit) return DEFAULT_SHARE_BASE_URL;
+  try {
+    return new URL(explicit).origin;
+  } catch {
+    return DEFAULT_SHARE_BASE_URL;
+  }
+}
+
+function getShareTitle(): string {
+  return (process.env.NEXT_PUBLIC_SHARE_TITLE || "").trim() || DEFAULT_SHARE_TITLE;
+}
+
+function getShareDescription(): string {
+  return (process.env.NEXT_PUBLIC_SHARE_DESCRIPTION || "").trim() || DEFAULT_SHARE_DESCRIPTION;
+}
+
+function getShareImageAbsoluteUrl(): string {
+  const explicit = (process.env.NEXT_PUBLIC_SHARE_BANNER_URL || "").trim();
+  if (explicit) return explicit;
+  return `${getPublicShareBaseUrl()}${DEFAULT_SHARE_BANNER}`;
+}
+
+function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
+  const url = new URL(getPublicShareBaseUrl());
+  url.searchParams.set("utm_source", channel);
+  url.searchParams.set("utm_medium", "social");
+  url.searchParams.set("utm_campaign", "parent_share");
+  return url.toString();
+}
+
+function isWeChatUserAgent(ua: string): boolean {
+  return /MicroMessenger/i.test(ua);
+}
+
+async function copyTextToClipboard(value: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+  try {
+    if (typeof document === "undefined") return false;
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "true");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(input);
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
+async function captureShareEvent(payload: {
+  channel: "whatsapp" | "wechat";
+  action: string;
+  status: string;
+  shareUrl: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/share-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channel: payload.channel,
+        action: payload.action,
+        status: payload.status,
+        share_url: payload.shareUrl,
+        page_path: window.location.pathname || "/",
+        is_wechat_ua: isWeChatUserAgent(navigator.userAgent || ""),
+        metadata: payload.metadata || {},
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // Share logging should never block user flow.
   }
 }
 
@@ -1386,11 +1507,183 @@ function LoginMobileScreen({
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pin.trim());
   const canLogin = mobileNumber.trim().length > 0 && pinValid;
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [wechatSdkLoaded, setWechatSdkLoaded] = useState(() =>
+    typeof window !== "undefined" ? Boolean(window.wx) : false
+  );
+  const isWeChatUa = useMemo(
+    () => (typeof navigator !== "undefined" ? isWeChatUserAgent(navigator.userAgent || "") : false),
+    []
+  );
+  const shareTitle = useMemo(() => getShareTitle(), []);
+  const shareDescription = useMemo(() => getShareDescription(), []);
+  const shareImageUrl = useMemo(() => getShareImageAbsoluteUrl(), []);
+  const whatsappShareUrl = useMemo(() => buildTrackedShareUrl("whatsapp"), []);
+  const wechatShareUrl = useMemo(() => buildTrackedShareUrl("wechat"), []);
+  const shareMetadata = useMemo(
+    () => ({
+      share_title: shareTitle,
+      share_description: shareDescription,
+      share_image: shareImageUrl,
+      source_screen: "login_mobile",
+    }),
+    [shareTitle, shareDescription, shareImageUrl]
+  );
+
+  useEffect(() => {
+    if (!isWeChatUa || !wechatSdkLoaded || typeof window === "undefined") return;
+    const wx = window.wx;
+    if (!wx) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const currentUrl = window.location.href.split("#")[0];
+        const response = await fetch("/api/wechat/share-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: currentUrl }),
+        });
+        if (!response.ok) {
+          throw new Error("WeChat share config unavailable");
+        }
+        const config = (await response.json()) as WechatSdkConfigResponse;
+        wx.config({
+          debug: false,
+          appId: config.appId,
+          timestamp: config.timestamp,
+          nonceStr: config.nonceStr,
+          signature: config.signature,
+          jsApiList: ["updateAppMessageShareData", "updateTimelineShareData"],
+        });
+        wx.ready(() => {
+          if (cancelled) return;
+          const sharePayload = {
+            title: shareTitle,
+            desc: shareDescription,
+            link: wechatShareUrl,
+            imgUrl: shareImageUrl,
+          };
+          if (typeof wx.updateAppMessageShareData === "function") {
+            wx.updateAppMessageShareData(sharePayload);
+          }
+          if (typeof wx.updateTimelineShareData === "function") {
+            wx.updateTimelineShareData({
+              title: shareTitle,
+              link: wechatShareUrl,
+              imgUrl: shareImageUrl,
+            });
+          }
+          void captureShareEvent({
+            channel: "wechat",
+            action: "sdk_config",
+            status: "ready",
+            shareUrl: wechatShareUrl,
+            metadata: shareMetadata,
+          });
+        });
+        wx.error((error) => {
+          if (cancelled) return;
+          void captureShareEvent({
+            channel: "wechat",
+            action: "sdk_config",
+            status: "error",
+            shareUrl: wechatShareUrl,
+            metadata: { ...shareMetadata, error: String(error) },
+          });
+        });
+      } catch (error) {
+        if (cancelled) return;
+        void captureShareEvent({
+          channel: "wechat",
+          action: "sdk_config",
+          status: "unavailable",
+          shareUrl: wechatShareUrl,
+          metadata: { ...shareMetadata, error: String(error) },
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isWeChatUa,
+    wechatSdkLoaded,
+    shareTitle,
+    shareDescription,
+    wechatShareUrl,
+    shareImageUrl,
+    shareMetadata,
+  ]);
+
+  const handleShareWhatsApp = useCallback(() => {
+    const shareText = `${shareTitle}\n${whatsappShareUrl}`;
+    const encoded = encodeURIComponent(shareText);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(
+      typeof navigator !== "undefined" ? navigator.userAgent : ""
+    );
+    void captureShareEvent({
+      channel: "whatsapp",
+      action: "button_click",
+      status: isMobile ? "native_attempt" : "web_open",
+      shareUrl: whatsappShareUrl,
+      metadata: shareMetadata,
+    });
+
+    if (!isMobile) {
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setShareNotice("正在打開 WhatsApp 分享...");
+    window.location.href = `whatsapp://send?text=${encoded}`;
+    window.setTimeout(() => {
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+    }, 900);
+  }, [shareTitle, whatsappShareUrl]);
+
+  const handleShareWeChat = useCallback(async () => {
+    if (isWeChatUa) {
+      setShareNotice("請按右上角「…」再選擇「分享給朋友」或「分享到朋友圈」。");
+      void captureShareEvent({
+        channel: "wechat",
+        action: "button_click",
+        status: "in_wechat_hint",
+        shareUrl: wechatShareUrl,
+        metadata: shareMetadata,
+      });
+      return;
+    }
+
+    const copied = await copyTextToClipboard(wechatShareUrl);
+    setShareNotice(
+      copied
+        ? "已複製分享連結，正在嘗試打開 WeChat。若未自動打開，請到 WeChat 貼上分享。"
+        : "正在嘗試打開 WeChat；若未自動打開，請複製網址到 WeChat 分享。"
+    );
+    void captureShareEvent({
+      channel: "wechat",
+      action: "button_click",
+      status: copied ? "native_attempt_with_copy" : "native_attempt",
+      shareUrl: wechatShareUrl,
+      metadata: { ...shareMetadata, copied_to_clipboard: copied },
+    });
+    window.location.href = "weixin://dl/chat";
+  }, [isWeChatUa, wechatShareUrl, shareMetadata]);
+
   return (
     <div
       className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
+      {isWeChatUa && (
+        <Script
+          src={WECHAT_SDK_SRC}
+          strategy="afterInteractive"
+          onLoad={() => setWechatSdkLoaded(typeof window !== "undefined" && Boolean(window.wx))}
+          onReady={() => setWechatSdkLoaded(typeof window !== "undefined" && Boolean(window.wx))}
+          onError={() => setWechatSdkLoaded(false)}
+        />
+      )}
       <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-28">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
@@ -1484,6 +1777,35 @@ function LoginMobileScreen({
             <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
               cs@hkedutech.com
             </a>
+          </div>
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
+            <p className="text-sm font-semibold text-gray-800">分享增分寶給其他家長</p>
+            <p className="mt-1 text-xs text-gray-500">
+              一鍵分享到 WhatsApp 或 WeChat，讓朋友輕鬆開始使用。
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
+              >
+                <span aria-hidden>🟢</span>
+                WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={handleShareWeChat}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+              >
+                <span aria-hidden>💬</span>
+                WeChat
+              </button>
+            </div>
+            {shareNotice && (
+              <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+                {shareNotice}
+              </p>
+            )}
           </div>
           <div
             className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
