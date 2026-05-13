@@ -3528,26 +3528,40 @@ function ProfileEditScreen({
 }
 
 function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [mobile, setMobile] = useState(mobileNumber.trim());
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
+  const mobileValid = /^\d{8}$/.test(mobile.trim());
+  const emailValid = email.trim().length > 0;
+  const canSubmit = mobileValid && emailValid && !loading;
 
   const handleSubmit = async () => {
-    if (!email.trim()) return;
+    if (!mobileValid) {
+      setMsg("請先輸入 8 位電話號碼。");
+      return;
+    }
+    if (!emailValid) return;
     setLoading(true);
     setMsg("");
     try {
       const res = await fetch("/api/send-reset-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), mobile: mobileNumber.trim() }),
+        body: JSON.stringify({ email: email.trim(), mobile: mobile.trim() }),
       });
       const data = await res.json();
       if (data.found === false) {
         setMsg("此電郵地址與你的帳戶記錄不符，請重新輸入。");
       } else if (data.sent) {
         setSent(true);
+      } else if (!res.ok && data.code === "missing_mobile") {
+        setMsg("請先輸入電話號碼。");
+      } else if (!res.ok && data.code === "missing_email") {
+        setMsg("請輸入註冊電郵地址。");
+      } else if (!res.ok && data.code === "email_service_not_configured") {
+        setMsg("系統暫時未啟用電郵服務，請稍後再試或聯絡客服。");
       } else {
         setMsg(data.detail ? `發送失敗：${data.detail}` : "發送失敗，請重試。");
       }
@@ -3585,9 +3599,24 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">忘記密碼</h1>
-          <p className="mt-2 text-gray-500">請輸入你註冊時使用的電郵地址</p>
+          <p className="mt-2 text-gray-500">請輸入你註冊時使用的電話號碼及電郵地址</p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
+          <input
+            type="tel"
+            value={mobile}
+            onChange={(e) => {
+              setMobile(e.target.value.replace(/\D/g, "").slice(0, 8));
+              setMsg("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="輸入電話號碼（8位）"
+            className={`w-full p-4 rounded-xl border-2 text-base outline-none transition-colors ${
+              mobile.length > 0 && !mobileValid
+                ? "border-red-300"
+                : "border-gray-200 focus:border-indigo-400"
+            }`}
+          />
           <input
             type="email"
             value={email}
@@ -3599,9 +3628,11 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
           {msg && <p className="text-sm text-red-500">{msg}</p>}
           <button
             onClick={handleSubmit}
-            disabled={!email.trim() || loading}
+            disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-              email.trim() && !loading ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              canSubmit
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             {loading ? "發送中..." : "發送重設連結"}

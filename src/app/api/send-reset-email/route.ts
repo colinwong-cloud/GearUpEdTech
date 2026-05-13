@@ -49,13 +49,18 @@ function buildResetEmailHtml(resetUrl: string, parentName: string | null): strin
 export async function POST(req: NextRequest) {
   try {
     const { email, mobile } = await req.json();
-    if (!email || !mobile) {
-      return NextResponse.json({ error: "Missing email or mobile" }, { status: 400 });
+    const emailValue = String(email ?? "").trim();
+    const mobileValue = String(mobile ?? "").trim();
+    if (!mobileValue) {
+      return NextResponse.json({ error: "Missing mobile", code: "missing_mobile" }, { status: 400 });
+    }
+    if (!emailValue) {
+      return NextResponse.json({ error: "Missing email", code: "missing_email" }, { status: 400 });
     }
 
     const { data, error: rpcErr } = await supabase.rpc("create_password_reset", {
-      p_mobile: mobile.trim(),
-      p_email: email.trim(),
+      p_mobile: mobileValue,
+      p_email: emailValue,
     });
     if (rpcErr) {
       console.error("Reset RPC error:", rpcErr);
@@ -68,7 +73,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Email service not configured", code: "email_service_not_configured" },
+        { status: 500 }
+      );
     }
 
     const host = req.headers.get("host") || "q.hkedutech.com";
@@ -79,14 +87,17 @@ export async function POST(req: NextRequest) {
 
     const { error: sendErr } = await getResend().emails.send({
       from: "GearUp Quiz <noreply@updates.hkedutech.com>",
-      to: email.trim(),
+      to: emailValue,
       subject: "GearUp Quiz 密碼重設",
       html,
     });
 
     if (sendErr) {
       console.error("Resend error:", sendErr);
-      return NextResponse.json({ error: "Failed to send email", detail: sendErr.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to send email", detail: sendErr.message, code: "email_send_failed" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ found: true, sent: true });
