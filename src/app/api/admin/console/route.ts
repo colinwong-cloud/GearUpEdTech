@@ -5,6 +5,11 @@ import {
   getAirwallexAccessToken,
   getAirwallexBaseUrl,
 } from "@/lib/server/payment-finalize";
+import {
+  getCurrentHktMonthKey,
+  getHktMonthRangeIso,
+  isValidMonthKey,
+} from "@/lib/admin-paid-summary";
 
 type AdminAction =
   | "search_parent"
@@ -21,6 +26,7 @@ type AdminAction =
   | "discount_code_delete"
   | "discount_code_usage_summary"
   | "payment_status_enquiry"
+  | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
   | "payment_refund_last_confirm";
@@ -67,6 +73,14 @@ function toMonthKey(rawIso: string | null): string | null {
 function toSafeNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
 }
 
 function normalizeMethodToken(value: string | null | undefined): string | null {
@@ -187,6 +201,7 @@ type PaidOrderRow = {
   id: string;
   parent_id: string | null;
   mobile_number: string;
+  merchant_order_id?: string | null;
   status: string;
   paid_at: string | null;
   created_at: string;
@@ -924,6 +939,193 @@ export async function POST(req: NextRequest) {
                   latest_refund: latestRefund,
                 }
               : null,
+          },
+        });
+      }
+      case "payment_monthly_paid_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let paidOrders: PaidOrderRow[] = [];
+        const richOrdersRes = await admin
+          .from("parent_payment_orders")
+          .select(
+            "id,parent_id,mobile_number,merchant_order_id,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
+          )
+          .eq("status", "paid")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(20000);
+        if (richOrdersRes.error) {
+          const ordersErrMsg = richOrdersRes.error.message || "";
+          if (
+            /payment_method_label|payment_method_type|payment_method_brand|is_recurring_payment|airwallex_payment_attempt_id|merchant_order_id/i.test(
+              ordersErrMsg
+            )
+          ) {
+            const fallbackOrdersRes = await admin
+              .from("parent_payment_orders")
+              .select(
+                "id,parent_id,mobile_number,merchant_order_id,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+              )
+              .eq("status", "paid")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .not("mobile_number", "like", "9999%")
+              .order("paid_at", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(20000);
+            if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
+            paidOrders = (fallbackOrdersRes.data as PaidOrderRow[] | null) ?? [];
+          } else {
+            throw richOrdersRes.error;
+          }
+        } else {
+          paidOrders = (richOrdersRes.data as PaidOrderRow[] | null) ?? [];
+        }
+
+        const paidMobiles = Array.from(
+          new Set(paidOrders.map((row) => String(row.mobile_number || "").trim()).filter(Boolean))
+        );
+        const parentByMobile = new Map<
+          string,
+          { id: string; mobile_number: string; parent_name: string | null; paid_started_at: string | null }
+        >();
+        for (const chunk of chunkArray(paidMobiles, 500)) {
+          const { data: parentRows, error: parentErr } = await admin
+            .from("parents")
+            .select("id,mobile_number,parent_name,paid_started_at")
+            .in("mobile_number", chunk)
+            .not("mobile_number", "like", "9999%");
+          if (parentErr) throw parentErr;
+          for (const row of parentRows ?? []) {
+            parentByMobile.set(String(row.mobile_number), {
+              id: String(row.id),
+              mobile_number: String(row.mobile_number),
+              parent_name:
+                row.parent_name === null || row.parent_name === undefined
+                  ? null
+                  : String(row.parent_name),
+              paid_started_at: normalizeIsoDateTime(row.paid_started_at),
+            });
+          }
+        }
+
+        const { data: paidStartedRows, error: paidStartedErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,paid_started_at")
+          .not("paid_started_at", "is", null)
+          .gte("paid_started_at", startIso)
+          .lt("paid_started_at", endIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_started_at", { ascending: false })
+          .limit(10000);
+        if (paidStartedErr) throw paidStartedErr;
+
+        const ordersByMobile = new Map<string, PaidOrderRow[]>();
+        for (const order of paidOrders) {
+          const mobile = String(order.mobile_number || "").trim();
+          if (!mobile) continue;
+          const group = ordersByMobile.get(mobile) ?? [];
+          group.push(order);
+          ordersByMobile.set(mobile, group);
+        }
+        for (const orders of ordersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime =
+              normalizeIsoDateTime(a.paid_at) || normalizeIsoDateTime(a.created_at) || "";
+            const bTime =
+              normalizeIsoDateTime(b.paid_at) || normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+
+        const parentRows = (paidStartedRows ?? []).map((row) => {
+          const mobile = String(row.mobile_number || "").trim();
+          const orders = ordersByMobile.get(mobile) ?? [];
+          const monthlyAmount = Math.round(
+            orders.reduce((sum, item) => sum + toSafeNumber(item.final_amount_hkd), 0) * 100
+          ) / 100;
+          const latestOrder = orders[0] ?? null;
+          const latestPaymentMethod = latestOrder
+            ? formatPaymentMethodDisplay({
+                methodLabel: latestOrder.payment_method_label ?? null,
+                methodType: latestOrder.payment_method_type ?? null,
+                methodBrand: latestOrder.payment_method_brand ?? null,
+                fallback: latestOrder.payment_method ?? null,
+              })
+            : null;
+
+          return {
+            parent_id: String(row.id),
+            mobile_number: mobile,
+            parent_name:
+              row.parent_name === null || row.parent_name === undefined
+                ? null
+                : String(row.parent_name),
+            paid_started_at: normalizeIsoDateTime(row.paid_started_at),
+            monthly_paid_count: orders.length,
+            monthly_paid_amount_hkd: monthlyAmount,
+            latest_paid_at: latestOrder
+              ? normalizeIsoDateTime(latestOrder.paid_at) ||
+                normalizeIsoDateTime(latestOrder.created_at)
+              : null,
+            latest_payment_method: latestPaymentMethod,
+          };
+        });
+
+        const records = paidOrders.map((order) => {
+          const mobile = String(order.mobile_number || "").trim();
+          const parentMeta = parentByMobile.get(mobile);
+          const paymentMethod = formatPaymentMethodDisplay({
+            methodLabel: order.payment_method_label ?? null,
+            methodType: order.payment_method_type ?? null,
+            methodBrand: order.payment_method_brand ?? null,
+            fallback: order.payment_method ?? null,
+          });
+
+          return {
+            id: String(order.id),
+            mobile_number: mobile,
+            parent_name: parentMeta?.parent_name ?? null,
+            merchant_order_id: String(order.merchant_order_id ?? ""),
+            status: String(order.status ?? ""),
+            paid_at:
+              normalizeIsoDateTime(order.paid_at) || normalizeIsoDateTime(order.created_at),
+            created_at: normalizeIsoDateTime(order.created_at) || "",
+            final_amount_hkd: toSafeNumber(order.final_amount_hkd),
+            payment_method: paymentMethod,
+            is_recurring_payment: Boolean(order.is_recurring_payment),
+            airwallex_payment_intent_id: readString(order.airwallex_payment_intent_id),
+            airwallex_payment_attempt_id: readString(order.airwallex_payment_attempt_id),
+          };
+        });
+
+        const totalPaidAmountHkd = Math.round(
+          records.reduce((sum, row) => sum + toSafeNumber(row.final_amount_hkd), 0) * 100
+        ) / 100;
+        const totalNewPaidAmountHkd = Math.round(
+          parentRows.reduce((sum, row) => sum + toSafeNumber(row.monthly_paid_amount_hkd), 0) * 100
+        ) / 100;
+
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            totals: {
+              new_paid_parents: parentRows.length,
+              new_paid_parents_amount_hkd: totalNewPaidAmountHkd,
+              paid_transactions: records.length,
+              paid_amount_hkd: totalPaidAmountHkd,
+            },
+            parents: parentRows,
+            records,
           },
         });
       }

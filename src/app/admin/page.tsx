@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
+import {
+  buildPaidTransactionsCsv,
+  getCurrentHktMonthKey,
+  type PaidTransactionAuditRow,
+} from "@/lib/admin-paid-summary";
 
 type AdminConsoleAction =
   | "search_parent"
@@ -18,6 +23,7 @@ type AdminConsoleAction =
   | "discount_code_delete"
   | "discount_code_usage_summary"
   | "payment_status_enquiry"
+  | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
   | "payment_refund_last_confirm";
@@ -201,6 +207,29 @@ interface PaymentRefundConfirmResult {
   refund_amount_hkd: number;
   parent_tier: "free" | "paid";
   recurring_status: string;
+}
+
+interface PaymentMonthlyPaidParentRow {
+  parent_id: string;
+  mobile_number: string;
+  parent_name: string | null;
+  paid_started_at: string | null;
+  monthly_paid_count: number;
+  monthly_paid_amount_hkd: number;
+  latest_paid_at: string | null;
+  latest_payment_method: string | null;
+}
+
+interface PaymentMonthlyPaidSummaryResult {
+  month: string;
+  totals: {
+    new_paid_parents: number;
+    new_paid_parents_amount_hkd: number;
+    paid_transactions: number;
+    paid_amount_hkd: number;
+  };
+  parents: PaymentMonthlyPaidParentRow[];
+  records: PaidTransactionAuditRow[];
 }
 
 export default function AdminPage() {
@@ -826,6 +855,34 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
   const [refundPreview, setRefundPreview] = useState<PaymentRefundPreviewResult | null>(null);
   const [showRefundConfirm, setShowRefundConfirm] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+  const [summaryMonth, setSummaryMonth] = useState(() => getCurrentHktMonthKey());
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryMsg, setSummaryMsg] = useState("");
+  const [monthlySummary, setMonthlySummary] = useState<PaymentMonthlyPaidSummaryResult | null>(null);
+
+  const loadMonthlyPaidSummary = useCallback(
+    async (month: string) => {
+      setSummaryLoading(true);
+      setSummaryMsg("");
+      try {
+        const data = await adminConsoleRequest<PaymentMonthlyPaidSummaryResult>(
+          "payment_monthly_paid_summary",
+          { month },
+          sessionToken
+        );
+        setMonthlySummary(data);
+      } catch (err) {
+        setSummaryMsg(err instanceof Error ? err.message : "月費摘要載入失敗");
+      } finally {
+        setSummaryLoading(false);
+      }
+    },
+    [sessionToken]
+  );
+
+  useEffect(() => {
+    void loadMonthlyPaidSummary(summaryMonth);
+  }, [loadMonthlyPaidSummary, summaryMonth]);
 
   const handleSearch = async () => {
     if (!mobile.trim()) {
@@ -951,6 +1008,23 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
 
   const paymentRows = result?.payment?.billed_last_12_months_by_month ?? [];
   const latestRefundStatus = result?.payment?.latest_refund?.status || null;
+
+  const handleExportMonthlyPaidCsv = () => {
+    if (!monthlySummary || monthlySummary.records.length === 0) {
+      setSummaryMsg("目前沒有可匯出的付款記錄");
+      return;
+    }
+    const csv = buildPaidTransactionsCsv(monthlySummary.records);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paid-transactions-${monthlySummary.month}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-4">
@@ -1161,6 +1235,100 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
           )}
         </div>
       )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-gray-800">月費家長月度明細</h3>
+            <p className="text-xs text-gray-500">
+              顯示所選月份「成為月費」家長數及該月份付款明細，並可下載付款審計 CSV。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="month"
+              value={summaryMonth}
+              onChange={(e) => setSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadMonthlyPaidSummary(summaryMonth)}
+              disabled={summaryLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {summaryLoading ? "載入中..." : "重新整理"}
+            </button>
+            <button
+              onClick={handleExportMonthlyPaidCsv}
+              disabled={summaryLoading || !monthlySummary || monthlySummary.records.length === 0}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            >
+              下載 CSV
+            </button>
+          </div>
+        </div>
+
+        {summaryMsg && <p className="text-sm text-red-500">{summaryMsg}</p>}
+
+        {monthlySummary && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">選定月份</p>
+                <p className="font-semibold text-gray-800">{monthlySummary.month}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">新增月費家長</p>
+                <p className="font-semibold text-indigo-700">{monthlySummary.totals.new_paid_parents}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">月費交易總筆數</p>
+                <p className="font-semibold text-indigo-700">{monthlySummary.totals.paid_transactions}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">月費已入帳總額 (HKD)</p>
+                <p className="font-semibold text-indigo-700">{formatHkdAmount(monthlySummary.totals.paid_amount_hkd)}</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">家長電話</th>
+                    <th className="py-2 pr-3">家長姓名</th>
+                    <th className="py-2 pr-3">成為月費時間</th>
+                    <th className="py-2 pr-3">本月付款次數</th>
+                    <th className="py-2 pr-3">本月付款金額 (HKD)</th>
+                    <th className="py-2 pr-3">最近付款方式</th>
+                    <th className="py-2 pr-3">最近付款時間</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlySummary.parents.map((row) => (
+                    <tr key={row.parent_id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3 font-mono">{row.mobile_number}</td>
+                      <td className="py-2 pr-3">{row.parent_name || "—"}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.paid_started_at)}</td>
+                      <td className="py-2 pr-3">{row.monthly_paid_count}</td>
+                      <td className="py-2 pr-3 font-mono">{formatHkdAmount(row.monthly_paid_amount_hkd)}</td>
+                      <td className="py-2 pr-3">{row.latest_payment_method || "—"}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.latest_paid_at)}</td>
+                    </tr>
+                  ))}
+                  {monthlySummary.parents.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-center text-gray-400">
+                        此月份沒有新增月費家長
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
