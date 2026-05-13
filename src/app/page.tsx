@@ -3863,7 +3863,11 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                         {isPositive ? "+" : ""}{tx.change_amount}
                       </td>
                       <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
-                        {tx.balance_after === null ? "—" : tx.balance_after}
+                        {tx.balance_after === null
+                          ? "—"
+                          : tx.balance_after < 0
+                            ? "Unlimited"
+                            : tx.balance_after}
                       </td>
                     </tr>
                   );

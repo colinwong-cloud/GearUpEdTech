@@ -2,7 +2,7 @@
 -- Result: parent "題目餘額" transaction list showed no new rows for paid users.
 --
 -- This patch keeps free-tier quota logic unchanged, and adds paid-tier usage logs
--- (description = 'PAID_TIER_USAGE', balance_after = NULL) for audit/history display.
+-- (description = 'PAID_TIER_USAGE', balance_after = -1 sentinel for Unlimited).
 
 CREATE OR REPLACE FUNCTION public.submit_answer(
   p_session_id UUID,
@@ -117,7 +117,7 @@ BEGIN
       v_student_id,
       CASE WHEN lower(trim(v_session_subject)) = 'math' THEN 'Math' ELSE trim(v_session_subject) END,
       -1,
-      NULL,
+      -1,
       'PAID_TIER_USAGE',
       p_session_id
     );
@@ -141,7 +141,7 @@ SELECT
   qs.student_id,
   CASE WHEN lower(trim(qs.subject)) = 'math' THEN 'Math' ELSE trim(qs.subject) END AS subject,
   -GREATEST(COALESCE(qs.questions_attempted, 0), 0) AS change_amount,
-  NULL AS balance_after,
+  -1 AS balance_after,
   'PAID_TIER_USAGE' AS description,
   qs.id AS session_id,
   qs.created_at

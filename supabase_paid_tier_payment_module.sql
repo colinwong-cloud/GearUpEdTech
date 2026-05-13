@@ -831,7 +831,7 @@ BEGIN
       v_student_id,
       CASE WHEN lower(trim(v_session_subject)) = 'math' THEN 'Math' ELSE trim(v_session_subject) END,
       -1,
-      NULL,
+      -1,
       'PAID_TIER_USAGE',
       p_session_id
     );
