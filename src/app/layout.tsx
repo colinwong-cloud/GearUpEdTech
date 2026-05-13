@@ -3,7 +3,6 @@ import { Geist, Geist_Mono, Baloo_2, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 import {
   getLoginMarketingLogoUrl,
-  getShareBannerUrl,
   getSiteIconUrl,
 } from "@/lib/login-marketing-assets";
 
@@ -44,12 +43,7 @@ const metadataBase = (() => {
   }
   return new URL(DEFAULT_PUBLIC_SITE_URL);
 })();
-const shareImagePath = (() => {
-  const explicit = getShareBannerUrl();
-  if (explicit) return explicit;
-  return `${metadataBase.origin}/share/gearup-share-banner.jpg?v=20260508b`;
-})();
-const shareImageType = /\.png(\?|$)/i.test(shareImagePath) ? "image/png" : "image/jpeg";
+const primaryShareImagePath = `${DEFAULT_PUBLIC_SITE_URL}/share/gearup-share-banner.jpg?v=20260508b`;
 const shareMessage =
   "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
 
@@ -68,11 +62,11 @@ export const metadata: Metadata = {
     locale: "zh_HK",
     images: [
       {
-        url: shareImagePath,
+        url: primaryShareImagePath,
         width: 1424,
         height: 752,
         alt: "增分寶 GearUp Quiz 平台橫幅",
-        type: shareImageType,
+        type: "image/jpeg",
       },
     ],
   },
@@ -80,7 +74,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "增分寶 GearUp Quiz",
     description: shareMessage,
-    images: [shareImagePath],
+    images: [primaryShareImagePath],
   },
   ...(siteIcon || appleTouchIcon
     ? {

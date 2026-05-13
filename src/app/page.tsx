@@ -53,6 +53,8 @@ const DEFAULT_SHARE_TITLE = "增分寶 GearUp Quiz";
 const DEFAULT_SHARE_DESCRIPTION =
   "增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI 個人化學習與香港本地課程掛鉤的平台。";
 const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
+const WHATSAPP_ICON_PATH = "/social/whatsapp.svg";
+const WECHAT_ICON_PATH = "/social/wechat.svg";
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -128,11 +130,11 @@ function getShareImageAbsoluteUrl(): string {
 }
 
 function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
-  const url = new URL(getPublicShareBaseUrl());
-  url.searchParams.set("utm_source", channel);
-  url.searchParams.set("utm_medium", "social");
-  url.searchParams.set("utm_campaign", "parent_share");
-  return url.toString();
+  if (channel === "whatsapp" || channel === "wechat") {
+    // Keep raw URL to maximize rich-card preview reliability in messaging apps.
+    return getPublicShareBaseUrl();
+  }
+  return getPublicShareBaseUrl();
 }
 
 function isWeChatUserAgent(ua: string): boolean {
@@ -1508,6 +1510,7 @@ function LoginMobileScreen({
   const pinValid = PIN_RE.test(pin.trim());
   const canLogin = mobileNumber.trim().length > 0 && pinValid;
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [showWechatOverlay, setShowWechatOverlay] = useState(false);
   const [wechatSdkLoaded, setWechatSdkLoaded] = useState(() =>
     typeof window !== "undefined" ? Boolean(window.wx) : false
   );
@@ -1616,7 +1619,7 @@ function LoginMobileScreen({
   ]);
 
   const handleShareWhatsApp = useCallback(() => {
-    const shareText = `${shareTitle}\n${whatsappShareUrl}`;
+    const shareText = whatsappShareUrl;
     const encoded = encodeURIComponent(shareText);
     const isMobile = /Android|iPhone|iPad|iPod/i.test(
       typeof navigator !== "undefined" ? navigator.userAgent : ""
@@ -1636,10 +1639,7 @@ function LoginMobileScreen({
 
     setShareNotice("正在打開 WhatsApp 分享...");
     window.location.href = `whatsapp://send?text=${encoded}`;
-    window.setTimeout(() => {
-      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
-    }, 900);
-  }, [shareTitle, whatsappShareUrl, shareMetadata]);
+  }, [whatsappShareUrl, shareMetadata]);
 
   const handleShareWeChat = useCallback(async () => {
     if (isWeChatUa) {
@@ -1654,6 +1654,19 @@ function LoginMobileScreen({
       return;
     }
 
+    setShareNotice(null);
+    setShowWechatOverlay(true);
+    void captureShareEvent({
+      channel: "wechat",
+      action: "button_click",
+      status: "overlay_shown",
+      shareUrl: wechatShareUrl,
+      metadata: shareMetadata,
+    });
+  }, [isWeChatUa, wechatShareUrl, shareMetadata]);
+
+  const handleProceedWechatShare = useCallback(async () => {
+    setShowWechatOverlay(false);
     const copied = await copyTextToClipboard(wechatShareUrl);
     setShareNotice(
       copied
@@ -1668,7 +1681,7 @@ function LoginMobileScreen({
       metadata: { ...shareMetadata, copied_to_clipboard: copied },
     });
     window.location.href = "weixin://dl/chat";
-  }, [isWeChatUa, wechatShareUrl, shareMetadata]);
+  }, [wechatShareUrl, shareMetadata]);
 
   return (
     <div
@@ -1789,7 +1802,8 @@ function LoginMobileScreen({
                 onClick={handleShareWhatsApp}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
               >
-                <span aria-hidden>🟢</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={WHATSAPP_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
                 WhatsApp
               </button>
               <button
@@ -1797,7 +1811,8 @@ function LoginMobileScreen({
                 onClick={handleShareWeChat}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
               >
-                <span aria-hidden>💬</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={WECHAT_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
                 WeChat
               </button>
             </div>
@@ -1807,6 +1822,23 @@ function LoginMobileScreen({
               </p>
             )}
           </div>
+          {showWechatOverlay && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+              <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-200 text-center">
+                <p className="text-base font-semibold text-gray-900">準備前往 WeChat</p>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  我們會帶你前往 WeChat，請在對話框貼上連結分享。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleProceedWechatShare}
+                  className="mt-4 w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+                >
+                  關閉並前往 WeChat
+                </button>
+              </div>
+            </div>
+          )}
           <div
             className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
             style={{ fontFamily: "var(--font-baloo2), var(--font-noto-sans-tc), system-ui, sans-serif" }}
