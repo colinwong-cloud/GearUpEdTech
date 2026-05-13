@@ -1639,7 +1639,7 @@ function LoginMobileScreen({
     window.setTimeout(() => {
       window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
     }, 900);
-  }, [shareTitle, whatsappShareUrl]);
+  }, [shareTitle, whatsappShareUrl, shareMetadata]);
 
   const handleShareWeChat = useCallback(async () => {
     if (isWeChatUa) {
