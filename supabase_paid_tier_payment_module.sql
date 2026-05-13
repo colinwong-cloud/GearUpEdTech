@@ -817,6 +817,24 @@ BEGIN
       'FREE_TIER_USAGE',
       p_session_id
     );
+  ELSE
+    -- Paid tier is unlimited, but still log usage for audit / account-maintenance history.
+    INSERT INTO public.balance_transactions (
+      student_id,
+      subject,
+      change_amount,
+      balance_after,
+      description,
+      session_id
+    )
+    VALUES (
+      v_student_id,
+      CASE WHEN lower(trim(v_session_subject)) = 'math' THEN 'Math' ELSE trim(v_session_subject) END,
+      -1,
+      NULL,
+      'PAID_TIER_USAGE',
+      p_session_id
+    );
   END IF;
 END;
 $$;
