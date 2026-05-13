@@ -28,6 +28,11 @@ import {
   quizSubjectDbPatterns,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
+import {
+  AI_QUESTION_SOURCE,
+  buildStrictAiQuestionPoolErrorMessage,
+  isAiQuestionSource,
+} from "@/lib/question-source";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
@@ -464,10 +469,11 @@ async function fetchAllQuestions(
       .select("*")
       .ilikeAnyOf("subject", subjectPatterns)
       .eq("grade_level", gradeLevel)
+      .eq("source", AI_QUESTION_SOURCE)
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
-    all.push(...(data as Question[]));
+    all.push(...(data as Question[]).filter((q) => isAiQuestionSource(q.source)));
     if (data.length < SUPABASE_PAGE_SIZE) break;
     from += SUPABASE_PAGE_SIZE;
   }
@@ -929,8 +935,16 @@ export default function QuizApp() {
 
     try {
       const allQuestions = await fetchAllQuestions(subject, student.grade_level);
-      if (allQuestions.length === 0)
-        throw new Error("題庫中沒有找到適合的題目。");
+      if (allQuestions.length < count) {
+        throw new Error(
+          buildStrictAiQuestionPoolErrorMessage({
+            subjectKey: subject,
+            gradeLevel: student.grade_level,
+            requestedCount: count,
+            availableCount: allQuestions.length,
+          })
+        );
+      }
 
       const { data: weights } = await supabase
         .from("parent_weights")
@@ -943,6 +957,16 @@ export default function QuizApp() {
         (weights as ParentWeight[]) || [],
         count
       );
+      if (selected.length < count) {
+        throw new Error(
+          buildStrictAiQuestionPoolErrorMessage({
+            subjectKey: subject,
+            gradeLevel: student.grade_level,
+            requestedCount: count,
+            availableCount: selected.length,
+          })
+        );
+      }
 
       const { data: session, error: sessErr } = await supabase.rpc(
         "create_quiz_session",
