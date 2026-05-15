@@ -34,6 +34,9 @@ import {
   isAiQuestionSource,
 } from "@/lib/question-source";
 import {
+  pushGtmEventOncePerSession,
+} from "@/lib/gtm-events";
+import {
   groupBalanceTransactions,
   type GroupedBalanceTransactionRow,
 } from "@/lib/balance-transactions";
@@ -658,6 +661,32 @@ export default function QuizApp() {
     tier_label: "免費用戶",
   });
   const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
+  const authIntentRef = useRef(false);
+
+  const markAuthIntent = useCallback(() => {
+    authIntentRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (hasLoginContext) return;
+    if (screen !== "login_mobile") return;
+    pushGtmEventOncePerSession("anon_visit", {
+      screen_name: "login_mobile",
+    });
+  }, [hasLoginContext, screen]);
+
+  useEffect(() => {
+    if (hasLoginContext) return;
+    if (screen !== "login_mobile") return;
+    const timer = window.setTimeout(() => {
+      if (authIntentRef.current) return;
+      pushGtmEventOncePerSession("anon_engaged_30s_no_auth", {
+        screen_name: "login_mobile",
+        engaged_seconds: 30,
+      });
+    }, 30000);
+    return () => window.clearTimeout(timer);
+  }, [hasLoginContext, screen]);
 
   useEffect(() => {
     if (!AUTH_REQUIRED_SCREENS.has(screen)) return;
@@ -705,6 +734,11 @@ export default function QuizApp() {
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
+    markAuthIntent();
+    pushGtmEventOncePerSession("login_attempt", {
+      auth_method: "mobile_pin",
+      screen_name: "login_mobile",
+    });
     setLoading(true);
     setError(null);
     try {
@@ -742,13 +776,17 @@ export default function QuizApp() {
           result.tier_label ||
           (result.tier === "paid" || result.is_paid ? "月費用戶" : "免費用戶"),
       });
+      pushGtmEventOncePerSession("login_success", {
+        auth_method: "mobile_pin",
+        screen_name: "login_mobile",
+      });
       setScreen("login_role");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登入失敗，請重試。");
     } finally {
       setLoading(false);
     }
-  }, [mobileNumber, pinInput]);
+  }, [markAuthIntent, mobileNumber, pinInput]);
 
   const handleRegister = useCallback(
     async (form: {
@@ -760,6 +798,10 @@ export default function QuizApp() {
       schoolId: string | null;
     }) => {
       if (!mobileNumber.trim()) return;
+      markAuthIntent();
+      pushGtmEventOncePerSession("register_submit_attempt", {
+        screen_name: "register",
+      });
       setLoading(true);
       setError(null);
       try {
@@ -777,6 +819,10 @@ export default function QuizApp() {
         setSelectedStudent(data as Student);
         setStudents([data as Student]);
         await refreshParentTierStatus();
+        pushGtmEventOncePerSession("register_success", {
+          screen_name: "register",
+          grade_level: form.gradeLevel,
+        });
         setScreen("subject_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
@@ -784,7 +830,7 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [mobileNumber, refreshParentTierStatus]
+    [markAuthIntent, mobileNumber, refreshParentTierStatus]
   );
 
   const handleStudentSelect = useCallback((student: Student) => {
@@ -1204,6 +1250,11 @@ export default function QuizApp() {
         setPin={setPinInput}
         onSubmit={handleMobileSubmit}
         onRegister={() => {
+          markAuthIntent();
+          pushGtmEventOncePerSession("register_start", {
+            screen_name: "login_mobile",
+            entry_point: "register_button",
+          });
           setError(null);
           setScreen("register");
         }}
