@@ -34,8 +34,19 @@ import {
   isAiQuestionSource,
 } from "@/lib/question-source";
 import {
+  pushGtmEvent,
   pushGtmEventOncePerSession,
 } from "@/lib/gtm-events";
+import {
+  COOKIE_CONSENT_STORAGE_KEY,
+  COOKIE_POLICY_COPY,
+  type CookieConsentAction,
+  type CookieConsentPreferences,
+  type CookiePreferenceDraft,
+  type CookiePolicyLanguage,
+  createCookieConsentPreferences,
+  parseCookieConsentPreferences,
+} from "@/lib/cookie-consent";
 import {
   groupBalanceTransactions,
   type GroupedBalanceTransactionRow,
@@ -68,6 +79,7 @@ const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
 const DEFAULT_SHARE_CAMPAIGN = "parent_share";
 const WHATSAPP_ICON_PATH = "/social/whatsapp.svg";
 const WECHAT_ICON_PATH = "/social/wechat.svg";
+const COOKIE_PREF_DEFAULTS = { analytics: false, advertising: false } as const;
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -614,6 +626,310 @@ function preventQuizDragStart(e: React.DragEvent) {
   e.preventDefault();
 }
 
+function CookieConsentBanner({
+  onAcceptAll,
+  onRejectNonEssential,
+  onManageSettings,
+  onOpenPolicy,
+}: {
+  onAcceptAll: () => void;
+  onRejectNonEssential: () => void;
+  onManageSettings: () => void;
+  onOpenPolicy: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-indigo-100 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-sm leading-6 text-gray-700">
+          我們使用 Cookie 以維持網站運作、分析流量及廣告重定向。你可接受全部、拒絕非必要，或自訂設定。
+          <button
+            type="button"
+            onClick={onOpenPolicy}
+            className="ml-1 inline font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+          >
+            查看 Cookie / 私隱聲明
+          </button>
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onAcceptAll}
+            className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            接受全部
+          </button>
+          <button
+            type="button"
+            onClick={onRejectNonEssential}
+            className="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            拒絕非必要
+          </button>
+          <button
+            type="button"
+            onClick={onManageSettings}
+            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+          >
+            管理設定
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CookieSettingsLauncher({
+  onOpen,
+  compact,
+}: {
+  onOpen: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`fixed z-[65] rounded-full border border-gray-200 bg-white/95 px-4 py-2 text-xs font-semibold text-gray-700 shadow-md backdrop-blur hover:bg-gray-50 ${
+        compact ? "bottom-2 left-2" : "bottom-4 right-4"
+      }`}
+      aria-label="Open cookie settings"
+    >
+      Cookie 設定
+    </button>
+  );
+}
+
+function CookieSettingsModal({
+  open,
+  draft,
+  onToggleAnalytics,
+  onToggleAdvertising,
+  onAcceptAll,
+  onRejectNonEssential,
+  onSavePreferences,
+  onOpenPolicy,
+  onClose,
+}: {
+  open: boolean;
+  draft: CookiePreferenceDraft;
+  onToggleAnalytics: () => void;
+  onToggleAdvertising: () => void;
+  onAcceptAll: () => void;
+  onRejectNonEssential: () => void;
+  onSavePreferences: () => void;
+  onOpenPolicy: () => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/45 p-4 sm:items-center"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-settings-title"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-gray-100 px-5 py-4">
+          <h2 id="cookie-settings-title" className="text-lg font-bold text-gray-900">
+            Cookie 設定 / Cookie settings
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            你可按需要開啟或關閉非必要 Cookie，設定會儲存在此瀏覽器。
+          </p>
+        </div>
+        <div className="space-y-3 px-5 py-4 text-sm">
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">必要 Cookie（不可關閉）</p>
+              <p className="text-gray-600">維持登入流程與平台基本安全功能。</p>
+            </div>
+            <input
+              type="checkbox"
+              checked
+              disabled
+              aria-label="Necessary cookies always enabled"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+          </label>
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">分析 Cookie（可選）</p>
+              <p className="text-gray-600">
+                用於流量與行為分析，協助我們改善功能與頁面體驗。
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={draft.analytics}
+              onChange={onToggleAnalytics}
+              aria-label="Enable analytics cookies"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          </label>
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">廣告 / 重定向 Cookie（可選）</p>
+              <p className="text-gray-600">
+                用於社交媒體再行銷與成效衡量，幫助我們優化推廣內容。
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={draft.advertising}
+              onChange={onToggleAdvertising}
+              aria-label="Enable advertising cookies"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          </label>
+        </div>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <div className="mb-3 text-xs text-gray-500">
+            想查看完整聲明？
+            <button
+              type="button"
+              onClick={onOpenPolicy}
+              className="ml-1 font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+            >
+              開啟 Cookie / 私隱聲明
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onSavePreferences}
+              className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              儲存設定
+            </button>
+            <button
+              type="button"
+              onClick={onAcceptAll}
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              接受全部
+            </button>
+            <button
+              type="button"
+              onClick={onRejectNonEssential}
+              className="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              拒絕非必要
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-200 px-3.5 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CookiePolicyModal({
+  open,
+  language,
+  onChangeLanguage,
+  onClose,
+}: {
+  open: boolean;
+  language: CookiePolicyLanguage;
+  onChangeLanguage: (language: CookiePolicyLanguage) => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  const content = COOKIE_POLICY_COPY[language];
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-policy-title"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h2 id="cookie-policy-title" className="text-lg font-bold text-gray-900">
+              {content.heading}
+            </h2>
+            <p className="text-xs text-gray-500">Last updated: {content.lastUpdated}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            aria-label="Close cookie policy"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="border-b border-gray-100 px-5 py-3">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => onChangeLanguage("zh-HK")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                language === "zh-HK" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600"
+              }`}
+            >
+              繁中
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeLanguage("en")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                language === "en" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+        </div>
+        <div className="space-y-4 overflow-y-auto px-5 py-4 text-sm leading-7 text-gray-700">
+          {content.intro.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          {content.sections.map((section) => (
+            <section key={section.title}>
+              <h3 className="text-base font-semibold text-gray-900">{section.title}</h3>
+              {section.paragraphs.map((paragraph) => (
+                <p key={paragraph} className="mt-2">
+                  {paragraph}
+                </p>
+              ))}
+              {section.bullets && section.bullets.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-6">
+                  {section.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+          {content.footer.map((paragraph) => (
+            <p key={paragraph} className="text-xs text-gray-500">
+              {paragraph}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QuizApp() {
   const [screen, setScreen] = useState<AppScreen>("login_mobile");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -662,6 +978,82 @@ export default function QuizApp() {
   });
   const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
   const authIntentRef = useRef(false);
+  const [cookieConsent, setCookieConsent] =
+    useState<CookieConsentPreferences | null>(null);
+  const [cookieBannerVisible, setCookieBannerVisible] = useState(false);
+  const [cookieSettingsOpen, setCookieSettingsOpen] = useState(false);
+  const [cookiePolicyOpen, setCookiePolicyOpen] = useState(false);
+  const [cookiePolicyLanguage, setCookiePolicyLanguage] =
+    useState<CookiePolicyLanguage>("zh-HK");
+  const [cookieDraft, setCookieDraft] = useState<CookiePreferenceDraft>({
+    analytics: COOKIE_PREF_DEFAULTS.analytics,
+    advertising: COOKIE_PREF_DEFAULTS.advertising,
+  });
+  const analyticsConsentEnabled = Boolean(cookieConsent?.analytics);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = parseCookieConsentPreferences(
+      window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY)
+    );
+    if (saved) {
+      setCookieConsent(saved);
+      setCookieDraft({
+        analytics: saved.analytics,
+        advertising: saved.advertising,
+      });
+      setCookieBannerVisible(false);
+      return;
+    }
+    setCookieConsent(null);
+    setCookieDraft({
+      analytics: COOKIE_PREF_DEFAULTS.analytics,
+      advertising: COOKIE_PREF_DEFAULTS.advertising,
+    });
+    setCookieBannerVisible(true);
+  }, []);
+
+  const persistCookieConsent = useCallback(
+    (
+      draft: CookiePreferenceDraft,
+      action: CookieConsentAction,
+      source: "banner" | "settings"
+    ) => {
+      const next = createCookieConsentPreferences(draft, action);
+      setCookieConsent(next);
+      setCookieDraft({
+        analytics: next.analytics,
+        advertising: next.advertising,
+      });
+      setCookieBannerVisible(false);
+      setCookieSettingsOpen(false);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            COOKIE_CONSENT_STORAGE_KEY,
+            JSON.stringify(next)
+          );
+        }
+      } catch {
+        // Ignore storage failures (e.g. private browsing restrictions).
+      }
+      pushGtmEvent("cookie_consent_update", {
+        source,
+        consent_action: action,
+        consent_analytics: next.analytics,
+        consent_advertising: next.advertising,
+      });
+    },
+    []
+  );
+
+  const trackEventOncePerSession = useCallback(
+    (event: string, params: Record<string, string | number | boolean>) => {
+      if (!analyticsConsentEnabled) return false;
+      return pushGtmEventOncePerSession(event, params);
+    },
+    [analyticsConsentEnabled]
+  );
 
   const markAuthIntent = useCallback(() => {
     authIntentRef.current = true;
@@ -670,23 +1062,23 @@ export default function QuizApp() {
   useEffect(() => {
     if (hasLoginContext) return;
     if (screen !== "login_mobile") return;
-    pushGtmEventOncePerSession("anon_visit", {
+    trackEventOncePerSession("anon_visit", {
       screen_name: "login_mobile",
     });
-  }, [hasLoginContext, screen]);
+  }, [hasLoginContext, screen, trackEventOncePerSession]);
 
   useEffect(() => {
     if (hasLoginContext) return;
     if (screen !== "login_mobile") return;
     const timer = window.setTimeout(() => {
       if (authIntentRef.current) return;
-      pushGtmEventOncePerSession("anon_engaged_30s_no_auth", {
+      trackEventOncePerSession("anon_engaged_30s_no_auth", {
         screen_name: "login_mobile",
         engaged_seconds: 30,
       });
     }, 30000);
     return () => window.clearTimeout(timer);
-  }, [hasLoginContext, screen]);
+  }, [hasLoginContext, screen, trackEventOncePerSession]);
 
   useEffect(() => {
     if (!AUTH_REQUIRED_SCREENS.has(screen)) return;
@@ -735,7 +1127,7 @@ export default function QuizApp() {
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
     markAuthIntent();
-    pushGtmEventOncePerSession("login_attempt", {
+    trackEventOncePerSession("login_attempt", {
       auth_method: "mobile_pin",
       screen_name: "login_mobile",
     });
@@ -776,7 +1168,7 @@ export default function QuizApp() {
           result.tier_label ||
           (result.tier === "paid" || result.is_paid ? "月費用戶" : "免費用戶"),
       });
-      pushGtmEventOncePerSession("login_success", {
+      trackEventOncePerSession("login_success", {
         auth_method: "mobile_pin",
         screen_name: "login_mobile",
       });
@@ -786,7 +1178,7 @@ export default function QuizApp() {
     } finally {
       setLoading(false);
     }
-  }, [markAuthIntent, mobileNumber, pinInput]);
+  }, [markAuthIntent, mobileNumber, pinInput, trackEventOncePerSession]);
 
   const handleRegister = useCallback(
     async (form: {
@@ -799,7 +1191,7 @@ export default function QuizApp() {
     }) => {
       if (!mobileNumber.trim()) return;
       markAuthIntent();
-      pushGtmEventOncePerSession("register_submit_attempt", {
+      trackEventOncePerSession("register_submit_attempt", {
         screen_name: "register",
       });
       setLoading(true);
@@ -819,7 +1211,7 @@ export default function QuizApp() {
         setSelectedStudent(data as Student);
         setStudents([data as Student]);
         await refreshParentTierStatus();
-        pushGtmEventOncePerSession("register_success", {
+        trackEventOncePerSession("register_success", {
           screen_name: "register",
           grade_level: form.gradeLevel,
         });
@@ -830,7 +1222,7 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [markAuthIntent, mobileNumber, refreshParentTierStatus]
+    [markAuthIntent, mobileNumber, refreshParentTierStatus, trackEventOncePerSession]
   );
 
   const handleStudentSelect = useCallback((student: Student) => {
@@ -1239,10 +1631,83 @@ export default function QuizApp() {
     setError(null);
   };
 
-  if (loading) return <LoadingScreen />;
+  const renderWithCookieUi = (content: React.ReactNode) => (
+    <>
+      {content}
+      {cookieBannerVisible && (
+        <CookieConsentBanner
+          onAcceptAll={() =>
+            persistCookieConsent(
+              { analytics: true, advertising: true },
+              "accept_all",
+              "banner"
+            )
+          }
+          onRejectNonEssential={() =>
+            persistCookieConsent(
+              { analytics: false, advertising: false },
+              "reject_non_essential",
+              "banner"
+            )
+          }
+          onManageSettings={() => setCookieSettingsOpen(true)}
+          onOpenPolicy={() => setCookiePolicyOpen(true)}
+        />
+      )}
+      {!cookieBannerVisible && (
+        <CookieSettingsLauncher
+          compact={screen === "login_mobile"}
+          onOpen={() => setCookieSettingsOpen(true)}
+        />
+      )}
+      <CookieSettingsModal
+        open={cookieSettingsOpen}
+        draft={cookieDraft}
+        onToggleAnalytics={() =>
+          setCookieDraft((prev) => ({
+            ...prev,
+            analytics: !prev.analytics,
+          }))
+        }
+        onToggleAdvertising={() =>
+          setCookieDraft((prev) => ({
+            ...prev,
+            advertising: !prev.advertising,
+          }))
+        }
+        onAcceptAll={() =>
+          persistCookieConsent(
+            { analytics: true, advertising: true },
+            "accept_all",
+            "settings"
+          )
+        }
+        onRejectNonEssential={() =>
+          persistCookieConsent(
+            { analytics: false, advertising: false },
+            "reject_non_essential",
+            "settings"
+          )
+        }
+        onSavePreferences={() =>
+          persistCookieConsent(cookieDraft, "save_preferences", "settings")
+        }
+        onOpenPolicy={() => setCookiePolicyOpen(true)}
+        onClose={() => setCookieSettingsOpen(false)}
+      />
+      <CookiePolicyModal
+        open={cookiePolicyOpen}
+        language={cookiePolicyLanguage}
+        onChangeLanguage={setCookiePolicyLanguage}
+        onClose={() => setCookiePolicyOpen(false)}
+      />
+    </>
+  );
+
+  if (loading) return renderWithCookieUi(<LoadingScreen />);
 
   if (screen === "login_mobile") {
-    return (
+    return renderWithCookieUi(
       <LoginMobileScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
@@ -1251,7 +1716,7 @@ export default function QuizApp() {
         onSubmit={handleMobileSubmit}
         onRegister={() => {
           markAuthIntent();
-          pushGtmEventOncePerSession("register_start", {
+          trackEventOncePerSession("register_start", {
             screen_name: "login_mobile",
             entry_point: "register_button",
           });
@@ -1266,7 +1731,7 @@ export default function QuizApp() {
   }
 
   if (screen === "login_role") {
-    return (
+    return renderWithCookieUi(
       <RoleSelectScreen
         onStudent={() => setScreen("login_student")}
         onParent={() => {
@@ -1293,7 +1758,7 @@ export default function QuizApp() {
   }
 
   if (screen === "account_menu") {
-    return (
+    return renderWithCookieUi(
       <AccountMenuScreen
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
@@ -1306,7 +1771,7 @@ export default function QuizApp() {
   }
 
   if (screen === "balance_view") {
-    return (
+    return renderWithCookieUi(
       <BalanceViewScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
@@ -1315,7 +1780,7 @@ export default function QuizApp() {
   }
 
   if (screen === "profile_edit") {
-    return (
+    return renderWithCookieUi(
       <ProfileEditScreen
         mobileNumber={mobileNumber}
         onSaved={() => setScreen("account_menu")}
@@ -1325,7 +1790,7 @@ export default function QuizApp() {
   }
 
   if (screen === "add_student_form") {
-    return (
+    return renderWithCookieUi(
       <AddStudentScreen
         mobileNumber={mobileNumber}
         onSubmit={handleAddStudentSubmit}
@@ -1337,7 +1802,7 @@ export default function QuizApp() {
   }
 
   if (screen === "parent_student_select") {
-    return (
+    return renderWithCookieUi(
       <StudentSelectScreen
         students={students}
         onSelect={(student) => {
@@ -1358,7 +1823,7 @@ export default function QuizApp() {
   }
 
   if (screen === "forgot_password") {
-    return (
+    return renderWithCookieUi(
       <ForgotPasswordScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("login_mobile")}
@@ -1367,7 +1832,7 @@ export default function QuizApp() {
   }
 
   if (screen === "parent_dashboard") {
-    return (
+    return renderWithCookieUi(
       <ParentDashboard
         studentName={selectedStudent?.student_name || ""}
         gradeRank={gradeRank}
@@ -1391,7 +1856,7 @@ export default function QuizApp() {
   }
 
   if (screen === "payment") {
-    return (
+    return renderWithCookieUi(
       <PaymentScreen
         mobileNumber={mobileNumber}
         tierStatus={parentTierStatus}
@@ -1414,7 +1879,7 @@ export default function QuizApp() {
   }
 
   if (screen === "parent_session_detail") {
-    return (
+    return renderWithCookieUi(
       <ParentSessionDetail
         session={parentDetailSession!}
         answers={parentDetailAnswers}
@@ -1426,7 +1891,7 @@ export default function QuizApp() {
   }
 
   if (screen === "register") {
-    return (
+    return renderWithCookieUi(
       <RegisterScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
@@ -1442,7 +1907,7 @@ export default function QuizApp() {
   }
 
   if (screen === "login_student") {
-    return (
+    return renderWithCookieUi(
       <StudentSelectScreen
         students={students}
         onSelect={handleStudentSelect}
@@ -1452,7 +1917,7 @@ export default function QuizApp() {
   }
 
   if (screen === "subject_select") {
-    return (
+    return renderWithCookieUi(
       <SubjectSelectScreen
         studentName={selectedStudent?.student_name || ""}
         onSelect={handleSubjectSelect}
@@ -1463,7 +1928,7 @@ export default function QuizApp() {
   }
 
   if (screen === "question_count_select") {
-    return (
+    return renderWithCookieUi(
       <QuestionCountScreen
         studentName={selectedStudent?.student_name || ""}
         subjectKey={selectedSubject || ""}
@@ -1476,7 +1941,7 @@ export default function QuizApp() {
   }
 
   if (screen === "results") {
-    return (
+    return renderWithCookieUi(
       <ResultsView
         answers={answers}
         studentName={selectedStudent?.student_name || ""}
@@ -1491,19 +1956,23 @@ export default function QuizApp() {
   }
 
   if (error) {
-    return <ErrorScreen error={error} onRetry={handleRestart} />;
+    return renderWithCookieUi(
+      <ErrorScreen error={error} onRetry={handleRestart} />
+    );
   }
 
   const currentQuestion = questions[currentIndex];
   if (!currentQuestion) {
-    return <ErrorScreen error="沒有可用的題目。" onRetry={handleRestart} />;
+    return renderWithCookieUi(
+      <ErrorScreen error="沒有可用的題目。" onRetry={handleRestart} />
+    );
   }
 
   const shortAnswer = isShortAnswer(currentQuestion);
   const canSubmit =
     shortAnswer && textAnswer.trim().length > 0 && !submitting;
 
-  return (
+  return renderWithCookieUi(
     <div
       className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
       onContextMenu={preventContextMenu}

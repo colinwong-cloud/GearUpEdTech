@@ -78,6 +78,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
 | 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
 | 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+| 2026-05 | **Cookie / 私隱合規（PCPD）UI 上線**：新增全站低干擾 Cookie 同意橫幅（接受全部 / 拒絕非必要 / 管理設定）、可重開的 Cookie 設定按鈕、雙語（繁中/英文）Cookie 與私隱聲明 Overlay，並把同意結果持久化於 `localStorage`（`gearup_cookie_consent_v1`）。分析事件改為在取得分析同意後才送出；新增工具與測試：`src/lib/cookie-consent.ts`、`src/lib/cookie-consent.test.ts`。 |
 
 ## Handover note — 2026-05-08 (for next working session)
 
