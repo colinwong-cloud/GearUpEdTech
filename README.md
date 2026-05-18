@@ -71,6 +71,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
 | 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
 | 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |
+| 2026-05 | **Cookie / 私隱合規（PCPD）**：新增全站 Cookie 同意橫幅（接受全部 / 拒絕非必要 / 管理設定）、可重開「Cookie 設定」按鈕，以及雙語（繁中/EN）Cookie 與私隱聲明 overlay。用戶選擇儲存在 `localStorage`（`gearup_cookie_consent_v1`）。檔案：`src/lib/cookie-consent.ts`、`src/lib/cookie-consent.test.ts`、`src/app/page.tsx`。 |
 
 ## Setup
 
