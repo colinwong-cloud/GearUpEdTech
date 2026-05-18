@@ -1337,7 +1337,7 @@ export default function QuizApp() {
     return renderWithCookieUi(
       <ForgotPasswordScreen
         mobileNumber={mobileNumber}
-        onBack={() => setScreen("login_role")}
+        onBack={handleLogout}
       />
     );
   }
