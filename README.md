@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-05-18** — deployment `dpl_ABaSnjNnQsjwqvfXBsNViusW7m3P`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/ABaSnjNnQsjwqvfXBsNViusW7m3P). **Release scope:** mandatory gender enforcement for register/add-student (`/api/auth/register`, `/api/auth/add-student`) plus smoke assertion for register UI label.
+**Latest production deploy:** **2026-05-18** — deployment `dpl_6zJyaHeoR5pPRrb1nG8JKLfLoTVi`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6zJyaHeoR5pPRrb1nG8JKLfLoTVi). **Release scope:** UI contact email migration to `cs@gearupquiz.com` across login/role/dashboard/cookie notice; external statement text files remain unchanged (`privacy_statment.txt`, `payment_terms_condition.txt`).
 
 ## Feature inventory + mandatory health checks (run on every new release)
 
@@ -268,11 +268,11 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
-- **Release ID / commit:** `5951700` (includes `f420e95` feature commit)
+- **Release ID / commit:** `2b1d6df` (includes `710ee4c` UI text change commit)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
 - **Date/time (UTC):** 2026-05-18
 - **Validation:** `npm test` ✅, `npm run lint` ✅ (1 existing non-blocking warning), `npm run build` ✅, `npm run smoke` ✅ (5/5 passed)
-- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `POST /api/auth/register` with `{}` returns expected validation error
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, homepage HTML contains `cs@gearupquiz.com`
 - **Failures found + fix commits:** none in final production run
 - **Final approval:** received from owner before `--prod` deploy
 
