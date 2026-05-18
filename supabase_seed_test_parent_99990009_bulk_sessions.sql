@@ -1,106 +1,128 @@
 -- ============================================================
--- Seed test data for parent 99990009 (idempotent)
+-- Seed test data for parent 99990009 (NO TEMP TABLES)
+-- ============================================================
 -- Request:
--- - Parent: mobile 99990009, email colin.wong@hkedutech.com
--- - Students: Test_1 ... Test_n
--- - Grade counts: P1=41, P2=58, P3=30, P4=15
--- - School selection: random 1 school per district, then assign students across picked schools
--- - Sessions: 200 English + 200 Chinese
--- - Each session: 10 questions, random score 10%~90% (1~9 / 10)
+-- - Parent mobile: 99990009
+-- - Parent email : colin.wong@hkedutech.com
+-- - Students: Test_1 ... Test_144
+--   - P1: 41
+--   - P2: 58
+--   - P3: 30
+--   - P4: 15
+-- - School strategy:
+--   - randomly pick ONE school per district
+--   - assign students across those picked schools
+-- - Sessions:
+--   - English: 200 sessions
+--   - Chinese: 200 sessions
+--   - each session: 10 questions
+--   - score random 1..9 (10%..90%)
 --
--- Notes:
--- - PIN for seeded students is fixed to: abc123 (bcrypt hash stored)
--- - Uses session_token prefix: gearup_seed_99990009_
--- - Safe to re-run: prior seeded students/sessions for this parent are removed first
+-- Idempotent for this seed:
+-- - deletes old Test_* students under parent 99990009
+-- - deletes old sessions by prefix gearup_seed_99990009_*
+--
+-- NOTE:
+-- - Student PIN is seeded as bcrypt hash of "abc123"
+-- - This script intentionally avoids TEMP tables because some Supabase SQL
+--   editor contexts reject TEMP syntax.
 -- ============================================================
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ---------------------------
--- 0) Upsert parent
--- ---------------------------
-CREATE TEMP TABLE tmp_seed_parent_id AS
-WITH upsert_parent AS (
-  INSERT INTO public.parents (mobile_number, email)
-  VALUES ('99990009', 'colin.wong@hkedutech.com')
-  ON CONFLICT (mobile_number)
-  DO UPDATE SET email = EXCLUDED.email
-  RETURNING id
-)
-SELECT id FROM upsert_parent;
+-- 0) Upsert parent (without ON CONFLICT dependency)
+UPDATE public.parents
+SET email = 'colin.wong@hkedutech.com'
+WHERE mobile_number = '99990009';
 
--- If ON CONFLICT path did not return (some DB versions/permissions edge),
--- fallback select by mobile.
-INSERT INTO tmp_seed_parent_id
-SELECT p.id
-FROM public.parents p
-WHERE p.mobile_number = '99990009'
-  AND NOT EXISTS (SELECT 1 FROM tmp_seed_parent_id);
+INSERT INTO public.parents (mobile_number, email)
+SELECT '99990009', 'colin.wong@hkedutech.com'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.parents WHERE mobile_number = '99990009'
+);
 
--- ---------------------------
--- 1) Clean previous seed data for this parent
--- ---------------------------
-CREATE TEMP TABLE tmp_existing_seed_students AS
-SELECT s.id
-FROM public.students s
-JOIN public.parents p ON p.id = s.parent_id
-WHERE p.mobile_number = '99990009'
-  AND s.student_name ~ '^Test_[0-9]+$';
-
+-- 1) Cleanup previous seeded rows for this parent
 DELETE FROM public.session_answers sa
 USING public.quiz_sessions qs
 WHERE sa.session_id = qs.id
   AND (
     qs.session_token LIKE 'gearup_seed_99990009_%'
-    OR qs.student_id IN (SELECT id FROM tmp_existing_seed_students)
+    OR qs.student_id IN (
+      SELECT s.id
+      FROM public.students s
+      JOIN public.parents p ON p.id = s.parent_id
+      WHERE p.mobile_number = '99990009'
+        AND s.student_name ~ '^Test_[0-9]+$'
+    )
   );
 
 DELETE FROM public.quiz_sessions qs
 WHERE qs.session_token LIKE 'gearup_seed_99990009_%'
-   OR qs.student_id IN (SELECT id FROM tmp_existing_seed_students);
+   OR qs.student_id IN (
+      SELECT s.id
+      FROM public.students s
+      JOIN public.parents p ON p.id = s.parent_id
+      WHERE p.mobile_number = '99990009'
+        AND s.student_name ~ '^Test_[0-9]+$'
+   );
 
 DELETE FROM public.balance_transactions bt
-WHERE bt.student_id IN (SELECT id FROM tmp_existing_seed_students);
-
-DELETE FROM public.student_balances sb
-WHERE sb.student_id IN (SELECT id FROM tmp_existing_seed_students);
-
-DELETE FROM public.students s
-WHERE s.id IN (SELECT id FROM tmp_existing_seed_students);
-
--- ---------------------------
--- 2) Pick one random school per district
--- ---------------------------
-CREATE TEMP TABLE tmp_picked_schools AS
-SELECT
-  d.district,
-  s.id AS school_id,
-  row_number() OVER (ORDER BY d.district) AS school_seq
-FROM (
-  SELECT DISTINCT district
-  FROM public.schools
-  WHERE district IS NOT NULL
-    AND trim(district) <> ''
-) d
-JOIN LATERAL (
-  SELECT id
-  FROM public.schools s2
-  WHERE s2.district = d.district
-  ORDER BY random()
-  LIMIT 1
-) s ON true;
-
--- ---------------------------
--- 3) Insert students (Test_1..Test_144)
--- ---------------------------
-CREATE TEMP TABLE tmp_seed_students (
-  student_id UUID PRIMARY KEY,
-  grade_level TEXT NOT NULL
+WHERE bt.student_id IN (
+  SELECT s.id
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s.student_name ~ '^Test_[0-9]+$'
 );
 
-WITH grade_plan AS (
+DELETE FROM public.student_balances sb
+WHERE sb.student_id IN (
+  SELECT s.id
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s.student_name ~ '^Test_[0-9]+$'
+);
+
+DELETE FROM public.students s
+WHERE s.id IN (
+  SELECT s2.id
+  FROM public.students s2
+  JOIN public.parents p ON p.id = s2.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s2.student_name ~ '^Test_[0-9]+$'
+);
+
+-- 2) Insert students Test_1..Test_144 with random Boy/Girl and district-picked schools
+WITH parent_row AS (
+  SELECT p.id AS parent_id
+  FROM public.parents p
+  WHERE p.mobile_number = '99990009'
+  LIMIT 1
+),
+districts AS (
+  SELECT DISTINCT s.district
+  FROM public.schools s
+  WHERE s.district IS NOT NULL
+    AND trim(s.district) <> ''
+),
+picked_schools AS (
+  SELECT
+    d.district,
+    ps.id AS school_id,
+    row_number() OVER (ORDER BY d.district) AS school_seq
+  FROM districts d
+  JOIN LATERAL (
+    SELECT s2.id
+    FROM public.schools s2
+    WHERE s2.district = d.district
+    ORDER BY random()
+    LIMIT 1
+  ) ps ON true
+),
+grade_plan AS (
   SELECT * FROM (VALUES
     (1, 'P1'::text, 41),
     (2, 'P2'::text, 58),
@@ -119,10 +141,10 @@ assigned AS (
   SELECT
     sr.global_idx,
     sr.grade_level,
-    ((sr.global_idx - 1) % (SELECT COUNT(*) FROM tmp_picked_schools) + 1) AS school_seq
+    ((sr.global_idx - 1) % (SELECT COUNT(*) FROM picked_schools) + 1) AS school_seq
   FROM student_rows sr
 ),
-ins AS (
+inserted_students AS (
   INSERT INTO public.students (
     parent_id,
     student_name,
@@ -133,81 +155,86 @@ ins AS (
     gender
   )
   SELECT
-    (SELECT id FROM tmp_seed_parent_id LIMIT 1) AS parent_id,
-    'Test_' || a.global_idx AS student_name,
-    crypt('abc123', gen_salt('bf')) AS pin_code,
+    pr.parent_id,
+    'Test_' || a.global_idx,
+    crypt('abc123', gen_salt('bf')),
     g.avatar_style,
     a.grade_level,
     ps.school_id,
-    CASE WHEN g.avatar_style = 'Boy' THEN 'M' ELSE 'F' END AS gender
+    CASE WHEN g.avatar_style = 'Boy' THEN 'M' ELSE 'F' END
   FROM assigned a
-  JOIN tmp_picked_schools ps ON ps.school_seq = a.school_seq
+  CROSS JOIN parent_row pr
+  JOIN picked_schools ps ON ps.school_seq = a.school_seq
   CROSS JOIN LATERAL (
     SELECT CASE WHEN random() < 0.5 THEN 'Boy' ELSE 'Girl' END AS avatar_style
   ) g
-  RETURNING id, grade_level
+  RETURNING id
 )
-INSERT INTO tmp_seed_students (student_id, grade_level)
-SELECT id, grade_level
-FROM ins;
-
--- Optional balances for English/Chinese to make seeded students immediately usable in UI.
 INSERT INTO public.student_balances (student_id, subject, remaining_questions)
-SELECT ss.student_id, subj.subject, 1000
-FROM tmp_seed_students ss
+SELECT i.id, subj.subject, 1000
+FROM inserted_students i
 CROSS JOIN (VALUES ('English'::text), ('Chinese'::text)) AS subj(subject);
 
--- ---------------------------
--- 4) Build eligibility (must have >=10 questions for grade+subject)
--- ---------------------------
-CREATE TEMP TABLE tmp_eligible_seed_students AS
-SELECT
-  ss.student_id,
-  ss.grade_level,
-  sp.subject
-FROM tmp_seed_students ss
-CROSS JOIN (VALUES ('English'::text), ('Chinese'::text)) AS sp(subject)
-JOIN LATERAL (
-  SELECT COUNT(*) AS q_count
-  FROM public.questions q
-  WHERE lower(trim(q.subject)) = lower(sp.subject)
-    AND q.grade_level = ss.grade_level
-) qc ON true
-WHERE qc.q_count >= 10;
-
+-- 3) Guard: ensure there are eligible students per subject (>=10 questions for grade)
 DO $$
 DECLARE
   v_en_count INT;
   v_zh_count INT;
 BEGIN
   SELECT COUNT(*) INTO v_en_count
-  FROM tmp_eligible_seed_students
-  WHERE lower(subject) = 'english';
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s.student_name ~ '^Test_[0-9]+$'
+    AND EXISTS (
+      SELECT 1
+      FROM public.questions q
+      WHERE lower(trim(q.subject)) = 'english'
+        AND q.grade_level = s.grade_level
+      LIMIT 10
+    );
 
   SELECT COUNT(*) INTO v_zh_count
-  FROM tmp_eligible_seed_students
-  WHERE lower(subject) = 'chinese';
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s.student_name ~ '^Test_[0-9]+$'
+    AND EXISTS (
+      SELECT 1
+      FROM public.questions q
+      WHERE lower(trim(q.subject)) = 'chinese'
+        AND q.grade_level = s.grade_level
+      LIMIT 10
+    );
 
   IF v_en_count = 0 THEN
-    RAISE EXCEPTION 'No eligible seeded students for English (need >=10 English questions per student grade).';
+    RAISE EXCEPTION 'No eligible students for English (need >=10 English questions per grade used).';
   END IF;
   IF v_zh_count = 0 THEN
-    RAISE EXCEPTION 'No eligible seeded students for Chinese (need >=10 Chinese questions per student grade).';
+    RAISE EXCEPTION 'No eligible students for Chinese (need >=10 Chinese questions per grade used).';
   END IF;
 END $$;
 
--- ---------------------------
--- 5) Insert 200 sessions per subject
--- ---------------------------
-CREATE TEMP TABLE tmp_seed_sessions (
-  session_id UUID PRIMARY KEY,
-  student_id UUID NOT NULL,
-  subject TEXT NOT NULL,
-  score INT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL
-);
-
-WITH subject_plan AS (
+-- 4) Insert 200 English + 200 Chinese sessions and 10 answers/session
+WITH seed_students AS (
+  SELECT s.id AS student_id, s.grade_level
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE p.mobile_number = '99990009'
+    AND s.student_name ~ '^Test_[0-9]+$'
+),
+eligible_students AS (
+  SELECT ss.student_id, ss.grade_level, subj.subject
+  FROM seed_students ss
+  CROSS JOIN (VALUES ('English'::text), ('Chinese'::text)) AS subj(subject)
+  WHERE (
+    SELECT COUNT(*)
+    FROM public.questions q
+    WHERE lower(trim(q.subject)) = lower(subj.subject)
+      AND q.grade_level = ss.grade_level
+  ) >= 10
+),
+subject_plan AS (
   SELECT * FROM (VALUES
     ('English'::text, 200),
     ('Chinese'::text, 200)
@@ -219,15 +246,15 @@ session_rows AS (
     gs.n AS seq_no,
     (
       SELECT es.student_id
-      FROM tmp_eligible_seed_students es
+      FROM eligible_students es
       WHERE lower(es.subject) = lower(sp.subject)
       ORDER BY random()
       LIMIT 1
-    ) AS picked_student_id
+    ) AS student_id
   FROM subject_plan sp
   CROSS JOIN LATERAL generate_series(1, sp.session_count) AS gs(n)
 ),
-ins AS (
+ins_sessions AS (
   INSERT INTO public.quiz_sessions (
     student_id,
     subject,
@@ -239,11 +266,11 @@ ins AS (
     session_practice_summary
   )
   SELECT
-    sr.picked_student_id,
+    sr.student_id,
     sr.subject,
     10,
-    (1 + floor(random() * 9))::int AS score, -- 10%~90%
-    (240 + floor(random() * 660))::int AS time_spent_seconds,
+    (1 + floor(random() * 9))::int, -- 10%..90%
+    (240 + floor(random() * 660))::int,
     timezone('UTC', now())
       - (floor(random() * 90)::text || ' days')::interval
       - (random() * interval '23 hours'),
@@ -252,13 +279,6 @@ ins AS (
   FROM session_rows sr
   RETURNING id, student_id, subject, score, created_at
 )
-INSERT INTO tmp_seed_sessions (session_id, student_id, subject, score, created_at)
-SELECT id, student_id, subject, score, created_at
-FROM ins;
-
--- ---------------------------
--- 6) Insert 10 answers per session
--- ---------------------------
 INSERT INTO public.session_answers (
   session_id,
   question_id,
@@ -268,32 +288,32 @@ INSERT INTO public.session_answers (
   created_at
 )
 SELECT
-  ts.session_id,
+  isess.id AS session_id,
   qn.id AS question_id,
-  CASE WHEN qn.ord <= ts.score THEN qn.correct_answer ELSE 'X' END AS student_answer,
-  (qn.ord <= ts.score) AS is_correct,
+  CASE WHEN qn.ord <= isess.score THEN qn.correct_answer ELSE 'X' END AS student_answer,
+  (qn.ord <= isess.score) AS is_correct,
   qn.ord AS question_order,
-  ts.created_at
-FROM tmp_seed_sessions ts
-JOIN public.students st ON st.id = ts.student_id
+  isess.created_at
+FROM ins_sessions isess
+JOIN public.students st ON st.id = isess.student_id
 JOIN LATERAL (
   SELECT
     q.id,
     q.correct_answer,
-    row_number() OVER (ORDER BY md5(ts.session_id::text || q.id::text)) AS ord
+    row_number() OVER (ORDER BY md5(isess.id::text || q.id::text)) AS ord
   FROM public.questions q
-  WHERE lower(trim(q.subject)) = lower(ts.subject)
+  WHERE lower(trim(q.subject)) = lower(isess.subject)
     AND q.grade_level = st.grade_level
   LIMIT 10
 ) qn ON true;
 
 COMMIT;
 
--- ---------------------------
--- Verify summary
--- ---------------------------
+-- ============================================================
+-- Verification queries
+-- ============================================================
 
--- Parent + student volume
+-- Parent + student total
 SELECT
   p.mobile_number,
   p.email,
@@ -314,12 +334,18 @@ WHERE p.mobile_number = '99990009'
 GROUP BY s.grade_level
 ORDER BY s.grade_level;
 
--- Picked schools (one per district)
+-- District coverage check (should be exactly 1 picked school per district)
 SELECT
-  district,
-  school_id
-FROM tmp_picked_schools
-ORDER BY district;
+  sc.district,
+  COUNT(DISTINCT s.school_id)::int AS distinct_schools_used,
+  COUNT(*)::int AS students
+FROM public.students s
+JOIN public.parents p ON p.id = s.parent_id
+JOIN public.schools sc ON sc.id = s.school_id
+WHERE p.mobile_number = '99990009'
+  AND s.student_name ~ '^Test_[0-9]+$'
+GROUP BY sc.district
+ORDER BY sc.district;
 
 -- Session summary by subject
 SELECT
