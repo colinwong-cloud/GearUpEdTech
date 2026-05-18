@@ -129,7 +129,7 @@
 
 #### Admin access
 - [ ] `/admin` login works
-- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護
+- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 學生練習摘要 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護
 
 #### Tab: 業務概覽
 - [ ] Today KPI loads
