@@ -368,6 +368,29 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
   4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
 
+## Handover note — 2026-05-18 (CS email migration + registration hardening)
+
+- 本日已完成並上線：
+  1. **性別必填強化**（註冊 / 新增學生）：
+     - UI 明確顯示 `性別（必填）`
+     - 後端 API `POST /api/auth/register`、`POST /api/auth/add-student` 做二次驗證
+     - 建立學生後即時寫入 `students.gender`（M/F）
+  2. **客服電郵 UI 統一更新**：
+     - `cs@hkedutech.com` → `cs@gearupquiz.com`（登入頁、角色頁、家長/學生客服提示、Cookie/Privacy UI 文案）
+  3. **Production 部署**：
+     - deployment: `dpl_6zJyaHeoR5pPRrb1nG8JKLfLoTVi`
+     - live alias: `https://q.hkedutech.com`
+
+- 本日明確保留不改（依 owner 指示）：
+  - 外部 statement 文字檔仍維持舊 email（live）：
+    - `.../Webpage_statements/privacy_statment.txt`
+    - `.../Webpage_statements/payment_terms_condition.txt`
+
+- 明日開工建議第一步：
+  1. 若要把 statement 也改成新 email，直接更新上述兩個 Supabase Storage `.txt` 檔內容即可（前端會自動讀取新文案，無需改程式碼）。
+  2. 先用 Preview 驗證 statement modal 顯示，再按既有 gate 走 owner 批准後才上 Production。
+  3. 例行跑 `npm test && npm run lint && npm run build && npm run smoke`。
+
 ## Setup
 
 1. Install dependencies:
