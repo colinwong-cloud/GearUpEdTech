@@ -410,12 +410,12 @@ export default function AdminPage() {
         <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-red-500">登出</button>
       </div>
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="flex gap-2 mb-6 overflow-x-auto">
+        <div className="flex flex-wrap gap-2 mb-6">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                 tab === t.key ? "bg-indigo-600 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
               }`}
             >
