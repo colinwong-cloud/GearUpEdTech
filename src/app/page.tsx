@@ -1274,7 +1274,7 @@ export default function QuizApp() {
         const isDuplicateGradeError = /每個年級只可新增一位學生|同年級|same grade/i.test(rawMessage);
         setError(
           isDuplicateGradeError
-            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com"
+            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@gearupquiz.com"
             : rawMessage
         );
       } finally {
@@ -2373,8 +2373,8 @@ function LoginMobileScreen({
           </div>
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
-              cs@hkedutech.com
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@gearupquiz.com
             </a>
           </div>
           <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
@@ -4495,8 +4495,8 @@ function ContactFooter() {
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
       <p className="text-xs text-gray-400">
         有問題或意見？請聯絡{" "}
-        <a href="mailto:cs@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
-          cs@hkedutech.com
+        <a href="mailto:cs@gearupquiz.com" className="text-indigo-500 hover:text-indigo-600">
+          cs@gearupquiz.com
         </a>
       </p>
     </div>
@@ -4612,10 +4612,10 @@ function RoleSelectScreen({
           <p className="mt-4 text-center text-sm text-gray-500">
             有問題或意見? 歡迎電郵至{" "}
             <a
-              href="mailto:cs@hkedutech.com"
+              href="mailto:cs@gearupquiz.com"
               className="font-semibold text-indigo-600 hover:text-indigo-700"
             >
-              cs@hkedutech.com
+              cs@gearupquiz.com
             </a>
           </p>
         )}

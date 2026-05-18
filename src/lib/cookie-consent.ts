@@ -70,7 +70,7 @@ export const COOKIE_POLICY_COPY: Record<CookiePolicyLanguage, CookiePolicyCopy> 
           title: "4) 保留及查詢",
           paragraphs: [
             "我們只會在達成用途所需期間內保留資料，並按業務與法規要求處理。",
-            "如你對本聲明、資料存取或更正有任何查詢，可電郵聯絡：cs@hkedutech.com。",
+            "如你對本聲明、資料存取或更正有任何查詢，可電郵聯絡：cs@gearupquiz.com。",
           ],
         },
       ],
@@ -113,7 +113,7 @@ export const COOKIE_POLICY_COPY: Record<CookiePolicyLanguage, CookiePolicyCopy> 
           title: "4) Retention and contact",
           paragraphs: [
             "We retain data only for as long as necessary to fulfill the stated purposes and to meet legal or operational requirements.",
-            "For enquiries about this notice, or to request data access/correction, please contact: cs@hkedutech.com.",
+            "For enquiries about this notice, or to request data access/correction, please contact: cs@gearupquiz.com.",
           ],
         },
       ],
