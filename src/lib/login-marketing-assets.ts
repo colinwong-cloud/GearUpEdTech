@@ -55,6 +55,15 @@ export function getPlatformBriefTxtUrl(): string {
   return `${base}/storage/v1/object/public/Webpage_images/logo/platform_brief.txt`;
 }
 
+/** Social sharing preview banner image (Open Graph / Twitter). */
+export function getShareBannerUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SHARE_BANNER_URL?.trim();
+  if (explicit) return explicit;
+  const base = supabaseProjectOrigin();
+  if (!base) return "";
+  return `${base}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png`;
+}
+
 /** Tab favicon / PWA icon — banana student logo in Storage. */
 export function getSiteIconUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_ICON_URL?.trim();

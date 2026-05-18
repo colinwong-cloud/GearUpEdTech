@@ -28,6 +28,8 @@ type TodayPayload = {
   sessions_by_subject: Record<string, number>;
   questions_by_subject: Record<string, number>;
   new_students_today: number;
+  free_tier_new_users_today?: number;
+  paid_tier_new_users_today?: number;
 };
 
 type TrendPoint = {
@@ -40,6 +42,8 @@ type TrendPoint = {
   male: number;
   female: number;
   undisclosed: number;
+  free_tier_new_users?: number;
+  paid_tier_new_users?: number;
 };
 
 type SchoolByGrade = {
@@ -55,18 +59,41 @@ type MonthlyPayload = {
   mt_year: number;
   mt_month: number;
   mt_new_students: number;
+  mt_practice_sessions: number;
+  mt_session_answers: number;
   mt_practice_students: number;
   mt_parent_views: number;
+  mt_new_free_tier_users?: number;
+  mt_new_paid_tier_users?: number;
   alltime_students: number;
   alltime_parents: number;
   alltime_practice_sessions: number;
   alltime_session_answers: number;
   trend_12m: TrendPoint[];
-  schools_students_by_grade: SchoolByGrade[];
-  school_monthly_correct_pct: { key: string; by_school_id: Record<string, number> }[];
+  available_districts: string[];
 };
 
-const GRADES = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+type SchoolDetailsPayload = {
+  district: string;
+  school_id: string | null;
+  schools_students_by_grade: SchoolByGrade[];
+  school_monthly_correct_pct: { key: string; by_school_id: Record<string, number> }[];
+  subject_monthly_correct_pct?: {
+    key: string;
+    chinese: number;
+    english: number;
+    math: number;
+  }[];
+  registrations_by_grade_12m?: Array<{
+    key: string;
+    P1: number;
+    P2: number;
+    P3: number;
+    P4: number;
+    P5: number;
+    P6: number;
+  }>;
+};
 
 function subjectEntries(obj: Record<string, number> | null | undefined) {
   if (!obj || typeof obj !== "object") return [];
@@ -76,15 +103,15 @@ function subjectEntries(obj: Record<string, number> | null | undefined) {
 export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
   const [today, setToday] = useState<TodayPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPayload | null>(null);
+  const [schoolDetails, setSchoolDetails] = useState<SchoolDetailsPayload | null>(null);
   const [tLoading, setTLoading] = useState(true);
   const [mLoading, setMLoading] = useState(true);
+  const [sLoading, setSLoading] = useState(false);
   const [tErr, setTErr] = useState("");
   const [mErr, setMErr] = useState("");
-
-  const [schoolRegDistrict, setSchoolRegDistrict] = useState<string>("__all__");
-  const [schoolRegOpen, setSchoolRegOpen] = useState(false);
-  const [rateDistrict, setRateDistrict] = useState<string>("__all__");
-  const [rateOpen, setRateOpen] = useState(false);
+  const [sErr, setSErr] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("__all__");
 
   const loadToday = useCallback(async () => {
     setTLoading(true);
@@ -128,31 +155,55 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
     }
   }, [sessionToken]);
 
+  const loadSchoolDetails = useCallback(async () => {
+    if (!selectedDistrict) {
+      setSErr("請先選擇地區。");
+      return;
+    }
+    setSLoading(true);
+    setSErr("");
+    try {
+      const res = await fetch("/api/admin/business-school-details", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+        body: JSON.stringify({
+          district: selectedDistrict,
+          school_id: selectedSchoolId === "__all__" ? null : selectedSchoolId,
+        }),
+      });
+      const j = (await res.json()) as {
+        data?: SchoolDetailsPayload;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error || "無法載入學校資料");
+      setSchoolDetails((j.data as SchoolDetailsPayload) ?? null);
+    } catch (e) {
+      setSErr(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setSLoading(false);
+    }
+  }, [selectedDistrict, selectedSchoolId, sessionToken]);
+
   useEffect(() => {
     void loadToday();
     void loadMonthly();
   }, [loadToday, loadMonthly]);
 
   const districts = useMemo(() => {
-    const s = monthly?.schools_students_by_grade;
-    if (!s || !Array.isArray(s)) return [] as string[];
-    const d = new Set(s.map((x) => x.district).filter(Boolean));
-    return [...d].sort((a, b) => a.localeCompare(b, "zh-HK"));
+    const arr = monthly?.available_districts;
+    if (!Array.isArray(arr)) return [] as string[];
+    return [...arr].sort((a, b) => a.localeCompare(b, "zh-HK"));
   }, [monthly]);
 
-  const schoolsForReg = useMemo(() => {
-    const s = monthly?.schools_students_by_grade;
+  const schoolOptions = useMemo(() => {
+    const s = schoolDetails?.schools_students_by_grade;
     if (!s || !Array.isArray(s)) return [];
-    if (schoolRegDistrict === "__all__") return s;
-    return s.filter((x) => x.district === schoolRegDistrict);
-  }, [monthly, schoolRegDistrict]);
-
-  const schoolsForRate = useMemo(() => {
-    const s = monthly?.schools_students_by_grade;
-    if (!s || !Array.isArray(s)) return [];
-    if (rateDistrict === "__all__") return s;
-    return s.filter((x) => x.district === rateDistrict);
-  }, [monthly, rateDistrict]);
+    return [...s].sort((a, b) => a.name.localeCompare(b.name, "zh-HK"));
+  }, [schoolDetails]);
 
   const monthRows = useMemo(() => {
     const t = monthly?.trend_12m;
@@ -162,45 +213,39 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
       .map((row) => ({
         ...row,
         label: row.key,
+        free_tier_new_users: row.free_tier_new_users ?? 0,
+        paid_tier_new_users: row.paid_tier_new_users ?? 0,
       }));
   }, [monthly]);
 
-  const schoolRateLineData = useMemo(() => {
-    const arr = monthly?.school_monthly_correct_pct;
-    const schools = schoolsForRate;
-    if (!arr || !Array.isArray(arr) || schools.length === 0) return [];
-    const idSet = new Set(schools.map((s) => s.id));
+  const schoolSubjectRows = useMemo(() => {
+    const arr = schoolDetails?.subject_monthly_correct_pct;
+    if (!arr || !Array.isArray(arr)) return [];
     return [...arr]
       .sort((a, b) => a.key.localeCompare(b.key))
-      .map((bucket) => {
-        let sum = 0;
-        let n = 0;
-        for (const sid of idSet) {
-          const v = bucket.by_school_id?.[sid];
-          if (v != null && !Number.isNaN(Number(v))) {
-            sum += Number(v);
-            n += 1;
-          }
-        }
-        const avg = n > 0 ? Math.round((sum / n) * 100) / 100 : 0;
-        return { monthLabel: bucket.key, avg };
-      });
-  }, [monthly, schoolsForRate]);
+      .map((row) => ({
+        key: row.key,
+        chinese: Number(row.chinese ?? 0),
+        english: Number(row.english ?? 0),
+        math: Number(row.math ?? 0),
+      }));
+  }, [schoolDetails]);
 
-  const latestRateBySchool = useMemo(() => {
-    const arr = monthly?.school_monthly_correct_pct;
-    if (!arr || arr.length === 0) return new Map<string, number>();
-    const latest = [...arr].sort((a, b) => a.key.localeCompare(b.key)).at(-1) as
-      | { by_school_id?: Record<string, number> }
-      | undefined;
-    const m = new Map<string, number>();
-    if (latest?.by_school_id) {
-      for (const [k, v] of Object.entries(latest.by_school_id)) {
-        m.set(k, Number(v));
-      }
-    }
-    return m;
-  }, [monthly]);
+  const schoolGradeRows = useMemo(() => {
+    const arr = schoolDetails?.registrations_by_grade_12m;
+    if (!arr || !Array.isArray(arr)) return [];
+    return [...arr]
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((row) => ({
+        key: row.key,
+        P1: Number(row.P1 ?? 0),
+        P2: Number(row.P2 ?? 0),
+        P3: Number(row.P3 ?? 0),
+        P4: Number(row.P4 ?? 0),
+        P5: Number(row.P5 ?? 0),
+        P6: Number(row.P6 ?? 0),
+      }));
+  }, [schoolDetails]);
 
   return (
     <div className="space-y-8">
@@ -228,6 +273,18 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
               <li>
                 今日新註冊學生：
                 <span className="font-bold text-indigo-600 ml-1">{today.new_students_today}</span>
+              </li>
+              <li>
+                今日新增免費用戶：
+                <span className="font-bold text-indigo-600 ml-1">
+                  {today.free_tier_new_users_today ?? 0}
+                </span>
+              </li>
+              <li>
+                今日新增月費用戶：
+                <span className="font-bold text-indigo-600 ml-1">
+                  {today.paid_tier_new_users_today ?? 0}
+                </span>
               </li>
             </ul>
             <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -306,6 +363,20 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                     <td className="p-2 font-mono text-indigo-700">{monthly.mt_new_students}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
+                    <td className="p-2">免費用戶新增（本月）</td>
+                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">
+                      {monthly.mt_new_free_tier_users ?? 0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="p-2">月費用戶新增（本月）</td>
+                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">
+                      {monthly.mt_new_paid_tier_users ?? 0}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
                     <td className="p-2">家長帳戶（累積）</td>
                     <td className="p-2 font-mono">{monthly.alltime_parents}</td>
                     <td className="p-2 text-gray-400">—</td>
@@ -313,12 +384,12 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                   <tr className="border-b border-gray-100">
                     <td className="p-2">曾完成之練習節數（有作答）</td>
                     <td className="p-2 font-mono">{monthly.alltime_practice_sessions}</td>
-                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">{monthly.mt_practice_sessions}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="p-2">作答筆數（session_answers）</td>
                     <td className="p-2 font-mono">{monthly.alltime_session_answers}</td>
-                    <td className="p-2 text-gray-400">—</td>
+                    <td className="p-2 font-mono text-indigo-700">{monthly.mt_session_answers}</td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="p-2">曾練習學生（人 • MTD 不重複）</td>
@@ -334,7 +405,7 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
               </table>
             </div>
 
-            <h3 className="text-sm font-bold text-gray-800 pt-2">學生註冊 — 最近 12 個曆月</h3>
+            <h3 className="text-sm font-bold text-gray-800">付費 / 免費用戶新增趨勢 — 最近 12 個曆月</h3>
             <div className="h-64 w-full" style={{ minWidth: 280 }}>
               {monthRows.length > 0 && (
                 <ResponsiveContainer width="100%" height="100%">
@@ -355,70 +426,23 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                         return p0?.payload?.label ?? "";
                       }}
                     />
-                    <Bar dataKey="registrations" name="新註冊" fill="#4f46e5" />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="free_tier_new_users"
+                      name="免費用戶新增"
+                      stroke="#14b8a6"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="paid_tier_new_users"
+                      name="月費用戶新增"
+                      stroke="#8b5cf6"
+                      dot={false}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
-              )}
-            </div>
-
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setSchoolRegOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold bg-gray-50 hover:bg-gray-100"
-              >
-                <span>學生註冊 — 按學校及年級</span>
-                <span className="text-gray-500">{schoolRegOpen ? "−" : "+"}</span>
-              </button>
-              {schoolRegOpen && (
-                <div className="p-4 space-y-3 bg-white">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-gray-600">地區</span>
-                    <select
-                      value={schoolRegDistrict}
-                      onChange={(e) => setSchoolRegDistrict(e.target.value)}
-                      className="p-2 rounded-lg border border-gray-200 bg-white"
-                    >
-                      <option value="__all__">全港</option>
-                      {districts.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="overflow-x-auto max-h-96">
-                    <table className="w-full text-sm border-collapse min-w-[520px]">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="text-left p-2">學校</th>
-                          {GRADES.map((g) => (
-                            <th key={g} className="p-1 text-center font-mono text-xs w-10">
-                              {g}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schoolsForReg.map((row) => (
-                          <tr key={row.id} className="border-b border-gray-100">
-                            <td className="p-2 align-top">
-                              <span className="font-medium">{row.name}</span>
-                              <span className="block text-xs text-gray-400">{row.district}</span>
-                            </td>
-                            {GRADES.map((g) => (
-                              <td key={g} className="p-1 text-center font-mono text-xs">
-                                {row.by_grade?.[g] != null && row.by_grade[g]! > 0
-                                  ? row.by_grade[g]
-                                  : "—"}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               )}
             </div>
 
@@ -518,110 +542,178 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
               )}
             </div>
 
-            <h3 className="text-sm font-bold text-gray-800">學校整體正確率 — 最近 12 個曆月</h3>
-            <p className="text-xs text-gray-500">
-              圖表為所選地區內各校正確率之算術平均；表格為最近一欄曆月（截至昨日）各校百分比。
-            </p>
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="p-3 bg-white space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-gray-600">地區</span>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
+              <p className="text-sm font-semibold text-indigo-900">
+                學校明細（按地區／學校查詢）
+              </p>
+              <p className="text-xs text-indigo-700">
+                為避免查詢逾時，學校資料不會在頁面載入時自動計算。請先選擇地區，再按「查詢學校資料」。
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="text-sm">
+                  <span className="block text-gray-700 mb-1">地區</span>
                   <select
-                    value={rateDistrict}
-                    onChange={(e) => setRateDistrict(e.target.value)}
-                    className="p-2 rounded-lg border border-gray-200 bg-white"
+                    value={selectedDistrict}
+                    onChange={(e) => {
+                      setSelectedDistrict(e.target.value);
+                      setSelectedSchoolId("__all__");
+                      setSchoolDetails(null);
+                    }}
+                    className="min-w-[180px] p-2 rounded-lg border border-gray-200 bg-white"
                   >
-                    <option value="__all__">全港</option>
+                    <option value="">請選擇地區</option>
                     {districts.map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
                     ))}
                   </select>
-                </div>
+                </label>
+
+                <label className="text-sm">
+                  <span className="block text-gray-700 mb-1">學校（可選）</span>
+                  <select
+                    value={selectedSchoolId}
+                    onChange={(e) => setSelectedSchoolId(e.target.value)}
+                    disabled={!selectedDistrict || schoolOptions.length === 0}
+                    className="min-w-[220px] p-2 rounded-lg border border-gray-200 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="__all__">此地區全部學校</option>
+                    {schoolOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => void loadSchoolDetails()}
+                  disabled={sLoading || !selectedDistrict}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {sLoading ? "查詢中…" : "查詢學校資料"}
+                </button>
+              </div>
+              {sErr && <p className="text-sm text-red-600">{sErr}</p>}
+            </div>
+
+            <h3 className="text-sm font-bold text-gray-800">學校明細圖表（按地區／學校）</h3>
+            <p className="text-xs text-gray-500">
+              以下 4 個圖表會按你已選擇的地區／學校條件即時更新；如未查詢則不顯示數據。
+            </p>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  學校整體正確率 — 最近 12 個曆月 (Chinese)
+                </h4>
                 <div className="h-56 w-full" style={{ minWidth: 280 }}>
-                  {schoolRateLineData.length > 0 && (
+                  {schoolSubjectRows.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart
-                        data={schoolRateLineData}
+                        data={schoolSubjectRows}
                         margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="monthLabel"
-                          tick={{ fontSize: 9 }}
-                          interval="preserveStartEnd"
-                        />
+                        <XAxis dataKey="key" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                         <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                        <Tooltip
-                          labelFormatter={(_, p) => {
-                            const p0 = p?.[0] as { payload?: { monthLabel?: string } } | undefined;
-                            return p0?.payload?.monthLabel ?? "";
-                          }}
-                          formatter={(v) => [
-                            typeof v === "number" ? `${v}%` : "—",
-                            "平均正確率",
-                          ]}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="avg"
-                          name="地區內學校平均正確率"
-                          stroke="#7c3aed"
-                          dot={false}
-                        />
+                        <Tooltip formatter={(v) => [typeof v === "number" ? `${v}%` : "—", "中文正確率"]} />
+                        <Line type="monotone" dataKey="chinese" name="Chinese" stroke="#2563eb" dot={false} />
                       </ComposedChart>
                     </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                      請先選擇地區／學校並查詢學校資料。
+                    </div>
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setRateOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold bg-gray-50 hover:bg-gray-100 border-t border-gray-200"
-              >
-                <span>學校列表及正確率</span>
-                <span className="text-gray-500">{rateOpen ? "−" : "+"}</span>
-              </button>
-              {rateOpen && (
-                <div className="p-4 max-h-96 overflow-y-auto bg-white border-t border-gray-100">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="text-left border-b">
-                        <th className="py-1 pr-2">學校</th>
-                        <th className="py-1 pr-2">年級人數分佈</th>
-                        <th className="py-1">正確率（%）</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schoolsForRate.map((s) => (
-                        <tr key={s.id} className="border-b border-gray-100">
-                          <td className="py-1 pr-2 align-top">
-                            {s.name}
-                            <span className="block text-xs text-gray-400">{s.district}</span>
-                          </td>
-                          <td className="py-1 pr-2 text-xs text-gray-600">
-                            {GRADES.map((g) => {
-                              const c = s.by_grade?.[g] ?? 0;
-                              if (!c) return null;
-                              return (
-                                <span key={g} className="inline-block mr-1">
-                                  {g}:{c}
-                                </span>
-                              );
-                            })}
-                          </td>
-                          <td className="py-1 font-mono text-indigo-800">
-                            {latestRateBySchool.get(s.id) != null
-                              ? `${latestRateBySchool.get(s.id)}`
-                              : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  學校整體正確率 — 最近 12 個曆月 (English)
+                </h4>
+                <div className="h-56 w-full" style={{ minWidth: 280 }}>
+                  {schoolSubjectRows.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart
+                        data={schoolSubjectRows}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="key" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(v) => [typeof v === "number" ? `${v}%` : "—", "英文正確率"]} />
+                        <Line type="monotone" dataKey="english" name="English" stroke="#7c3aed" dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                      請先選擇地區／學校並查詢學校資料。
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  學校整體正確率 — 最近 12 個曆月 (Math)
+                </h4>
+                <div className="h-56 w-full" style={{ minWidth: 280 }}>
+                  {schoolSubjectRows.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart
+                        data={schoolSubjectRows}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="key" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(v) => [typeof v === "number" ? `${v}%` : "—", "數學正確率"]} />
+                        <Line type="monotone" dataKey="math" name="Math" stroke="#ea580c" dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                      請先選擇地區／學校並查詢學校資料。
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  學生註冊 — 按年級（最近 12 個曆月）
+                </h4>
+                <div className="h-56 w-full" style={{ minWidth: 280 }}>
+                  {schoolGradeRows.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart
+                        data={schoolGradeRows}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="key" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="P1" name="P1" stroke="#2563eb" dot={false} />
+                        <Line type="monotone" dataKey="P2" name="P2" stroke="#14b8a6" dot={false} />
+                        <Line type="monotone" dataKey="P3" name="P3" stroke="#8b5cf6" dot={false} />
+                        <Line type="monotone" dataKey="P4" name="P4" stroke="#eab308" dot={false} />
+                        <Line type="monotone" dataKey="P5" name="P5" stroke="#ef4444" dot={false} />
+                        <Line type="monotone" dataKey="P6" name="P6" stroke="#334155" dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-gray-500">
+                      請先選擇地區／學校並查詢學校資料。
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </>
         )}

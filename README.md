@@ -46,10 +46,33 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
 
+## Feature inventory + mandatory health checks (run on every new release)
+
+> Purpose: prevent regressions where existing blocks disappear after unrelated changes (e.g. login FAQ, admin tabs).
+
+| Area | 已開發功能（must exist） | 每次新開發後必做健康檢查 |
+|---|---|---|
+| `/admin` tabs | 業務概覽、題目配額、刪除帳戶、電郵通知、題目管理、付款狀態查詢、折扣碼維護 | 確認 7 個 tab 全部可見且可切換；任何 tab 缺失視為 release blocker。 |
+| `/admin` 付款狀態查詢 | 手機查詢 paid/free、取消未來付款、最後一筆退款（預覽+確認）、月費家長月度摘要、CSV 匯出 | 用一個 paid 家長測：查詢成功、月度摘要可切月、CSV 可下載。 |
+| `/admin` 折扣碼維護 | 折扣碼 CRUD、搜尋、使用摘要、使用紀錄 CSV | 新增 1 組折扣碼、更新、刪除、下載 usage CSV。 |
+| Login page (`login_mobile`) | 登入卡片、平台簡介、FAQ、WhatsApp/WeChat 分享、Cookie banner/設定入口 | 開無痕視窗首入頁面：確認 FAQ/平台簡介仍在、Cookie banner 僅出現在 login 頁。 |
+| Reset password | 手機 + Email 雙欄位、成功後返回乾淨登入態 | 輸入 mobile+email 發送成功後按返回，必須回 `login_mobile` 且無假登入狀態。 |
+| Payment | Airwallex checkout、5 種付款方式 safeguard、付款回調升級 | 建立 1 筆測試單，確認 checkout 可開啟且方法設定不回歸。 |
+| Parent dashboard / balance | 練習報告、題目餘額交易紀錄（含 paid tier Unlimited 顯示） | 以 free + paid 帳戶各做 1 次練習，確認交易紀錄有更新。 |
+
+### Quick regression smoke checklist (copy for each handover)
+
+1. `/admin` 七個主功能 tab 全可見：`業務概覽 / 題目配額 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護`  
+2. Login 頁 `平台簡介 + FAQ + 分享按鈕 + Cookie` 都在，且 Cookie UI 不會出現在學生練習頁。  
+3. 忘記密碼仍為「手機 + 電郵」雙欄位，送出後返回為乾淨登入頁。  
+4. `/admin` 付款狀態查詢的月費摘要可切月份並能下載 CSV。  
+5. `/admin` 折扣碼維護可讀取清單與使用摘要。  
+
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin 功能復原 + 防回歸清單**：分支同步後已恢復 Admin 缺失模組（含 `付款狀態查詢`、`折扣碼維護` 等），並新增「Feature inventory + mandatory health checks」區段，規範每次改版後必做 smoke test，避免功能被覆蓋或遺失。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -71,7 +94,66 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
 | 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
 | 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |
-| 2026-05 | **Cookie / 私隱合規（PCPD）**：新增全站 Cookie 同意橫幅（接受全部 / 拒絕非必要 / 管理設定）、可重開「Cookie 設定」按鈕，以及雙語（繁中/EN）Cookie 與私隱聲明 overlay。用戶選擇儲存在 `localStorage`（`gearup_cookie_consent_v1`）。檔案：`src/lib/cookie-consent.ts`、`src/lib/cookie-consent.test.ts`、`src/app/page.tsx`。 |
+| 2026-05 | **Cookie / 私隱合規（PCPD）**：新增 Cookie 同意橫幅（接受全部 / 拒絕非必要 / 管理設定）、可重開「Cookie 設定」按鈕，以及雙語（繁中/EN）Cookie 與私隱聲明 overlay。目前 UI 僅顯示於 `login_mobile`，選擇儲存在 `localStorage`（`gearup_cookie_consent_v1`）。檔案：`src/lib/cookie-consent.ts`、`src/lib/cookie-consent.test.ts`、`src/app/page.tsx`。 |
+| 2026-05 | **Business KPI 排除測試數據（`9999*` 手機）**：前後端 KPI 邏輯已統一排除測試家長資料；新增一鍵 SQL：`supabase_admin_business_kpi_exclude_test_mobile_9999.sql`（更新 `admin_today_business`、`admin_business_monthly_summary`、`admin_business_school_details`）。另修正「今日新增月費用戶／月費新增趨勢」來源改以 `parents.paid_started_at` 為準（舊環境保留 fallback）。 |
+| 2026-05 | **Admin 折扣碼使用摘要**：`實付總額 / 原價總額 / 折扣總額` 改為僅統計 `status = paid` 訂單，避免把未付款紀錄算入金額。 |
+| 2026-05 | **家長端 UI 微調（已上線）**：① 登入頁新增宣傳句並套用較活潑字型；② 練習結果頁「小香蕉圖示」改為 banner（可用 `NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL` 覆蓋，預設走 Supabase Storage）；③ 身份選擇頁新增客服入口：月費家長顯示 WhatsApp `wa.me/85252861715?text=客戶服務查詢`、免費家長顯示 `cs@hkedutech.com`；④ 家長頁面客服電郵統一為 `cs@hkedutech.com`；⑤ 免費家長升級文案更新。 |
+| 2026-05 | **Airwallex 付款方式修正（Apple Pay / Google Pay / AlipayHK / WeChat Pay / Card）**：修正 `payment_intents/create` metadata 格式錯誤、HPP locale 設為 `zh-HK`、補齊 Apple Pay HPP 參數，並調整方法清單策略，最終確認付款頁可同時顯示 5 大方式。新增方法防呆：`src/lib/airwallex-checkout-methods.ts` + 單元測試 `src/lib/airwallex-checkout-methods.test.ts`，避免後續改動誤刪 `all` 模式必要方法。 |
+| 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
+| 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
+| 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+
+## Handover note — 2026-05-08 (for next working session)
+
+- `main` 已包含當日功能與修正（最後推送 commit：`80308e0`）。
+- 今日重點已完成並部署：
+  - KPI 測試數據排除 + 月費新增統計修正。
+  - Admin 折扣碼摘要金額計算修正。
+  - 多項前端文案／客服／banner UI 微調。
+- **可能仍需人工確認**（若尚未執行）：在 Supabase SQL Editor 執行  
+  `supabase_admin_business_kpi_exclude_test_mobile_9999.sql`  
+  以確保 DB 端 KPI RPC 與前端顯示邏輯完全一致。
+- 下次開工建議先做：
+  1. 在 admin business KPI 頁確認 `9999*` 測試帳戶不再出現在今日、月結、學校圖表。
+  2. 用一個月費家長驗證身份選擇頁 WhatsApp 客服按鈕（含預填文字）。
+  3. 用一個免費家長驗證客服電郵顯示與升級文案。
+
+## Handover note — 2026-05-11 (payment methods + safeguard)
+
+- `main` 已包含 Airwallex 付款模組本日修正（最新推送 commit：`17596ee`）。
+- 今日完成並已部署：
+  - 修正 Airwallex `payment_intents/create` 驗證錯誤（移除不合法 metadata 陣列欄位）。
+  - HPP 語言固定為 `zh-HK`（繁中）。
+  - Apple Pay 啟用與可用性診斷補強（含 `payment_method_types` 診斷回傳）。
+  - 付款方式顯示回復為 5 大方式：`card`, `applepay`, `googlepay`, `alipayhk`, `wechatpay`。
+- 新增防呆（避免未來誤刪方法）：
+  - `src/lib/airwallex-checkout-methods.ts`
+    - `getAirwallexMethodsForSelection()`
+    - `applyAirwallexMethodSafeguards()`
+  - `src/lib/airwallex-checkout-methods.test.ts`（Vitest）
+  - `/api/payment/checkout` 會在 `payment_method = all` 時自動補回缺少的必要方法並附加 warning 診斷訊息。
+- 明日交接建議先驗證：
+  1. 付款頁是否穩定顯示 5 種方法（iPhone Safari / iPhone Chrome / Desktop Chrome 各一次）。
+  2. `npm test` 是否包含新防呆測試通過。
+  3. 用無折扣與有折扣各測 1 單，確認 callback 與升級流程不回歸。
+
+## Handover note — 2026-05-13 (AI-only + paid summary + balance history hotfix)
+
+- `main` 已包含今日三組更新（latest commit：`22d3d5a`）。
+- 今日已完成並部署：
+  1. **Strict AI-only 出題**：只抽 `questions.source = 'AI'`；若題庫不足會阻擋開題並提示。
+  2. **Admin 付款狀態查詢頁**：新增「月費家長月度明細」區塊（月份選擇、家長明細表、CSV 匯出）。
+  3. **家長題目餘額交易紀錄**：修正 paid tier 練習紀錄未入帳問題，交易可在家長「題目餘額」看到。
+
+- **明早第一步（必做）**：在 Supabase SQL Editor 執行  
+  `supabase_fix_paid_tier_balance_history_logging.sql`  
+  > 注意：本檔已修正 `balance_after` NOT NULL 問題，paid tier 以 `-1` 代表 Unlimited。
+
+- 建議明日 smoke test：
+  1. 用 paid 家長（例：`91917838`）做中文 + 數學練習，各作答 2–3 題，確認「題目餘額」當月紀錄有更新（描述 `當日合計扣除`）。
+  2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
+  3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
+  4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
 
 ## Setup
 

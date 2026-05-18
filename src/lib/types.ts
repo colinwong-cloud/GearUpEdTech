@@ -3,6 +3,10 @@ export interface Parent {
   mobile_number: string;
   parent_name: string | null;
   email: string | null;
+  subscription_tier?: "free" | "paid";
+  paid_until?: string | null;
+  tier_label?: string;
+  is_paid?: boolean;
   created_at: string;
 }
 

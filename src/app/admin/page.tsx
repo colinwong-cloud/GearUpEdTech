@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
+import {
+  buildPaidTransactionsCsv,
+  getCurrentHktMonthKey,
+  type PaidTransactionAuditRow,
+} from "@/lib/admin-paid-summary";
 
 type AdminConsoleAction =
   | "search_parent"
@@ -11,7 +16,17 @@ type AdminConsoleAction =
   | "set_setting"
   | "set_email_notification"
   | "search_questions"
-  | "update_question";
+  | "update_question"
+  | "discount_code_list"
+  | "discount_code_create"
+  | "discount_code_update"
+  | "discount_code_delete"
+  | "discount_code_usage_summary"
+  | "payment_status_enquiry"
+  | "payment_monthly_paid_summary"
+  | "payment_cancel_future_payment"
+  | "payment_refund_last_preview"
+  | "payment_refund_last_confirm";
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
@@ -40,7 +55,14 @@ async function adminConsoleRequest<T>(
   return body.data as T;
 }
 
-type Tab = "quota" | "delete" | "email" | "questions" | "business";
+type Tab =
+  | "quota"
+  | "delete"
+  | "email"
+  | "questions"
+  | "business"
+  | "discount_codes"
+  | "payment_status";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -66,6 +88,148 @@ interface QuestionResult {
   correct_answer: string;
   explanation: string | null;
   image_url: string | null;
+}
+
+interface DiscountCodeRecord {
+  id: string;
+  code: string;
+  discount_percent: number;
+  salesperson: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface DiscountCodeUsageSummaryRow {
+  usage_month: string;
+  salesperson: string;
+  usage_count: number;
+  paid_count: number;
+  gross_amount_hkd: number;
+  final_amount_hkd: number;
+  discount_amount_hkd: number;
+}
+
+interface DiscountCodeUsageRawRecord {
+  id: string;
+  usage_date: string;
+  usage_month: string;
+  created_at: string;
+  paid_at: string | null;
+  discount_code: string;
+  salesperson: string | null;
+  discount_percent: number;
+  amount_hkd: number;
+  final_amount_hkd: number;
+  discount_amount_hkd: number;
+  status: string;
+  mobile_number: string;
+  merchant_order_id: string;
+  payment_method: string | null;
+}
+
+interface PaymentStatusMonthRow {
+  month: string;
+  amount_hkd: number;
+  paid_count: number;
+}
+
+interface PaymentStatusEnquiryResult {
+  found: boolean;
+  parent?: {
+    id: string;
+    mobile_number: string;
+    parent_name: string | null;
+    tier: "free" | "paid";
+    is_paid: boolean;
+    paid_started_at: string | null;
+    paid_until: string | null;
+  };
+  payment?: {
+    current_payment_start_date: string | null;
+    current_payment_end_date: string | null;
+    payment_method: string | null;
+    is_recurring: boolean;
+    recurring_status: string | null;
+    billed_last_12_months_total_hkd: number;
+    billed_last_12_months_by_month: PaymentStatusMonthRow[];
+    latest_paid_order?: {
+      id: string;
+      paid_at: string | null;
+      amount_hkd: number;
+      payment_method: string | null;
+    } | null;
+    latest_refund?: {
+      status: string | null;
+      amount_hkd: number;
+      created_at: string | null;
+      airwallex_refund_id: string | null;
+    } | null;
+  } | null;
+}
+
+interface PaymentCancelFutureResult {
+  ok: boolean;
+  consent_disabled: boolean;
+  consent_status: string | null;
+  recurring_status: string;
+  message: string;
+}
+
+interface PaymentRefundPreviewResult {
+  found: boolean;
+  eligible?: boolean;
+  reason?: string | null;
+  parent?: {
+    id: string;
+    mobile_number: string;
+    parent_name: string | null;
+  };
+  order?: {
+    id: string;
+    paid_at: string | null;
+    amount_hkd: number;
+    currency: string;
+    payment_method: string | null;
+  };
+  existing_refund?: {
+    id: string;
+    status: string | null;
+    amount_hkd: number;
+    created_at: string | null;
+    airwallex_refund_id: string | null;
+  } | null;
+}
+
+interface PaymentRefundConfirmResult {
+  ok: boolean;
+  refund_id: string | null;
+  refund_status: string;
+  refund_amount_hkd: number;
+  parent_tier: "free" | "paid";
+  recurring_status: string;
+}
+
+interface PaymentMonthlyPaidParentRow {
+  parent_id: string;
+  mobile_number: string;
+  parent_name: string | null;
+  paid_started_at: string | null;
+  monthly_paid_count: number;
+  monthly_paid_amount_hkd: number;
+  latest_paid_at: string | null;
+  latest_payment_method: string | null;
+}
+
+interface PaymentMonthlyPaidSummaryResult {
+  month: string;
+  totals: {
+    new_paid_parents: number;
+    new_paid_parents_amount_hkd: number;
+    paid_transactions: number;
+    paid_amount_hkd: number;
+  };
+  parents: PaymentMonthlyPaidParentRow[];
+  records: PaidTransactionAuditRow[];
 }
 
 export default function AdminPage() {
@@ -195,9 +359,11 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "business", label: "業務概覽" },
     { key: "quota", label: "題目配額" },
+    { key: "payment_status", label: "付款狀態查詢" },
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
     { key: "questions", label: "題目管理" },
+    { key: "discount_codes", label: "折扣碼維護" },
   ];
 
   return (
@@ -223,9 +389,11 @@ export default function AdminPage() {
 
         {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
         {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "payment_status" && <PaymentStatusSection sessionToken={sessionToken} />}
         {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
         {tab === "email" && <EmailSection sessionToken={sessionToken} />}
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
+        {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
@@ -660,6 +828,956 @@ function QuestionsSection({ sessionToken }: { sessionToken: string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function formatDateTimeDisplay(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("zh-HK", { hour12: false });
+}
+
+function formatHkdAmount(value: number): string {
+  return Number(value || 0).toFixed(2);
+}
+
+function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
+  const [mobile, setMobile] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [refundPreviewLoading, setRefundPreviewLoading] = useState(false);
+  const [refundConfirmLoading, setRefundConfirmLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [actionMsg, setActionMsg] = useState("");
+  const [result, setResult] = useState<PaymentStatusEnquiryResult | null>(null);
+  const [refundPreview, setRefundPreview] = useState<PaymentRefundPreviewResult | null>(null);
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  const [summaryMonth, setSummaryMonth] = useState(() => getCurrentHktMonthKey());
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryMsg, setSummaryMsg] = useState("");
+  const [monthlySummary, setMonthlySummary] = useState<PaymentMonthlyPaidSummaryResult | null>(null);
+
+  const loadMonthlyPaidSummary = useCallback(
+    async (month: string) => {
+      setSummaryLoading(true);
+      setSummaryMsg("");
+      try {
+        const data = await adminConsoleRequest<PaymentMonthlyPaidSummaryResult>(
+          "payment_monthly_paid_summary",
+          { month },
+          sessionToken
+        );
+        setMonthlySummary(data);
+      } catch (err) {
+        setSummaryMsg(err instanceof Error ? err.message : "月費摘要載入失敗");
+      } finally {
+        setSummaryLoading(false);
+      }
+    },
+    [sessionToken]
+  );
+
+  useEffect(() => {
+    void loadMonthlyPaidSummary(summaryMonth);
+  }, [loadMonthlyPaidSummary, summaryMonth]);
+
+  const handleSearch = async () => {
+    if (!mobile.trim()) {
+      setMsg("請輸入電話號碼");
+      setResult(null);
+      return;
+    }
+    setLoading(true);
+    setMsg("");
+    setActionMsg("");
+    setResult(null);
+    setRefundPreview(null);
+    setShowRefundConfirm(false);
+    setRefundReason("");
+    try {
+      const data = await adminConsoleRequest<PaymentStatusEnquiryResult>(
+        "payment_status_enquiry",
+        { mobile_number: mobile.trim() },
+        sessionToken
+      );
+      if (!data?.found) {
+        setMsg("找不到此電話號碼");
+        return;
+      }
+      setResult(data);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "查詢失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelFuturePayment = async () => {
+    if (!result?.parent?.mobile_number) return;
+    const confirmed = window.confirm(
+      `確定要取消 ${result.parent.mobile_number} 的未來續費嗎？此操作會停止之後自動扣款。`
+    );
+    if (!confirmed) return;
+
+    setCancelLoading(true);
+    setActionMsg("");
+    try {
+      const data = await adminConsoleRequest<PaymentCancelFutureResult>(
+        "payment_cancel_future_payment",
+        { mobile_number: result.parent.mobile_number },
+        sessionToken
+      );
+      setActionMsg(data.message || "已取消未來續費");
+      await handleSearch();
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "取消續費失敗");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleOpenRefundConfirm = async () => {
+    if (!result?.parent?.mobile_number) return;
+    setRefundPreviewLoading(true);
+    setActionMsg("");
+    setShowRefundConfirm(false);
+    setRefundPreview(null);
+    setRefundReason("");
+    try {
+      const preview = await adminConsoleRequest<PaymentRefundPreviewResult>(
+        "payment_refund_last_preview",
+        { mobile_number: result.parent.mobile_number },
+        sessionToken
+      );
+      setRefundPreview(preview);
+      setShowRefundConfirm(true);
+      if (!preview.eligible) {
+        setActionMsg(preview.reason || "此家長目前沒有可退款的最近付款。");
+      }
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "載入退款確認資料失敗");
+    } finally {
+      setRefundPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmRefund = async () => {
+    const orderId = refundPreview?.order?.id;
+    const mobileNumber = result?.parent?.mobile_number;
+    if (!orderId || !mobileNumber) return;
+    if (!refundReason.trim()) {
+      setActionMsg("請先輸入退款原因");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `確認退款？\n家長：${mobileNumber}\n金額：HKD ${formatHkdAmount(
+        refundPreview.order?.amount_hkd || 0
+      )}\n原因：${refundReason.trim()}`
+    );
+    if (!confirmed) return;
+
+    setRefundConfirmLoading(true);
+    setActionMsg("");
+    try {
+      const data = await adminConsoleRequest<PaymentRefundConfirmResult>(
+        "payment_refund_last_confirm",
+        {
+          mobile_number: mobileNumber,
+          order_id: orderId,
+          reason: refundReason.trim(),
+        },
+        sessionToken
+      );
+      setActionMsg(
+        `退款已提交（${data.refund_status}）。已降級為免費用戶並停止續費。退款編號：${data.refund_id || "—"}`
+      );
+      setShowRefundConfirm(false);
+      setRefundPreview(null);
+      setRefundReason("");
+      await handleSearch();
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : "退款操作失敗");
+    } finally {
+      setRefundConfirmLoading(false);
+    }
+  };
+
+  const paymentRows = result?.payment?.billed_last_12_months_by_month ?? [];
+  const latestRefundStatus = result?.payment?.latest_refund?.status || null;
+
+  const handleExportMonthlyPaidCsv = () => {
+    if (!monthlySummary || monthlySummary.records.length === 0) {
+      setSummaryMsg("目前沒有可匯出的付款記錄");
+      return;
+    }
+    const csv = buildPaidTransactionsCsv(monthlySummary.records);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paid-transactions-${monthlySummary.month}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-gray-800">付款狀態查詢</h2>
+      <p className="text-sm text-gray-500">
+        輸入家長電話號碼，可查詢免費／月費狀態；月費家長會顯示付款資料及最近 12 個月帳單金額。
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          value={mobile}
+          onChange={(e) => {
+            setMobile(e.target.value);
+            setMsg("");
+          }}
+          onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
+          placeholder="輸入家長電話號碼"
+          className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+        />
+        <button
+          onClick={() => void handleSearch()}
+          disabled={loading}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {loading ? "查詢中..." : "查詢"}
+        </button>
+      </div>
+
+      {msg && (
+        <p className={`text-sm ${msg.includes("失敗") || msg.includes("找不到") ? "text-red-500" : "text-emerald-600"}`}>
+          {msg}
+        </p>
+      )}
+      {actionMsg && (
+        <p
+          className={`text-sm ${
+            actionMsg.includes("失敗") || actionMsg.includes("錯誤") ? "text-red-500" : "text-emerald-600"
+          }`}
+        >
+          {actionMsg}
+        </p>
+      )}
+
+      {result?.found && result.parent && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm text-gray-500">
+              家長：{result.parent.mobile_number}
+              {result.parent.parent_name ? ` (${result.parent.parent_name})` : ""}
+            </p>
+            <p className="text-sm">
+              目前狀態：
+              <span className={`ml-1 font-bold ${result.parent.is_paid ? "text-emerald-600" : "text-gray-600"}`}>
+                {result.parent.is_paid ? "月費用戶" : "免費用戶"}
+              </span>
+            </p>
+          </div>
+
+          {result.parent.is_paid && result.payment && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => void handleCancelFuturePayment()}
+                  disabled={cancelLoading || refundConfirmLoading || refundPreviewLoading}
+                  className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {cancelLoading ? "取消中..." : "取消未來付款"}
+                </button>
+                <button
+                  onClick={() => void handleOpenRefundConfirm()}
+                  disabled={refundPreviewLoading || refundConfirmLoading || cancelLoading}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                >
+                  {refundPreviewLoading ? "載入中..." : "退款最後一筆"}
+                </button>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">當前付款期開始</p>
+                  <p className="font-semibold text-gray-800">
+                    {formatDateTimeDisplay(result.payment.current_payment_start_date)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">當前付款期結束</p>
+                  <p className="font-semibold text-gray-800">
+                    {formatDateTimeDisplay(result.payment.current_payment_end_date)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">付款方式</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.payment_method || "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">是否自動續費</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.is_recurring ? "是" : "否"}
+                    {result.payment.recurring_status
+                      ? `（${result.payment.recurring_status}）`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">最近一筆付款</p>
+                  <p className="font-semibold text-gray-800">
+                    {result.payment.latest_paid_order
+                      ? `HKD ${formatHkdAmount(result.payment.latest_paid_order.amount_hkd)} · ${formatDateTimeDisplay(result.payment.latest_paid_order.paid_at)}`
+                      : "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">最近一筆退款狀態</p>
+                  <p className="font-semibold text-gray-800">
+                    {latestRefundStatus || "沒有退款紀錄"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                <p className="text-xs text-indigo-700 mb-1">最近 12 個月已入帳總額（HKD）</p>
+                <p className="text-lg font-bold text-indigo-700">
+                  ${formatHkdAmount(result.payment.billed_last_12_months_total_hkd)}
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 pr-3">月份</th>
+                      <th className="py-2 pr-3">已入帳金額 (HKD)</th>
+                      <th className="py-2 pr-3">付款次數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentRows.map((row) => (
+                      <tr key={row.month} className="border-b border-gray-100">
+                        <td className="py-2 pr-3">{row.month}</td>
+                        <td className="py-2 pr-3 font-mono">{formatHkdAmount(row.amount_hkd)}</td>
+                        <td className="py-2 pr-3">{row.paid_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {showRefundConfirm && refundPreview && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                  <p className="text-sm font-bold text-red-700">退款確認</p>
+                  {refundPreview.order ? (
+                    <>
+                      <div className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                        <p>家長：{refundPreview.parent?.mobile_number || result.parent.mobile_number}</p>
+                        <p>付款時間：{formatDateTimeDisplay(refundPreview.order.paid_at)}</p>
+                        <p>付款方式：{refundPreview.order.payment_method || "—"}</p>
+                        <p>
+                          退款金額：<span className="font-semibold">HKD {formatHkdAmount(refundPreview.order.amount_hkd)}</span>
+                        </p>
+                      </div>
+                      {refundPreview.existing_refund && (
+                        <p className="text-xs text-red-600">
+                          最近退款紀錄：{refundPreview.existing_refund.status || "—"}（
+                          {formatDateTimeDisplay(refundPreview.existing_refund.created_at)}）
+                        </p>
+                      )}
+                      <textarea
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        placeholder="請輸入退款原因（必填）"
+                        rows={3}
+                        className="w-full p-2 rounded-lg border border-red-200 text-sm outline-none focus:border-red-400"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void handleConfirmRefund()}
+                          disabled={!refundPreview.eligible || refundConfirmLoading}
+                          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {refundConfirmLoading ? "退款處理中..." : "確認退款（最後一筆）"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowRefundConfirm(false);
+                            setRefundPreview(null);
+                            setRefundReason("");
+                          }}
+                          disabled={refundConfirmLoading}
+                          className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300 disabled:opacity-50"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-red-600">
+                      {refundPreview.reason || "目前沒有可退款的最近付款。"}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-gray-800">月費家長月度明細</h3>
+            <p className="text-xs text-gray-500">
+              顯示所選月份「成為月費」家長數及該月份付款明細，並可下載付款審計 CSV。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="month"
+              value={summaryMonth}
+              onChange={(e) => setSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadMonthlyPaidSummary(summaryMonth)}
+              disabled={summaryLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {summaryLoading ? "載入中..." : "重新整理"}
+            </button>
+            <button
+              onClick={handleExportMonthlyPaidCsv}
+              disabled={summaryLoading || !monthlySummary || monthlySummary.records.length === 0}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            >
+              下載 CSV
+            </button>
+          </div>
+        </div>
+
+        {summaryMsg && <p className="text-sm text-red-500">{summaryMsg}</p>}
+
+        {monthlySummary && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">選定月份</p>
+                <p className="font-semibold text-gray-800">{monthlySummary.month}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">新增月費家長</p>
+                <p className="font-semibold text-indigo-700">{monthlySummary.totals.new_paid_parents}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">月費交易總筆數</p>
+                <p className="font-semibold text-indigo-700">{monthlySummary.totals.paid_transactions}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">月費已入帳總額 (HKD)</p>
+                <p className="font-semibold text-indigo-700">{formatHkdAmount(monthlySummary.totals.paid_amount_hkd)}</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">家長電話</th>
+                    <th className="py-2 pr-3">家長姓名</th>
+                    <th className="py-2 pr-3">成為月費時間</th>
+                    <th className="py-2 pr-3">本月付款次數</th>
+                    <th className="py-2 pr-3">本月付款金額 (HKD)</th>
+                    <th className="py-2 pr-3">最近付款方式</th>
+                    <th className="py-2 pr-3">最近付款時間</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlySummary.parents.map((row) => (
+                    <tr key={row.parent_id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3 font-mono">{row.mobile_number}</td>
+                      <td className="py-2 pr-3">{row.parent_name || "—"}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.paid_started_at)}</td>
+                      <td className="py-2 pr-3">{row.monthly_paid_count}</td>
+                      <td className="py-2 pr-3 font-mono">{formatHkdAmount(row.monthly_paid_amount_hkd)}</td>
+                      <td className="py-2 pr-3">{row.latest_payment_method || "—"}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.latest_paid_at)}</td>
+                    </tr>
+                  ))}
+                  {monthlySummary.parents.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-center text-gray-400">
+                        此月份沒有新增月費家長
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function toLocalDateTimeInputValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function normalizeCodeInput(raw: string): string {
+  return raw.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+}
+
+function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
+  const headers = [
+    "id",
+    "usage_date",
+    "usage_month",
+    "created_at",
+    "paid_at",
+    "discount_code",
+    "salesperson",
+    "discount_percent",
+    "amount_hkd",
+    "final_amount_hkd",
+    "discount_amount_hkd",
+    "status",
+    "mobile_number",
+    "merchant_order_id",
+    "payment_method",
+  ];
+  const escape = (value: unknown): string => {
+    const text = value === null || value === undefined ? "" : String(value);
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+  const body = rows.map((row) =>
+    [
+      row.id,
+      row.usage_date,
+      row.usage_month,
+      row.created_at,
+      row.paid_at,
+      row.discount_code,
+      row.salesperson,
+      row.discount_percent,
+      row.amount_hkd,
+      row.final_amount_hkd,
+      row.discount_amount_hkd,
+      row.status,
+      row.mobile_number,
+      row.merchant_order_id,
+      row.payment_method,
+    ]
+      .map(escape)
+      .join(",")
+  );
+  return [headers.join(","), ...body].join("\n");
+}
+
+function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
+  const [search, setSearch] = useState("");
+  const [codes, setCodes] = useState<DiscountCodeRecord[]>([]);
+  const [codesLoading, setCodesLoading] = useState(false);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formCode, setFormCode] = useState("");
+  const [formPercent, setFormPercent] = useState("");
+  const [formSalesperson, setFormSalesperson] = useState("");
+  const [formActive, setFormActive] = useState(true);
+  const [formCreatedAt, setFormCreatedAt] = useState("");
+
+  const [monthFilter, setMonthFilter] = useState("");
+  const [salespersonFilter, setSalespersonFilter] = useState("");
+  const [salespersonOptions, setSalespersonOptions] = useState<string[]>([]);
+  const [summaryRows, setSummaryRows] = useState<DiscountCodeUsageSummaryRow[]>([]);
+  const [rawRows, setRawRows] = useState<DiscountCodeUsageRawRecord[]>([]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setFormCode("");
+    setFormPercent("");
+    setFormSalesperson("");
+    setFormActive(true);
+    setFormCreatedAt("");
+  };
+
+  const loadCodes = async (q = search) => {
+    setCodesLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<DiscountCodeRecord[]>(
+        "discount_code_list",
+        { q: q.trim() },
+        sessionToken
+      );
+      setCodes(data || []);
+    } catch {
+      setMsg("折扣碼列表載入失敗");
+    } finally {
+      setCodesLoading(false);
+    }
+  };
+
+  const loadUsage = async () => {
+    setUsageLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<{
+        summary: DiscountCodeUsageSummaryRow[];
+        records: DiscountCodeUsageRawRecord[];
+        salespersons: string[];
+      }>(
+        "discount_code_usage_summary",
+        {
+          month: monthFilter || null,
+          salesperson: salespersonFilter || null,
+        },
+        sessionToken
+      );
+      setSummaryRows(data.summary || []);
+      setRawRows(data.records || []);
+      setSalespersonOptions(data.salespersons || []);
+    } catch {
+      setMsg("折扣碼使用紀錄載入失敗");
+    } finally {
+      setUsageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCodes("");
+    loadUsage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionToken]);
+
+  const handleEdit = (row: DiscountCodeRecord) => {
+    setEditingId(row.id);
+    setFormCode(row.code);
+    setFormPercent(String(row.discount_percent));
+    setFormSalesperson(row.salesperson);
+    setFormActive(Boolean(row.is_active));
+    setFormCreatedAt(toLocalDateTimeInputValue(row.created_at));
+    setMsg("");
+  };
+
+  const handleSave = async () => {
+    const payload = {
+      code: normalizeCodeInput(formCode),
+      discount_percent: Number(formPercent),
+      salesperson: formSalesperson.trim(),
+      is_active: formActive,
+      created_at: formCreatedAt ? new Date(formCreatedAt).toISOString() : null,
+    };
+
+    if (!/^[A-Za-z0-9]{6}$/.test(payload.code)) {
+      setMsg("折扣碼必須為 6 位英數字");
+      return;
+    }
+    if (!Number.isFinite(payload.discount_percent) || payload.discount_percent < 0 || payload.discount_percent > 100) {
+      setMsg("折扣百分比必須介乎 0 至 100");
+      return;
+    }
+    if (!payload.salesperson) {
+      setMsg("請輸入業務員名稱");
+      return;
+    }
+
+    setSaveLoading(true);
+    setMsg("");
+    try {
+      if (editingId) {
+        await adminConsoleRequest("discount_code_update", { id: editingId, ...payload }, sessionToken);
+        setMsg("折扣碼已更新");
+      } else {
+        await adminConsoleRequest("discount_code_create", payload, sessionToken);
+        setMsg("折扣碼已新增");
+      }
+      resetForm();
+      await Promise.all([loadCodes(), loadUsage()]);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "儲存失敗");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("確定要刪除此折扣碼？")) return;
+    setDeletingId(id);
+    setMsg("");
+    try {
+      await adminConsoleRequest("discount_code_delete", { id }, sessionToken);
+      setMsg("折扣碼已刪除");
+      if (editingId === id) resetForm();
+      await Promise.all([loadCodes(), loadUsage()]);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "刪除失敗");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const exportCsv = () => {
+    if (rawRows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const csv = buildCsv(rawRows);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `discount-code-usage-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-gray-800">折扣碼維護</h2>
+
+      {msg && (
+        <p className={`text-sm ${msg.includes("失敗") || msg.includes("錯誤") ? "text-red-500" : "text-emerald-600"}`}>
+          {msg}
+        </p>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">{editingId ? "修改折扣碼" : "新增折扣碼"}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">折扣碼（6位英數字）</label>
+            <input
+              value={formCode}
+              onChange={(e) => setFormCode(normalizeCodeInput(e.target.value))}
+              placeholder="例如 ASD516"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">折扣百分比 (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              value={formPercent}
+              onChange={(e) => setFormPercent(e.target.value)}
+              placeholder="例如 50"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">業務員</label>
+            <input
+              value={formSalesperson}
+              onChange={(e) => setFormSalesperson(e.target.value)}
+              placeholder="例如 Colin Wong"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">建立時間</label>
+            <input
+              type="datetime-local"
+              value={formCreatedAt}
+              onChange={(e) => setFormCreatedAt(e.target.value)}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={formActive} onChange={(e) => setFormActive(e.target.checked)} />
+          啟用
+        </label>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saveLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {saveLoading ? "儲存中..." : editingId ? "更新折扣碼" : "新增折扣碼"}
+          </button>
+          {editingId && (
+            <button
+              onClick={resetForm}
+              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300"
+            >
+              取消編輯
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadCodes()}
+            placeholder="搜尋折扣碼或業務員"
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadCodes()}
+            disabled={codesLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {codesLoading ? "搜尋中..." : "搜尋"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">折扣碼</th>
+                <th className="py-2 pr-3">折扣 (%)</th>
+                <th className="py-2 pr-3">業務員</th>
+                <th className="py-2 pr-3">啟用</th>
+                <th className="py-2 pr-3">建立時間</th>
+                <th className="py-2 pr-3">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {codes.map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-mono">{row.code}</td>
+                  <td className="py-2 pr-3">{Number(row.discount_percent).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{row.salesperson}</td>
+                  <td className="py-2 pr-3">{row.is_active ? "是" : "否"}</td>
+                  <td className="py-2 pr-3">{new Date(row.created_at).toLocaleString("zh-HK")}</td>
+                  <td className="py-2 pr-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(row)}
+                        className="px-2 py-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-semibold"
+                      >
+                        修改
+                      </button>
+                      <button
+                        onClick={() => handleDelete(row.id)}
+                        disabled={deletingId === row.id}
+                        className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold disabled:opacity-50"
+                      >
+                        {deletingId === row.id ? "刪除中..." : "刪除"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {codes.length === 0 && !codesLoading && (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-gray-400">找不到折扣碼資料</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">折扣碼使用摘要</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            type="month"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <select
+            value={salespersonFilter}
+            onChange={(e) => setSalespersonFilter(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          >
+            <option value="">全部業務員</option>
+            {salespersonOptions.map((sp) => (
+              <option key={sp} value={sp}>{sp}</option>
+            ))}
+          </select>
+          <button
+            onClick={loadUsage}
+            disabled={usageLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {usageLoading ? "載入中..." : "套用篩選"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">月份</th>
+                <th className="py-2 pr-3">業務員</th>
+                <th className="py-2 pr-3">使用次數</th>
+                <th className="py-2 pr-3">成功付款次數</th>
+                <th className="py-2 pr-3">原價總額 (HKD)</th>
+                <th className="py-2 pr-3">實付總額 (HKD)</th>
+                <th className="py-2 pr-3">折扣總額 (HKD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row) => (
+                <tr key={`${row.usage_month}-${row.salesperson}`} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">{row.usage_month}</td>
+                  <td className="py-2 pr-3">{row.salesperson}</td>
+                  <td className="py-2 pr-3">{row.usage_count}</td>
+                  <td className="py-2 pr-3">{row.paid_count}</td>
+                  <td className="py-2 pr-3">{Number(row.gross_amount_hkd).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{Number(row.final_amount_hkd).toFixed(2)}</td>
+                  <td className="py-2 pr-3">{Number(row.discount_amount_hkd).toFixed(2)}</td>
+                </tr>
+              ))}
+              {summaryRows.length === 0 && !usageLoading && (
+                <tr>
+                  <td colSpan={7} className="py-4 text-center text-gray-400">沒有符合條件的摘要資料</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <p className="text-xs text-gray-500">可匯出目前篩選條件下的完整原始使用紀錄（CSV）</p>
+          <button
+            onClick={exportCsv}
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+          >
+            匯出 CSV
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
