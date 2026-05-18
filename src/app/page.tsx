@@ -2265,7 +2265,7 @@ function LoginMobileScreen({
               draggable={false}
             />
             <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
-              免費中英數練習平台，AI 精準補漏，貼合香港課程。
+              GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
             </p>
             <p className="mt-2 text-[15px] text-gray-600 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
               請輸入電話號碼及密碼登入
