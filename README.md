@@ -42,6 +42,13 @@ The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project
 
 Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`). Ship to production: `npx vercel deploy --prod`.
 
+### Mandatory deployment gate (must follow for every session)
+
+1. All development changes must be validated on **Preview** deployment first.
+2. Share the Preview URL for review and wait for **explicit owner approval**.
+3. **Do not deploy to Production** until approval is explicitly given in chat.
+4. After production deploy, run production smoke checks and record sign-off in the release checklist.
+
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
 **Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
@@ -247,6 +254,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - [ ] `npm run lint` pass (or only accepted known warnings)
 - [ ] `npm run build` pass
 - [ ] Preview smoke test pass
+- [ ] Owner explicit approval received for Preview
 - [ ] Production smoke test pass
 
 ### 10) Release sign-off record (for each release)
@@ -261,6 +269,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Deployment policy hardening**：新增強制流程「Preview 先驗證 + 必須取得 owner 明確批准後才可 deploy production」，並把「Preview 已獲 owner 批准」加入 release gate 檢查項。 |
 | 2026-05 | **Release Gate 升級**：README 的 Must-Not-Break 清單已擴充為完整 0-10 檢查（涵蓋 E2E、學生、家長、帳戶維護、付款、Admin、追蹤、API/SQL、Build、Sign-off），並新增 `.github/PULL_REQUEST_TEMPLATE.md` 強制 PR 勾選。 |
 | 2026-05 | **Admin 功能復原 + 防回歸清單**：分支同步後已恢復 Admin 缺失模組（含 `付款狀態查詢`、`折扣碼維護` 等），並新增「Feature inventory + mandatory health checks」區段，規範每次改版後必做 smoke test，避免功能被覆蓋或遺失。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
