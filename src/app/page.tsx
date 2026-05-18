@@ -55,6 +55,7 @@ import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
 } from "@/lib/session-practice-summary";
+import { genderFromAvatarStyle } from "@/lib/student-gender";
 import {
   StudentQuizExperience,
   getQuizSoundEnabled,
@@ -1175,6 +1176,11 @@ export default function QuizApp() {
       schoolId: string | null;
     }) => {
       if (!mobileNumber.trim()) return;
+      const gender = genderFromAvatarStyle(form.avatarStyle);
+      if (!gender) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       markAuthIntent();
       pushGtmEventOncePerSession("register_submit_attempt", {
         screen_name: "register",
@@ -1182,19 +1188,29 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -1222,20 +1238,33 @@ export default function QuizApp() {
         setError("登入狀態已失效，請重新登入後再試。");
         return;
       }
+      if (!genderFromAvatarStyle(form.avatarStyle)) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: pinInput.trim(),
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/add-student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            pinCode: pinInput.trim(),
+            studentName: form.studentName,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            schoolId: form.schoolId,
+          }),
         });
-        if (rpcErr) throw rpcErr;
-        if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
-        const newStudent = data as Student;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "新增學生失敗，請重試。");
+        }
+        const newStudent = payload.student;
         setStudents((prev) => [...prev, newStudent]);
         await refreshParentTierStatus();
         setScreen("account_menu");
@@ -2701,7 +2730,7 @@ function RegisterScreen({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              姓別
+              性別（必填）
             </label>
             <div className="flex gap-3">
               {avatars.map((a) => (
@@ -3601,7 +3630,7 @@ function AddStudentScreen({
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">性別（必填）</label>
             <div className="flex gap-3">
               {avatars.map((a) => (
                 <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}

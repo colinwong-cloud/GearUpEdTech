@@ -79,6 +79,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Register flow
 - [ ] Click "新用戶註冊" enters register screen
+- [ ] Gender selection is mandatory (must select 男生 / 女生 before submit)
 - [ ] Privacy statement consent required before submit
 - [ ] Register submit works for valid input
 - [ ] Register success returns expected next step/login state
@@ -269,6 +270,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **註冊/新增學生性別必填強化**：前端把「性別」明確標示為必填，並改由後端 API（`/api/auth/register`、`/api/auth/add-student`）做二次驗證；若未選男/女會直接阻擋提交。成功建立學生後會即時寫入 `students.gender`（M/F），避免 Admin 練習摘要出現空白性別。 |
 | 2026-05 | **Admin 新增「家長學生練習摘要」**：可按家長電話號碼查詢所有已註冊學生（學校/年級/性別），並按學生分組顯示指定月份每日各科練習摘要（練習節數、作答題數、答對題數、正確率），支援月份切換。 |
 | 2026-05 | **Deployment policy hardening**：新增強制流程「Preview 先驗證 + 必須取得 owner 明確批准後才可 deploy production」，並把「Preview 已獲 owner 批准」加入 release gate 檢查項。 |
 | 2026-05 | **Release Gate 升級**：README 的 Must-Not-Break 清單已擴充為完整 0-10 檢查（涵蓋 E2E、學生、家長、帳戶維護、付款、Admin、追蹤、API/SQL、Build、Sign-off），並新增 `.github/PULL_REQUEST_TEMPLATE.md` 強制 PR 勾選。 |
