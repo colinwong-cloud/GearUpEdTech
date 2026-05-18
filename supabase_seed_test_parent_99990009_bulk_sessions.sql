@@ -21,6 +21,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ---------------------------
 -- 0) Upsert parent
 -- ---------------------------
+CREATE TEMP TABLE tmp_seed_parent_id AS
 WITH upsert_parent AS (
   INSERT INTO public.parents (mobile_number, email)
   VALUES ('99990009', 'colin.wong@hkedutech.com')
@@ -28,7 +29,7 @@ WITH upsert_parent AS (
   DO UPDATE SET email = EXCLUDED.email
   RETURNING id
 )
-SELECT id INTO TEMP TABLE tmp_seed_parent_id FROM upsert_parent;
+SELECT id FROM upsert_parent;
 
 -- If ON CONFLICT path did not return (some DB versions/permissions edge),
 -- fallback select by mobile.
