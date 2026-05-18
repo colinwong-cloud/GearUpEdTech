@@ -48,30 +48,220 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 ## Feature inventory + mandatory health checks (run on every new release)
 
-> Purpose: prevent regressions where existing blocks disappear after unrelated changes (e.g. login FAQ, admin tabs).
+> Purpose: prevent any regression where older features become missing or non-functional after new development.
 
-| Area | 已開發功能（must exist） | 每次新開發後必做健康檢查 |
-|---|---|---|
-| `/admin` tabs | 業務概覽、題目配額、刪除帳戶、電郵通知、題目管理、付款狀態查詢、折扣碼維護 | 確認 7 個 tab 全部可見且可切換；任何 tab 缺失視為 release blocker。 |
-| `/admin` 付款狀態查詢 | 手機查詢 paid/free、取消未來付款、最後一筆退款（預覽+確認）、月費家長月度摘要、CSV 匯出 | 用一個 paid 家長測：查詢成功、月度摘要可切月、CSV 可下載。 |
-| `/admin` 折扣碼維護 | 折扣碼 CRUD、搜尋、使用摘要、使用紀錄 CSV | 新增 1 組折扣碼、更新、刪除、下載 usage CSV。 |
-| Login page (`login_mobile`) | 登入卡片、平台簡介、FAQ、WhatsApp/WeChat 分享、Cookie banner/設定入口 | 開無痕視窗首入頁面：確認 FAQ/平台簡介仍在、Cookie banner 僅出現在 login 頁。 |
-| Reset password | 手機 + Email 雙欄位、成功後返回乾淨登入態 | 輸入 mobile+email 發送成功後按返回，必須回 `login_mobile` 且無假登入狀態。 |
-| Payment | Airwallex checkout、5 種付款方式 safeguard、付款回調升級 | 建立 1 筆測試單，確認 checkout 可開啟且方法設定不回歸。 |
-| Parent dashboard / balance | 練習報告、題目餘額交易紀錄（含 paid tier Unlimited 顯示） | 以 free + paid 帳戶各做 1 次練習，確認交易紀錄有更新。 |
+### 0) Test Preconditions (must prepare)
 
-### Quick regression smoke checklist (copy for each handover)
+- [ ] Free parent test account available
+- [ ] Paid parent test account available (with payment history)
+- [ ] Admin test account available
+- [ ] Test student set includes P1-P6 and both genders/avatars/schools
+- [ ] Test discount code exists
+- [ ] Browser set: Safari + Chrome
 
-1. `/admin` 七個主功能 tab 全可見：`業務概覽 / 題目配額 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護`  
-2. Login 頁 `平台簡介 + FAQ + 分享按鈕 + Cookie` 都在，且 Cookie UI 不會出現在學生練習頁。  
-3. 忘記密碼仍為「手機 + 電郵」雙欄位，送出後返回為乾淨登入頁。  
-4. `/admin` 付款狀態查詢的月費摘要可切月份並能下載 CSV。  
-5. `/admin` 折扣碼維護可讀取清單與使用摘要。  
+### 1) E2E Entry / Authentication
+
+#### Login page (`/`)
+- [ ] Top banner/logo renders correctly
+- [ ] Marketing text renders correctly
+- [ ] "請輸入電話號碼及密碼登入" shown
+- [ ] Platform brief block exists
+- [ ] FAQ block exists
+- [ ] WhatsApp + WeChat share buttons exist
+- [ ] Cookie banner/settings entry behavior correct (login page only)
+
+#### Register flow
+- [ ] Click "新用戶註冊" enters register screen
+- [ ] Privacy statement consent required before submit
+- [ ] Register submit works for valid input
+- [ ] Register success returns expected next step/login state
+
+#### Login flow
+- [ ] Mobile + PIN login success works
+- [ ] Invalid login shows proper error
+- [ ] Login context created correctly (no pseudo-login)
+
+#### Reset password flow
+- [ ] Forgot password page has mobile + email fields
+- [ ] Validation works (mobile format / required email)
+- [ ] Reset email API sends successfully
+- [ ] Reset link page accepts token and resets PIN
+- [ ] Return action leads to clean `login_mobile` state
+
+#### Session guard
+- [ ] If auth context missing, protected screens auto-redirect to login
+- [ ] Logout clears state completely
+
+### 2) Student-side Flow
+
+#### Start practice
+- [ ] Role select -> student path works
+- [ ] Student selection works
+- [ ] Subject selection includes Math / Chinese / English
+- [ ] Question count selection works
+- [ ] Quiz session starts successfully
+
+#### Question drawing logic
+- [ ] Strict AI-only mode active (`source='AI'`)
+- [ ] If AI pool insufficient, blocked with correct message
+- [ ] If sufficient, quiz proceeds normally
+
+#### Answering behavior
+- [ ] MCQ selection/submit behavior correct
+- [ ] Short-answer input + submit correct
+- [ ] Image/question rendering normal
+- [ ] Per-question deduction logic works (free tier)
+
+#### Result screen
+- [ ] Score/accuracy values correct
+- [ ] Practice summary shown correctly
+- [ ] Optional follow-up actions work (next/back/send email etc.)
+
+### 3) Parent-side Flow
+
+#### Parent dashboard
+- [ ] Role select -> parent path works
+- [ ] Subject selector works
+- [ ] Month selector works
+- [ ] Session list loads correctly
+- [ ] Session detail opens correctly
+- [ ] Chart renders correctly
+- [ ] Grade-rank section renders by selected subject
+
+#### Tier display
+- [ ] Free/Paid tier badge/status correct
+- [ ] Paid-until date display correct
+- [ ] Upgrade entry visible for free users
+
+### 4) Account Maintenance
+
+#### Account menu and profile
+- [ ] Account menu reachable
+- [ ] Profile edit save works
+- [ ] Student gender/avatar/school edit works
+- [ ] Add-student form works (including validation)
+
+#### Balance and transactions
+- [ ] Balance view reachable
+- [ ] Transactions grouped by date/student correctly
+- [ ] Chinese/Math/English transaction labels correct
+- [ ] Paid-tier transaction logging appears
+- [ ] `balance_after = -1` shown as `Unlimited` correctly
+
+### 5) Payment Module (Airwallex)
+
+#### Checkout
+- [ ] Upgrade/payment entry works
+- [ ] Terms and conditions acceptance required
+- [ ] Discount code validate/apply works
+- [ ] Checkout payload generated successfully
+- [ ] Locale behavior correct (`zh-HK`)
+
+#### Payment methods safeguard
+- [ ] Hosted payment page supports Card / Apple Pay / Google Pay / AlipayHK / WeChat Pay
+- [ ] Method safeguard logic test passes (no accidental drop)
+
+#### Post-payment
+- [ ] Callback/verify marks paid status correctly
+- [ ] Webhook idempotency works (no duplicate processing)
+- [ ] Parent tier update reflected in UI
+- [ ] Recurring charge cron path remains healthy
+
+### 6) Admin Console (critical)
+
+#### Admin access
+- [ ] `/admin` login works
+- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護
+
+#### Tab: 業務概覽
+- [ ] Today KPI loads
+- [ ] Monthly trend loads
+- [ ] Refresh button works
+- [ ] Data not polluted by excluded test rules (as intended)
+
+#### Tab: 題目配額
+- [ ] Search parent by mobile works
+- [ ] Add quota works and refreshes balance
+
+#### Tab: 刪除帳戶
+- [ ] Search and delete flow works with confirmation
+
+#### Tab: 電郵通知
+- [ ] Setting load/save works
+
+#### Tab: 題目管理
+- [ ] Search question works
+- [ ] Update question works
+
+#### Tab: 付款狀態查詢
+- [ ] Search parent payment status by mobile works
+- [ ] Paid detail fields display correctly
+- [ ] Cancel future payment works
+- [ ] Refund last payment preview works
+- [ ] Refund confirm works
+- [ ] Monthly paid summary loads
+- [ ] Month selector changes summary
+- [ ] CSV download works
+
+#### Tab: 折扣碼維護
+- [ ] Discount code list loads
+- [ ] Create/update/delete works
+- [ ] Search/filter works
+- [ ] Usage summary loads
+- [ ] Usage CSV download works
+
+### 7) Sharing / Tracking / Compliance
+
+#### Social sharing
+- [ ] WhatsApp button opens native/share flow correctly
+- [ ] WeChat overlay appears with instruction then proceeds
+- [ ] WeChat/WhatsApp icons display correctly
+- [ ] Share URL and metadata logic correct
+
+#### GTM / GA events
+- [ ] `anon_visit` fires
+- [ ] `anon_engaged_30s_no_auth` fires
+- [ ] `register_start` / `register_submit_attempt` / `register_success` fire
+- [ ] `login_attempt` / `login_success` fire
+- [ ] Event dedup/session logic works
+
+#### Cookie consent (PCPD)
+- [ ] Banner appears on first login-page visit
+- [ ] Accept/reject/save preferences work
+- [ ] Preferences persist to localStorage
+- [ ] Cookie policy modal works in zh-HK + EN
+- [ ] Cookie UI does not appear on student practice pages
+
+### 8) API/RPC/SQL Health (release safety)
+
+- [ ] `/api/admin/*` routes return expected data
+- [ ] `/api/payment/checkout|verify|webhook` healthy
+- [ ] `/api/send-reset-email` healthy
+- [ ] `/api/share-events` and `/api/wechat/share-config` healthy
+- [ ] Required SQL migrations for recent features already applied in Supabase
+- [ ] No NOT NULL/constraint regression in balance/payment flows
+
+### 9) Build + Quality Gate
+
+- [ ] `npm test` pass
+- [ ] `npm run lint` pass (or only accepted known warnings)
+- [ ] `npm run build` pass
+- [ ] Preview smoke test pass
+- [ ] Production smoke test pass
+
+### 10) Release sign-off record (for each release)
+
+- [ ] Release ID / commit
+- [ ] Tester name
+- [ ] Date/time
+- [ ] Failures found + fix commits
+- [ ] Final approval
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Release Gate 升級**：README 的 Must-Not-Break 清單已擴充為完整 0-10 檢查（涵蓋 E2E、學生、家長、帳戶維護、付款、Admin、追蹤、API/SQL、Build、Sign-off），並新增 `.github/PULL_REQUEST_TEMPLATE.md` 強制 PR 勾選。 |
 | 2026-05 | **Admin 功能復原 + 防回歸清單**：分支同步後已恢復 Admin 缺失模組（含 `付款狀態查詢`、`折扣碼維護` 等），並新增「Feature inventory + mandatory health checks」區段，規範每次改版後必做 smoke test，避免功能被覆蓋或遺失。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
