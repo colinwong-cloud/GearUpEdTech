@@ -1162,11 +1162,52 @@ export default function QuizApp() {
     setError(null);
   };
 
-  const renderWithCookieUi = (content: React.ReactNode) => (
-    <>
-      {content}
-      {cookieBannerVisible && (
-        <CookieConsentBanner
+  const renderWithCookieUi = (content: React.ReactNode) => {
+    const showCookieUiOnThisScreen = screen === "login_mobile";
+    if (!showCookieUiOnThisScreen) return <>{content}</>;
+
+    return (
+      <>
+        {content}
+        {cookieBannerVisible && (
+          <CookieConsentBanner
+            onAcceptAll={() =>
+              persistCookieConsent(
+                { analytics: true, advertising: true },
+                "accept_all"
+              )
+            }
+            onRejectNonEssential={() =>
+              persistCookieConsent(
+                { analytics: false, advertising: false },
+                "reject_non_essential"
+              )
+            }
+            onManageSettings={() => setCookieSettingsOpen(true)}
+            onOpenPolicy={() => setCookiePolicyOpen(true)}
+          />
+        )}
+        {!cookieBannerVisible && cookieConsent && (
+          <CookieSettingsLauncher
+            compact={screen === "login_mobile"}
+            onOpen={() => setCookieSettingsOpen(true)}
+          />
+        )}
+        <CookieSettingsModal
+          open={cookieSettingsOpen}
+          draft={cookieDraft}
+          onToggleAnalytics={() =>
+            setCookieDraft((prev) => ({
+              ...prev,
+              analytics: !prev.analytics,
+            }))
+          }
+          onToggleAdvertising={() =>
+            setCookieDraft((prev) => ({
+              ...prev,
+              advertising: !prev.advertising,
+            }))
+          }
           onAcceptAll={() =>
             persistCookieConsent(
               { analytics: true, advertising: true },
@@ -1179,57 +1220,21 @@ export default function QuizApp() {
               "reject_non_essential"
             )
           }
-          onManageSettings={() => setCookieSettingsOpen(true)}
+          onSavePreferences={() =>
+            persistCookieConsent(cookieDraft, "save_preferences")
+          }
           onOpenPolicy={() => setCookiePolicyOpen(true)}
+          onClose={() => setCookieSettingsOpen(false)}
         />
-      )}
-      {!cookieBannerVisible && cookieConsent && (
-        <CookieSettingsLauncher
-          compact={screen === "login_mobile"}
-          onOpen={() => setCookieSettingsOpen(true)}
+        <CookiePolicyModal
+          open={cookiePolicyOpen}
+          language={cookiePolicyLanguage}
+          onChangeLanguage={setCookiePolicyLanguage}
+          onClose={() => setCookiePolicyOpen(false)}
         />
-      )}
-      <CookieSettingsModal
-        open={cookieSettingsOpen}
-        draft={cookieDraft}
-        onToggleAnalytics={() =>
-          setCookieDraft((prev) => ({
-            ...prev,
-            analytics: !prev.analytics,
-          }))
-        }
-        onToggleAdvertising={() =>
-          setCookieDraft((prev) => ({
-            ...prev,
-            advertising: !prev.advertising,
-          }))
-        }
-        onAcceptAll={() =>
-          persistCookieConsent(
-            { analytics: true, advertising: true },
-            "accept_all"
-          )
-        }
-        onRejectNonEssential={() =>
-          persistCookieConsent(
-            { analytics: false, advertising: false },
-            "reject_non_essential"
-          )
-        }
-        onSavePreferences={() =>
-          persistCookieConsent(cookieDraft, "save_preferences")
-        }
-        onOpenPolicy={() => setCookiePolicyOpen(true)}
-        onClose={() => setCookieSettingsOpen(false)}
-      />
-      <CookiePolicyModal
-        open={cookiePolicyOpen}
-        language={cookiePolicyLanguage}
-        onChangeLanguage={setCookiePolicyLanguage}
-        onClose={() => setCookiePolicyOpen(false)}
-      />
-    </>
-  );
+      </>
+    );
+  };
 
   if (loading) return renderWithCookieUi(<LoadingScreen />);
 
