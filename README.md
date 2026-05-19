@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-05-18** — deployment `dpl_6zJyaHeoR5pPRrb1nG8JKLfLoTVi`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6zJyaHeoR5pPRrb1nG8JKLfLoTVi). **Release scope:** UI contact email migration to `cs@gearupquiz.com` across login/role/dashboard/cookie notice; external statement text files remain unchanged (`privacy_statment.txt`, `payment_terms_condition.txt`).
+**Latest production deploy:** **2026-05-19** — deployment `dpl_BsPPUFmR1PfJQFuvEeqLfuUUoWoG`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BsPPUFmR1PfJQFuvEeqLfuUUoWoG). **Release scope:** Admin 刪除帳戶功能修正（補齊關聯資料刪除順序，處理 `password_reset_tokens` / `question_reports` / `balance_transactions.session_id` FK），並改善錯誤訊息可視性。
 
 ## Feature inventory + mandatory health checks (run on every new release)
 
@@ -268,11 +268,11 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
-- **Release ID / commit:** `2b1d6df` (includes `710ee4c` UI text change commit)
+- **Release ID / commit:** `c671699` (includes `187a536` cascade delete hardening commit)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
-- **Date/time (UTC):** 2026-05-18
+- **Date/time (UTC):** 2026-05-19
 - **Validation:** `npm test` ✅, `npm run lint` ✅ (1 existing non-blocking warning), `npm run build` ✅, `npm run smoke` ✅ (5/5 passed)
-- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, homepage HTML contains `cs@gearupquiz.com`
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `POST /api/admin/console` (without session) returns expected `Unauthorized`
 - **Failures found + fix commits:** none in final production run
 - **Final approval:** received from owner before `--prod` deploy
 
@@ -280,6 +280,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin 刪除帳戶（PCPD）修正**：修復刪除家長時的 FK 失敗（含 `password_reset_tokens`、`question_reports`、`balance_transactions.session_id` 相關順序），並在 Admin UI 顯示後端實際錯誤訊息，便於快速定位。 |
 | 2026-05 | **客服電郵 UI 統一更新**：登入頁、角色頁、家長/學生相關客服提示與 Cookie/Privacy 聯絡資訊中的 `cs@hkedutech.com` 已統一改為 `cs@gearupquiz.com`（純 UI 文案更新，無資料庫或業務邏輯變更）。 |
 | 2026-05 | **註冊/新增學生性別必填強化**：前端把「性別」明確標示為必填，並改由後端 API（`/api/auth/register`、`/api/auth/add-student`）做二次驗證；若未選男/女會直接阻擋提交。成功建立學生後會即時寫入 `students.gender`（M/F），避免 Admin 練習摘要出現空白性別。 |
 | 2026-05 | **Admin 新增「家長學生練習摘要」**：可按家長電話號碼查詢所有已註冊學生（學校/年級/性別），並按學生分組顯示指定月份每日各科練習摘要（練習節數、作答題數、答對題數、正確率），支援月份切換。 |
