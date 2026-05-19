@@ -317,7 +317,7 @@ async function deleteParentWithRelations({
     value: parent.id,
   });
 
-  // Remove reports before sessions to avoid FK failures on question_reports.session_id.
+  // Remove all session-linked rows before deleting quiz_sessions.
   await deleteWhereIn({
     admin,
     table: "question_reports",
@@ -330,16 +330,16 @@ async function deleteParentWithRelations({
     column: "session_id",
     values: sessionIds,
   });
+  await deleteWhereIn({
+    admin,
+    table: "balance_transactions",
+    column: "session_id",
+    values: sessionIds,
+  });
 
   await deleteWhereIn({
     admin,
     table: "question_reports",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "quiz_sessions",
     column: "student_id",
     values: studentIds,
   });
@@ -376,6 +376,12 @@ async function deleteParentWithRelations({
   await deleteWhereIn({
     admin,
     table: "parent_dashboard_view_log",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "quiz_sessions",
     column: "student_id",
     values: studentIds,
   });
