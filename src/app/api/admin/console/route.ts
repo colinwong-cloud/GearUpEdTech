@@ -181,6 +181,285 @@ function isMissingPaymentOpsTableError(message: string): boolean {
   return /parent_payment_refunds|admin_payment_actions|42P01|does not exist/i.test(message);
 }
 
+function isMissingTableErrorMessage(message: string): boolean {
+  return /42P01|does not exist|relation .* does not exist/i.test(message);
+}
+
+async function deleteWhereEq({
+  admin,
+  table,
+  column,
+  value,
+}: {
+  admin: AdminClient;
+  table: string;
+  column: string;
+  value: string;
+}) {
+  const { error } = await admin.from(table).delete().eq(column, value);
+  if (!error) return;
+  if (isMissingTableErrorMessage(error.message || "")) return;
+  throw new Error(`刪除 ${table} 失敗：${error.message}`);
+}
+
+async function deleteWhereIn({
+  admin,
+  table,
+  column,
+  values,
+}: {
+  admin: AdminClient;
+  table: string;
+  column: string;
+  values: string[];
+}) {
+  if (values.length === 0) return;
+  for (const chunk of chunkArray(values, 500)) {
+    const { error } = await admin.from(table).delete().in(column, chunk);
+    if (!error) continue;
+    if (isMissingTableErrorMessage(error.message || "")) return;
+    throw new Error(`刪除 ${table} 失敗：${error.message}`);
+  }
+}
+
+async function fetchIdsWhereEq({
+  admin,
+  table,
+  column,
+  value,
+}: {
+  admin: AdminClient;
+  table: string;
+  column: string;
+  value: string;
+}): Promise<string[]> {
+  const { data, error } = await admin.from(table).select("id").eq(column, value).limit(20000);
+  if (error) {
+    if (isMissingTableErrorMessage(error.message || "")) return [];
+    throw error;
+  }
+  return (data ?? [])
+    .map((row) => readString((row as { id?: unknown }).id) ?? "")
+    .filter(Boolean);
+}
+
+async function deleteParentWithRelations({
+  admin,
+  mobile,
+}: {
+  admin: AdminClient;
+  mobile: string;
+}): Promise<{ deleted: boolean; students_deleted: number; reason?: string }> {
+  const parent = await getParentByMobile(admin, mobile);
+  if (!parent) {
+    return { deleted: false, students_deleted: 0, reason: "Parent not found" };
+  }
+
+  const { data: studentRows, error: studentErr } = await admin
+    .from("students")
+    .select("id")
+    .eq("parent_id", parent.id)
+    .limit(5000);
+  if (studentErr) throw studentErr;
+  const studentIds = (studentRows ?? [])
+    .map((row) => readString((row as { id?: unknown }).id) ?? "")
+    .filter(Boolean);
+
+  const sessionIds: string[] = [];
+  if (studentIds.length > 0) {
+    for (const chunk of chunkArray(studentIds, 400)) {
+      const { data, error } = await admin
+        .from("quiz_sessions")
+        .select("id")
+        .in("student_id", chunk)
+        .limit(50000);
+      if (error) {
+        if (isMissingTableErrorMessage(error.message || "")) break;
+        throw error;
+      }
+      for (const row of data ?? []) {
+        const id = readString((row as { id?: unknown }).id);
+        if (id) sessionIds.push(id);
+      }
+    }
+  }
+
+  const paymentOrderIds = new Set<string>();
+  for (const id of await fetchIdsWhereEq({
+    admin,
+    table: "parent_payment_orders",
+    column: "parent_id",
+    value: parent.id,
+  })) {
+    paymentOrderIds.add(id);
+  }
+  for (const id of await fetchIdsWhereEq({
+    admin,
+    table: "parent_payment_orders",
+    column: "mobile_number",
+    value: mobile,
+  })) {
+    paymentOrderIds.add(id);
+  }
+
+  // Remove parent-linked reset tokens first; FK is NOT NULL in some deployments.
+  await deleteWhereEq({
+    admin,
+    table: "password_reset_tokens",
+    column: "parent_id",
+    value: parent.id,
+  });
+
+  await deleteWhereEq({
+    admin,
+    table: "parent_dashboard_view_log",
+    column: "parent_id",
+    value: parent.id,
+  });
+
+  // Remove reports before sessions to avoid FK failures on question_reports.session_id.
+  await deleteWhereIn({
+    admin,
+    table: "question_reports",
+    column: "session_id",
+    values: sessionIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "session_answers",
+    column: "session_id",
+    values: sessionIds,
+  });
+
+  await deleteWhereIn({
+    admin,
+    table: "question_reports",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "quiz_sessions",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "balance_transactions",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "student_balances",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "student_rank_performance",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "student_grade_rankings",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "parent_weights",
+    column: "student_id",
+    values: studentIds,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "parent_dashboard_view_log",
+    column: "student_id",
+    values: studentIds,
+  });
+
+  const paymentOrderIdList = Array.from(paymentOrderIds);
+  await deleteWhereIn({
+    admin,
+    table: "parent_payment_refunds",
+    column: "payment_order_id",
+    values: paymentOrderIdList,
+  });
+  await deleteWhereIn({
+    admin,
+    table: "admin_payment_actions",
+    column: "payment_order_id",
+    values: paymentOrderIdList,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_payment_refunds",
+    column: "parent_id",
+    value: parent.id,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "admin_payment_actions",
+    column: "parent_id",
+    value: parent.id,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_recurring_profiles",
+    column: "parent_id",
+    value: parent.id,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_payment_orders",
+    column: "parent_id",
+    value: parent.id,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_payment_refunds",
+    column: "mobile_number",
+    value: mobile,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "admin_payment_actions",
+    column: "mobile_number",
+    value: mobile,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_recurring_profiles",
+    column: "mobile_number",
+    value: mobile,
+  });
+  await deleteWhereEq({
+    admin,
+    table: "parent_payment_orders",
+    column: "mobile_number",
+    value: mobile,
+  });
+
+  await deleteWhereEq({
+    admin,
+    table: "students",
+    column: "parent_id",
+    value: parent.id,
+  });
+
+  const { error: parentDeleteErr } = await admin.from("parents").delete().eq("id", parent.id);
+  if (parentDeleteErr) {
+    throw new Error(`刪除家長資料失敗：${parentDeleteErr.message}`);
+  }
+
+  return {
+    deleted: true,
+    students_deleted: studentIds.length,
+  };
+}
+
 type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
 
 type ParentRow = {
@@ -623,11 +902,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ data });
       }
       case "delete_parent": {
-        const mobile = String(payload.p_mobile ?? "");
-        const { data, error } = await admin.rpc("admin_delete_parent", {
-          p_mobile: mobile,
+        const mobile = String(payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const data = await deleteParentWithRelations({
+          admin,
+          mobile,
         });
-        if (error) throw error;
         return NextResponse.json({ data });
       }
       case "get_settings": {

@@ -561,7 +561,11 @@ function DeleteSection({ sessionToken }: { sessionToken: string }) {
     if (!mobile.trim()) return;
     setLoading(true);
     try {
-      const result = await adminConsoleRequest<{ deleted: boolean; students_deleted?: number }>(
+      const result = await adminConsoleRequest<{
+        deleted: boolean;
+        students_deleted?: number;
+        reason?: string;
+      }>(
         "delete_parent",
         { p_mobile: mobile.trim() },
         sessionToken
@@ -571,9 +575,11 @@ function DeleteSection({ sessionToken }: { sessionToken: string }) {
         setParentInfo(null);
         setConfirmDelete(false);
       } else {
-        setMsg("刪除失敗");
+        setMsg(result.reason ? `刪除失敗：${result.reason}` : "刪除失敗");
       }
-    } catch { setMsg("刪除失敗"); }
+    } catch (err) {
+      setMsg(err instanceof Error ? `刪除失敗：${err.message}` : "刪除失敗");
+    }
     finally { setLoading(false); }
   };
 
