@@ -268,6 +268,15 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release ID / commit:** `e84fa4f` (UI change commit: `beec703`)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-05-20
+- **Scope confirmation:** 本次上線僅涉及登入頁 CTA 視覺層（`src/app/page.tsx`）與 README 記錄更新；未改動註冊配額/GA 事件/後端業務邏輯。
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）, `PLAYWRIGHT_BASE_URL=https://q.hkedutech.com npm run smoke` ✅（5/5 passed）
+- **Production deployment:** `dpl_4YMLJsdQTzhUwzJxNNP5Nir4SoXU`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
 - **Release ID / commit:** `c671699` (includes `187a536` cascade delete hardening commit)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
 - **Date/time (UTC):** 2026-05-19
@@ -393,6 +402,24 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   1. 若要把 statement 也改成新 email，直接更新上述兩個 Supabase Storage `.txt` 檔內容即可（前端會自動讀取新文案，無需改程式碼）。
   2. 先用 Preview 驗證 statement modal 顯示，再按既有 gate 走 owner 批准後才上 Production。
   3. 例行跑 `npm test && npm run lint && npm run build && npm run smoke`。
+
+## Handover note — 2026-05-20 (register CTA production rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. **登入頁「新用戶註冊」CTA 強化**：按鈕改為登入卡片上方、全寬、尺寸與輸入欄一致（提升可見度）。
+  2. **Release gate 全數通過**：`npm test`、`npm run lint`、`npm run build`、`npm run smoke` 全綠；Production URL 再跑一次 smoke 亦全綠。
+  3. **Production 部署資訊**：
+     - deployment: `dpl_4YMLJsdQTzhUwzJxNNP5Nir4SoXU`
+     - live alias: `https://q.hkedutech.com`
+
+- 本次變更邊界（重要）：
+  - 僅 UI 變更（`src/app/page.tsx`）+ 文檔更新。
+  - **未改動**：註冊題目配額邏輯、GA/GTM 事件埋點、Supabase SQL/RPC。
+
+- 下次若要處理「新註冊 200 題」策略，建議獨立開一個 backend 任務與 release：
+  1. 先確認現行生產資料實際來源（RPC/觸發器/後補腳本）；
+  2. 補一份對應 SQL migration + 回歸測試；
+  3. 依 Preview→owner 批准→Production gate 流程上線。
 
 ## Setup
 
