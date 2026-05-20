@@ -280,6 +280,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **登入頁 CTA UI 強化（A/B 測試向）**：把「新用戶註冊」由卡片內小連結改為登入區上方全寬獨立按鈕（尺寸貼近登入輸入欄），提升可見度；不涉及註冊流程邏輯變更。 |
 | 2026-05 | **Ranking 測試數據補齊腳本（99990009~99990012）**：新增小批次 SQL（每個 mobile × 每個科目一份）把 English/Chinese 題量補至每位學生至少 100 題：`supabase_rank_topup_9999000{9..12}_{english|chinese}.sql`，最後執行 `supabase_rank_recalculate_verify_99990009_99990012.sql` 重算並驗證快照。 |
 | 2026-05 | **Admin 刪除帳戶（PCPD）修正**：修復刪除家長時的 FK 失敗（含 `password_reset_tokens`、`question_reports`、`balance_transactions.session_id` 相關順序），並在 Admin UI 顯示後端實際錯誤訊息，便於快速定位。 |
 | 2026-05 | **客服電郵 UI 統一更新**：登入頁、角色頁、家長/學生相關客服提示與 Cookie/Privacy 聯絡資訊中的 `cs@hkedutech.com` 已統一改為 `cs@gearupquiz.com`（純 UI 文案更新，無資料庫或業務邏輯變更）。 |
