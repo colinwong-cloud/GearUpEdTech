@@ -44,12 +44,13 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-05-26** — deployment `dpl_J8CGYhAWpqfeqdadzh6v7aGbCwTT`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/J8CGYhAWpqfeqdadzh6v7aGbCwTT). This rollout includes results-page navigation button updates (`重新選擇科目` + `返回主畫面`).
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **學生結果頁底部按鈕導覽優化**：將「再做一次」改為「重新選擇科目」（返回科目選擇：中文/英文/數學），並新增「返回主畫面」（返回身份選擇：學生/家長/帳戶維護）；「登出」維持不變。變更檔案：`src/app/page.tsx`。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -130,6 +131,25 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
   3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
   4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
+
+## Handover note — 2026-05-26 (results page navigation buttons)
+
+- 本日已完成並上線（owner 已先於 Preview 驗收並批准 production）：
+  1. 學生結果頁底部按鈕由「再做一次」改為「重新選擇科目」，行為維持返回科目選擇頁（中文 / English / Math）。
+  2. 新增「返回主畫面」按鈕，返回身份選擇頁（學生 / 家長 / 帳戶維護）。
+  3. 「登出」按鈕維持原有邏輯不變。
+- Production 部署：
+  - deployment: `dpl_J8CGYhAWpqfeqdadzh6v7aGbCwTT`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/J8CGYhAWpqfeqdadzh6v7aGbCwTT`
+- 本次驗證（post-deploy）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ 目前 baseline 無此 script（`Missing script: smoke`）
+  - 生產環境端點 smoke（替代檢查）✅：`GET /` = 200、`GET /admin` = 200、`GET /reset-password` = 200、`POST /api/admin/console`（無登入）= 401（預期）
+- 變更邊界：
+  - 僅前端 UI/導覽調整（`src/app/page.tsx`），無 API、SQL、配額或 GA 事件契約變更。
 
 ## Setup
 
