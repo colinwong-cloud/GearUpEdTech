@@ -1247,6 +1247,16 @@ export default function QuizApp() {
     setError(null);
   };
 
+  const handleBackToRoleSelection = () => {
+    setScreen("login_role");
+    setSelectedSubject(null);
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
   const handleLogout = () => {
     setScreen("login_mobile");
     setMobileNumber("");
@@ -1513,6 +1523,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToRoleSelection={handleBackToRoleSelection}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -2759,6 +2770,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToRoleSelection,
   onLogout,
   balance,
 }: {
@@ -2768,6 +2780,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToRoleSelection: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -3002,7 +3015,13 @@ function ResultsView({
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            再做一次
+            重新選擇科目
+          </button>
+          <button
+            onClick={onBackToRoleSelection}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+          >
+            返回主畫面
           </button>
           <button
             onClick={onLogout}
