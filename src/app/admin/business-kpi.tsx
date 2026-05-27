@@ -23,6 +23,11 @@ const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: 
 const Legend = dynamic(() => import("recharts").then((m) => m.Legend), { ssr: false });
 
 type TodayPayload = {
+  today_new_parent_registrations?: Array<{
+    mobile_number: string;
+    email: string | null;
+    created_at: string | null;
+  }>;
   hkt_date: string;
   students_practice_distinct: number;
   sessions_by_subject: Record<string, number>;
@@ -98,6 +103,16 @@ type SchoolDetailsPayload = {
 function subjectEntries(obj: Record<string, number> | null | undefined) {
   if (!obj || typeof obj !== "object") return [];
   return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function formatHktDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("zh-HK", {
+    hour12: false,
+    timeZone: "Asia/Hong_Kong",
+  });
 }
 
 export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
@@ -319,6 +334,39 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                     {subjectEntries(today.questions_by_subject).length === 0 && (
                       <tr>
                         <td colSpan={2} className="text-gray-400 text-xs">暫無數據</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-700 mb-1">今日新註冊家長摘要</p>
+              <p className="text-xs text-gray-500 mb-2">
+                只顯示今日新增家長資料（手機號碼、電郵、建立時間），按「重新整理」會同步更新。
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="py-2 pr-3 font-semibold text-gray-600">手機號碼</th>
+                      <th className="py-2 pr-3 font-semibold text-gray-600">電郵</th>
+                      <th className="py-2 pr-3 font-semibold text-gray-600">建立時間（HKT）</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(today.today_new_parent_registrations ?? []).map((row, idx) => (
+                      <tr key={`${row.mobile_number}-${row.created_at ?? "na"}-${idx}`} className="border-b border-gray-100">
+                        <td className="py-2 pr-3 font-mono">{row.mobile_number || "—"}</td>
+                        <td className="py-2 pr-3">{row.email || "—"}</td>
+                        <td className="py-2 pr-3">{formatHktDateTime(row.created_at)}</td>
+                      </tr>
+                    ))}
+                    {(today.today_new_parent_registrations ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-3 text-xs text-gray-400">
+                          今日暫無新註冊家長。
+                        </td>
                       </tr>
                     )}
                   </tbody>
