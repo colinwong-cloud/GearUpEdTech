@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-05-27** — deployment `dpl_36awYwV5QZYJQReCaEULJnynUn4g`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/36awYwV5QZYJQReCaEULJnynUn4g). Includes restored login CTA + admin practice summary + result-page bottom action buttons + KPI 今日新註冊家長摘要。
+**Latest production deploy:** **2026-05-27** — deployment `dpl_HP9TQjxxBZL9h39bBw5hqW1GzaRh`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/HP9TQjxxBZL9h39bBw5hqW1GzaRh). Includes restored login CTA + admin practice summary + result-page bottom action buttons + KPI 今日新註冊家長摘要 + 學生練習摘要性別修復。
 
 ## Must-check validation gate (mandatory)
 
@@ -63,6 +63,7 @@ Before **every** production deploy, all items below must be checked and recorded
 - [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
 - [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
 - [ ] Admin「業務概覽 → 今日實時」包含 **「今日新註冊家長摘要」**（手機、電郵、建立時間），且「今日新增免費家長（新帳戶）」與摘要筆數一致。
+- [ ] Admin「學生練習摘要」性別欄位可顯示（優先 `students.gender`，fallback `avatar_style`）；新註冊/新增學生後 `students.gender` 會被寫入。
 - [ ] Student result page bottom actions are: **「重新選擇科目」**、**「返回主畫面」**、**「登出」** (and navigation works as intended).
 - [ ] Student practice flow remains unchanged unless release explicitly targets it.
 
@@ -84,6 +85,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin 學生練習摘要性別修復（已上線）**：修正「家長學生練習摘要」性別顯示（`students.gender` 為空時 fallback `avatar_style`）；並在註冊/新增學生流程補寫 `students.gender`（由 Boy/Girl 對應 M/F）。 |
 | 2026-05 | **Admin KPI 今日新註冊家長摘要（已上線）**：在「業務概覽 → 今日實時」新增家長今日註冊摘要表（手機、電郵、建立時間 HKT）；並把「今日新增免費家長（新帳戶）」改為與該摘要同一資料源，避免數字不一致。 |
 | 2026-05 | **防回歸合併修復（已上線）**：同一 release 分支重新納入先前 owner 已驗收功能（登入頁大型「新用戶註冊」、Admin「家長學生練習摘要」、結果頁底部三按鈕），避免 side branch 遺漏導致功能再次消失。 |
 | 2026-05 | **結果頁底部按鈕修復（防回歸）**：學生完成練習後底部動作恢復為「重新選擇科目」（返回科目選擇）、「返回主畫面」（返回身份選擇）與「登出」維持不變。 |
@@ -206,6 +208,28 @@ Before **every** production deploy, all items below must be checked and recorded
   - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
   - `npm run build` ✅
   - `npm run smoke` ⚠️ baseline 暫無 script（`Missing script: smoke`）
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-27 (student summary gender fix)
+
+- 問題背景：
+  - Admin「家長學生練習摘要」有部份學生顯示性別為 `—`。
+  - 根因：歷史資料中 `students.gender` 可能為空；同時註冊/新增學生的主流程只寫 `avatar_style`，未穩定寫入 `gender`。
+- 本次修復（已上線）：
+  1. Admin summary API：性別顯示改為「先讀 `students.gender`；若空，fallback `avatar_style`（Boy/Girl -> M/F）」，UI 顯示「男生/女生」。
+  2. 新增資料一致性：在註冊與新增學生成功後，立即呼叫 `update_student_profile`，將性別同步寫入 `students.gender`（Boy->M, Girl->F）。
+- 受影響檔案（便於後續回歸檢查）：
+  - `src/app/api/admin/console/route.ts`
+  - `src/app/page.tsx`
+- 最新 Production 部署：
+  - deployment: `dpl_HP9TQjxxBZL9h39bBw5hqW1GzaRh`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/HP9TQjxxBZL9h39bBw5hqW1GzaRh`
+- Release gate（本次）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 無 script
   - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
 
 ## Setup
