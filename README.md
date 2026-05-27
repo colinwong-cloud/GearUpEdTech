@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-05-27** — deployment `dpl_DRwPUTmbsqWRKEkHBy9ibqWeGDAs`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/DRwPUTmbsqWRKEkHBy9ibqWeGDAs). Includes restored login CTA + admin practice summary + result-page bottom action buttons.
+**Latest production deploy:** **2026-05-27** — deployment `dpl_36awYwV5QZYJQReCaEULJnynUn4g`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/36awYwV5QZYJQReCaEULJnynUn4g). Includes restored login CTA + admin practice summary + result-page bottom action buttons + KPI 今日新註冊家長摘要。
 
 ## Must-check validation gate (mandatory)
 
@@ -62,6 +62,7 @@ Before **every** production deploy, all items below must be checked and recorded
 - [ ] Login page has large standalone **「新用戶註冊」** button above login form.
 - [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
 - [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
+- [ ] Admin「業務概覽 → 今日實時」包含 **「今日新註冊家長摘要」**（手機、電郵、建立時間），且「今日新增免費家長（新帳戶）」與摘要筆數一致。
 - [ ] Student result page bottom actions are: **「重新選擇科目」**、**「返回主畫面」**、**「登出」** (and navigation works as intended).
 - [ ] Student practice flow remains unchanged unless release explicitly targets it.
 
@@ -83,6 +84,8 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin KPI 今日新註冊家長摘要（已上線）**：在「業務概覽 → 今日實時」新增家長今日註冊摘要表（手機、電郵、建立時間 HKT）；並把「今日新增免費家長（新帳戶）」改為與該摘要同一資料源，避免數字不一致。 |
+| 2026-05 | **防回歸合併修復（已上線）**：同一 release 分支重新納入先前 owner 已驗收功能（登入頁大型「新用戶註冊」、Admin「家長學生練習摘要」、結果頁底部三按鈕），避免 side branch 遺漏導致功能再次消失。 |
 | 2026-05 | **結果頁底部按鈕修復（防回歸）**：學生完成練習後底部動作恢復為「重新選擇科目」（返回科目選擇）、「返回主畫面」（返回身份選擇）與「登出」維持不變。 |
 | 2026-05 | **登入 CTA + Admin 練習摘要回復**：恢復登入頁大型獨立「新用戶註冊」按鈕；恢復 Admin「學生練習摘要 / 家長學生練習摘要」功能；並在 README 新增強制 anti-regression release gate。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
@@ -178,6 +181,27 @@ Before **every** production deploy, all items below must be checked and recorded
   - alias: `https://q.hkedutech.com`
   - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/DRwPUTmbsqWRKEkHBy9ibqWeGDAs`
 - 本日 release gate 記錄：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 暫無 script（`Missing script: smoke`）
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-27 (KPI parent summary + regression lock)
+
+- 本次新增（preview 驗收後已 production）：
+  1. Admin「業務概覽 → 今日實時」新增 **「今日新註冊家長摘要」**（手機、電郵、建立時間 HKT）。
+  2. 「今日新增免費家長（新帳戶）」改為使用與摘要相同資料源（今日家長註冊清單），避免和下方摘要矛盾。
+  3. 重新確認並納入既有防回歸功能：  
+     - 登入頁大型獨立「新用戶註冊」  
+     - Admin「學生練習摘要 / 家長學生練習摘要」  
+     - Admin tabs 多行換行（不橫向捲動）  
+     - 結果頁底部三按鈕（重新選擇科目 / 返回主畫面 / 登出）
+- 最新 Production 部署：
+  - deployment: `dpl_36awYwV5QZYJQReCaEULJnynUn4g`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/36awYwV5QZYJQReCaEULJnynUn4g`
+- Release gate 記錄（最新一輪）：
   - `npm test` ✅
   - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
   - `npm run build` ✅
