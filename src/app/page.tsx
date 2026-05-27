@@ -1816,6 +1816,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1870,15 +1876,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
