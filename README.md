@@ -44,12 +44,47 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-05-27** — deployment `dpl_DRwPUTmbsqWRKEkHBy9ibqWeGDAs`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/DRwPUTmbsqWRKEkHBy9ibqWeGDAs). Includes restored login CTA + admin practice summary + result-page bottom action buttons.
+
+## Must-check validation gate (mandatory)
+
+Before **every** production deploy, all items below must be checked and recorded in PR:
+
+### A) Anti-regression source-of-truth checks
+
+- [ ] Deploy branch is explicitly identified (do not deploy from an unknown/old side branch).
+- [ ] `git diff --name-only origin/main...HEAD` reviewed and scope matches release intent.
+- [ ] If deploying from a non-`main` branch, confirm previously owner-approved features are still present (no silent rollback).
+- [ ] Compare against `README` changelog + latest handover note, then tick critical features below.
+
+### B) Critical feature inventory (must not break)
+
+- [ ] Login page has large standalone **「新用戶註冊」** button above login form.
+- [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
+- [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
+- [ ] Student result page bottom actions are: **「重新選擇科目」**、**「返回主畫面」**、**「登出」** (and navigation works as intended).
+- [ ] Student practice flow remains unchanged unless release explicitly targets it.
+
+### C) Technical validations
+
+- [ ] `npm test` pass
+- [ ] `npm run lint` pass (or accepted existing warnings only)
+- [ ] `npm run build` pass
+- [ ] `npm run smoke` pass (if script exists); otherwise run documented endpoint/UI fallback smoke checks
+
+### D) Release gate flow
+
+- [ ] Preview deployed and verified
+- [ ] Owner explicit approval received in chat
+- [ ] Production deployed
+- [ ] Post-deploy smoke checks executed and recorded
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **結果頁底部按鈕修復（防回歸）**：學生完成練習後底部動作恢復為「重新選擇科目」（返回科目選擇）、「返回主畫面」（返回身份選擇）與「登出」維持不變。 |
+| 2026-05 | **登入 CTA + Admin 練習摘要回復**：恢復登入頁大型獨立「新用戶註冊」按鈕；恢復 Admin「學生練習摘要 / 家長學生練習摘要」功能；並在 README 新增強制 anti-regression release gate。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -130,6 +165,24 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
   3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
   4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
+
+## Handover note — 2026-05-27 (admin restore + CTA restore + result actions restore)
+
+- 本日已完成並上線（owner 已在 preview 驗收後批准 production）：
+  1. 恢復 Admin「學生練習摘要 / 家長學生練習摘要」功能。
+  2. Admin 頂部分頁改為可換行（不再橫向捲動）。
+  3. 恢復登入頁大型獨立「新用戶註冊」按鈕。
+  4. 恢復學生結果頁底部動作為「重新選擇科目」「返回主畫面」「登出」。
+- 最新 Production 部署：
+  - deployment: `dpl_DRwPUTmbsqWRKEkHBy9ibqWeGDAs`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/DRwPUTmbsqWRKEkHBy9ibqWeGDAs`
+- 本日 release gate 記錄：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 暫無 script（`Missing script: smoke`）
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
 
 ## Setup
 
