@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       .order("created_at", { ascending: false })
       .limit(5000);
     if (!parentErr && Array.isArray(parentRows)) {
-      payload.today_new_parent_registrations = parentRows.map((row) => ({
+      const normalizedRows = parentRows.map((row) => ({
         mobile_number: String(row.mobile_number ?? ""),
         email:
           row.email === null || row.email === undefined
@@ -115,6 +115,9 @@ export async function POST(req: NextRequest) {
             ? null
             : String(row.created_at),
       }));
+      payload.today_new_parent_registrations = normalizedRows;
+      // Keep "today free-tier new users" consistent with the displayed parent summary rows.
+      payload.free_tier_new_users_today = normalizedRows.length;
     } else {
       payload.today_new_parent_registrations =
         payload.today_new_parent_registrations ?? [];

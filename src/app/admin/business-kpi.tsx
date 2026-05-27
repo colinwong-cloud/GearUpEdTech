@@ -290,7 +290,7 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                 <span className="font-bold text-indigo-600 ml-1">{today.new_students_today}</span>
               </li>
               <li>
-                今日新增免費用戶：
+                今日新增免費家長（新帳戶）：
                 <span className="font-bold text-indigo-600 ml-1">
                   {today.free_tier_new_users_today ?? 0}
                 </span>
@@ -302,6 +302,9 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                 </span>
               </li>
             </ul>
+            <p className="text-xs text-gray-500">
+              註：新註冊學生為學生人數；免費/月費新增用戶為家長帳戶數，兩者不一定相同。
+            </p>
             <div className="grid sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-semibold text-gray-700 mb-1">完成練習節數（依科目）</p>
