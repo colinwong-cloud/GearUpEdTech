@@ -46,6 +46,38 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
 
+## Must-check validation gate (mandatory)
+
+Before **every** production deploy, all items below must be checked and recorded in PR:
+
+### A) Anti-regression source-of-truth checks
+
+- [ ] Deploy branch is explicitly identified (do not deploy from an unknown/old side branch).
+- [ ] `git diff --name-only origin/main...HEAD` reviewed and scope matches release intent.
+- [ ] If deploying from a non-`main` branch, confirm previously owner-approved features are still present (no silent rollback).
+- [ ] Compare against `README` changelog + latest handover note, then tick critical features below.
+
+### B) Critical feature inventory (must not break)
+
+- [ ] Login page has large standalone **「新用戶註冊」** button above login form.
+- [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
+- [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
+- [ ] Student practice flow remains unchanged unless release explicitly targets it.
+
+### C) Technical validations
+
+- [ ] `npm test` pass
+- [ ] `npm run lint` pass (or accepted existing warnings only)
+- [ ] `npm run build` pass
+- [ ] `npm run smoke` pass (if script exists); otherwise run documented endpoint/UI fallback smoke checks
+
+### D) Release gate flow
+
+- [ ] Preview deployed and verified
+- [ ] Owner explicit approval received in chat
+- [ ] Production deployed
+- [ ] Post-deploy smoke checks executed and recorded
+
 ## Changelog (recent)
 
 | Date (approx) | Change |
