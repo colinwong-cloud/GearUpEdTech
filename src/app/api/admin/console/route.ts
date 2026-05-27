@@ -134,6 +134,13 @@ function readString(value: unknown): string | null {
   return trimmed || null;
 }
 
+function genderFromAvatarStyle(value: string | null): "M" | "F" | null {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "boy") return "M";
+  if (normalized === "girl") return "F";
+  return null;
+}
+
 type AirwallexApiBody = {
   json: Record<string, unknown> | null;
   text: string;
@@ -505,7 +512,7 @@ export async function POST(req: NextRequest) {
 
         const { data: studentRows, error: studentErr } = await admin
           .from("students")
-          .select("id,student_name,grade_level,gender,school_id")
+          .select("id,student_name,grade_level,gender,avatar_style,school_id")
           .eq("parent_id", parentRow.id)
           .order("created_at", { ascending: true })
           .limit(2000);
@@ -540,9 +547,14 @@ export async function POST(req: NextRequest) {
         const students = (studentRows ?? []).map((row) => {
           const schoolId = readString(row.school_id);
           const school = schoolId ? schoolMap.get(schoolId) : null;
-          const genderRaw = readString(row.gender)?.toUpperCase() ?? null;
+          const explicitGender = readString(row.gender)?.toUpperCase() ?? null;
+          const fallbackGender = genderFromAvatarStyle(readString(row.avatar_style));
+          const genderRaw =
+            explicitGender === "M" || explicitGender === "F"
+              ? explicitGender
+              : fallbackGender;
           const genderLabel =
-            genderRaw === "M" ? "Boy" : genderRaw === "F" ? "Girl" : null;
+            genderRaw === "M" ? "男生" : genderRaw === "F" ? "女生" : null;
           const schoolName = school
             ? school.name_zh || school.name_en || null
             : null;

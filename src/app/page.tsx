@@ -151,6 +151,35 @@ function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
   return url.toString();
 }
 
+function genderFromAvatarStyle(avatarStyle: string | null | undefined): "M" | "F" | null {
+  const normalized = (avatarStyle || "").trim().toLowerCase();
+  if (normalized === "boy") return "M";
+  if (normalized === "girl") return "F";
+  return null;
+}
+
+async function persistStudentGenderFromAvatarStyle(input: {
+  studentId: string;
+  studentName: string;
+  pinCode: string;
+  avatarStyle: string;
+  gradeLevel: string;
+  schoolId: string | null;
+}) {
+  const gender = genderFromAvatarStyle(input.avatarStyle);
+  if (!gender) return;
+  const { error } = await supabase.rpc("update_student_profile", {
+    p_student_id: input.studentId,
+    p_student_name: input.studentName,
+    p_pin_code: input.pinCode,
+    p_avatar_style: input.avatarStyle,
+    p_grade_level: input.gradeLevel,
+    p_school_id: input.schoolId,
+    p_gender: gender,
+  });
+  if (error) throw error;
+}
+
 function isWeChatUserAgent(ua: string): boolean {
   return /MicroMessenger/i.test(ua);
 }
@@ -815,9 +844,22 @@ export default function QuizApp() {
           p_school_id: form.schoolId,
         });
         if (rpcErr) throw rpcErr;
-
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        const registeredStudent = data as Student;
+        await persistStudentGenderFromAvatarStyle({
+          studentId: registeredStudent.id,
+          studentName: form.studentName,
+          pinCode: form.pinCode,
+          avatarStyle: form.avatarStyle,
+          gradeLevel: form.gradeLevel,
+          schoolId: form.schoolId,
+        }).catch(() => undefined);
+        const resolvedGender = genderFromAvatarStyle(form.avatarStyle);
+        const nextStudent: Student = {
+          ...registeredStudent,
+          gender: resolvedGender,
+        };
+        setSelectedStudent(nextStudent);
+        setStudents([nextStudent]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -859,7 +901,20 @@ export default function QuizApp() {
         if (rpcErr) throw rpcErr;
         if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
         const newStudent = data as Student;
-        setStudents((prev) => [...prev, newStudent]);
+        await persistStudentGenderFromAvatarStyle({
+          studentId: newStudent.id,
+          studentName: form.studentName,
+          pinCode: pinInput.trim(),
+          avatarStyle: form.avatarStyle,
+          gradeLevel: form.gradeLevel,
+          schoolId: form.schoolId,
+        }).catch(() => undefined);
+        const resolvedGender = genderFromAvatarStyle(form.avatarStyle);
+        const nextStudent: Student = {
+          ...newStudent,
+          gender: resolvedGender,
+        };
+        setStudents((prev) => [...prev, nextStudent]);
         await refreshParentTierStatus();
         setScreen("account_menu");
       } catch (err) {
