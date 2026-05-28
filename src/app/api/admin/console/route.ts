@@ -242,9 +242,13 @@ function isMissingTableError(error: unknown): boolean {
 }
 
 async function deleteIgnoringMissingTable(
-  run: () => Promise<{ error: unknown }>
+  run: () => unknown
 ) {
-  const { error } = await run();
+  const result = await run();
+  const error =
+    result && typeof result === "object" && "error" in result
+      ? (result as { error?: unknown }).error
+      : undefined;
   if (error && !isMissingTableError(error)) {
     throw error;
   }
