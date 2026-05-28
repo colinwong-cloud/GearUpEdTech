@@ -28,51 +28,18 @@ GRANT SELECT ON TABLE public.questions TO anon, authenticated;
 GRANT SELECT ON TABLE public.parent_weights TO anon, authenticated;
 GRANT SELECT ON TABLE public.student_balances TO anon, authenticated;
 
--- Future-proof defaults for new public schema objects.
--- Supabase project owners commonly create objects as postgres/supabase_admin.
--- Some environments do not allow changing defaults for another role.
--- In that case, we skip that role and continue.
-DO $$
-DECLARE
-  owner_name text;
-BEGIN
-  FOREACH owner_name IN ARRAY ARRAY['postgres', 'supabase_admin'] LOOP
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = owner_name) THEN
-      BEGIN
-        EXECUTE format(
-          'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public
-             GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
-             ON TABLES TO service_role',
-          owner_name
-        );
-
-        EXECUTE format(
-          'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public
-             GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO service_role',
-          owner_name
-        );
-
-        -- Match upcoming secure-by-default behavior for Data API roles.
-        EXECUTE format(
-          'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public
-             REVOKE ALL ON TABLES FROM anon, authenticated',
-          owner_name
-        );
-        EXECUTE format(
-          'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public
-             REVOKE ALL ON SEQUENCES FROM anon, authenticated',
-          owner_name
-        );
-      EXCEPTION
-        WHEN insufficient_privilege THEN
-          RAISE NOTICE
-            'Skipped ALTER DEFAULT PRIVILEGES for role "%": insufficient privilege (current_user=%).',
-            owner_name, current_user;
-      END;
-    END IF;
-  END LOOP;
-END
-$$;
+-- Future-proof defaults for new public schema objects created by current_user.
+-- This avoids permission errors in environments where changing another role's
+-- default privileges (e.g. FOR ROLE supabase_admin) is not allowed.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+  ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  REVOKE ALL ON TABLES FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
 COMMIT;
 
