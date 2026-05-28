@@ -23,6 +23,11 @@ const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: 
 const Legend = dynamic(() => import("recharts").then((m) => m.Legend), { ssr: false });
 
 type TodayPayload = {
+  today_new_parent_registrations?: Array<{
+    mobile_number: string;
+    email: string | null;
+    created_at: string | null;
+  }>;
   hkt_date: string;
   students_practice_distinct: number;
   sessions_by_subject: Record<string, number>;
@@ -98,6 +103,16 @@ type SchoolDetailsPayload = {
 function subjectEntries(obj: Record<string, number> | null | undefined) {
   if (!obj || typeof obj !== "object") return [];
   return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function formatHktDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("zh-HK", {
+    hour12: false,
+    timeZone: "Asia/Hong_Kong",
+  });
 }
 
 export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
@@ -275,7 +290,7 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                 <span className="font-bold text-indigo-600 ml-1">{today.new_students_today}</span>
               </li>
               <li>
-                今日新增免費用戶：
+                今日新增免費家長（新帳戶）：
                 <span className="font-bold text-indigo-600 ml-1">
                   {today.free_tier_new_users_today ?? 0}
                 </span>
@@ -287,6 +302,9 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                 </span>
               </li>
             </ul>
+            <p className="text-xs text-gray-500">
+              註：新註冊學生為學生人數；免費/月費新增用戶為家長帳戶數，兩者不一定相同。
+            </p>
             <div className="grid sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-semibold text-gray-700 mb-1">完成練習節數（依科目）</p>
@@ -319,6 +337,39 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
                     {subjectEntries(today.questions_by_subject).length === 0 && (
                       <tr>
                         <td colSpan={2} className="text-gray-400 text-xs">暫無數據</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-700 mb-1">今日新註冊家長摘要</p>
+              <p className="text-xs text-gray-500 mb-2">
+                只顯示今日新增家長資料（手機號碼、電郵、建立時間），按「重新整理」會同步更新。
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="py-2 pr-3 font-semibold text-gray-600">手機號碼</th>
+                      <th className="py-2 pr-3 font-semibold text-gray-600">電郵</th>
+                      <th className="py-2 pr-3 font-semibold text-gray-600">建立時間（HKT）</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(today.today_new_parent_registrations ?? []).map((row, idx) => (
+                      <tr key={`${row.mobile_number}-${row.created_at ?? "na"}-${idx}`} className="border-b border-gray-100">
+                        <td className="py-2 pr-3 font-mono">{row.mobile_number || "—"}</td>
+                        <td className="py-2 pr-3">{row.email || "—"}</td>
+                        <td className="py-2 pr-3">{formatHktDateTime(row.created_at)}</td>
+                      </tr>
+                    ))}
+                    {(today.today_new_parent_registrations ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-3 text-xs text-gray-400">
+                          今日暫無新註冊家長。
+                        </td>
                       </tr>
                     )}
                   </tbody>

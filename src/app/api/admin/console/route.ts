@@ -10,9 +10,14 @@ import {
   getHktMonthRangeIso,
   isValidMonthKey,
 } from "@/lib/admin-paid-summary";
+import {
+  buildStudentPracticeSummaryRows,
+  type RawPracticeSessionRow,
+} from "@/lib/admin-student-practice-summary";
 
 type AdminAction =
   | "search_parent"
+  | "parent_students_practice_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -129,6 +134,13 @@ function readString(value: unknown): string | null {
   return trimmed || null;
 }
 
+function genderFromAvatarStyle(value: string | null): "M" | "F" | null {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "boy") return "M";
+  if (normalized === "girl") return "F";
+  return null;
+}
+
 type AirwallexApiBody = {
   json: Record<string, unknown> | null;
   text: string;
@@ -214,6 +226,207 @@ type PaidOrderRow = {
   airwallex_payment_intent_id?: string | null;
   airwallex_payment_attempt_id?: string | null;
 };
+
+type DeleteParentResult = {
+  deleted: boolean;
+  students_deleted: number;
+  reason?: string;
+};
+
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message =
+    "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  return code === "42P01" || /relation .* does not exist|does not exist/i.test(message);
+}
+
+async function deleteIgnoringMissingTable(
+  run: () => unknown
+) {
+  const result = await run();
+  const error =
+    result && typeof result === "object" && "error" in result
+      ? (result as { error?: unknown }).error
+      : undefined;
+  if (error && !isMissingTableError(error)) {
+    throw error;
+  }
+}
+
+async function deleteRowsByIds({
+  admin,
+  table,
+  column,
+  ids,
+  ignoreMissingTable = false,
+}: {
+  admin: AdminClient;
+  table: string;
+  column: string;
+  ids: string[];
+  ignoreMissingTable?: boolean;
+}) {
+  if (ids.length === 0) return;
+  for (const chunk of chunkArray(ids, 400)) {
+    const { error } = await admin.from(table).delete().in(column, chunk);
+    if (error) {
+      if (ignoreMissingTable && isMissingTableError(error)) return;
+      throw error;
+    }
+  }
+}
+
+async function deleteParentWithRelations({
+  admin,
+  mobile,
+}: {
+  admin: AdminClient;
+  mobile: string;
+}): Promise<DeleteParentResult> {
+  const parent = await getParentByMobile(admin, mobile);
+  if (!parent) {
+    return { deleted: false, students_deleted: 0, reason: "找不到此電話號碼" };
+  }
+
+  const { data: studentRows, error: studentErr } = await admin
+    .from("students")
+    .select("id")
+    .eq("parent_id", parent.id)
+    .limit(10000);
+  if (studentErr) throw studentErr;
+  const studentIds = ((studentRows as Array<{ id: string }> | null) ?? [])
+    .map((row) => String(row.id))
+    .filter(Boolean);
+
+  const sessionIds: string[] = [];
+  for (const chunk of chunkArray(studentIds, 400)) {
+    const { data: sessionRows, error: sessionErr } = await admin
+      .from("quiz_sessions")
+      .select("id")
+      .in("student_id", chunk)
+      .limit(50000);
+    if (sessionErr) throw sessionErr;
+    for (const row of (sessionRows as Array<{ id: string }> | null) ?? []) {
+      if (row?.id) sessionIds.push(String(row.id));
+    }
+  }
+
+  await deleteRowsByIds({
+    admin,
+    table: "session_answers",
+    column: "session_id",
+    ids: sessionIds,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "balance_transactions",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "question_reports",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "parent_weights",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "student_rank_performance",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "student_balances",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "parent_dashboard_view_log",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "quiz_sessions",
+    column: "student_id",
+    ids: studentIds,
+  });
+
+  await deleteIgnoringMissingTable(() =>
+    admin.from("password_reset_tokens").delete().eq("parent_id", parent.id)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin.from("parent_dashboard_view_log").delete().eq("parent_id", parent.id)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_payment_refunds")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("admin_payment_actions")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_payment_orders")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_recurring_profiles")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  const { error: studentsDeleteErr } = await admin
+    .from("students")
+    .delete()
+    .eq("parent_id", parent.id);
+  if (studentsDeleteErr) throw studentsDeleteErr;
+
+  const { error: parentDeleteErr } = await admin
+    .from("parents")
+    .delete()
+    .eq("id", parent.id);
+  if (parentDeleteErr) throw parentDeleteErr;
+
+  return {
+    deleted: true,
+    students_deleted: studentIds.length,
+  };
+}
 
 async function ensurePaymentOpsTables(admin: AdminClient) {
   const { error: refundProbeErr } = await admin
@@ -469,6 +682,147 @@ export async function POST(req: NextRequest) {
         if (error) throw error;
         return NextResponse.json({ data: data ?? null });
       }
+      case "parent_students_practice_summary": {
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        const { data: parentRow, error: parentErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,email")
+          .eq("mobile_number", mobile)
+          .maybeSingle();
+        if (parentErr) throw parentErr;
+        if (!parentRow) {
+          return NextResponse.json({
+            data: {
+              found: false,
+              month: monthKey,
+              students: [],
+              summary_rows: [],
+            },
+          });
+        }
+
+        const { data: studentRows, error: studentErr } = await admin
+          .from("students")
+          .select("id,student_name,grade_level,gender,avatar_style,school_id")
+          .eq("parent_id", parentRow.id)
+          .order("created_at", { ascending: true })
+          .limit(2000);
+        if (studentErr) throw studentErr;
+
+        const schoolIdSet = new Set<string>();
+        for (const row of studentRows ?? []) {
+          const schoolId = readString(row.school_id);
+          if (schoolId) schoolIdSet.add(schoolId);
+        }
+
+        const schoolMap = new Map<
+          string,
+          { name_zh: string | null; name_en: string | null; district: string | null }
+        >();
+        const schoolIds = Array.from(schoolIdSet);
+        for (const chunk of chunkArray(schoolIds, 500)) {
+          const { data: schoolRows, error: schoolErr } = await admin
+            .from("schools")
+            .select("id,name_zh,name_en,district")
+            .in("id", chunk);
+          if (schoolErr) throw schoolErr;
+          for (const school of schoolRows ?? []) {
+            schoolMap.set(String(school.id), {
+              name_zh: readString(school.name_zh),
+              name_en: readString(school.name_en),
+              district: readString(school.district),
+            });
+          }
+        }
+
+        const students = (studentRows ?? []).map((row) => {
+          const schoolId = readString(row.school_id);
+          const school = schoolId ? schoolMap.get(schoolId) : null;
+          const explicitGender = readString(row.gender)?.toUpperCase() ?? null;
+          const fallbackGender = genderFromAvatarStyle(readString(row.avatar_style));
+          const genderRaw =
+            explicitGender === "M" || explicitGender === "F"
+              ? explicitGender
+              : fallbackGender;
+          const genderLabel =
+            genderRaw === "M" ? "男生" : genderRaw === "F" ? "女生" : null;
+          const schoolName = school
+            ? school.name_zh || school.name_en || null
+            : null;
+          return {
+            id: String(row.id),
+            student_name: readString(row.student_name) || "",
+            grade_level: readString(row.grade_level) || "",
+            gender: genderRaw,
+            gender_label: genderLabel,
+            school_id: schoolId,
+            school_name: schoolName,
+            school_district: school?.district ?? null,
+          };
+        });
+
+        const studentIds = students.map((row) => row.id).filter(Boolean);
+        const sessions: RawPracticeSessionRow[] = [];
+        for (const chunk of chunkArray(studentIds, 400)) {
+          const richRes = await admin
+            .from("quiz_sessions")
+            .select("student_id,subject,score,questions_attempted,created_at,hkt_practice_date")
+            .in("student_id", chunk)
+            .gt("questions_attempted", 0)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso)
+            .order("created_at", { ascending: false })
+            .limit(50000);
+          if (richRes.error) {
+            const richErrMsg = richRes.error.message || "";
+            if (/hkt_practice_date|column .* does not exist|42703/i.test(richErrMsg)) {
+              const fallbackRes = await admin
+                .from("quiz_sessions")
+                .select("student_id,subject,score,questions_attempted,created_at")
+                .in("student_id", chunk)
+                .gt("questions_attempted", 0)
+                .gte("created_at", startIso)
+                .lt("created_at", endIso)
+                .order("created_at", { ascending: false })
+                .limit(50000);
+              if (fallbackRes.error) throw fallbackRes.error;
+              sessions.push(
+                ...((fallbackRes.data as RawPracticeSessionRow[] | null) ?? [])
+              );
+            } else {
+              throw richRes.error;
+            }
+          } else {
+            sessions.push(...((richRes.data as RawPracticeSessionRow[] | null) ?? []));
+          }
+        }
+        const summaryRows = buildStudentPracticeSummaryRows(sessions);
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            month: monthKey,
+            parent: {
+              id: String(parentRow.id),
+              mobile_number: String(parentRow.mobile_number || ""),
+              parent_name: readString(parentRow.parent_name),
+              email: readString(parentRow.email),
+            },
+            students,
+            summary_rows: summaryRows,
+          },
+        });
+      }
       case "add_quota": {
         const studentId = String(payload.p_student_id ?? "");
         const subject = String(payload.p_subject ?? "Math");
@@ -482,11 +836,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ data });
       }
       case "delete_parent": {
-        const mobile = String(payload.p_mobile ?? "");
-        const { data, error } = await admin.rpc("admin_delete_parent", {
-          p_mobile: mobile,
-        });
-        if (error) throw error;
+        const mobile = String(payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const data = await deleteParentWithRelations({ admin, mobile });
         return NextResponse.json({ data });
       }
       case "get_settings": {

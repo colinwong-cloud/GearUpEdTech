@@ -151,6 +151,35 @@ function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
   return url.toString();
 }
 
+function genderFromAvatarStyle(avatarStyle: string | null | undefined): "M" | "F" | null {
+  const normalized = (avatarStyle || "").trim().toLowerCase();
+  if (normalized === "boy") return "M";
+  if (normalized === "girl") return "F";
+  return null;
+}
+
+async function persistStudentGenderFromAvatarStyle(input: {
+  studentId: string;
+  studentName: string;
+  pinCode: string;
+  avatarStyle: string;
+  gradeLevel: string;
+  schoolId: string | null;
+}) {
+  const gender = genderFromAvatarStyle(input.avatarStyle);
+  if (!gender) return;
+  const { error } = await supabase.rpc("update_student_profile", {
+    p_student_id: input.studentId,
+    p_student_name: input.studentName,
+    p_pin_code: input.pinCode,
+    p_avatar_style: input.avatarStyle,
+    p_grade_level: input.gradeLevel,
+    p_school_id: input.schoolId,
+    p_gender: gender,
+  });
+  if (error) throw error;
+}
+
 function isWeChatUserAgent(ua: string): boolean {
   return /MicroMessenger/i.test(ua);
 }
@@ -815,9 +844,22 @@ export default function QuizApp() {
           p_school_id: form.schoolId,
         });
         if (rpcErr) throw rpcErr;
-
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        const registeredStudent = data as Student;
+        await persistStudentGenderFromAvatarStyle({
+          studentId: registeredStudent.id,
+          studentName: form.studentName,
+          pinCode: form.pinCode,
+          avatarStyle: form.avatarStyle,
+          gradeLevel: form.gradeLevel,
+          schoolId: form.schoolId,
+        }).catch(() => undefined);
+        const resolvedGender = genderFromAvatarStyle(form.avatarStyle);
+        const nextStudent: Student = {
+          ...registeredStudent,
+          gender: resolvedGender,
+        };
+        setSelectedStudent(nextStudent);
+        setStudents([nextStudent]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -859,7 +901,20 @@ export default function QuizApp() {
         if (rpcErr) throw rpcErr;
         if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
         const newStudent = data as Student;
-        setStudents((prev) => [...prev, newStudent]);
+        await persistStudentGenderFromAvatarStyle({
+          studentId: newStudent.id,
+          studentName: form.studentName,
+          pinCode: pinInput.trim(),
+          avatarStyle: form.avatarStyle,
+          gradeLevel: form.gradeLevel,
+          schoolId: form.schoolId,
+        }).catch(() => undefined);
+        const resolvedGender = genderFromAvatarStyle(form.avatarStyle);
+        const nextStudent: Student = {
+          ...newStudent,
+          gender: resolvedGender,
+        };
+        setStudents((prev) => [...prev, nextStudent]);
         await refreshParentTierStatus();
         setScreen("account_menu");
       } catch (err) {
@@ -1218,6 +1273,16 @@ export default function QuizApp() {
     setError(null);
   };
 
+  const handleBackToRoleSelection = () => {
+    setScreen("login_role");
+    setSelectedSubject(null);
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
   const handleLogout = () => {
     setScreen("login_mobile");
     setMobileNumber("");
@@ -1484,6 +1549,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToRoleSelection={handleBackToRoleSelection}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -1816,6 +1882,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1870,15 +1942,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -2733,6 +2796,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToRoleSelection,
   onLogout,
   balance,
 }: {
@@ -2742,6 +2806,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToRoleSelection: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -2976,7 +3041,13 @@ function ResultsView({
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            再做一次
+            重新選擇科目
+          </button>
+          <button
+            onClick={onBackToRoleSelection}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+          >
+            返回主畫面
           </button>
           <button
             onClick={onLogout}

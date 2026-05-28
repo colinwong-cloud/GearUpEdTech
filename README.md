@@ -44,12 +44,54 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-05-28** — deployment `dpl_BHTtasAFyDDmCzLAxKryFU1oAEWu`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BHTtasAFyDDmCzLAxKryFU1oAEWu). Includes admin delete-account permanent fix (FK-safe cascade + detailed error copy) and keeps previously shipped login/student flows unchanged.
+
+## Must-check validation gate (mandatory)
+
+Before **every** production deploy, all items below must be checked and recorded in PR:
+
+### A) Anti-regression source-of-truth checks
+
+- [ ] Deploy branch is explicitly identified (do not deploy from an unknown/old side branch).
+- [ ] `git diff --name-only origin/main...HEAD` reviewed and scope matches release intent.
+- [ ] If deploying from a non-`main` branch, confirm previously owner-approved features are still present (no silent rollback).
+- [ ] Compare against `README` changelog + latest handover note, then tick critical features below.
+
+### B) Critical feature inventory (must not break)
+
+- [ ] Login page has large standalone **「新用戶註冊」** button above login form.
+- [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
+- [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
+- [ ] Admin「業務概覽 → 今日實時」包含 **「今日新註冊家長摘要」**（手機、電郵、建立時間），且「今日新增免費家長（新帳戶）」與摘要筆數一致。
+- [ ] Admin「學生練習摘要」性別欄位可顯示（優先 `students.gender`，fallback `avatar_style`）；新註冊/新增學生後 `students.gender` 會被寫入。
+- [ ] Admin「刪除帳戶」可刪除含練習/付款關聯資料之家長；若失敗，前端需顯示後端具體錯誤（不可只顯示「刪除失敗」）。
+- [ ] Student result page bottom actions are: **「重新選擇科目」**、**「返回主畫面」**、**「登出」** (and navigation works as intended).
+- [ ] Student practice flow remains unchanged unless release explicitly targets it.
+
+### C) Technical validations
+
+- [ ] `npm test` pass
+- [ ] `npm run lint` pass (or accepted existing warnings only)
+- [ ] `npm run build` pass
+- [ ] `npm run smoke` pass (if script exists); otherwise run documented endpoint/UI fallback smoke checks
+
+### D) Release gate flow
+
+- [ ] Preview deployed and verified
+- [ ] Owner explicit approval received in chat
+- [ ] Production deployed
+- [ ] Post-deploy smoke checks executed and recorded
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin 刪除帳戶永久修復（已上線）**：`/api/admin/console` 改為 API 端 FK-safe cascade 刪除（不再依賴舊 `admin_delete_parent` RPC 刪除順序）；補刪新關聯表（如 payment ops / reset token / dashboard log）；UI 刪除失敗時改顯示具體後端錯誤。 |
+| 2026-05 | **Admin 學生練習摘要性別修復（已上線）**：修正「家長學生練習摘要」性別顯示（`students.gender` 為空時 fallback `avatar_style`）；並在註冊/新增學生流程補寫 `students.gender`（由 Boy/Girl 對應 M/F）。 |
+| 2026-05 | **Admin KPI 今日新註冊家長摘要（已上線）**：在「業務概覽 → 今日實時」新增家長今日註冊摘要表（手機、電郵、建立時間 HKT）；並把「今日新增免費家長（新帳戶）」改為與該摘要同一資料源，避免數字不一致。 |
+| 2026-05 | **防回歸合併修復（已上線）**：同一 release 分支重新納入先前 owner 已驗收功能（登入頁大型「新用戶註冊」、Admin「家長學生練習摘要」、結果頁底部三按鈕），避免 side branch 遺漏導致功能再次消失。 |
+| 2026-05 | **結果頁底部按鈕修復（防回歸）**：學生完成練習後底部動作恢復為「重新選擇科目」（返回科目選擇）、「返回主畫面」（返回身份選擇）與「登出」維持不變。 |
+| 2026-05 | **登入 CTA + Admin 練習摘要回復**：恢復登入頁大型獨立「新用戶註冊」按鈕；恢復 Admin「學生練習摘要 / 家長學生練習摘要」功能；並在 README 新增強制 anti-regression release gate。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -130,6 +172,88 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
   3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
   4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
+
+## Handover note — 2026-05-27 (admin restore + CTA restore + result actions restore)
+
+- 本日已完成並上線（owner 已在 preview 驗收後批准 production）：
+  1. 恢復 Admin「學生練習摘要 / 家長學生練習摘要」功能。
+  2. Admin 頂部分頁改為可換行（不再橫向捲動）。
+  3. 恢復登入頁大型獨立「新用戶註冊」按鈕。
+  4. 恢復學生結果頁底部動作為「重新選擇科目」「返回主畫面」「登出」。
+- 最新 Production 部署：
+  - deployment: `dpl_DRwPUTmbsqWRKEkHBy9ibqWeGDAs`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/DRwPUTmbsqWRKEkHBy9ibqWeGDAs`
+- 本日 release gate 記錄：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 暫無 script（`Missing script: smoke`）
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-27 (KPI parent summary + regression lock)
+
+- 本次新增（preview 驗收後已 production）：
+  1. Admin「業務概覽 → 今日實時」新增 **「今日新註冊家長摘要」**（手機、電郵、建立時間 HKT）。
+  2. 「今日新增免費家長（新帳戶）」改為使用與摘要相同資料源（今日家長註冊清單），避免和下方摘要矛盾。
+  3. 重新確認並納入既有防回歸功能：  
+     - 登入頁大型獨立「新用戶註冊」  
+     - Admin「學生練習摘要 / 家長學生練習摘要」  
+     - Admin tabs 多行換行（不橫向捲動）  
+     - 結果頁底部三按鈕（重新選擇科目 / 返回主畫面 / 登出）
+- 最新 Production 部署：
+  - deployment: `dpl_36awYwV5QZYJQReCaEULJnynUn4g`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/36awYwV5QZYJQReCaEULJnynUn4g`
+- Release gate 記錄（最新一輪）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 暫無 script（`Missing script: smoke`）
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-27 (student summary gender fix)
+
+- 問題背景：
+  - Admin「家長學生練習摘要」有部份學生顯示性別為 `—`。
+  - 根因：歷史資料中 `students.gender` 可能為空；同時註冊/新增學生的主流程只寫 `avatar_style`，未穩定寫入 `gender`。
+- 本次修復（已上線）：
+  1. Admin summary API：性別顯示改為「先讀 `students.gender`；若空，fallback `avatar_style`（Boy/Girl -> M/F）」，UI 顯示「男生/女生」。
+  2. 新增資料一致性：在註冊與新增學生成功後，立即呼叫 `update_student_profile`，將性別同步寫入 `students.gender`（Boy->M, Girl->F）。
+- 受影響檔案（便於後續回歸檢查）：
+  - `src/app/api/admin/console/route.ts`
+  - `src/app/page.tsx`
+- 最新 Production 部署：
+  - deployment: `dpl_HP9TQjxxBZL9h39bBw5hqW1GzaRh`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/HP9TQjxxBZL9h39bBw5hqW1GzaRh`
+- Release gate（本次）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 無 script
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-28 (admin delete-account permanent fix)
+
+- 問題背景：
+  - Admin「刪除帳戶」對部分測試帳戶刪除失敗，常見成因為新舊資料表外鍵依賴（例如 `balance_transactions.session_id -> quiz_sessions.id`）導致舊 RPC 刪除順序失效。
+  - 前端原本只顯示「刪除失敗」，無法即時看到實際錯誤訊息。
+- 本次修復（已上線）：
+  1. `src/app/api/admin/console/route.ts`：`delete_parent` action 改為 API 端 `deleteParentWithRelations`，按 FK 安全順序刪除（先 session child，再 session/學生，再 parent）；並兼容可選新表（payment ops / reset token / dashboard log）。
+  2. `src/app/admin/page.tsx`：DeleteSection 顯示後端具體錯誤（或 reason），不再固定「刪除失敗」。
+- 範圍保護（本次 deploy 僅 admin console）：
+  - 代碼 scope 僅 `src/app/api/admin/console/route.ts`、`src/app/admin/page.tsx`（學生練習平台核心流程未改動）。
+- 最新 Production 部署：
+  - deployment: `dpl_BHTtasAFyDDmCzLAxKryFU1oAEWu`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/BHTtasAFyDDmCzLAxKryFU1oAEWu`
+- Release gate（本次）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 無 script
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
 
 ## Setup
 
