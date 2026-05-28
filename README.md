@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-05-27** — deployment `dpl_HP9TQjxxBZL9h39bBw5hqW1GzaRh`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/HP9TQjxxBZL9h39bBw5hqW1GzaRh). Includes restored login CTA + admin practice summary + result-page bottom action buttons + KPI 今日新註冊家長摘要 + 學生練習摘要性別修復。
+**Latest production deploy:** **2026-05-28** — deployment `dpl_BHTtasAFyDDmCzLAxKryFU1oAEWu`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BHTtasAFyDDmCzLAxKryFU1oAEWu). Includes admin delete-account permanent fix (FK-safe cascade + detailed error copy) and keeps previously shipped login/student flows unchanged.
 
 ## Must-check validation gate (mandatory)
 
@@ -64,6 +64,7 @@ Before **every** production deploy, all items below must be checked and recorded
 - [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
 - [ ] Admin「業務概覽 → 今日實時」包含 **「今日新註冊家長摘要」**（手機、電郵、建立時間），且「今日新增免費家長（新帳戶）」與摘要筆數一致。
 - [ ] Admin「學生練習摘要」性別欄位可顯示（優先 `students.gender`，fallback `avatar_style`）；新註冊/新增學生後 `students.gender` 會被寫入。
+- [ ] Admin「刪除帳戶」可刪除含練習/付款關聯資料之家長；若失敗，前端需顯示後端具體錯誤（不可只顯示「刪除失敗」）。
 - [ ] Student result page bottom actions are: **「重新選擇科目」**、**「返回主畫面」**、**「登出」** (and navigation works as intended).
 - [ ] Student practice flow remains unchanged unless release explicitly targets it.
 
@@ -85,6 +86,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-05 | **Admin 刪除帳戶永久修復（已上線）**：`/api/admin/console` 改為 API 端 FK-safe cascade 刪除（不再依賴舊 `admin_delete_parent` RPC 刪除順序）；補刪新關聯表（如 payment ops / reset token / dashboard log）；UI 刪除失敗時改顯示具體後端錯誤。 |
 | 2026-05 | **Admin 學生練習摘要性別修復（已上線）**：修正「家長學生練習摘要」性別顯示（`students.gender` 為空時 fallback `avatar_style`）；並在註冊/新增學生流程補寫 `students.gender`（由 Boy/Girl 對應 M/F）。 |
 | 2026-05 | **Admin KPI 今日新註冊家長摘要（已上線）**：在「業務概覽 → 今日實時」新增家長今日註冊摘要表（手機、電郵、建立時間 HKT）；並把「今日新增免費家長（新帳戶）」改為與該摘要同一資料源，避免數字不一致。 |
 | 2026-05 | **防回歸合併修復（已上線）**：同一 release 分支重新納入先前 owner 已驗收功能（登入頁大型「新用戶註冊」、Admin「家長學生練習摘要」、結果頁底部三按鈕），避免 side branch 遺漏導致功能再次消失。 |
@@ -225,6 +227,27 @@ Before **every** production deploy, all items below must be checked and recorded
   - deployment: `dpl_HP9TQjxxBZL9h39bBw5hqW1GzaRh`
   - alias: `https://q.hkedutech.com`
   - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/HP9TQjxxBZL9h39bBw5hqW1GzaRh`
+- Release gate（本次）：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️ baseline 無 script
+  - Production fallback smoke ✅：`GET /`=200、`GET /admin`=200、`GET /reset-password`=200、`GET /api/admin/session`=401、`POST /api/admin/console`(no auth)=401
+
+## Handover note — 2026-05-28 (admin delete-account permanent fix)
+
+- 問題背景：
+  - Admin「刪除帳戶」對部分測試帳戶刪除失敗，常見成因為新舊資料表外鍵依賴（例如 `balance_transactions.session_id -> quiz_sessions.id`）導致舊 RPC 刪除順序失效。
+  - 前端原本只顯示「刪除失敗」，無法即時看到實際錯誤訊息。
+- 本次修復（已上線）：
+  1. `src/app/api/admin/console/route.ts`：`delete_parent` action 改為 API 端 `deleteParentWithRelations`，按 FK 安全順序刪除（先 session child，再 session/學生，再 parent）；並兼容可選新表（payment ops / reset token / dashboard log）。
+  2. `src/app/admin/page.tsx`：DeleteSection 顯示後端具體錯誤（或 reason），不再固定「刪除失敗」。
+- 範圍保護（本次 deploy 僅 admin console）：
+  - 代碼 scope 僅 `src/app/api/admin/console/route.ts`、`src/app/admin/page.tsx`（學生練習平台核心流程未改動）。
+- 最新 Production 部署：
+  - deployment: `dpl_BHTtasAFyDDmCzLAxKryFU1oAEWu`
+  - alias: `https://q.hkedutech.com`
+  - inspector: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/BHTtasAFyDDmCzLAxKryFU1oAEWu`
 - Release gate（本次）：
   - `npm test` ✅
   - `npm run lint` ✅（1 個既有 non-blocking warning）
