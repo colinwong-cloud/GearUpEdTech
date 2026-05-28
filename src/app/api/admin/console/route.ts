@@ -227,6 +227,203 @@ type PaidOrderRow = {
   airwallex_payment_attempt_id?: string | null;
 };
 
+type DeleteParentResult = {
+  deleted: boolean;
+  students_deleted: number;
+  reason?: string;
+};
+
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message =
+    "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  return code === "42P01" || /relation .* does not exist|does not exist/i.test(message);
+}
+
+async function deleteIgnoringMissingTable(
+  run: () => Promise<{ error: unknown }>
+) {
+  const { error } = await run();
+  if (error && !isMissingTableError(error)) {
+    throw error;
+  }
+}
+
+async function deleteRowsByIds({
+  admin,
+  table,
+  column,
+  ids,
+  ignoreMissingTable = false,
+}: {
+  admin: AdminClient;
+  table: string;
+  column: string;
+  ids: string[];
+  ignoreMissingTable?: boolean;
+}) {
+  if (ids.length === 0) return;
+  for (const chunk of chunkArray(ids, 400)) {
+    const { error } = await admin.from(table).delete().in(column, chunk);
+    if (error) {
+      if (ignoreMissingTable && isMissingTableError(error)) return;
+      throw error;
+    }
+  }
+}
+
+async function deleteParentWithRelations({
+  admin,
+  mobile,
+}: {
+  admin: AdminClient;
+  mobile: string;
+}): Promise<DeleteParentResult> {
+  const parent = await getParentByMobile(admin, mobile);
+  if (!parent) {
+    return { deleted: false, students_deleted: 0, reason: "找不到此電話號碼" };
+  }
+
+  const { data: studentRows, error: studentErr } = await admin
+    .from("students")
+    .select("id")
+    .eq("parent_id", parent.id)
+    .limit(10000);
+  if (studentErr) throw studentErr;
+  const studentIds = ((studentRows as Array<{ id: string }> | null) ?? [])
+    .map((row) => String(row.id))
+    .filter(Boolean);
+
+  const sessionIds: string[] = [];
+  for (const chunk of chunkArray(studentIds, 400)) {
+    const { data: sessionRows, error: sessionErr } = await admin
+      .from("quiz_sessions")
+      .select("id")
+      .in("student_id", chunk)
+      .limit(50000);
+    if (sessionErr) throw sessionErr;
+    for (const row of (sessionRows as Array<{ id: string }> | null) ?? []) {
+      if (row?.id) sessionIds.push(String(row.id));
+    }
+  }
+
+  await deleteRowsByIds({
+    admin,
+    table: "session_answers",
+    column: "session_id",
+    ids: sessionIds,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "balance_transactions",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "question_reports",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "parent_weights",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "student_rank_performance",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "student_balances",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "parent_dashboard_view_log",
+    column: "student_id",
+    ids: studentIds,
+    ignoreMissingTable: true,
+  });
+
+  await deleteRowsByIds({
+    admin,
+    table: "quiz_sessions",
+    column: "student_id",
+    ids: studentIds,
+  });
+
+  await deleteIgnoringMissingTable(() =>
+    admin.from("password_reset_tokens").delete().eq("parent_id", parent.id)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin.from("parent_dashboard_view_log").delete().eq("parent_id", parent.id)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_payment_refunds")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("admin_payment_actions")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_payment_orders")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  await deleteIgnoringMissingTable(() =>
+    admin
+      .from("parent_recurring_profiles")
+      .delete()
+      .or(`parent_id.eq.${parent.id},mobile_number.eq.${mobile}`)
+  );
+
+  const { error: studentsDeleteErr } = await admin
+    .from("students")
+    .delete()
+    .eq("parent_id", parent.id);
+  if (studentsDeleteErr) throw studentsDeleteErr;
+
+  const { error: parentDeleteErr } = await admin
+    .from("parents")
+    .delete()
+    .eq("id", parent.id);
+  if (parentDeleteErr) throw parentDeleteErr;
+
+  return {
+    deleted: true,
+    students_deleted: studentIds.length,
+  };
+}
+
 async function ensurePaymentOpsTables(admin: AdminClient) {
   const { error: refundProbeErr } = await admin
     .from("parent_payment_refunds")
@@ -635,11 +832,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ data });
       }
       case "delete_parent": {
-        const mobile = String(payload.p_mobile ?? "");
-        const { data, error } = await admin.rpc("admin_delete_parent", {
-          p_mobile: mobile,
-        });
-        if (error) throw error;
+        const mobile = String(payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const data = await deleteParentWithRelations({ admin, mobile });
         return NextResponse.json({ data });
       }
       case "get_settings": {
