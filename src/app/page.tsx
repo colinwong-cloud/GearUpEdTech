@@ -346,6 +346,7 @@ type AppScreen =
   | "parent_session_detail"
   | "account_menu"
   | "balance_view"
+  | "payment_history"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
@@ -363,6 +364,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "parent_session_detail",
   "account_menu",
   "balance_view",
+  "payment_history",
   "profile_edit",
   "add_student_form",
   "parent_student_select",
@@ -448,6 +450,17 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+interface ParentPaymentHistoryRow {
+  id: string;
+  paid_at: string | null;
+  created_at: string | null;
+  final_amount_hkd: number | null;
+  payment_method: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
 }
 
 type ParentTier = "free" | "paid";
@@ -1799,6 +1812,7 @@ export default function QuizApp() {
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
@@ -1809,6 +1823,15 @@ export default function QuizApp() {
   if (screen === "balance_view") {
     return renderWithCookieUi(
       <BalanceViewScreen
+        mobileNumber={mobileNumber}
+        onBack={() => setScreen("account_menu")}
+      />
+    );
+  }
+
+  if (screen === "payment_history") {
+    return renderWithCookieUi(
+      <PaymentHistoryScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
       />
@@ -3807,6 +3830,7 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onPaymentHistory,
   onUpgrade,
   tierStatus,
   onBack,
@@ -3814,6 +3838,7 @@ function AccountMenuScreen({
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onPaymentHistory: () => void;
   onUpgrade: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
@@ -3841,9 +3866,23 @@ function AccountMenuScreen({
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">題目餘額</p>
-              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
+              <p className="text-sm text-gray-500">查看餘額及作答扣減記錄</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <button
+              onClick={onPaymentHistory}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+                💳
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">消費紀錄</p>
+                <p className="text-sm text-gray-500">查看付款日期、金額及付款方式</p>
+              </div>
+            </button>
+          )}
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -4557,6 +4596,146 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-400 text-sm">本月暫無交易記錄</p>
+          </div>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
+function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
+  const [records, setRecords] = useState<ParentPaymentHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/payment/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile_number: mobileNumber.trim(),
+            year: selectedYear,
+          }),
+        });
+        const payload = (await res.json()) as {
+          records?: ParentPaymentHistoryRow[];
+          available_years?: number[];
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "未能載入消費紀錄");
+        }
+        if (cancelled) return;
+        const years = (payload.available_years ?? [])
+          .filter((y) => Number.isInteger(y))
+          .sort((a, b) => b - a);
+        setYearOptions(years.length > 0 ? years : [currentYear]);
+        setRecords(payload.records ?? []);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "未能載入消費紀錄");
+        setRecords([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber, selectedYear, currentYear]);
+
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || Number.isNaN(amount)) return "—";
+    return `HKD ${Math.round(amount)}`;
+  };
+
+  const formatPaymentMethod = (record: ParentPaymentHistoryRow) => {
+    return (
+      record.payment_method_label ||
+      record.payment_method_brand ||
+      record.payment_method_type ||
+      record.payment_method ||
+      "—"
+    );
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("zh-HK", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
+            年份
+          </label>
+          <select
+            id="payment-history-year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year} 年
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8"><Spinner size="lg" /></div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        ) : records.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">金額</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">付款方式</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatDate(record.paid_at || record.created_at)}</td>
+                    <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{formatAmount(record.final_amount_hkd)}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatPaymentMethod(record)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
           </div>
         )}
 
