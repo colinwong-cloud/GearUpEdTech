@@ -1368,7 +1368,7 @@ export default function QuizApp() {
   }
 
   if (screen === "payment_history") {
-    return renderWithCookieUi(
+    return (
       <PaymentHistoryScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
