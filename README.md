@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-08** — deployment `dpl_5Uu1deRwRi741aG7CzAD7hhEnnxk`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/5Uu1deRwRi741aG7CzAD7hhEnnxk). **Release scope:** 戶口管理新增 paid-user「消費紀錄」頁（日期/金額/付款方式 + 年度篩選），並加上 paid-only 存取限制（按鈕、頁面、API）。
+**Latest production deploy:** **2026-06-08** — deployment `dpl_k7QGaQCXLT6oraNMvKfJ3E6kei7R`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/k7QGaQCXLT6oraNMvKfJ3E6kei7R). **Release scope:** 戶口管理新增 paid-user「消費紀錄」頁（日期/金額/付款方式 + 年度篩選）+ 結果頁底部按鈕防回歸修復（`重新選擇科目` / `返回主畫面`）。
 
 ## Changelog (recent)
 
@@ -94,7 +94,8 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   1. **戶口管理新增「消費紀錄」**（僅月費用戶可見）；
   2. 顯示欄位：**日期、金額、付款方式**；
   3. 預設顯示**當年**，可切換年份查看歷史付款；
-  4. API：`POST /api/payment/history`（`parent_payment_orders` paid records）。
+  4. API：`POST /api/payment/history`（`parent_payment_orders` paid records）；
+  5. **結果頁底部按鈕防回歸修復**：恢復 `重新選擇科目`（回科目選擇）與 `返回主畫面`（回身份選擇），`登出` 保持不變。
 - paid-only 保護：
   - `AccountMenu` 只對 paid user 顯示按鈕；
   - `PaymentHistoryScreen` 非 paid 顯示阻擋提示；
@@ -106,8 +107,13 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   - `npm run smoke` ⚠️（此分支無 smoke script）
   - fallback smoke：`GET /`=200、`GET /admin`=200、`POST /api/admin/console`(no auth)=401、`POST /api/payment/history` invalid mobile=400
 - Production 部署資訊：
-  - deployment: `dpl_5Uu1deRwRi741aG7CzAD7hhEnnxk`
+  - deployment: `dpl_k7QGaQCXLT6oraNMvKfJ3E6kei7R`
   - live alias: `https://q.hkedutech.com`
+- production smoke：
+  - `GET /` = 200
+  - `GET /admin` = 200
+  - `POST /api/admin/console` (no auth) = 401（expected）
+  - `POST /api/payment/history` invalid mobile = 400（expected）
 - 下次開工建議第一步：
   1. 以 paid 測試戶確認年份切換與付款方式文案；
   2. 以 free 測試戶確認「消費紀錄」入口不顯示；
