@@ -1371,6 +1371,7 @@ export default function QuizApp() {
     return (
       <PaymentHistoryScreen
         mobileNumber={mobileNumber}
+        isPaidUser={parentTierStatus.is_paid}
         onBack={() => setScreen("account_menu")}
       />
     );
@@ -4080,7 +4081,31 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   );
 }
 
-function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+function PaymentHistoryScreen({
+  mobileNumber,
+  isPaidUser,
+  onBack,
+}: {
+  mobileNumber: string;
+  isPaidUser: boolean;
+  onBack: () => void;
+}) {
+  if (!isPaidUser) {
+    return (
+      <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+        <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+        </div>
+        <div className="max-w-lg mx-auto px-4 py-10">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
+            <p className="text-sm font-semibold text-amber-700">目前僅限月費用戶查看消費紀錄。</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
