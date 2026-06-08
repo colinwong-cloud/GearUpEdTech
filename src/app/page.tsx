@@ -4045,22 +4045,6 @@ function PaymentHistoryScreen({
   isPaidUser: boolean;
   onBack: () => void;
 }) {
-  if (!isPaidUser) {
-    return (
-      <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-        <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">消費紀錄</span>
-          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
-        </div>
-        <div className="max-w-lg mx-auto px-4 py-10">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
-            <p className="text-sm font-semibold text-amber-700">目前僅限月費用戶查看消費紀錄。</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
@@ -4071,6 +4055,13 @@ function PaymentHistoryScreen({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (!isPaidUser) {
+        setLoading(false);
+        setError(null);
+        setRecords([]);
+        setYearOptions([currentYear]);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -4107,7 +4098,7 @@ function PaymentHistoryScreen({
     return () => {
       cancelled = true;
     };
-  }, [mobileNumber, selectedYear, currentYear]);
+  }, [mobileNumber, selectedYear, currentYear, isPaidUser]);
 
   const formatAmount = (amount: number | null) => {
     if (amount === null || Number.isNaN(amount)) return "—";
@@ -4145,6 +4136,12 @@ function PaymentHistoryScreen({
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {!isPaidUser ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
+            <p className="text-sm font-semibold text-amber-700">目前僅限月費用戶查看消費紀錄。</p>
+          </div>
+        ) : (
+          <>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
             年份
@@ -4192,6 +4189,8 @@ function PaymentHistoryScreen({
           <div className="text-center py-8">
             <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
           </div>
+        )}
+          </>
         )}
 
         <ContactFooter />
