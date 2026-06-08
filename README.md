@@ -57,6 +57,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **結果頁底部按鈕防回歸修復**：恢復先前已批准的學生結果頁操作：`重新選擇科目`（回到科目選擇）+ `返回主畫面`（回到身份選擇），`登出` 保持不變。 |
 | 2026-06 | **戶口管理新增「消費紀錄」（paid only）**：新增 paid user 專用入口與列表頁，顯示付款日期、金額、付款方式，預設顯示當年並支援年份篩選。新增 API `POST /api/payment/history`（查 `parent_payment_orders status='paid'`）。非月費用戶在 UI 與 API 皆被阻擋。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
@@ -110,7 +111,8 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - 下次開工建議第一步：
   1. 以 paid 測試戶確認年份切換與付款方式文案；
   2. 以 free 測試戶確認「消費紀錄」入口不顯示；
-  3. 若要導出 CSV，可在此功能上增補「年度匯出」。
+  3. 驗證學生結果頁底部三按鈕維持：`重新選擇科目`、`返回主畫面`、`登出`；
+  4. 若要導出 CSV，可在此功能上增補「年度匯出」。
 
 ## Handover note — 2026-05-08 (for next working session)
 
