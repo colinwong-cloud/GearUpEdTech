@@ -46,9 +46,16 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **Latest production deploy:** **2026-06-09** — deployment `dpl_8HH9sUtERBivud1sAq6mkmvnb4au`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8HH9sUtERBivud1sAq6mkmvnb4au). **Release scope:** Stabilization restore bundle（Admin 學生練習摘要、KPI 今日新註冊家長摘要、登入頁突出新用戶註冊、註冊/新增學生性別必填、結果頁底部按鈕）。
 
+## Release SOP / checklist (mandatory)
+
+- SOP: `docs/release-sop.md`
+- Deployment checklist: `docs/release-deploy-checklist.md`
+
+Production release must follow the SOP flow: **Feature branch -> Preview -> owner approval -> merge to main -> deploy merged main SHA**.
+
 ## Must-check validation gate (mandatory)
 
-Before **every** production deploy, all items below must be checked and recorded in PR:
+Before **every** production deploy, all items below must be checked and recorded in PR, using `docs/release-deploy-checklist.md` as the canonical checklist:
 
 ### A) Anti-regression source-of-truth checks
 
@@ -82,6 +89,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Release governance SOP + checklist**：新增 `docs/release-sop.md` 與 `docs/release-deploy-checklist.md`，固定流程為 **Feature branch -> Preview -> owner approval -> merge to main -> deploy main SHA**，避免功能遺漏在 side branch。 |
 | 2026-06 | **Stabilization restore bundle（防回歸）**：一次復原並重新上線多個已批准功能：① Admin「學生練習摘要」；② Admin KPI「今日新註冊家長摘要」；③ 登入頁突出「新用戶註冊」按鈕；④ 註冊/新增學生「性別（必填）」；⑤ 結果頁底部 `重新選擇科目` + `返回主畫面`。 |
 | 2026-06 | **Admin KPI「今日新註冊家長摘要」復原**：恢復今日家長註冊摘要資料列與 API payload `today_new_parent_registrations`，顯示手機號碼、電郵、建立時間（HKT）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
