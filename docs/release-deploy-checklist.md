@@ -25,6 +25,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Admin KPI includes **「今日新註冊家長摘要」**
 - [ ] New student registration requires **性別**
 - [ ] Result page includes **重新選擇科目** and **返回主畫面**
+- [ ] Account maintenance includes paid-user **「消費紀錄」** (date/amount/method + year filter)
 
 ## D. Technical validation gate
 

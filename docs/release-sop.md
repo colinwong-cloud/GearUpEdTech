@@ -34,6 +34,9 @@ Each release must explicitly verify these critical features:
 5. Student result page shows bottom actions:
    - **重新選擇科目**
    - **返回主畫面**
+6. Account maintenance includes paid-user **「消費紀錄」**:
+   - shows payment date, amount, and payment method
+   - defaults to current year and allows year filter
 
 ## 4) Required validation gates
 

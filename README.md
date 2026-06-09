@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-09** — deployment `dpl_8HH9sUtERBivud1sAq6mkmvnb4au`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8HH9sUtERBivud1sAq6mkmvnb4au). **Release scope:** Stabilization restore bundle（Admin 學生練習摘要、KPI 今日新註冊家長摘要、登入頁突出新用戶註冊、註冊/新增學生性別必填、結果頁底部按鈕）。
+**Latest production deploy:** **2026-06-09** — deployment `dpl_9RPNLZjFU3s1YTLKJETdFKRwCLkN`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/9RPNLZjFU3s1YTLKJETdFKRwCLkN). **Release scope:** Payment history restore rollout（家長帳戶維護「消費紀錄」paid-user 可見、年分篩選、付款日期/金額/方式）+ stabilization baseline retained.
 
 ## Release SOP / checklist (mandatory)
 
@@ -68,7 +68,11 @@ Before **every** production deploy, all items below must be checked and recorded
 
 - [ ] Login page has large standalone **「新用戶註冊」** button above login form.
 - [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
+- [ ] Admin KPI includes **「今日新註冊家長摘要」**.
 - [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
+- [ ] New student registration keeps **性別必填**.
+- [ ] Result page keeps **重新選擇科目** + **返回主畫面**.
+- [ ] Account maintenance shows paid-user **「消費紀錄」** (date/amount/payment method + year filter).
 - [ ] Student practice flow remains unchanged unless release explicitly targets it.
 
 ### C) Technical validations
@@ -89,6 +93,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Payment history view restore（消費紀錄）**：補回家長帳戶維護「消費紀錄」功能（限 paid user、預設當年、可切換年份、顯示付款日期/金額/付款方式），並納入 Release SOP / deployment checklist 的 must-not-break 項目。 |
 | 2026-06 | **Release governance SOP + checklist**：新增 `docs/release-sop.md` 與 `docs/release-deploy-checklist.md`，固定流程為 **Feature branch -> Preview -> owner approval -> merge to main -> deploy main SHA**，避免功能遺漏在 side branch。 |
 | 2026-06 | **Stabilization restore bundle（防回歸）**：一次復原並重新上線多個已批准功能：① Admin「學生練習摘要」；② Admin KPI「今日新註冊家長摘要」；③ 登入頁突出「新用戶註冊」按鈕；④ 註冊/新增學生「性別（必填）」；⑤ 結果頁底部 `重新選擇科目` + `返回主畫面`。 |
 | 2026-06 | **Admin KPI「今日新註冊家長摘要」復原**：恢復今日家長註冊摘要資料列與 API payload `today_new_parent_registrations`，顯示手機號碼、電郵、建立時間（HKT）。 |
@@ -120,6 +125,27 @@ Before **every** production deploy, all items below must be checked and recorded
 | 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
 | 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
 | 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+
+## Handover note — 2026-06-09 (payment history restore rollout)
+
+- 事故原因（已確認）：`payment history` 功能原本在 `cursor/payment-history-table-2d42`（PR #87，draft/open），未合併到 `main`，因此先前 stabilize deploy 未包含此功能。
+- 本次修復：已把以下 commit 併入發布分支並重新部署 production：
+  - `dd68602` Add paid-user payment history view with yearly filter
+  - `3eb38cb` Fix payment history screen render path type error
+  - `4cdfd9d` Restrict payment history screen to paid users
+  - `cd842c4` Fix paid-only payment history guard hook ordering
+- 部署資訊：
+  - deployment: `dpl_9RPNLZjFU3s1YTLKJETdFKRwCLkN`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/9RPNLZjFU3s1YTLKJETdFKRwCLkN`
+  - live alias: `https://q.hkedutech.com`
+- 驗證紀錄：
+  - pre-deploy: `npm test` ✅ / `npm run lint` ✅（既有 1 warning）/ `npm run build` ✅
+  - fallback smoke（local）：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401、`GET /api/payment/history`=405
+  - post-deploy smoke（prod）：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401、`GET /api/payment/history`=405、`POST /api/payment/history` invalid mobile=400
+- SOP / checklist update（本次已完成）：
+  - `docs/release-sop.md` Critical registry 已加入「消費紀錄」。
+  - `docs/release-deploy-checklist.md` must-not-break 已加入「消費紀錄」。
+  - README 的 Critical feature inventory 已同步加入「消費紀錄」。
 
 ## Handover note — 2026-06-09 (stabilization restore rollout)
 
