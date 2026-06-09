@@ -26,6 +26,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] New student registration requires **性別**
 - [ ] Result page includes **重新選擇科目** and **返回主畫面**
 - [ ] Account maintenance includes paid-user **「消費紀錄」** (date/amount/method + year filter)
+- [ ] Admin **「家長學生練習摘要」** has grade-level monthly frequency summary with subject + month selectors and 3 metrics
 
 ## D. Technical validation gate
 

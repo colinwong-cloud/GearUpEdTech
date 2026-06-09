@@ -37,6 +37,10 @@ Each release must explicitly verify these critical features:
 6. Account maintenance includes paid-user **「消費紀錄」**:
    - shows payment date, amount, and payment method
    - defaults to current year and allows year filter
+7. Admin **「家長學生練習摘要」** includes monthly grade-level practice frequency summary:
+   - subject selector defaults to **all subject** and supports `Chinese` / `English` / `Math`
+   - month selector defaults to current month
+   - metrics include unique students started practice, avg questions completed per session, avg time used per session
 
 ## 4) Required validation gates
 

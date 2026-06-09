@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-09** — deployment `dpl_9RPNLZjFU3s1YTLKJETdFKRwCLkN`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/9RPNLZjFU3s1YTLKJETdFKRwCLkN). **Release scope:** Payment history restore rollout（家長帳戶維護「消費紀錄」paid-user 可見、年分篩選、付款日期/金額/方式）+ stabilization baseline retained.
+**Latest production deploy:** **2026-06-09** — deployment `dpl_F9m5t5wZ3WhBQpe4TYJweuwwdNhc`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/F9m5t5wZ3WhBQpe4TYJweuwwdNhc). **Release scope:** Admin「家長學生練習摘要」新增按年級練習頻率摘要（科目 selector：all/Chinese/English/Math + 月份 selector + 3 個頻率指標）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -73,6 +73,7 @@ Before **every** production deploy, all items below must be checked and recorded
 - [ ] New student registration keeps **性別必填**.
 - [ ] Result page keeps **重新選擇科目** + **返回主畫面**.
 - [ ] Account maintenance shows paid-user **「消費紀錄」** (date/amount/payment method + year filter).
+- [ ] Admin **「家長學生練習摘要」** includes按年級平台練習頻率摘要（subject selector + month selector + 3 metrics）.
 - [ ] Student practice flow remains unchanged unless release explicitly targets it.
 
 ### C) Technical validations
@@ -93,6 +94,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Admin 家長學生練習摘要升級**：新增「按年級平台練習頻率摘要」；預設當月，支援科目切換（all / Chinese / English / Math）與月份切換；指標包含：① 啟動練習學生數（unique）② 每節平均完成題數 ③ 每節平均完成時間。 |
 | 2026-06 | **Payment history view restore（消費紀錄）**：補回家長帳戶維護「消費紀錄」功能（限 paid user、預設當年、可切換年份、顯示付款日期/金額/付款方式），並納入 Release SOP / deployment checklist 的 must-not-break 項目。 |
 | 2026-06 | **Release governance SOP + checklist**：新增 `docs/release-sop.md` 與 `docs/release-deploy-checklist.md`，固定流程為 **Feature branch -> Preview -> owner approval -> merge to main -> deploy main SHA**，避免功能遺漏在 side branch。 |
 | 2026-06 | **Stabilization restore bundle（防回歸）**：一次復原並重新上線多個已批准功能：① Admin「學生練習摘要」；② Admin KPI「今日新註冊家長摘要」；③ 登入頁突出「新用戶註冊」按鈕；④ 註冊/新增學生「性別（必填）」；⑤ 結果頁底部 `重新選擇科目` + `返回主畫面`。 |
@@ -125,6 +127,29 @@ Before **every** production deploy, all items below must be checked and recorded
 | 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
 | 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
 | 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+
+## Handover note — 2026-06-09 (admin grade-level frequency summary rollout)
+
+- 本次上線內容（owner 已批准 preview）：
+  1. Admin「家長學生練習摘要」新增「平台練習頻率摘要（按年級）」。
+  2. 預設顯示**當月**資料。
+  3. 新增 **subject selector**（預設 `all subject`，可切換 `Chinese` / `English` / `Math`）。
+  4. 保留 **month selector** 可切換月份。
+  5. 指標：
+     - 啟動練習學生數（unique student had started a practice）
+     - 每節平均完成題數（avg questions completed per session）
+     - 每節平均完成時間（avg time used per session）
+- 部署資訊：
+  - deployment: `dpl_F9m5t5wZ3WhBQpe4TYJweuwwdNhc`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/F9m5t5wZ3WhBQpe4TYJweuwwdNhc`
+  - live alias: `https://q.hkedutech.com`
+- 驗證紀錄：
+  - pre-deploy gate：`npm test` ✅ / `npm run lint` ✅（既有 1 warning）/ `npm run build` ✅
+  - fallback smoke（local）：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401
+  - post-deploy smoke（prod）：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401
+- SOP / checklist 同步：
+  - `docs/release-sop.md` Critical registry 已加入此 Admin 摘要功能。
+  - `docs/release-deploy-checklist.md` must-not-break 已加入對應檢查項。
 
 ## Handover note — 2026-06-09 (payment history restore rollout)
 
