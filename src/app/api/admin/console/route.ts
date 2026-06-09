@@ -11,13 +11,16 @@ import {
   isValidMonthKey,
 } from "@/lib/admin-paid-summary";
 import {
+  buildGradeLevelPracticeFrequencyRows,
   buildStudentPracticeSummaryRows,
+  type RawGradePracticeSessionRow,
   type RawPracticeSessionRow,
 } from "@/lib/admin-student-practice-summary";
 
 type AdminAction =
   | "search_parent"
   | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -607,6 +610,75 @@ export async function POST(req: NextRequest) {
             },
             students,
             summary_rows: summaryRows,
+          },
+        });
+      }
+      case "grade_level_practice_frequency_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let sessions: RawGradePracticeSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,questions_attempted,time_spent_seconds")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: false })
+          .limit(50000);
+        if (richRes.error) {
+          const errMsg = richRes.error.message || "";
+          if (/time_spent_seconds|column .* does not exist|42703/i.test(errMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,questions_attempted")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: false })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = ((fallbackRes.data as RawGradePracticeSessionRow[] | null) ?? []).map(
+              (row) => ({
+                student_id: row.student_id,
+                questions_attempted: row.questions_attempted,
+                time_spent_seconds: null,
+              })
+            );
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as RawGradePracticeSessionRow[] | null) ?? [];
+        }
+
+        const studentIdSet = new Set<string>();
+        for (const row of sessions) {
+          const studentId = String(row.student_id || "").trim();
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentGradeMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,grade_level")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const id = readString(student.id);
+            if (!id) continue;
+            studentGradeMap.set(id, readString(student.grade_level) || "未設定年級");
+          }
+        }
+
+        const rows = buildGradeLevelPracticeFrequencyRows(sessions, studentGradeMap);
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            rows,
           },
         });
       }
