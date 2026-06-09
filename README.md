@@ -42,14 +42,22 @@ The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project
 
 Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`). Ship to production: `npx vercel deploy --prod`.
 
+### Mandatory deployment gate (must follow for every session)
+
+1. All development changes must be validated on **Preview** deployment first.
+2. Share the Preview URL for review and wait for **explicit owner approval**.
+3. **Do not deploy to Production** until approval is explicitly given in chat.
+4. After production deploy, run production smoke checks and record sign-off in README.
+
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-06-09** — deployment `dpl_9xjmgbFkVh5ZHMEHmf2FkvGcshpy`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/9xjmgbFkVh5ZHMEHmf2FkvGcshpy). **Release scope:** 復原 Admin 業務概覽「今日新註冊家長摘要」（手機、電郵、建立時間；隨「重新整理」更新）。
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Admin KPI「今日新註冊家長摘要」復原**：恢復今日家長註冊摘要資料列與 API payload `today_new_parent_registrations`，顯示手機號碼、電郵、建立時間（HKT）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -78,6 +86,29 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
 | 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
 | 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+
+## Handover note — 2026-06-09 (admin KPI summary restore)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. **Admin「業務概覽 → 今日實時」復原「今日新註冊家長摘要」**；
+  2. 顯示欄位：手機號碼、電郵、建立時間（HKT）；
+  3. 按「重新整理」會同步更新摘要資料。
+- 技術修復：
+  - 恢復 API `POST /api/admin/business-today` 內 `today_new_parent_registrations` payload；
+  - 恢復 `src/app/admin/business-kpi.tsx` 對應摘要表格區塊。
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️（此分支無 smoke script）
+  - fallback smoke：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401
+- Production 部署資訊：
+  - deployment: `dpl_9xjmgbFkVh5ZHMEHmf2FkvGcshpy`
+  - live alias: `https://q.hkedutech.com`
+- 下次開工建議第一步：
+  1. Admin 業務概覽手動確認「今日新註冊家長摘要」資料列可見；
+  2. 對照「今日新增免費用戶」與摘要筆數一致；
+  3. 繼續保留此項於 release gate 的 anti-regression 必檢項。
 
 ## Handover note — 2026-05-08 (for next working session)
 
