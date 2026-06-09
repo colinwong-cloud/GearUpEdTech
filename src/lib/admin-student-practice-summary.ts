@@ -7,6 +7,12 @@ export type RawPracticeSessionRow = {
   hkt_practice_date?: string | null;
 };
 
+export type RawGradePracticeSessionRow = {
+  student_id: string;
+  questions_attempted: number | null;
+  time_spent_seconds?: number | null;
+};
+
 export type StudentPracticeSummaryRow = {
   student_id: string;
   practice_date: string;
@@ -15,6 +21,14 @@ export type StudentPracticeSummaryRow = {
   questions_attempted: number;
   correct_count: number;
   correct_rate: number;
+};
+
+export type GradeLevelPracticeFrequencyRow = {
+  grade_level: string;
+  unique_students_started_practice: number;
+  avg_questions_completed_per_session: number;
+  avg_time_used_seconds_per_session: number;
+  sessions_count: number;
 };
 
 function toSafeNumber(value: number | null | undefined): number {
@@ -104,4 +118,70 @@ export function buildStudentPracticeSummaryRows(
       if (a.practice_date !== b.practice_date) return b.practice_date.localeCompare(a.practice_date);
       return a.subject.localeCompare(b.subject);
     });
+}
+
+function normalizeGradeLevel(value: string | null | undefined): string {
+  const raw = (value || "").trim();
+  return raw || "未設定年級";
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function buildGradeLevelPracticeFrequencyRows(
+  rows: RawGradePracticeSessionRow[],
+  studentGradeMap: Map<string, string>
+): GradeLevelPracticeFrequencyRow[] {
+  const grouped = new Map<
+    string,
+    {
+      grade_level: string;
+      unique_students: Set<string>;
+      sessions_count: number;
+      total_questions_attempted: number;
+      total_time_used_seconds: number;
+      timed_sessions_count: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const studentId = (row.student_id || "").trim();
+    if (!studentId) continue;
+    const gradeLevel = normalizeGradeLevel(studentGradeMap.get(studentId));
+    const questionsAttempted = Math.max(0, toSafeNumber(row.questions_attempted));
+    const rawTimeUsedSeconds = row.time_spent_seconds;
+
+    const current = grouped.get(gradeLevel) ?? {
+      grade_level: gradeLevel,
+      unique_students: new Set<string>(),
+      sessions_count: 0,
+      total_questions_attempted: 0,
+      total_time_used_seconds: 0,
+      timed_sessions_count: 0,
+    };
+    current.unique_students.add(studentId);
+    current.sessions_count += 1;
+    current.total_questions_attempted += questionsAttempted;
+    if (rawTimeUsedSeconds !== null && rawTimeUsedSeconds !== undefined) {
+      const timeUsedSeconds = Math.max(0, toSafeNumber(rawTimeUsedSeconds));
+      current.total_time_used_seconds += timeUsedSeconds;
+      current.timed_sessions_count += 1;
+    }
+    grouped.set(gradeLevel, current);
+  }
+
+  return Array.from(grouped.values())
+    .map((row) => ({
+      grade_level: row.grade_level,
+      unique_students_started_practice: row.unique_students.size,
+      avg_questions_completed_per_session:
+        row.sessions_count > 0 ? round2(row.total_questions_attempted / row.sessions_count) : 0,
+      avg_time_used_seconds_per_session:
+        row.timed_sessions_count > 0
+          ? round2(row.total_time_used_seconds / row.timed_sessions_count)
+          : 0,
+      sessions_count: row.sessions_count,
+    }))
+    .sort((a, b) => a.grade_level.localeCompare(b.grade_level, "zh-HK", { numeric: true }));
 }

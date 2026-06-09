@@ -18,6 +18,7 @@ type AdminConsoleAction =
   | "search_questions"
   | "update_question"
   | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
@@ -266,6 +267,19 @@ interface ParentStudentsPracticeSummaryResult {
   };
   students: ParentStudentPracticeStudentRow[];
   summary_rows: ParentStudentPracticeSummaryRow[];
+}
+
+interface GradeLevelPracticeFrequencyRow {
+  grade_level: string;
+  unique_students_started_practice: number;
+  avg_questions_completed_per_session: number;
+  avg_time_used_seconds_per_session: number;
+  sessions_count: number;
+}
+
+interface GradeLevelPracticeFrequencyResult {
+  month: string;
+  rows: GradeLevelPracticeFrequencyRow[];
 }
 
 export default function AdminPage() {
@@ -884,9 +898,15 @@ function formatHkdAmount(value: number): string {
 function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [month, setMonth] = useState(() => getCurrentHktMonthKey());
+  const [gradeSummaryMonth, setGradeSummaryMonth] = useState(() => getCurrentHktMonthKey());
   const [loading, setLoading] = useState(false);
+  const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [gradeSummaryMsg, setGradeSummaryMsg] = useState("");
   const [result, setResult] = useState<ParentStudentsPracticeSummaryResult | null>(null);
+  const [gradeSummaryResult, setGradeSummaryResult] = useState<GradeLevelPracticeFrequencyResult | null>(
+    null
+  );
 
   const summaryRowsByStudent = useMemo(() => {
     if (!result) return new Map<string, ParentStudentPracticeSummaryRow[]>();
@@ -936,12 +956,112 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     }
   }, [mobile, month, sessionToken]);
 
+  const loadGradeSummary = useCallback(async () => {
+    if (!/^\d{4}-\d{2}$/.test(gradeSummaryMonth)) {
+      setGradeSummaryMsg("月份格式必須為 YYYY-MM");
+      setGradeSummaryResult(null);
+      return;
+    }
+    setGradeSummaryLoading(true);
+    setGradeSummaryMsg("");
+    try {
+      const data = await adminConsoleRequest<GradeLevelPracticeFrequencyResult>(
+        "grade_level_practice_frequency_summary",
+        { month: gradeSummaryMonth },
+        sessionToken
+      );
+      setGradeSummaryResult(data);
+    } catch (err) {
+      setGradeSummaryMsg(err instanceof Error ? err.message : "載入年級練習頻率摘要失敗");
+      setGradeSummaryResult(null);
+    } finally {
+      setGradeSummaryLoading(false);
+    }
+  }, [gradeSummaryMonth, sessionToken]);
+
+  useEffect(() => {
+    void loadGradeSummary();
+  }, [loadGradeSummary]);
+
+  const formatAvgMinutes = useCallback((seconds: number) => {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    return (safeSeconds / 60).toFixed(2);
+  }, []);
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-gray-800">家長學生練習摘要</h2>
       <p className="text-sm text-gray-500">
         依家長電話號碼顯示所有已註冊學生資料，並按學生分組查看所選月份每日各科練習正確率摘要。
       </p>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-sm font-bold text-gray-800">平台練習頻率摘要（按年級）</h3>
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={gradeSummaryMonth}
+              onChange={(e) => setGradeSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadGradeSummary()}
+              disabled={gradeSummaryLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {gradeSummaryLoading ? "載入中..." : "查詢"}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          指標：① 啟動練習學生數（當月有開始練習）② 每節平均完成題數 ③ 每節平均完成時間。
+        </p>
+        {gradeSummaryMsg && (
+          <p
+            className={`text-sm ${
+              gradeSummaryMsg.includes("失敗") || gradeSummaryMsg.includes("格式")
+                ? "text-red-500"
+                : "text-emerald-600"
+            }`}
+          >
+            {gradeSummaryMsg}
+          </p>
+        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">年級</th>
+                <th className="py-2 pr-3">啟動練習學生數</th>
+                <th className="py-2 pr-3">每節平均完成題數</th>
+                <th className="py-2 pr-3">每節平均完成時間（分鐘）</th>
+                <th className="py-2 pr-3">練習節數</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(gradeSummaryResult?.rows ?? []).map((row) => (
+                <tr key={row.grade_level} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-semibold text-gray-800">{row.grade_level}</td>
+                  <td className="py-2 pr-3">{row.unique_students_started_practice}</td>
+                  <td className="py-2 pr-3">{row.avg_questions_completed_per_session.toFixed(2)}</td>
+                  <td className="py-2 pr-3">{formatAvgMinutes(row.avg_time_used_seconds_per_session)}</td>
+                  <td className="py-2 pr-3">{row.sessions_count}</td>
+                </tr>
+              ))}
+              {(gradeSummaryResult?.rows?.length ?? 0) === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                    {gradeSummaryLoading
+                      ? "載入中..."
+                      : `此月份（${gradeSummaryResult?.month || gradeSummaryMonth}）沒有練習紀錄`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <input

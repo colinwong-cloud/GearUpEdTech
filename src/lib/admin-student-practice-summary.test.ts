@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildStudentPracticeSummaryRows } from "./admin-student-practice-summary";
+import {
+  buildGradeLevelPracticeFrequencyRows,
+  buildStudentPracticeSummaryRows,
+} from "./admin-student-practice-summary";
 
 describe("buildStudentPracticeSummaryRows", () => {
   it("aggregates by student, date and subject", () => {
@@ -100,6 +103,57 @@ describe("buildStudentPracticeSummaryRows", () => {
       questions_attempted: 10,
       correct_count: 10,
       correct_rate: 100,
+    });
+  });
+});
+
+describe("buildGradeLevelPracticeFrequencyRows", () => {
+  it("builds grade-level monthly frequency metrics", () => {
+    const rows = buildGradeLevelPracticeFrequencyRows(
+      [
+        { student_id: "s1", questions_attempted: 10, time_spent_seconds: 600 },
+        { student_id: "s1", questions_attempted: 8, time_spent_seconds: 540 },
+        { student_id: "s2", questions_attempted: 0, time_spent_seconds: 120 },
+        { student_id: "s3", questions_attempted: 12, time_spent_seconds: 900 },
+      ],
+      new Map<string, string>([
+        ["s1", "P1"],
+        ["s2", "P1"],
+        ["s3", "P2"],
+      ])
+    );
+
+    expect(rows).toEqual([
+      {
+        grade_level: "P1",
+        unique_students_started_practice: 2,
+        avg_questions_completed_per_session: 6,
+        avg_time_used_seconds_per_session: 420,
+        sessions_count: 3,
+      },
+      {
+        grade_level: "P2",
+        unique_students_started_practice: 1,
+        avg_questions_completed_per_session: 12,
+        avg_time_used_seconds_per_session: 900,
+        sessions_count: 1,
+      },
+    ]);
+  });
+
+  it("uses fallback grade label when student grade is unavailable", () => {
+    const rows = buildGradeLevelPracticeFrequencyRows(
+      [{ student_id: "s-unknown", questions_attempted: 5, time_spent_seconds: 300 }],
+      new Map<string, string>()
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      grade_level: "未設定年級",
+      unique_students_started_practice: 1,
+      avg_questions_completed_per_session: 5,
+      avg_time_used_seconds_per_session: 300,
+      sessions_count: 1,
     });
   });
 });
