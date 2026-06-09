@@ -45,6 +45,7 @@ import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
 } from "@/lib/session-practice-summary";
+import { genderFromAvatarStyle } from "@/lib/student-gender";
 import {
   StudentQuizExperience,
   getQuizSoundEnabled,
@@ -334,6 +335,7 @@ type AppScreen =
   | "parent_session_detail"
   | "account_menu"
   | "balance_view"
+  | "payment_history"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
@@ -351,6 +353,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "parent_session_detail",
   "account_menu",
   "balance_view",
+  "payment_history",
   "profile_edit",
   "add_student_form",
   "parent_student_select",
@@ -436,6 +439,17 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+interface ParentPaymentHistoryRow {
+  id: string;
+  paid_at: string | null;
+  created_at: string | null;
+  final_amount_hkd: number | null;
+  payment_method: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
 }
 
 type ParentTier = "free" | "paid";
@@ -798,6 +812,11 @@ export default function QuizApp() {
       schoolId: string | null;
     }) => {
       if (!mobileNumber.trim()) return;
+      const gender = genderFromAvatarStyle(form.avatarStyle);
+      if (!gender) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       markAuthIntent();
       pushGtmEventOncePerSession("register_submit_attempt", {
         screen_name: "register",
@@ -805,19 +824,29 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -845,20 +874,33 @@ export default function QuizApp() {
         setError("登入狀態已失效，請重新登入後再試。");
         return;
       }
+      if (!genderFromAvatarStyle(form.avatarStyle)) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: pinInput.trim(),
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/add-student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            pinCode: pinInput.trim(),
+            studentName: form.studentName,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            schoolId: form.schoolId,
+          }),
         });
-        if (rpcErr) throw rpcErr;
-        if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
-        const newStudent = data as Student;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "新增學生失敗，請重試。");
+        }
+        const newStudent = payload.student;
         setStudents((prev) => [...prev, newStudent]);
         await refreshParentTierStatus();
         setScreen("account_menu");
@@ -1218,6 +1260,16 @@ export default function QuizApp() {
     setError(null);
   };
 
+  const handleBackToRoleSelection = () => {
+    setScreen("login_role");
+    setSelectedSubject(null);
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
   const handleLogout = () => {
     setScreen("login_mobile");
     setMobileNumber("");
@@ -1298,6 +1350,7 @@ export default function QuizApp() {
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
@@ -1309,6 +1362,16 @@ export default function QuizApp() {
     return (
       <BalanceViewScreen
         mobileNumber={mobileNumber}
+        onBack={() => setScreen("account_menu")}
+      />
+    );
+  }
+
+  if (screen === "payment_history") {
+    return (
+      <PaymentHistoryScreen
+        mobileNumber={mobileNumber}
+        isPaidUser={parentTierStatus.is_paid}
         onBack={() => setScreen("account_menu")}
       />
     );
@@ -1484,6 +1547,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToRoleSelection={handleBackToRoleSelection}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -1816,6 +1880,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1870,15 +1940,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -2246,7 +2307,7 @@ function RegisterScreen({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              姓別
+              性別（必填）
             </label>
             <div className="flex gap-3">
               {avatars.map((a) => (
@@ -2733,6 +2794,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToRoleSelection,
   onLogout,
   balance,
 }: {
@@ -2742,6 +2804,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToRoleSelection: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -2976,7 +3039,13 @@ function ResultsView({
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            再做一次
+            重新選擇科目
+          </button>
+          <button
+            onClick={onBackToRoleSelection}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+          >
+            返回主畫面
           </button>
           <button
             onClick={onLogout}
@@ -3146,7 +3215,7 @@ function AddStudentScreen({
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">性別（必填）</label>
             <div className="flex gap-3">
               {avatars.map((a) => (
                 <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}
@@ -3247,6 +3316,7 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onPaymentHistory,
   onUpgrade,
   tierStatus,
   onBack,
@@ -3254,6 +3324,7 @@ function AccountMenuScreen({
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onPaymentHistory: () => void;
   onUpgrade: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
@@ -3281,9 +3352,23 @@ function AccountMenuScreen({
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">題目餘額</p>
-              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
+              <p className="text-sm text-gray-500">查看餘額及作答扣減記錄</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <button
+              onClick={onPaymentHistory}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+                💳
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">消費紀錄</p>
+                <p className="text-sm text-gray-500">查看付款日期、金額及付款方式</p>
+              </div>
+            </button>
+          )}
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -3988,6 +4073,169 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
           <div className="text-center py-8">
             <p className="text-gray-400 text-sm">本月暫無交易記錄</p>
           </div>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
+function PaymentHistoryScreen({
+  mobileNumber,
+  isPaidUser,
+  onBack,
+}: {
+  mobileNumber: string;
+  isPaidUser: boolean;
+  onBack: () => void;
+}) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
+  const [records, setRecords] = useState<ParentPaymentHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!isPaidUser) {
+        setLoading(false);
+        setError(null);
+        setRecords([]);
+        setYearOptions([currentYear]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/payment/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile_number: mobileNumber.trim(),
+            year: selectedYear,
+          }),
+        });
+        const payload = (await res.json()) as {
+          records?: ParentPaymentHistoryRow[];
+          available_years?: number[];
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "未能載入消費紀錄");
+        }
+        if (cancelled) return;
+        const years = (payload.available_years ?? [])
+          .filter((y) => Number.isInteger(y))
+          .sort((a, b) => b - a);
+        setYearOptions(years.length > 0 ? years : [currentYear]);
+        setRecords(payload.records ?? []);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "未能載入消費紀錄");
+        setRecords([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber, selectedYear, currentYear, isPaidUser]);
+
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || Number.isNaN(amount)) return "—";
+    return `HKD ${Math.round(amount)}`;
+  };
+
+  const formatPaymentMethod = (record: ParentPaymentHistoryRow) => {
+    return (
+      record.payment_method_label ||
+      record.payment_method_brand ||
+      record.payment_method_type ||
+      record.payment_method ||
+      "—"
+    );
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("zh-HK", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {!isPaidUser ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
+            <p className="text-sm font-semibold text-amber-700">目前僅限月費用戶查看消費紀錄。</p>
+          </div>
+        ) : (
+          <>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
+            年份
+          </label>
+          <select
+            id="payment-history-year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year} 年
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8"><Spinner size="lg" /></div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        ) : records.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">金額</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">付款方式</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatDate(record.paid_at || record.created_at)}</td>
+                    <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{formatAmount(record.final_amount_hkd)}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatPaymentMethod(record)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
+          </div>
+        )}
+          </>
         )}
 
         <ContactFooter />

@@ -10,9 +10,23 @@ import {
   getHktMonthRangeIso,
   isValidMonthKey,
 } from "@/lib/admin-paid-summary";
+import {
+  buildGradeLevelPracticeFrequencyRows,
+  buildStudentPracticeSummaryRows,
+  type RawGradePracticeSessionRow,
+  type RawPracticeSessionRow,
+} from "@/lib/admin-student-practice-summary";
+import {
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
+  PRIMARY_QUIZ_SUBJECT,
+} from "@/lib/quiz-subjects";
 
 type AdminAction =
   | "search_parent"
+  | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -35,6 +49,8 @@ type RequestBody = {
   action?: AdminAction;
   payload?: Record<string, unknown>;
 };
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
@@ -127,6 +143,27 @@ function readString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function normalizeGradeSummarySubject(value: unknown): GradeSummarySubject | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "all";
+  const lowered = raw.toLowerCase();
+  if (lowered === "all" || lowered === "all subject" || lowered === "all_subject") return "all";
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return null;
+}
+
+function normalizePracticeSessionSubject(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Unknown";
+  const lowered = raw.toLowerCase();
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return raw;
 }
 
 type AirwallexApiBody = {
@@ -468,6 +505,227 @@ export async function POST(req: NextRequest) {
         });
         if (error) throw error;
         return NextResponse.json({ data: data ?? null });
+      }
+      case "parent_students_practice_summary": {
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        const { data: parentRow, error: parentErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,email")
+          .eq("mobile_number", mobile)
+          .maybeSingle();
+        if (parentErr) throw parentErr;
+        if (!parentRow) {
+          return NextResponse.json({
+            data: {
+              found: false,
+              month: monthKey,
+              students: [],
+              summary_rows: [],
+            },
+          });
+        }
+
+        const { data: studentRows, error: studentErr } = await admin
+          .from("students")
+          .select("id,student_name,grade_level,gender,school_id")
+          .eq("parent_id", parentRow.id)
+          .order("created_at", { ascending: true })
+          .limit(2000);
+        if (studentErr) throw studentErr;
+
+        const schoolIdSet = new Set<string>();
+        for (const row of studentRows ?? []) {
+          const schoolId = readString(row.school_id);
+          if (schoolId) schoolIdSet.add(schoolId);
+        }
+
+        const schoolMap = new Map<
+          string,
+          { name_zh: string | null; name_en: string | null; district: string | null }
+        >();
+        const schoolIds = Array.from(schoolIdSet);
+        for (const chunk of chunkArray(schoolIds, 500)) {
+          const { data: schoolRows, error: schoolErr } = await admin
+            .from("schools")
+            .select("id,name_zh,name_en,district")
+            .in("id", chunk);
+          if (schoolErr) throw schoolErr;
+          for (const school of schoolRows ?? []) {
+            schoolMap.set(String(school.id), {
+              name_zh: readString(school.name_zh),
+              name_en: readString(school.name_en),
+              district: readString(school.district),
+            });
+          }
+        }
+
+        const students = (studentRows ?? []).map((row) => {
+          const schoolId = readString(row.school_id);
+          const school = schoolId ? schoolMap.get(schoolId) : null;
+          const genderRaw = readString(row.gender)?.toUpperCase() ?? null;
+          const genderLabel =
+            genderRaw === "M" ? "Boy" : genderRaw === "F" ? "Girl" : null;
+          const schoolName = school
+            ? school.name_zh || school.name_en || null
+            : null;
+          return {
+            id: String(row.id),
+            student_name: readString(row.student_name) || "",
+            grade_level: readString(row.grade_level) || "",
+            gender: genderRaw,
+            gender_label: genderLabel,
+            school_id: schoolId,
+            school_name: schoolName,
+            school_district: school?.district ?? null,
+          };
+        });
+
+        const studentIds = students.map((row) => row.id).filter(Boolean);
+        const sessions: RawPracticeSessionRow[] = [];
+        for (const chunk of chunkArray(studentIds, 400)) {
+          const richRes = await admin
+            .from("quiz_sessions")
+            .select("student_id,subject,score,questions_attempted,created_at,hkt_practice_date")
+            .in("student_id", chunk)
+            .gt("questions_attempted", 0)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso)
+            .order("created_at", { ascending: false })
+            .limit(50000);
+          if (richRes.error) {
+            const richErrMsg = richRes.error.message || "";
+            if (/hkt_practice_date|column .* does not exist|42703/i.test(richErrMsg)) {
+              const fallbackRes = await admin
+                .from("quiz_sessions")
+                .select("student_id,subject,score,questions_attempted,created_at")
+                .in("student_id", chunk)
+                .gt("questions_attempted", 0)
+                .gte("created_at", startIso)
+                .lt("created_at", endIso)
+                .order("created_at", { ascending: false })
+                .limit(50000);
+              if (fallbackRes.error) throw fallbackRes.error;
+              sessions.push(
+                ...((fallbackRes.data as RawPracticeSessionRow[] | null) ?? [])
+              );
+            } else {
+              throw richRes.error;
+            }
+          } else {
+            sessions.push(...((richRes.data as RawPracticeSessionRow[] | null) ?? []));
+          }
+        }
+        const summaryRows = buildStudentPracticeSummaryRows(sessions);
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            month: monthKey,
+            parent: {
+              id: String(parentRow.id),
+              mobile_number: String(parentRow.mobile_number || ""),
+              parent_name: readString(parentRow.parent_name),
+              email: readString(parentRow.email),
+            },
+            students,
+            summary_rows: summaryRows,
+          },
+        });
+      }
+      case "grade_level_practice_frequency_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        const subjectKey = normalizeGradeSummarySubject(payload.subject);
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        if (!subjectKey) {
+          return NextResponse.json(
+            { error: "科目必須為 all/Chinese/English/Math" },
+            { status: 400 }
+          );
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let sessions: RawGradePracticeSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,subject,questions_attempted,time_spent_seconds")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: false })
+          .limit(50000);
+        if (richRes.error) {
+          const errMsg = richRes.error.message || "";
+          if (/time_spent_seconds|column .* does not exist|42703/i.test(errMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,subject,questions_attempted")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: false })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = ((fallbackRes.data as RawGradePracticeSessionRow[] | null) ?? []).map(
+              (row) => ({
+                student_id: row.student_id,
+                subject: row.subject,
+                questions_attempted: row.questions_attempted,
+                time_spent_seconds: null,
+              })
+            );
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as RawGradePracticeSessionRow[] | null) ?? [];
+        }
+
+        const filteredSessions =
+          subjectKey === "all"
+            ? sessions
+            : sessions.filter(
+                (row) => normalizePracticeSessionSubject(row.subject) === subjectKey
+              );
+
+        const studentIdSet = new Set<string>();
+        for (const row of filteredSessions) {
+          const studentId = String(row.student_id || "").trim();
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentGradeMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,grade_level")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const id = readString(student.id);
+            if (!id) continue;
+            studentGradeMap.set(id, readString(student.grade_level) || "未設定年級");
+          }
+        }
+
+        const rows = buildGradeLevelPracticeFrequencyRows(filteredSessions, studentGradeMap);
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            subject: subjectKey,
+            rows,
+          },
+        });
       }
       case "add_quota": {
         const studentId = String(payload.p_student_id ?? "");
