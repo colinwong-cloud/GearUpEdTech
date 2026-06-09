@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-06-09** — deployment `dpl_8HH9sUtERBivud1sAq6mkmvnb4au`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8HH9sUtERBivud1sAq6mkmvnb4au). **Release scope:** Stabilization restore bundle（Admin 學生練習摘要、KPI 今日新註冊家長摘要、登入頁突出新用戶註冊、註冊/新增學生性別必填、結果頁底部按鈕）。
 
 ## Must-check validation gate (mandatory)
 
@@ -82,6 +82,8 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Stabilization restore bundle（防回歸）**：一次復原並重新上線多個已批准功能：① Admin「學生練習摘要」；② Admin KPI「今日新註冊家長摘要」；③ 登入頁突出「新用戶註冊」按鈕；④ 註冊/新增學生「性別（必填）」；⑤ 結果頁底部 `重新選擇科目` + `返回主畫面`。 |
+| 2026-06 | **Admin KPI「今日新註冊家長摘要」復原**：恢復今日家長註冊摘要資料列與 API payload `today_new_parent_registrations`，顯示手機號碼、電郵、建立時間（HKT）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -110,6 +112,28 @@ Before **every** production deploy, all items below must be checked and recorded
 | 2026-05 | **Strict AI-only 出題模式**：`fetchAllQuestions` 新增 `source = 'AI'`，並在開題時啟用嚴格題池檢查（不足即阻擋並顯示明確訊息）。新增 `src/lib/question-source.ts` + `question-source.test.ts`；新增 SQL `supabase_questions_ai_source_strict_mode.sql`（`source` 正規化 + 索引）。 |
 | 2026-05 | **Admin 付款狀態頁新增月費明細表**：在「付款狀態查詢」下方新增按月摘要（預設當月）與月選擇器，顯示「新增月費家長數、交易筆數、金額」及家長明細；支援下載當月已付款交易 CSV（審計用途）。後端新增 action：`payment_monthly_paid_summary`，工具檔：`src/lib/admin-paid-summary.ts`。 |
 | 2026-05 | **家長題目餘額交易紀錄（paid tier）修正**：修正 paid tier 練習未寫入 `balance_transactions` 導致帳戶維護看不到新扣減紀錄；新增 `PAID_TIER_USAGE` 記錄。另修正 hotfix：`balance_after` 改用 `-1`（Unlimited sentinel，符合 NOT NULL），前端顯示為 `Unlimited`。SQL：`supabase_fix_paid_tier_balance_history_logging.sql`。 |
+
+## Handover note — 2026-06-09 (stabilization restore rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. **Admin「學生練習摘要」功能復原**；
+  2. **Admin KPI「今日新註冊家長摘要」復原**（手機、電郵、建立時間）；
+  3. **登入頁突出「新用戶註冊」按鈕復原**；
+  4. **註冊/新增學生性別必填復原**（含 `/api/auth/register`、`/api/auth/add-student`）；
+  5. **結果頁底部按鈕復原**（`重新選擇科目`、`返回主畫面`、`登出`）。
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ⚠️（此分支無 smoke script）
+  - fallback smoke：`GET /`=200、`GET /admin`=200、`POST /api/admin/console` (no auth)=401、`POST /api/admin/business-today` (no auth)=401
+- Production 部署資訊：
+  - deployment: `dpl_8HH9sUtERBivud1sAq6mkmvnb4au`
+  - live alias: `https://q.hkedutech.com`
+- 後續防回歸建議（必做）：
+  1. 僅允許從 `main` commit 發布 production；
+  2. 把「學生練習摘要／今日新註冊家長摘要／突出註冊按鈕／性別必填／結果頁底部按鈕」納入每次 release 必檢項與 smoke 自動化；
+  3. 每次發布在 README 記錄 deploy id + gate 結果，避免分支遺漏。
 
 ## Handover note — 2026-05-08 (for next working session)
 
