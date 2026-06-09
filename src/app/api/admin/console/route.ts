@@ -16,6 +16,12 @@ import {
   type RawGradePracticeSessionRow,
   type RawPracticeSessionRow,
 } from "@/lib/admin-student-practice-summary";
+import {
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
+  PRIMARY_QUIZ_SUBJECT,
+} from "@/lib/quiz-subjects";
 
 type AdminAction =
   | "search_parent"
@@ -43,6 +49,8 @@ type RequestBody = {
   action?: AdminAction;
   payload?: Record<string, unknown>;
 };
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
@@ -135,6 +143,27 @@ function readString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function normalizeGradeSummarySubject(value: unknown): GradeSummarySubject | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "all";
+  const lowered = raw.toLowerCase();
+  if (lowered === "all" || lowered === "all subject" || lowered === "all_subject") return "all";
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return null;
+}
+
+function normalizePracticeSessionSubject(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Unknown";
+  const lowered = raw.toLowerCase();
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return raw;
 }
 
 type AirwallexApiBody = {
@@ -616,15 +645,22 @@ export async function POST(req: NextRequest) {
       case "grade_level_practice_frequency_summary": {
         const requestedMonth = String(payload.month ?? "").trim();
         const monthKey = requestedMonth || getCurrentHktMonthKey();
+        const subjectKey = normalizeGradeSummarySubject(payload.subject);
         if (!isValidMonthKey(monthKey)) {
           return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        if (!subjectKey) {
+          return NextResponse.json(
+            { error: "科目必須為 all/Chinese/English/Math" },
+            { status: 400 }
+          );
         }
         const { startIso, endIso } = getHktMonthRangeIso(monthKey);
 
         let sessions: RawGradePracticeSessionRow[] = [];
         const richRes = await admin
           .from("quiz_sessions")
-          .select("student_id,questions_attempted,time_spent_seconds")
+          .select("student_id,subject,questions_attempted,time_spent_seconds")
           .gte("created_at", startIso)
           .lt("created_at", endIso)
           .order("created_at", { ascending: false })
@@ -634,7 +670,7 @@ export async function POST(req: NextRequest) {
           if (/time_spent_seconds|column .* does not exist|42703/i.test(errMsg)) {
             const fallbackRes = await admin
               .from("quiz_sessions")
-              .select("student_id,questions_attempted")
+              .select("student_id,subject,questions_attempted")
               .gte("created_at", startIso)
               .lt("created_at", endIso)
               .order("created_at", { ascending: false })
@@ -643,6 +679,7 @@ export async function POST(req: NextRequest) {
             sessions = ((fallbackRes.data as RawGradePracticeSessionRow[] | null) ?? []).map(
               (row) => ({
                 student_id: row.student_id,
+                subject: row.subject,
                 questions_attempted: row.questions_attempted,
                 time_spent_seconds: null,
               })
@@ -654,8 +691,15 @@ export async function POST(req: NextRequest) {
           sessions = (richRes.data as RawGradePracticeSessionRow[] | null) ?? [];
         }
 
+        const filteredSessions =
+          subjectKey === "all"
+            ? sessions
+            : sessions.filter(
+                (row) => normalizePracticeSessionSubject(row.subject) === subjectKey
+              );
+
         const studentIdSet = new Set<string>();
-        for (const row of sessions) {
+        for (const row of filteredSessions) {
           const studentId = String(row.student_id || "").trim();
           if (studentId) studentIdSet.add(studentId);
         }
@@ -674,10 +718,11 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const rows = buildGradeLevelPracticeFrequencyRows(sessions, studentGradeMap);
+        const rows = buildGradeLevelPracticeFrequencyRows(filteredSessions, studentGradeMap);
         return NextResponse.json({
           data: {
             month: monthKey,
+            subject: subjectKey,
             rows,
           },
         });
