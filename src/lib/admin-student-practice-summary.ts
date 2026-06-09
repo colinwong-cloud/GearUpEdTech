@@ -9,6 +9,7 @@ export type RawPracticeSessionRow = {
 
 export type RawGradePracticeSessionRow = {
   student_id: string;
+  subject?: string | null;
   questions_attempted: number | null;
   time_spent_seconds?: number | null;
 };

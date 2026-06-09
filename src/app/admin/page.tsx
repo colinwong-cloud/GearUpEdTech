@@ -279,8 +279,18 @@ interface GradeLevelPracticeFrequencyRow {
 
 interface GradeLevelPracticeFrequencyResult {
   month: string;
+  subject: "all" | "Math" | "Chinese" | "English";
   rows: GradeLevelPracticeFrequencyRow[];
 }
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+
+const GRADE_SUMMARY_SUBJECT_OPTIONS: Array<{ value: GradeSummarySubject; label: string }> = [
+  { value: "all", label: "all subject" },
+  { value: "Chinese", label: "Chinese" },
+  { value: "English", label: "English" },
+  { value: "Math", label: "Math" },
+];
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -898,6 +908,7 @@ function formatHkdAmount(value: number): string {
 function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [month, setMonth] = useState(() => getCurrentHktMonthKey());
+  const [gradeSummarySubject, setGradeSummarySubject] = useState<GradeSummarySubject>("all");
   const [gradeSummaryMonth, setGradeSummaryMonth] = useState(() => getCurrentHktMonthKey());
   const [loading, setLoading] = useState(false);
   const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
@@ -967,7 +978,7 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     try {
       const data = await adminConsoleRequest<GradeLevelPracticeFrequencyResult>(
         "grade_level_practice_frequency_summary",
-        { month: gradeSummaryMonth },
+        { month: gradeSummaryMonth, subject: gradeSummarySubject },
         sessionToken
       );
       setGradeSummaryResult(data);
@@ -977,7 +988,7 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     } finally {
       setGradeSummaryLoading(false);
     }
-  }, [gradeSummaryMonth, sessionToken]);
+  }, [gradeSummaryMonth, gradeSummarySubject, sessionToken]);
 
   useEffect(() => {
     void loadGradeSummary();
@@ -999,6 +1010,17 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-sm font-bold text-gray-800">平台練習頻率摘要（按年級）</h3>
           <div className="flex items-center gap-2">
+            <select
+              value={gradeSummarySubject}
+              onChange={(e) => setGradeSummarySubject(e.target.value as GradeSummarySubject)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white"
+            >
+              {GRADE_SUMMARY_SUBJECT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <input
               type="month"
               value={gradeSummaryMonth}
@@ -1054,7 +1076,9 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
                   <td colSpan={5} className="py-4 text-center text-gray-400">
                     {gradeSummaryLoading
                       ? "載入中..."
-                      : `此月份（${gradeSummaryResult?.month || gradeSummaryMonth}）沒有練習紀錄`}
+                      : `此科目/月份（${gradeSummaryResult?.subject || gradeSummarySubject} / ${
+                          gradeSummaryResult?.month || gradeSummaryMonth
+                        }）沒有練習紀錄`}
                   </td>
                 </tr>
               )}
