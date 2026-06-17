@@ -31,6 +31,16 @@ Every release must re-check these critical features:
    - correct answer (with value)
    - explanation
 5. Admin key tabs and KPI summary modules remain available.
+6. Registration referral code flow remains correct:
+   - optional 6-digit numeric input
+   - invalid code shows `錯誤編號`
+   - exhausted code shows `編號被限，請負責老師聯絡管理員更新編號。`
+   - referral errors appear under referral field and do not clear other form inputs
+7. Admin `教師編號維護` remains available with:
+   - code creation
+   - usage summary
+   - code detail query including parent paid status (free/paid)
+   - CSV/PDF export for current query result
 
 ## 4) Validation gate
 

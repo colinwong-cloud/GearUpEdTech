@@ -26,8 +26,11 @@ Reference SOP: `docs/release-sop.md`
 
 - [ ] Register CTA still prominent
 - [ ] Registration gender required still enforced
+- [ ] Optional referral code field validates 6-digit numeric format
+- [ ] Referral error message placement is under referral field and form inputs persist after error
 - [ ] Result-page wrong-answer detail format still complete/readable
 - [ ] Admin key modules still render
+- [ ] Admin `教師編號維護` summary/detail/export works (including parent paid status free/paid)
 
 ## E) Release record
 

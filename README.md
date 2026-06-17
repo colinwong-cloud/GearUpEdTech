@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-16** — deployment `dpl_972VJtfHgLVtbtVxWHEFLtWMgfv4`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/972VJtfHgLVtbtVxWHEFLtWMgfv4). **Release scope:** 結果頁「錯題解析」可讀性升級（逐題顯示：題目內容、學生答案含值、正確答案含值、解釋）。
+**Latest production deploy:** **2026-06-17** — deployment `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/EXnAPUbGi2PwfNDoLC4ce6daGVY6). **Release scope:** 註冊推薦碼（負責教師編號）+ Admin「教師編號維護」上線。
 
 ## Release SOP / checklist (mandatory)
 
@@ -86,6 +86,8 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - [ ] Click "新用戶註冊" enters register screen
 - [ ] Gender selection is mandatory (must select 男生 / 女生 before submit)
 - [ ] Privacy statement consent required before submit
+- [ ] Optional referral code field (`負責教師編號`) validates 6-digit numeric format
+- [ ] Invalid/exhausted referral code errors render under referral field without clearing other form inputs
 - [ ] Register submit works for valid input
 - [ ] Register success returns expected next step/login state
 
@@ -186,7 +188,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Admin access
 - [ ] `/admin` login works
-- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 學生練習摘要 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護
+- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 學生練習摘要 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護 / 教師編號維護
 
 #### Tab: 業務概覽
 - [ ] Today KPI loads
@@ -224,6 +226,12 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - [ ] Search/filter works
 - [ ] Usage summary loads
 - [ ] Usage CSV download works
+
+#### Tab: 教師編號維護
+- [ ] Manual add (6-digit code + tutor name) works
+- [ ] Part 1 summary shows create date / tutor name / code / usage count
+- [ ] Part 2 code enquiry shows used date / mobile / parent paid status (free/paid)
+- [ ] Usage export (CSV/PDF) works for current query result
 
 ### 7) Sharing / Tracking / Compliance
 
@@ -275,6 +283,15 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release ID / commit:** `7fd98e3` (referral registration + admin tutor code management)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-06-17
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `POST /api/admin/business-today` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production deployment:** `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
 - **Release ID / commit:** `653536a` (result-page readability enhancement)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
 - **Date/time (UTC):** 2026-06-16
@@ -305,6 +322,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **註冊推薦碼 + Admin 教師編號維護上線**：註冊頁新增可選 `負責教師編號`（6 位數字）並強制錯碼/超限驗證；錯誤提示改為顯示在推薦碼欄位下方且保留已填內容。Admin 新增 `教師編號維護`（手動新增、摘要查詢、明細查詢、CSV/PDF 匯出），明細含家長付費狀態（free/paid）。同步新增 SQL：`supabase_tutor_referral_codes.sql`。 |
 | 2026-06 | **結果頁錯題解析（學生可讀性升級）**：錯題改為逐題卡片格式，明確顯示「題目內容」「你的答案（值）」「正確答案（值）」「解釋」，幫助學生更快理解錯誤原因。 |
 | 2026-05 | **登入頁 CTA UI 強化（A/B 測試向）**：把「新用戶註冊」由卡片內小連結改為登入區上方全寬獨立按鈕（尺寸貼近登入輸入欄），提升可見度；不涉及註冊流程邏輯變更。 |
 | 2026-05 | **Ranking 測試數據補齊腳本（99990009~99990012）**：新增小批次 SQL（每個 mobile × 每個科目一份）把 English/Chinese 題量補至每位學生至少 100 題：`supabase_rank_topup_9999000{9..12}_{english|chinese}.sql`，最後執行 `supabase_rank_recalculate_verify_99990009_99990012.sql` 重算並驗證快照。 |
@@ -470,6 +488,38 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - SOP/checklist 已補齊（for later reference）：
   - `docs/release-sop.md`
   - `docs/release-deploy-checklist.md`
+
+## Handover note — 2026-06-17 (referral system production rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 註冊頁新增可選 `負責教師編號`（6 位數字）欄位。
+  2. 推薦碼錯誤訊息（錯誤編號/超限）改為顯示在推薦碼欄位正下方，且保留其他已填註冊資料。
+  3. Admin 新增 `教師編號維護`：
+     - 手動新增推薦碼
+     - Part 1 摘要（建立日期、教師名稱、編號、使用次數）
+     - Part 2 明細（使用日期、電話號碼、家長狀態 free/paid）
+     - CSV/PDF 匯出
+
+- 本次部署資訊：
+  - deployment: `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/EXnAPUbGi2PwfNDoLC4ce6daGVY6`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+- 上線後注意：
+  - 若環境尚未執行 `supabase_tutor_referral_codes.sql`，推薦碼功能會因資料表缺失而無法使用；請先在 Supabase SQL Editor 執行該檔。
 
 ## Setup
 
