@@ -31,6 +31,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Result-page wrong-answer detail format still complete/readable
 - [ ] Admin key modules still render
 - [ ] Admin `教師編號維護` summary/detail/export works (including parent paid status free/paid)
+- [ ] Parent free-tier upgrade CTA copy still includes unlimited-practice + ranking value
 
 ## E) Release record
 

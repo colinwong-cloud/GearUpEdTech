@@ -41,6 +41,9 @@ Every release must re-check these critical features:
    - usage summary
    - code detail query including parent paid status (free/paid)
    - CSV/PDF export for current query result
+8. Parent free-tier invite CTA copy remains accurate and includes both:
+   - unlimited-practice value (`解鎖無限題目練習`)
+   - ranking value (`可獲得學生排名資訊`)
 
 ## 4) Validation gate
 

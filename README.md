@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-17** — deployment `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/EXnAPUbGi2PwfNDoLC4ce6daGVY6). **Release scope:** 註冊推薦碼（負責教師編號）+ Admin「教師編號維護」上線。
+**Latest production deploy:** **2026-06-17** — deployment `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BLrenEY5hxJWnbMWutJRPFn1FGkw). **Release scope:** 家長免費升級月費按鈕文案更新（強調無限題目練習 + 學生排名資訊）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -149,6 +149,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - [ ] Free/Paid tier badge/status correct
 - [ ] Paid-until date display correct
 - [ ] Upgrade entry visible for free users
+- [ ] Free-tier upgrade invite copy remains: `成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。`
 
 ### 4) Account Maintenance
 
@@ -283,6 +284,15 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release ID / commit:** `0cb062f` (free-tier to paid invite copy update)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-06-17
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `POST /api/admin/business-today` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production deployment:** `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
 - **Release ID / commit:** `7fd98e3` (referral registration + admin tutor code management)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
 - **Date/time (UTC):** 2026-06-17
@@ -322,6 +332,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **家長免費升級月費按鈕文案更新（UI only）**：將文案更新為「成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。」；無 API/SQL/邏輯變更。 |
 | 2026-06 | **註冊推薦碼 + Admin 教師編號維護上線**：註冊頁新增可選 `負責教師編號`（6 位數字）並強制錯碼/超限驗證；錯誤提示改為顯示在推薦碼欄位下方且保留已填內容。Admin 新增 `教師編號維護`（手動新增、摘要查詢、明細查詢、CSV/PDF 匯出），明細含家長付費狀態（free/paid）。同步新增 SQL：`supabase_tutor_referral_codes.sql`。 |
 | 2026-06 | **結果頁錯題解析（學生可讀性升級）**：錯題改為逐題卡片格式，明確顯示「題目內容」「你的答案（值）」「正確答案（值）」「解釋」，幫助學生更快理解錯誤原因。 |
 | 2026-05 | **登入頁 CTA UI 強化（A/B 測試向）**：把「新用戶註冊」由卡片內小連結改為登入區上方全寬獨立按鈕（尺寸貼近登入輸入欄），提升可見度；不涉及註冊流程邏輯變更。 |
@@ -520,6 +531,31 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 - 上線後注意：
   - 若環境尚未執行 `supabase_tutor_referral_codes.sql`，推薦碼功能會因資料表缺失而無法使用；請先在 Supabase SQL Editor 執行該檔。
+
+## Handover note — 2026-06-17 (free-tier paid-invite copy update rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 家長身份選擇頁的免費升級月費按鈕文案更新為：
+     `成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。`
+  2. 本次屬 **UI-only** 文案更新；無 API、SQL、資料結構或邏輯變更。
+
+- 本次部署資訊：
+  - deployment: `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/BLrenEY5hxJWnbMWutJRPFn1FGkw`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup
 
