@@ -38,6 +38,84 @@ type ConsumedReferralUsage = {
   mobile: string;
 };
 
+type ReferralDb = {
+  public: {
+    Tables: {
+      tutor_referral_codes: {
+        Row: {
+          id: string;
+          code: string;
+          tutor_name: string;
+          usage_limit: number;
+          current_uses: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          tutor_name: string;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          tutor_name?: string;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tutor_referral_usages: {
+        Row: {
+          id: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          mobile_number: string;
+          parent_id: string | null;
+          used_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          mobile_number: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          code_id?: string;
+          code?: string;
+          tutor_name?: string;
+          mobile_number?: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+type ReferralAdminClient = ReturnType<typeof createClient<ReferralDb>>;
+type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
+
 const REFERRAL_CODE_RE = /^\d{6}$/;
 const REFERRAL_INVALID_ERROR = "錯誤編號";
 const REFERRAL_LIMIT_ERROR = "編號被限，請負責老師聯絡管理員更新編號。";
@@ -64,6 +142,10 @@ function isValidGrade(gradeLevel: string): boolean {
   return ["P1", "P2", "P3", "P4", "P5", "P6"].includes(gradeLevel);
 }
 
+function asReferralAdminClient(admin: AdminClient): ReferralAdminClient {
+  return admin as unknown as ReferralAdminClient;
+}
+
 function isMissingReferralTableError(message: string): boolean {
   return /tutor_referral_codes|tutor_referral_usages|42P01|does not exist/i.test(message);
 }
@@ -85,10 +167,11 @@ async function syncReferralUsageCount({
   admin,
   codeId,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   codeId: string;
 }): Promise<void> {
-  const usageCountRes = await admin
+  const referralAdmin = asReferralAdminClient(admin);
+  const usageCountRes = await referralAdmin
     .from("tutor_referral_usages")
     .select("id", { count: "exact", head: true })
     .eq("code_id", codeId);
@@ -100,7 +183,7 @@ async function syncReferralUsageCount({
   }
 
   const usageCount = Number(usageCountRes.count ?? 0);
-  const { error: syncErr } = await admin
+  const { error: syncErr } = await referralAdmin
     .from("tutor_referral_codes")
     .update({
       current_uses: usageCount,
@@ -119,10 +202,11 @@ async function rollbackConsumedReferral({
   admin,
   consumed,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   consumed: ConsumedReferralUsage;
 }) {
-  const { error: deleteUsageErr } = await admin
+  const referralAdmin = asReferralAdminClient(admin);
+  const { error: deleteUsageErr } = await referralAdmin
     .from("tutor_referral_usages")
     .delete()
     .eq("code_id", consumed.codeId)
@@ -138,11 +222,12 @@ async function consumeReferralUsage({
   code,
   mobile,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   code: string;
   mobile: string;
 }): Promise<{ consumed: ConsumedReferralUsage | null; error: string | null }> {
-  const codeRes = await admin
+  const referralAdmin = asReferralAdminClient(admin);
+  const codeRes = await referralAdmin
     .from("tutor_referral_codes")
     .select("id,code,tutor_name,usage_limit,current_uses,is_active")
     .eq("code", code)
@@ -166,7 +251,7 @@ async function consumeReferralUsage({
   let reserved = false;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const nextUses = current + 1;
-    const reserveRes = await admin
+    const reserveRes = await referralAdmin
       .from("tutor_referral_codes")
       .update({
         current_uses: nextUses,
@@ -188,7 +273,7 @@ async function consumeReferralUsage({
       break;
     }
 
-    const retryRes = await admin
+    const retryRes = await referralAdmin
       .from("tutor_referral_codes")
       .select("id,current_uses,usage_limit,is_active")
       .eq("id", referralCode.id)
@@ -217,7 +302,7 @@ async function consumeReferralUsage({
     return { consumed: null, error: REFERRAL_LIMIT_ERROR };
   }
 
-  const usageInsertRes = await admin.from("tutor_referral_usages").insert({
+  const usageInsertRes = await referralAdmin.from("tutor_referral_usages").insert({
     code_id: referralCode.id,
     code: referralCode.code,
     tutor_name: referralCode.tutor_name,
@@ -384,7 +469,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (consumedReferral) {
-    const { error: linkUsageErr } = await admin
+    const referralAdmin = asReferralAdminClient(admin);
+    const { error: linkUsageErr } = await referralAdmin
       .from("tutor_referral_usages")
       .update({
         parent_id: student.parent_id,
