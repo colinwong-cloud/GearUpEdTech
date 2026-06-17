@@ -478,6 +478,87 @@ async function deleteParentWithRelations({
 
 type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
 
+type ReferralDb = {
+  public: {
+    Tables: {
+      tutor_referral_codes: {
+        Row: {
+          id: string;
+          code: string;
+          tutor_name: string;
+          usage_limit: number;
+          current_uses: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          tutor_name: string;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          tutor_name?: string;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tutor_referral_usages: {
+        Row: {
+          id: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          mobile_number: string;
+          parent_id: string | null;
+          used_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          mobile_number: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          code_id?: string;
+          code?: string;
+          tutor_name?: string;
+          mobile_number?: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+type ReferralAdminClient = ReturnType<typeof createClient<ReferralDb>>;
+
+function asReferralAdminClient(admin: AdminClient): ReferralAdminClient {
+  return admin as unknown as ReferralAdminClient;
+}
+
 type ParentRow = {
   id: string;
   mobile_number: string;
@@ -536,13 +617,14 @@ async function ensurePaymentOpsTables(admin: AdminClient) {
 }
 
 async function ensureTutorReferralTables(admin: AdminClient) {
-  const codeProbe = await admin.from("tutor_referral_codes").select("id").limit(1);
+  const referralAdmin = asReferralAdminClient(admin);
+  const codeProbe = await referralAdmin.from("tutor_referral_codes").select("id").limit(1);
   if (codeProbe.error && isMissingTutorReferralTableError(codeProbe.error.message || "")) {
     throw new Error(TUTOR_REFERRAL_TABLE_HINT);
   }
   if (codeProbe.error) throw codeProbe.error;
 
-  const usageProbe = await admin.from("tutor_referral_usages").select("id").limit(1);
+  const usageProbe = await referralAdmin.from("tutor_referral_usages").select("id").limit(1);
   if (usageProbe.error && isMissingTutorReferralTableError(usageProbe.error.message || "")) {
     throw new Error(TUTOR_REFERRAL_TABLE_HINT);
   }
@@ -1235,6 +1317,7 @@ export async function POST(req: NextRequest) {
       }
       case "tutor_referral_code_create": {
         await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
         const code = String(payload.code ?? "").trim();
         const tutorName = String(payload.tutor_name ?? "").trim();
         const createdAt = normalizeIsoDateTime(payload.created_at);
@@ -1249,7 +1332,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
         }
 
-        const insertPayload: Record<string, unknown> = {
+        const insertPayload: ReferralDb["public"]["Tables"]["tutor_referral_codes"]["Insert"] = {
           code,
           tutor_name: tutorName,
           usage_limit: 50,
@@ -1258,7 +1341,7 @@ export async function POST(req: NextRequest) {
         };
         if (createdAt) insertPayload.created_at = createdAt;
 
-        const { data, error } = await admin
+        const { data, error } = await referralAdmin
           .from("tutor_referral_codes")
           .insert(insertPayload)
           .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
@@ -1276,9 +1359,10 @@ export async function POST(req: NextRequest) {
       }
       case "tutor_referral_code_summary": {
         await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
         const q = String(payload.q ?? "").trim();
 
-        let query = admin
+        let query = referralAdmin
           .from("tutor_referral_codes")
           .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
           .order("created_at", { ascending: false })
@@ -1310,12 +1394,13 @@ export async function POST(req: NextRequest) {
       }
       case "tutor_referral_code_usage_details": {
         await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
         const code = String(payload.code ?? "").trim();
         if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
           return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
         }
 
-        const { data: codeRow, error: codeErr } = await admin
+        const { data: codeRow, error: codeErr } = await referralAdmin
           .from("tutor_referral_codes")
           .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
           .eq("code", code)
@@ -1336,7 +1421,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        const { data: usageRows, error: usageErr } = await admin
+        const { data: usageRows, error: usageErr } = await referralAdmin
           .from("tutor_referral_usages")
           .select("id,used_at,mobile_number,parent_id")
           .eq("code_id", String(codeRow.id))
