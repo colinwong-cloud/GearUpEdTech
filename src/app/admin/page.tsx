@@ -24,6 +24,9 @@ type AdminConsoleAction =
   | "discount_code_update"
   | "discount_code_delete"
   | "discount_code_usage_summary"
+  | "tutor_referral_code_create"
+  | "tutor_referral_code_summary"
+  | "tutor_referral_code_usage_details"
   | "payment_status_enquiry"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
@@ -64,6 +67,7 @@ type Tab =
   | "questions"
   | "business"
   | "discount_codes"
+  | "tutor_referral_codes"
   | "payment_status"
   | "student_practice_summary";
 
@@ -128,6 +132,23 @@ interface DiscountCodeUsageRawRecord {
   mobile_number: string;
   merchant_order_id: string;
   payment_method: string | null;
+}
+
+interface TutorReferralCodeSummaryRow {
+  id: string;
+  code: string;
+  tutor_name: string;
+  usage_limit: number;
+  current_uses: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface TutorReferralUsageDetailRow {
+  id: string;
+  used_at: string;
+  mobile_number: string;
+  parent_id: string | null;
 }
 
 interface PaymentStatusMonthRow {
@@ -425,6 +446,7 @@ export default function AdminPage() {
     { key: "email", label: "電郵通知" },
     { key: "questions", label: "題目管理" },
     { key: "discount_codes", label: "折扣碼維護" },
+    { key: "tutor_referral_codes", label: "教師編號維護" },
   ];
 
   return (
@@ -456,6 +478,7 @@ export default function AdminPage() {
         {tab === "email" && <EmailSection sessionToken={sessionToken} />}
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
         {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
+        {tab === "tutor_referral_codes" && <TutorReferralCodeSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
@@ -1728,6 +1751,10 @@ function normalizeCodeInput(raw: string): string {
   return raw.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
 }
 
+function normalizeReferralCodeInput(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 6);
+}
+
 function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
   const headers = [
     "id",
@@ -1775,6 +1802,68 @@ function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
       .join(",")
   );
   return [headers.join(","), ...body].join("\n");
+}
+
+function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
+  const headers = ["used_at", "mobile_number"];
+  const escape = (value: unknown): string => {
+    const text = value === null || value === undefined ? "" : String(value);
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+  const body = rows.map((row) => [row.used_at, row.mobile_number].map(escape).join(","));
+  return [headers.join(","), ...body].join("\n");
+}
+
+function buildReferralUsagePrintHtml({
+  code,
+  tutorName,
+  rows,
+}: {
+  code: string;
+  tutorName: string;
+  rows: TutorReferralUsageDetailRow[];
+}): string {
+  const esc = (value: string) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  const rowHtml =
+    rows.length === 0
+      ? `<tr><td colspan="2" style="padding:8px;border:1px solid #ddd;text-align:center;color:#666;">沒有資料</td></tr>`
+      : rows
+          .map(
+            (row) =>
+              `<tr><td style="padding:8px;border:1px solid #ddd;">${esc(
+                row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"
+              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(row.mobile_number)}</td></tr>`
+          )
+          .join("");
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>教師編號使用紀錄 ${esc(code)}</title>
+  </head>
+  <body style="font-family:Arial, 'PingFang TC', 'Microsoft JhengHei', sans-serif; padding:24px;">
+    <h2 style="margin:0 0 8px;">教師編號使用紀錄</h2>
+    <p style="margin:0 0 16px;">教師編號：<strong>${esc(code)}</strong> ｜ 教師：<strong>${esc(
+    tutorName || "-"
+  )}</strong></p>
+    <table style="border-collapse:collapse; width:100%; font-size:13px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">使用日期</th>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">電話號碼</th>
+        </tr>
+      </thead>
+      <tbody>${rowHtml}</tbody>
+    </table>
+  </body>
+</html>`;
 }
 
 function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
@@ -2155,6 +2244,336 @@ function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
           >
             匯出 CSV
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
+  const [summarySearch, setSummarySearch] = useState("");
+  const [summaryRows, setSummaryRows] = useState<TutorReferralCodeSummaryRow[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const [createCode, setCreateCode] = useState("");
+  const [createTutorName, setCreateTutorName] = useState("");
+
+  const [detailCode, setDetailCode] = useState("");
+  const [detailResult, setDetailResult] = useState<{
+    found: boolean;
+    code: TutorReferralCodeSummaryRow | null;
+    rows: TutorReferralUsageDetailRow[];
+  } | null>(null);
+
+  const loadSummary = async (q = summarySearch) => {
+    setSummaryLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<TutorReferralCodeSummaryRow[]>(
+        "tutor_referral_code_summary",
+        { q: q.trim() },
+        sessionToken
+      );
+      setSummaryRows(data || []);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "教師編號摘要載入失敗");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSummary("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionToken]);
+
+  const handleCreate = async () => {
+    const code = normalizeReferralCodeInput(createCode);
+    const tutorName = createTutorName.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setMsg("教師編號必須為 6 位數字");
+      return;
+    }
+    if (!tutorName) {
+      setMsg("請輸入教師名稱");
+      return;
+    }
+    setSaveLoading(true);
+    setMsg("");
+    try {
+      await adminConsoleRequest(
+        "tutor_referral_code_create",
+        { code, tutor_name: tutorName },
+        sessionToken
+      );
+      setMsg("教師編號已新增");
+      setCreateCode("");
+      setCreateTutorName("");
+      await loadSummary();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "新增教師編號失敗");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const loadDetail = async (rawCode = detailCode) => {
+    const code = normalizeReferralCodeInput(rawCode);
+    setDetailCode(code);
+    if (!/^\d{6}$/.test(code)) {
+      setMsg("請輸入 6 位數字教師編號");
+      setDetailResult(null);
+      return;
+    }
+
+    setDetailLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<{
+        found: boolean;
+        code: TutorReferralCodeSummaryRow | null;
+        rows: TutorReferralUsageDetailRow[];
+      }>("tutor_referral_code_usage_details", { code }, sessionToken);
+      setDetailResult(data);
+      if (!data.found) {
+        setMsg("找不到此教師編號");
+      }
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "教師編號使用紀錄查詢失敗");
+      setDetailResult(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const exportDetailCsv = () => {
+    if (!detailResult?.found || !detailResult.code || detailResult.rows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const csv = buildReferralUsageCsv(detailResult.rows);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `tutor-referral-usage-${detailResult.code.code}-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDetailPdf = () => {
+    if (!detailResult?.found || !detailResult.code || detailResult.rows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+    if (!printWindow) {
+      setMsg("無法開啟列印視窗，請檢查瀏覽器是否封鎖彈出視窗。");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(
+      buildReferralUsagePrintHtml({
+        code: detailResult.code.code,
+        tutorName: detailResult.code.tutor_name,
+        rows: detailResult.rows,
+      })
+    );
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-gray-800">教師編號維護</h2>
+
+      {msg && (
+        <p
+          className={`text-sm ${
+            msg.includes("失敗") || msg.includes("錯誤") || msg.includes("找不到")
+              ? "text-red-500"
+              : "text-emerald-600"
+          }`}
+        >
+          {msg}
+        </p>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">手動新增教師編號</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師編號（6位數字）</label>
+            <input
+              value={createCode}
+              onChange={(e) => setCreateCode(normalizeReferralCodeInput(e.target.value))}
+              placeholder="例如 123456"
+              maxLength={6}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師名稱</label>
+            <input
+              value={createTutorName}
+              onChange={(e) => setCreateTutorName(e.target.value)}
+              placeholder="例如 陳老師"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+        <button
+          onClick={handleCreate}
+          disabled={saveLoading}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {saveLoading ? "儲存中..." : "新增教師編號"}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 1：教師編號使用摘要</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={summarySearch}
+            onChange={(e) => setSummarySearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadSummary()}
+            placeholder="搜尋教師編號或教師名稱"
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadSummary()}
+            disabled={summaryLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {summaryLoading ? "載入中..." : "搜尋"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">建立日期</th>
+                <th className="py-2 pr-3">教師名稱</th>
+                <th className="py-2 pr-3">教師編號</th>
+                <th className="py-2 pr-3">已使用次數 / 上限</th>
+                <th className="py-2 pr-3">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">
+                    {row.created_at ? new Date(row.created_at).toLocaleString("zh-HK") : "-"}
+                  </td>
+                  <td className="py-2 pr-3">{row.tutor_name}</td>
+                  <td className="py-2 pr-3 font-mono">{row.code}</td>
+                  <td className="py-2 pr-3">
+                    {row.current_uses} / {row.usage_limit}
+                  </td>
+                  <td className="py-2 pr-3">
+                    <button
+                      onClick={() => loadDetail(row.code)}
+                      className="px-2 py-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-semibold"
+                    >
+                      查詢使用
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {summaryRows.length === 0 && !summaryLoading && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                    沒有符合條件的資料
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 2：教師編號使用明細查詢</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={detailCode}
+            onChange={(e) => setDetailCode(normalizeReferralCodeInput(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && loadDetail()}
+            placeholder="輸入 6 位數字教師編號"
+            maxLength={6}
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadDetail()}
+            disabled={detailLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {detailLoading ? "查詢中..." : "查詢"}
+          </button>
+        </div>
+
+        {detailResult?.found && detailResult.code && (
+          <p className="text-sm text-gray-600">
+            教師編號：<span className="font-mono">{detailResult.code.code}</span> ｜ 教師：
+            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 已使用：
+            <span className="font-semibold"> {detailResult.code.current_uses}</span> /
+            {detailResult.code.usage_limit}
+          </p>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">使用日期</th>
+                <th className="py-2 pr-3">電話號碼</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(detailResult?.rows ?? []).map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">
+                    {row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"}
+                  </td>
+                  <td className="py-2 pr-3">{row.mobile_number}</td>
+                </tr>
+              ))}
+              {!detailLoading && (detailResult?.rows ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={2} className="py-4 text-center text-gray-400">
+                    沒有可顯示的使用明細
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <p className="text-xs text-gray-500">可匯出目前查詢結果（CSV / PDF）</p>
+          <div className="flex gap-2">
+            <button
+              onClick={exportDetailCsv}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+            >
+              匯出 CSV
+            </button>
+            <button
+              onClick={exportDetailPdf}
+              className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800"
+            >
+              匯出 PDF
+            </button>
+          </div>
         </div>
       </div>
     </div>
