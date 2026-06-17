@@ -2221,6 +2221,14 @@ function RegisterScreen({
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
     (siteKey && !turnstileBypass ? turnstileToken !== null : true);
+  const referralServerError =
+    error &&
+    (error === "錯誤編號" ||
+      error === "編號被限，請負責老師聯絡管理員更新編號。" ||
+      error === "此電話已使用教師編號。")
+      ? error
+      : null;
+  const generalRegisterError = referralServerError ? null : error;
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -2453,6 +2461,9 @@ function RegisterScreen({
             {referralCode.length > 0 && !referralCodeValid && (
               <p className="mt-1 text-xs text-red-500">錯誤編號</p>
             )}
+            {referralServerError && (
+              <p className="mt-1 text-xs text-red-500">{referralServerError}</p>
+            )}
           </div>
 
           {siteKey && (
@@ -2486,8 +2497,8 @@ function RegisterScreen({
             </p>
           )}
 
-          {error && (
-            <p className="text-sm text-red-500 font-medium">{error}</p>
+          {generalRegisterError && (
+            <p className="text-sm text-red-500 font-medium">{generalRegisterError}</p>
           )}
 
           <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">

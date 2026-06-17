@@ -149,6 +149,7 @@ interface TutorReferralUsageDetailRow {
   used_at: string;
   mobile_number: string;
   parent_id: string | null;
+  parent_status: "free" | "paid";
 }
 
 interface PaymentStatusMonthRow {
@@ -1805,7 +1806,7 @@ function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
 }
 
 function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
-  const headers = ["used_at", "mobile_number"];
+  const headers = ["used_at", "mobile_number", "parent_status"];
   const escape = (value: unknown): string => {
     const text = value === null || value === undefined ? "" : String(value);
     if (text.includes(",") || text.includes('"') || text.includes("\n")) {
@@ -1813,7 +1814,7 @@ function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
     }
     return text;
   };
-  const body = rows.map((row) => [row.used_at, row.mobile_number].map(escape).join(","));
+  const body = rows.map((row) => [row.used_at, row.mobile_number, row.parent_status].map(escape).join(","));
   return [headers.join(","), ...body].join("\n");
 }
 
@@ -1833,13 +1834,15 @@ function buildReferralUsagePrintHtml({
       .replaceAll(">", "&gt;");
   const rowHtml =
     rows.length === 0
-      ? `<tr><td colspan="2" style="padding:8px;border:1px solid #ddd;text-align:center;color:#666;">沒有資料</td></tr>`
+      ? `<tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:center;color:#666;">沒有資料</td></tr>`
       : rows
           .map(
             (row) =>
               `<tr><td style="padding:8px;border:1px solid #ddd;">${esc(
                 row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"
-              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(row.mobile_number)}</td></tr>`
+              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(
+                row.mobile_number
+              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(row.parent_status)}</td></tr>`
           )
           .join("");
   return `<!doctype html>
@@ -1858,6 +1861,7 @@ function buildReferralUsagePrintHtml({
         <tr>
           <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">使用日期</th>
           <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">電話號碼</th>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">家長狀態</th>
         </tr>
       </thead>
       <tbody>${rowHtml}</tbody>
@@ -2536,6 +2540,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               <tr className="text-left text-gray-500 border-b">
                 <th className="py-2 pr-3">使用日期</th>
                 <th className="py-2 pr-3">電話號碼</th>
+                <th className="py-2 pr-3">家長狀態</th>
               </tr>
             </thead>
             <tbody>
@@ -2545,11 +2550,12 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
                     {row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"}
                   </td>
                   <td className="py-2 pr-3">{row.mobile_number}</td>
+                  <td className="py-2 pr-3">{row.parent_status}</td>
                 </tr>
               ))}
               {!detailLoading && (detailResult?.rows ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={2} className="py-4 text-center text-gray-400">
+                  <td colSpan={3} className="py-4 text-center text-gray-400">
                     沒有可顯示的使用明細
                   </td>
                 </tr>
