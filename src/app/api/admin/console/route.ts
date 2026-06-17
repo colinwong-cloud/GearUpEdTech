@@ -1435,6 +1435,31 @@ export async function POST(req: NextRequest) {
           throw usageErr;
         }
 
+        const usedMobiles = Array.from(
+          new Set((usageRows ?? []).map((row) => String(row.mobile_number ?? "").trim()).filter(Boolean))
+        );
+        const parentStatusByMobile = new Map<string, "free" | "paid">();
+        const nowMs = Date.now();
+        for (const chunk of chunkArray(usedMobiles, 500)) {
+          const { data: parentRows, error: parentErr } = await admin
+            .from("parents")
+            .select("mobile_number,subscription_tier,paid_until")
+            .in("mobile_number", chunk)
+            .limit(10000);
+          if (parentErr) throw parentErr;
+          for (const parentRow of parentRows ?? []) {
+            const mobileNumber = String(parentRow.mobile_number ?? "").trim();
+            if (!mobileNumber) continue;
+            const tier = String(parentRow.subscription_tier ?? "").trim().toLowerCase();
+            const paidUntilIso = normalizeIsoDateTime(parentRow.paid_until);
+            const isPaid =
+              paidUntilIso !== null
+                ? new Date(paidUntilIso).getTime() >= nowMs
+                : tier === "paid";
+            parentStatusByMobile.set(mobileNumber, isPaid ? "paid" : "free");
+          }
+        }
+
         return NextResponse.json({
           data: {
             found: true,
@@ -1452,6 +1477,8 @@ export async function POST(req: NextRequest) {
               used_at: normalizeIsoDateTime(row.used_at) || "",
               mobile_number: String(row.mobile_number ?? ""),
               parent_id: readString(row.parent_id),
+              parent_status:
+                parentStatusByMobile.get(String(row.mobile_number ?? "").trim()) ?? "free",
             })),
           },
         });
