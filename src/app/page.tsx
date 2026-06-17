@@ -1483,6 +1483,7 @@ export default function QuizApp() {
         studentId={selectedStudent?.id || null}
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
+        mobileNumber={mobileNumber}
         onRestart={handleRestart}
         onLogout={handleLogout}
         balance={balance}
@@ -2726,12 +2727,30 @@ function getPracticeResultBannerSrc(): string {
   return "/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png";
 }
 
+function normalizeTutorSubjectFromQuestionSubject(
+  rawSubject: string | null | undefined
+): "Chinese" | "English" | "Math" | null {
+  const key = (rawSubject || "").trim().toLowerCase();
+  if (!key) return null;
+  if (key.includes("chinese") || key.includes("chi") || key.includes("中")) {
+    return "Chinese";
+  }
+  if (key.includes("english") || key.includes("eng") || key.includes("英")) {
+    return "English";
+  }
+  if (key.includes("math") || key.includes("數")) {
+    return "Math";
+  }
+  return null;
+}
+
 function ResultsView({
   answers,
   studentName,
   studentId,
   sessionId,
   sessionSummary,
+  mobileNumber,
   onRestart,
   onLogout,
   balance,
@@ -2741,6 +2760,7 @@ function ResultsView({
   studentId: string | null;
   sessionId: string | null;
   sessionSummary: string | null;
+  mobileNumber: string;
   onRestart: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
@@ -2750,6 +2770,9 @@ function ResultsView({
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const summaryText =
     sessionSummary?.trim() || buildSessionPracticeSummary(answers, answers[0]?.question.subject || "");
+  const tutorSubject = normalizeTutorSubjectFromQuestionSubject(
+    answers[0]?.question.subject || null
+  );
 
   const wrongAnswers = answers
     .map((answer, index) => ({ answer, index }))
@@ -2757,6 +2780,16 @@ function ResultsView({
 
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [reportingId, setReportingId] = useState<string | null>(null);
+
+  const handleTutorFollowUp = useCallback(() => {
+    const mobile = mobileNumber.trim();
+    if (!mobile) return;
+    const targetSubject = tutorSubject || "Math";
+    const targetUrl = `/tutor-payment?mobile=${encodeURIComponent(mobile)}&subject=${encodeURIComponent(
+      targetSubject
+    )}`;
+    window.location.href = targetUrl;
+  }, [mobileNumber, tutorSubject]);
 
   const handleReport = async (answer: AnswerRecord) => {
     if (reportedIds.has(answer.question.id) || reportingId) return;
@@ -2959,6 +2992,17 @@ function ResultsView({
         )}
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={handleTutorFollowUp}
+            disabled={!mobileNumber.trim()}
+            className={`inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] ${
+              mobileNumber.trim()
+                ? "bg-amber-500 text-white hover:bg-amber-600"
+                : "bg-gray-200 text-gray-400 shadow-none"
+            }`}
+          >
+            與補習名師跟進練習成績
+          </button>
           <button
             onClick={onRestart}
             className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"

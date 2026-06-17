@@ -21,6 +21,10 @@ type RecurringProfileRow = {
   recurring_amount_hkd: number;
   currency: string | null;
   next_charge_at: string;
+  plan_code?: string | null;
+  plan_name?: string | null;
+  tutor_subject?: string | null;
+  service_mode?: string | null;
 };
 
 type ApiBody = {
@@ -112,7 +116,9 @@ async function markRecurringProfile(
 }
 
 function isMissingOrderTrackingColumnError(message: string): boolean {
-  return /payment_started_at|is_recurring_payment/i.test(message);
+  return /payment_started_at|is_recurring_payment|plan_code|plan_name|tutor_subject|service_mode/i.test(
+    message
+  );
 }
 
 async function insertParentPaymentOrder(
@@ -122,8 +128,17 @@ async function insertParentPaymentOrder(
   let response = await supabase.from("parent_payment_orders").insert(payload);
   if (response.error && isMissingOrderTrackingColumnError(response.error.message)) {
     const legacy = { ...payload };
-    delete legacy.payment_started_at;
-    delete legacy.is_recurring_payment;
+    const optionalOrderColumns = [
+      "payment_started_at",
+      "is_recurring_payment",
+      "plan_code",
+      "plan_name",
+      "tutor_subject",
+      "service_mode",
+    ] as const;
+    for (const key of optionalOrderColumns) {
+      delete legacy[key];
+    }
     response = await supabase.from("parent_payment_orders").insert(legacy);
   }
   return response;
@@ -148,15 +163,33 @@ export async function GET(req: NextRequest) {
   try {
     const airwallexBase = getAirwallexBaseUrl();
     const accessToken = await getAirwallexAccessToken(airwallexBase);
-    const { data: profiles, error: listErr } = await supabase
+    let profilesRes = await supabase
       .from("parent_recurring_profiles")
       .select(
-        "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at"
+        "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at,plan_code,plan_name,tutor_subject,service_mode"
       )
       .eq("status", "active")
       .lte("next_charge_at", new Date().toISOString())
       .order("next_charge_at", { ascending: true })
       .limit(100);
+    if (
+      profilesRes.error &&
+      /plan_code|plan_name|tutor_subject|service_mode/i.test(
+        profilesRes.error.message || ""
+      )
+    ) {
+      profilesRes = await supabase
+        .from("parent_recurring_profiles")
+        .select(
+          "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at"
+        )
+        .eq("status", "active")
+        .lte("next_charge_at", new Date().toISOString())
+        .order("next_charge_at", { ascending: true })
+        .limit(100);
+    }
+    const profiles = profilesRes.data;
+    const listErr = profilesRes.error;
 
     if (listErr) {
       return NextResponse.json({ error: listErr.message }, { status: 500 });
@@ -209,6 +242,10 @@ export async function GET(req: NextRequest) {
         status: "created",
         payment_started_at: startedAt,
         is_recurring_payment: true,
+        plan_code: profile.plan_code ?? null,
+        plan_name: profile.plan_name ?? null,
+        tutor_subject: profile.tutor_subject ?? null,
+        service_mode: profile.service_mode ?? null,
         airwallex_customer_id: profile.airwallex_customer_id,
         airwallex_payment_consent_id: profile.airwallex_payment_consent_id,
         airwallex_payment_method_id: profile.airwallex_payment_method_id,
@@ -244,6 +281,10 @@ export async function GET(req: NextRequest) {
             recurring_profile_id: profile.id,
             mobile_number: profile.mobile_number,
             charge_type: "monthly_recurring",
+            plan_code: profile.plan_code ?? null,
+            plan_name: profile.plan_name ?? null,
+            tutor_subject: profile.tutor_subject ?? null,
+            service_mode: profile.service_mode ?? null,
           },
         }),
         cache: "no-store",
@@ -305,6 +346,10 @@ export async function GET(req: NextRequest) {
               recurring_profile_id: profile.id,
               mobile_number: profile.mobile_number,
               charge_type: "monthly_recurring",
+              plan_code: profile.plan_code ?? null,
+              plan_name: profile.plan_name ?? null,
+              tutor_subject: profile.tutor_subject ?? null,
+              service_mode: profile.service_mode ?? null,
             },
           }),
           cache: "no-store",

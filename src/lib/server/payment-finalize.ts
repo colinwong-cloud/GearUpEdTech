@@ -34,6 +34,10 @@ type PaymentOrderRow = {
   finalized_at: string | null;
   airwallex_customer_id: string | null;
   airwallex_payment_intent_id: string | null;
+  plan_code?: string | null;
+  plan_name?: string | null;
+  tutor_subject?: string | null;
+  service_mode?: string | null;
 };
 
 type AirwallexFailureDetails = {
@@ -153,6 +157,10 @@ function addOneMonthIso(date: Date): string {
   return next.toISOString();
 }
 
+function isMissingRecurringPlanMetadataColumns(message: string): boolean {
+  return /plan_code|plan_name|tutor_subject|service_mode/i.test(message);
+}
+
 function extractAttemptObject(rawPayload: Record<string, unknown>): Record<string, unknown> | null {
   if (readObject(rawPayload.payment_method)) return rawPayload;
   const envelope = readObject(rawPayload.data);
@@ -269,31 +277,45 @@ async function upsertRecurringProfile(
 
   const nowIso = new Date().toISOString();
   const nextChargeAt = addOneMonthIso(new Date());
-  const { error } = await supabaseAdmin.from("parent_recurring_profiles").upsert(
-    {
-      parent_id: order.parent_id,
-      mobile_number: order.mobile_number,
-      status: "active",
-      airwallex_customer_id: snapshot.customerId,
-      airwallex_payment_consent_id: snapshot.paymentConsentId,
-      airwallex_payment_method_id: snapshot.paymentMethodId,
-      payment_method_type: snapshot.paymentMethodType,
-      payment_method_brand: snapshot.paymentMethodBrand,
-      payment_method_label: snapshot.paymentMethodLabel,
-      recurring_amount_hkd: amount,
-      currency: "HKD",
-      next_charge_at: nextChargeAt,
-      last_charged_at: nowIso,
-      last_order_id: order.id,
-      last_order_status: "paid",
-      last_error: null,
-      updated_at: nowIso,
-    },
-    { onConflict: "mobile_number" }
-  );
-  if (error) {
-    throw error;
+  const basePayload = {
+    parent_id: order.parent_id,
+    mobile_number: order.mobile_number,
+    status: "active",
+    airwallex_customer_id: snapshot.customerId,
+    airwallex_payment_consent_id: snapshot.paymentConsentId,
+    airwallex_payment_method_id: snapshot.paymentMethodId,
+    payment_method_type: snapshot.paymentMethodType,
+    payment_method_brand: snapshot.paymentMethodBrand,
+    payment_method_label: snapshot.paymentMethodLabel,
+    recurring_amount_hkd: amount,
+    currency: "HKD",
+    next_charge_at: nextChargeAt,
+    last_charged_at: nowIso,
+    last_order_id: order.id,
+    last_order_status: "paid",
+    last_error: null,
+    updated_at: nowIso,
+  };
+  const enrichedPayload = {
+    ...basePayload,
+    plan_code: order.plan_code ?? null,
+    plan_name: order.plan_name ?? null,
+    tutor_subject: order.tutor_subject ?? null,
+    service_mode: order.service_mode ?? null,
+  };
+
+  let response = await supabaseAdmin
+    .from("parent_recurring_profiles")
+    .upsert(enrichedPayload, { onConflict: "mobile_number" });
+  if (
+    response.error &&
+    isMissingRecurringPlanMetadataColumns(response.error.message)
+  ) {
+    response = await supabaseAdmin
+      .from("parent_recurring_profiles")
+      .upsert(basePayload, { onConflict: "mobile_number" });
   }
+  if (response.error) throw response.error;
 }
 
 export function getSupabaseAdmin(): SupabaseClient | null {
@@ -419,29 +441,55 @@ async function getOrderByReference(
   merchantOrderId: string | null
 ): Promise<PaymentOrderRow | null> {
   if (paymentIntentId) {
-    const { data, error } = await supabaseAdmin
+    let query = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id,plan_code,plan_name,tutor_subject,service_mode"
       )
       .eq("airwallex_payment_intent_id", paymentIntentId)
       .order("created_at", { ascending: false })
       .limit(1);
-    if (error) throw error;
-    if (data && data[0]) return data[0] as PaymentOrderRow;
+    if (
+      query.error &&
+      isMissingRecurringPlanMetadataColumns(query.error.message)
+    ) {
+      query = await supabaseAdmin
+        .from("parent_payment_orders")
+        .select(
+          "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        )
+        .eq("airwallex_payment_intent_id", paymentIntentId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+    }
+    if (query.error) throw query.error;
+    if (query.data && query.data[0]) return query.data[0] as PaymentOrderRow;
   }
 
   if (merchantOrderId) {
-    const { data, error } = await supabaseAdmin
+    let query = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id,plan_code,plan_name,tutor_subject,service_mode"
       )
       .eq("merchant_order_id", merchantOrderId)
       .order("created_at", { ascending: false })
       .limit(1);
-    if (error) throw error;
-    if (data && data[0]) return data[0] as PaymentOrderRow;
+    if (
+      query.error &&
+      isMissingRecurringPlanMetadataColumns(query.error.message)
+    ) {
+      query = await supabaseAdmin
+        .from("parent_payment_orders")
+        .select(
+          "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        )
+        .eq("merchant_order_id", merchantOrderId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+    }
+    if (query.error) throw query.error;
+    if (query.data && query.data[0]) return query.data[0] as PaymentOrderRow;
   }
 
   return null;
