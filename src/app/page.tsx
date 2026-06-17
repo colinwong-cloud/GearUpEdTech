@@ -1193,6 +1193,7 @@ export default function QuizApp() {
       gradeLevel: string;
       email: string;
       schoolId: string | null;
+      referralCode: string;
     }) => {
       if (!mobileNumber.trim()) return;
       const gender = genderFromAvatarStyle(form.avatarStyle);
@@ -1218,6 +1219,7 @@ export default function QuizApp() {
             gradeLevel: form.gradeLevel,
             email: form.email || null,
             schoolId: form.schoolId,
+            referralCode: form.referralCode || null,
           }),
         });
         const payload = (await res.json().catch(() => null)) as {
@@ -2560,6 +2562,7 @@ function RegisterScreen({
     gradeLevel: string;
     email: string;
     schoolId: string | null;
+    referralCode: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -2570,6 +2573,7 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileBypass, setTurnstileBypass] = useState(false);
   const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
@@ -2638,7 +2642,9 @@ function RegisterScreen({
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const REFERRAL_CODE_RE = /^\d{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const referralCodeValid = referralCode.length === 0 || REFERRAL_CODE_RE.test(referralCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const privacyStatementUrl = getPrivacyStatementTxtUrl();
@@ -2650,6 +2656,7 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    referralCodeValid &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
     (siteKey && !turnstileBypass ? turnstileToken !== null : true);
@@ -2863,6 +2870,30 @@ function RegisterScreen({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              負責教師編號（選填）
+            </label>
+            <input
+              type="text"
+              value={referralCode}
+              onChange={(e) => {
+                setReferralCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="6位數字"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                referralCode.length > 0 && !referralCodeValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {referralCode.length > 0 && !referralCodeValid && (
+              <p className="mt-1 text-xs text-red-500">錯誤編號</p>
+            )}
+          </div>
+
           {siteKey && (
             <div className="flex justify-center">
               <Turnstile
@@ -2929,7 +2960,15 @@ function RegisterScreen({
                 setError("輸入的電郵已經登記");
                 return;
               }
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+              onSubmit({
+                studentName: studentName.trim(),
+                pinCode,
+                avatarStyle,
+                gradeLevel,
+                email: email.trim(),
+                schoolId: selectedSchoolId,
+                referralCode: referralCode.trim(),
+              });
             }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${

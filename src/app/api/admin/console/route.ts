@@ -30,6 +30,9 @@ type AdminAction =
   | "discount_code_update"
   | "discount_code_delete"
   | "discount_code_usage_summary"
+  | "tutor_referral_code_create"
+  | "tutor_referral_code_summary"
+  | "tutor_referral_code_usage_details"
   | "payment_status_enquiry"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
@@ -42,10 +45,13 @@ type RequestBody = {
 };
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
+const TUTOR_REFERRAL_CODE_RE = /^\d{6}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
 const REFUND_SUCCESS_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED"]);
 const PAYMENT_OPS_TABLE_HINT =
   "缺少付款管理資料表，請先在 Supabase 執行 supabase_admin_payment_ops.sql。";
+const TUTOR_REFERRAL_TABLE_HINT =
+  "缺少教師編號資料表，請先在 Supabase 執行 supabase_tutor_referral_codes.sql。";
 
 function normalizeIsoDateTime(raw: unknown): string | null {
   if (raw === null || raw === undefined || String(raw).trim() === "") return null;
@@ -179,6 +185,10 @@ function normalizeRefundStatus(status: string | null): string {
 
 function isMissingPaymentOpsTableError(message: string): boolean {
   return /parent_payment_refunds|admin_payment_actions|42P01|does not exist/i.test(message);
+}
+
+function isMissingTutorReferralTableError(message: string): boolean {
+  return /tutor_referral_codes|tutor_referral_usages|42P01|does not exist/i.test(message);
 }
 
 function isMissingTableErrorMessage(message: string): boolean {
@@ -523,6 +533,20 @@ async function ensurePaymentOpsTables(admin: AdminClient) {
     throw new Error(PAYMENT_OPS_TABLE_HINT);
   }
   if (actionProbeErr) throw actionProbeErr;
+}
+
+async function ensureTutorReferralTables(admin: AdminClient) {
+  const codeProbe = await admin.from("tutor_referral_codes").select("id").limit(1);
+  if (codeProbe.error && isMissingTutorReferralTableError(codeProbe.error.message || "")) {
+    throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+  }
+  if (codeProbe.error) throw codeProbe.error;
+
+  const usageProbe = await admin.from("tutor_referral_usages").select("id").limit(1);
+  if (usageProbe.error && isMissingTutorReferralTableError(usageProbe.error.message || "")) {
+    throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+  }
+  if (usageProbe.error) throw usageProbe.error;
 }
 
 async function getParentByMobile(admin: AdminClient, mobile: string): Promise<ParentRow | null> {
@@ -1206,6 +1230,144 @@ export async function POST(req: NextRequest) {
             summary,
             records,
             salespersons,
+          },
+        });
+      }
+      case "tutor_referral_code_create": {
+        await ensureTutorReferralTables(admin);
+        const code = String(payload.code ?? "").trim();
+        const tutorName = String(payload.tutor_name ?? "").trim();
+        const createdAt = normalizeIsoDateTime(payload.created_at);
+
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+        if (!tutorName) {
+          return NextResponse.json({ error: "請輸入教師名稱" }, { status: 400 });
+        }
+        if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
+          return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
+        }
+
+        const insertPayload: Record<string, unknown> = {
+          code,
+          tutor_name: tutorName,
+          usage_limit: 50,
+          current_uses: 0,
+          is_active: true,
+        };
+        if (createdAt) insertPayload.created_at = createdAt;
+
+        const { data, error } = await admin
+          .from("tutor_referral_codes")
+          .insert(insertPayload)
+          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .single();
+        if (error) {
+          if (isMissingTutorReferralTableError(error.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          if (/duplicate key|unique/i.test(error.message || "")) {
+            return NextResponse.json({ error: "教師編號已存在" }, { status: 409 });
+          }
+          throw error;
+        }
+        return NextResponse.json({ data });
+      }
+      case "tutor_referral_code_summary": {
+        await ensureTutorReferralTables(admin);
+        const q = String(payload.q ?? "").trim();
+
+        let query = admin
+          .from("tutor_referral_codes")
+          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        if (q) {
+          const safeQ = q.replace(/,/g, " ");
+          query = query.or(`code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%`);
+        }
+        const { data: codes, error: codesErr } = await query;
+        if (codesErr) {
+          if (isMissingTutorReferralTableError(codesErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw codesErr;
+        }
+
+        return NextResponse.json({
+          data:
+            (codes ?? []).map((row) => ({
+              id: String(row.id ?? ""),
+              code: String(row.code ?? ""),
+              tutor_name: String(row.tutor_name ?? ""),
+              usage_limit: Number(row.usage_limit ?? 50),
+              current_uses: Number(row.current_uses ?? 0),
+              is_active: Boolean(row.is_active),
+              created_at: normalizeIsoDateTime(row.created_at) || "",
+            })) ?? [],
+        });
+      }
+      case "tutor_referral_code_usage_details": {
+        await ensureTutorReferralTables(admin);
+        const code = String(payload.code ?? "").trim();
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+
+        const { data: codeRow, error: codeErr } = await admin
+          .from("tutor_referral_codes")
+          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .eq("code", code)
+          .maybeSingle();
+        if (codeErr) {
+          if (isMissingTutorReferralTableError(codeErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw codeErr;
+        }
+        if (!codeRow) {
+          return NextResponse.json({
+            data: {
+              found: false,
+              code: null,
+              rows: [],
+            },
+          });
+        }
+
+        const { data: usageRows, error: usageErr } = await admin
+          .from("tutor_referral_usages")
+          .select("id,used_at,mobile_number,parent_id")
+          .eq("code_id", String(codeRow.id))
+          .order("used_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(10000);
+        if (usageErr) {
+          if (isMissingTutorReferralTableError(usageErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw usageErr;
+        }
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            code: {
+              id: String(codeRow.id),
+              code: String(codeRow.code ?? ""),
+              tutor_name: String(codeRow.tutor_name ?? ""),
+              usage_limit: Number(codeRow.usage_limit ?? 50),
+              current_uses: Number(codeRow.current_uses ?? 0),
+              is_active: Boolean(codeRow.is_active),
+              created_at: normalizeIsoDateTime(codeRow.created_at) || "",
+            },
+            rows: (usageRows ?? []).map((row) => ({
+              id: String(row.id ?? ""),
+              used_at: normalizeIsoDateTime(row.used_at) || "",
+              mobile_number: String(row.mobile_number ?? ""),
+              parent_id: readString(row.parent_id),
+            })),
           },
         });
       }
