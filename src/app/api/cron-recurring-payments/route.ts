@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
   try {
     const airwallexBase = getAirwallexBaseUrl();
     const accessToken = await getAirwallexAccessToken(airwallexBase);
-    let profilesRes = await supabase
+    const profilesRes = await supabase
       .from("parent_recurring_profiles")
       .select(
         "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at,plan_code,plan_name,tutor_subject,service_mode"
@@ -172,13 +172,10 @@ export async function GET(req: NextRequest) {
       .lte("next_charge_at", new Date().toISOString())
       .order("next_charge_at", { ascending: true })
       .limit(100);
-    if (
-      profilesRes.error &&
-      /plan_code|plan_name|tutor_subject|service_mode/i.test(
-        profilesRes.error.message || ""
-      )
-    ) {
-      profilesRes = await supabase
+    let listErr = profilesRes.error;
+    let profiles = (profilesRes.data as RecurringProfileRow[] | null) ?? null;
+    if (listErr && /plan_code|plan_name|tutor_subject|service_mode/i.test(listErr.message || "")) {
+      const fallbackProfilesRes = await supabase
         .from("parent_recurring_profiles")
         .select(
           "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at"
@@ -187,15 +184,15 @@ export async function GET(req: NextRequest) {
         .lte("next_charge_at", new Date().toISOString())
         .order("next_charge_at", { ascending: true })
         .limit(100);
+      listErr = fallbackProfilesRes.error;
+      profiles = (fallbackProfilesRes.data as RecurringProfileRow[] | null) ?? null;
     }
-    const profiles = profilesRes.data;
-    const listErr = profilesRes.error;
 
     if (listErr) {
       return NextResponse.json({ error: listErr.message }, { status: 500 });
     }
 
-    for (const profile of (profiles as RecurringProfileRow[] | null) ?? []) {
+    for (const profile of profiles ?? []) {
       processed += 1;
       if (
         !profile.airwallex_customer_id ||

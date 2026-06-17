@@ -441,7 +441,7 @@ async function getOrderByReference(
   merchantOrderId: string | null
 ): Promise<PaymentOrderRow | null> {
   if (paymentIntentId) {
-    let query = await supabaseAdmin
+    const richQuery = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
         "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id,plan_code,plan_name,tutor_subject,service_mode"
@@ -449,11 +449,10 @@ async function getOrderByReference(
       .eq("airwallex_payment_intent_id", paymentIntentId)
       .order("created_at", { ascending: false })
       .limit(1);
-    if (
-      query.error &&
-      isMissingRecurringPlanMetadataColumns(query.error.message)
-    ) {
-      query = await supabaseAdmin
+    let queryErr = richQuery.error;
+    let queryData = (richQuery.data as PaymentOrderRow[] | null) ?? null;
+    if (queryErr && isMissingRecurringPlanMetadataColumns(queryErr.message)) {
+      const fallbackQuery = await supabaseAdmin
         .from("parent_payment_orders")
         .select(
           "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
@@ -461,13 +460,15 @@ async function getOrderByReference(
         .eq("airwallex_payment_intent_id", paymentIntentId)
         .order("created_at", { ascending: false })
         .limit(1);
+      queryErr = fallbackQuery.error;
+      queryData = (fallbackQuery.data as PaymentOrderRow[] | null) ?? null;
     }
-    if (query.error) throw query.error;
-    if (query.data && query.data[0]) return query.data[0] as PaymentOrderRow;
+    if (queryErr) throw queryErr;
+    if (queryData && queryData[0]) return queryData[0] as PaymentOrderRow;
   }
 
   if (merchantOrderId) {
-    let query = await supabaseAdmin
+    const richQuery = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
         "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id,plan_code,plan_name,tutor_subject,service_mode"
@@ -475,11 +476,10 @@ async function getOrderByReference(
       .eq("merchant_order_id", merchantOrderId)
       .order("created_at", { ascending: false })
       .limit(1);
-    if (
-      query.error &&
-      isMissingRecurringPlanMetadataColumns(query.error.message)
-    ) {
-      query = await supabaseAdmin
+    let queryErr = richQuery.error;
+    let queryData = (richQuery.data as PaymentOrderRow[] | null) ?? null;
+    if (queryErr && isMissingRecurringPlanMetadataColumns(queryErr.message)) {
+      const fallbackQuery = await supabaseAdmin
         .from("parent_payment_orders")
         .select(
           "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
@@ -487,9 +487,11 @@ async function getOrderByReference(
         .eq("merchant_order_id", merchantOrderId)
         .order("created_at", { ascending: false })
         .limit(1);
+      queryErr = fallbackQuery.error;
+      queryData = (fallbackQuery.data as PaymentOrderRow[] | null) ?? null;
     }
-    if (query.error) throw query.error;
-    if (query.data && query.data[0]) return query.data[0] as PaymentOrderRow;
+    if (queryErr) throw queryErr;
+    if (queryData && queryData[0]) return queryData[0] as PaymentOrderRow;
   }
 
   return null;
