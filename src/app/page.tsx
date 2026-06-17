@@ -4344,7 +4344,7 @@ function RoleSelectScreen({
             onClick={onUpgrade}
             className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
           >
-            成為月費會員(每月$99)，即可以獲得學生排名資訊。
+            成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。
           </button>
         )}
         <div className="space-y-3">
