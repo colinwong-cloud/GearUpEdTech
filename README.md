@@ -44,11 +44,16 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-06-18** — deployment `dpl_3RLCGthqkGPMRUyrHERuGcb66hpG`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/3RLCGthqkGPMRUyrHERuGcb66hpG). **Release scope:** rebuild missing approved features bundle (referral frontend/admin, payment history, registration CTA/copy, result bottom actions, admin summaries/KPI), plus restore result-page wrong-answer readability blocks.
 
 ## Must-check validation gate (mandatory)
 
 Before **every** production deploy, all items below must be checked and recorded in PR:
+
+Detailed runbooks:
+
+- `docs/release-sop.md`
+- `docs/release-deploy-checklist.md`
 
 ### A) Anti-regression source-of-truth checks
 
@@ -60,9 +65,27 @@ Before **every** production deploy, all items below must be checked and recorded
 ### B) Critical feature inventory (must not break)
 
 - [ ] Login page has large standalone **「新用戶註冊」** button above login form.
-- [ ] Admin console includes **「學生練習摘要」/「家長學生練習摘要」**.
-- [ ] Admin console top feature tabs wrap to multiple lines (no horizontal scrollbar).
-- [ ] Student practice flow remains unchanged unless release explicitly targets it.
+- [ ] Paid-tier invite copy is **「成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。」**
+- [ ] Registration requires **性別** selection (no empty submit).
+- [ ] Registration has optional **負責教師編號** field with inline errors:
+  - **錯誤編號**
+  - **編號被限，請負責老師聯絡管理員更新編號。**
+- [ ] Admin console includes **家長學生練習摘要** and **今日新註冊家長摘要**.
+- [ ] Admin console includes **教師編號維護** (create code + usage enquiry + parent paid/free status).
+- [ ] Student result page keeps bottom actions:
+  - **重新選擇科目**
+  - **返回主畫面**
+- [ ] Student result wrong-answer readability shows per question:
+  - 題目內容
+  - 你的答案（含值）
+  - 正確答案（含值）
+  - 解釋
+- [ ] Parent session detail wrong-answer readability uses the same 4-block format.
+- [ ] Account maintenance includes paid-user **消費紀錄**:
+  - date / amount / payment method columns
+  - default current year
+  - year filter switch
+- [ ] Admin **家長學生練習摘要** includes monthly grade-level frequency summary with month + subject selector.
 
 ### C) Technical validations
 
@@ -82,6 +105,7 @@ Before **every** production deploy, all items below must be checked and recorded
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Recovery release（防回歸重建）**：重新上線多項已批准但遺失於 production/main 的功能：① 註冊推薦碼（前台 + Admin「教師編號維護」+ `supabase_tutor_referral_codes.sql`）；② paid-user「消費紀錄」按年查詢；③ 結果頁底部 `重新選擇科目` + `返回主畫面`；④ 登入頁突出「新用戶註冊」與升級文案更新；⑤ Admin「家長學生練習摘要」/「今日新註冊家長摘要」與年級練習頻率（含 subject selector）。同次修復結果頁「錯題解析」回歸，恢復逐題四段格式（題目內容／你的答案（含值）／正確答案（含值）／解釋）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
