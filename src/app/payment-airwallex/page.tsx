@@ -127,8 +127,13 @@ function PaymentAirwallexContent() {
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
   const checkoutLocale = searchParams.get("airwallex_locale") || "zh-HK";
+  const productLabel =
+    searchParams.get("product_label") ||
+    searchParams.get("plan_name") ||
+    "GearUp 增分寶月費會員";
   const finalAmountRaw = Number(searchParams.get("final_amount_hkd") || "99");
   const finalAmount = Number.isFinite(finalAmountRaw) ? Math.max(finalAmountRaw, 0) : 99;
+  const backPath = (searchParams.get("back_path") || "").trim();
   const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +177,12 @@ function PaymentAirwallexContent() {
     }
   }, [paymentMethod]);
 
+  const tutorBackHref = useMemo(() => {
+    if (!backPath) return mobile ? `/tutor-payment?mobile=${encodeURIComponent(mobile)}` : "/";
+    if (!backPath.startsWith("/")) return mobile ? `/tutor-payment?mobile=${encodeURIComponent(mobile)}` : "/";
+    return backPath;
+  }, [backPath, mobile]);
+
   const appBaseUrl =
     (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
     (typeof window !== "undefined" ? window.location.origin : "");
@@ -209,7 +220,7 @@ function PaymentAirwallexContent() {
             totalPriceLabel: "GearUp 增分寶",
             lineItems: [
               {
-                label: "GearUp 增分寶月費會員",
+                label: productLabel,
                 amount: finalAmount.toFixed(2),
                 type: "final",
                 paymentTiming: "recurring",
@@ -256,6 +267,7 @@ function PaymentAirwallexContent() {
         <p className="mt-2 text-sm text-gray-600">請按下方按鈕進入安全付款頁面。</p>
         <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 space-y-1">
           <p>帳戶：{mobile || "—"}</p>
+          <p>方案：{productLabel}</p>
           <p>付款方式：{paymentMethod}</p>
           <p>幣別：{currency}</p>
         </div>
@@ -272,6 +284,12 @@ function PaymentAirwallexContent() {
         >
           {booting ? "載入中..." : "進入 Airwallex 付款"}
         </button>
+        <Link
+          href={tutorBackHref}
+          className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        >
+          返回補習方案頁
+        </Link>
         <Link
           href="/"
           className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"

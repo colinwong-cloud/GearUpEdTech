@@ -5,10 +5,13 @@ import {
   applyAirwallexMethodSafeguards,
   getAirwallexMethodsForSelection,
 } from "@/lib/airwallex-checkout-methods";
+import {
+  getPaymentPlanDefinition,
+  normalizeTutorSubject,
+} from "@/lib/payment-plans";
 
 const DEFAULT_AIRWALLEX_BASE = "https://api.airwallex.com";
 const DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = "zh-HK";
-const PRICE_HKD = 99;
 
 function resolveAirwallexBaseUrl(rawBase: string | undefined): string {
   const isProductionRuntime =
@@ -122,6 +125,8 @@ type CheckoutBody = {
   mobile_number?: string;
   discount_code?: string | null;
   payment_method?: string | null;
+  plan_code?: string | null;
+  tutor_subject?: string | null;
 };
 
 type PendingOrderRow = {
@@ -610,7 +615,9 @@ function getAirwallexEnvByBaseUrl(baseUrl: string): "demo" | "prod" {
 }
 
 function isMissingOrderTrackingColumnError(message: string): boolean {
-  return /payment_started_at|is_recurring_payment/i.test(message);
+  return /payment_started_at|is_recurring_payment|plan_code|plan_name|tutor_subject|service_mode/i.test(
+    message
+  );
 }
 
 async function insertParentPaymentOrder(
@@ -620,8 +627,17 @@ async function insertParentPaymentOrder(
   let response = await supabase.from("parent_payment_orders").insert(payload);
   if (response.error && isMissingOrderTrackingColumnError(response.error.message)) {
     const legacy = { ...payload };
-    delete legacy.payment_started_at;
-    delete legacy.is_recurring_payment;
+    const optionalOrderColumns = [
+      "payment_started_at",
+      "is_recurring_payment",
+      "plan_code",
+      "plan_name",
+      "tutor_subject",
+      "service_mode",
+    ] as const;
+    for (const key of optionalOrderColumns) {
+      delete legacy[key];
+    }
     response = await supabase.from("parent_payment_orders").insert(legacy);
   }
   return response;
@@ -724,10 +740,19 @@ export async function POST(req: Request) {
 
   const mobile = body.mobile_number?.trim() ?? "";
   const paymentMethod = body.payment_method?.trim() || "all";
-  const discountCode = body.discount_code?.trim().toUpperCase() || null;
+  const plan = getPaymentPlanDefinition(body.plan_code);
+  const isTutorPlan = plan.category === "tutor";
+  const tutorSubject = isTutorPlan ? normalizeTutorSubject(body.tutor_subject) : null;
+  const discountCode = isTutorPlan ? null : body.discount_code?.trim().toUpperCase() || null;
 
   if (!mobile) {
     return NextResponse.json({ error: "Missing mobile_number" }, { status: 400 });
+  }
+  if (isTutorPlan && !tutorSubject) {
+    return NextResponse.json(
+      { error: "Missing or invalid tutor_subject" },
+      { status: 400 }
+    );
   }
 
   const { data: tierData, error: tierErr } = await supabase.rpc("get_parent_tier_status", {
@@ -737,7 +762,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: tierErr.message }, { status: 500 });
   }
   const tier = (tierData as { is_paid?: boolean } | null)?.is_paid === true;
-  if (tier) {
+  if (tier && !isTutorPlan) {
     return NextResponse.json({
       paid: true,
       message: "你已是月費用戶，毋須重複付款。",
@@ -798,7 +823,8 @@ export async function POST(req: Request) {
     discountCodeApplied = discount.code;
   }
 
-  const finalAmount = Math.round(PRICE_HKD * (1 - discountPercent / 100) * 100) / 100;
+  const originalAmount = plan.amountHkd;
+  const finalAmount = Math.round(originalAmount * (1 - discountPercent / 100) * 100) / 100;
   const requestedMethods = getAirwallexMethodsForSelection(paymentMethod);
   const checkoutLocale = getAirwallexCheckoutLocale();
   const merchantOrderId = `GU-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -816,7 +842,7 @@ export async function POST(req: Request) {
         mobile_number: mobile,
         merchant_order_id: merchantOrderId,
         request_id: requestId,
-        amount_hkd: PRICE_HKD,
+        amount_hkd: originalAmount,
         discount_code: discountCodeApplied,
         discount_percent: discountPercent,
         final_amount_hkd: 0,
@@ -824,6 +850,10 @@ export async function POST(req: Request) {
         status: "paid",
         payment_started_at: new Date().toISOString(),
         is_recurring_payment: false,
+        plan_code: plan.code,
+        plan_name: plan.name,
+        tutor_subject: tutorSubject,
+        service_mode: plan.serviceMode,
         paid_at: new Date().toISOString(),
         raw_response: { simulated: true, reason: "100_percent_discount" },
       });
@@ -955,6 +985,10 @@ export async function POST(req: Request) {
           merchant_order_id: merchantOrderId,
           request_id: requestId,
           mobile_number: mobile,
+          plan_code: plan.code,
+          plan_name: plan.name,
+          tutor_subject: tutorSubject,
+          service_mode: plan.serviceMode,
           payment_method: paymentMethod,
           discount_code: discountCodeApplied,
           applepay_setup_warning: applePaySetupWarning,
@@ -991,6 +1025,12 @@ export async function POST(req: Request) {
         merchant_trigger_reason: "scheduled",
         terms_of_use: recurringTerms,
       },
+      plan: {
+        code: plan.code,
+        name: plan.name,
+        tutor_subject: tutorSubject,
+        service_mode: plan.serviceMode,
+      },
       intent: createIntentPayload,
       payment_method: paymentMethod,
       methods: effectiveMethods,
@@ -1003,7 +1043,7 @@ export async function POST(req: Request) {
         mobile_number: mobile,
         merchant_order_id: merchantOrderId,
         request_id: requestId,
-        amount_hkd: PRICE_HKD,
+        amount_hkd: originalAmount,
         discount_code: discountCodeApplied,
         discount_percent: discountPercent,
         final_amount_hkd: finalAmount,
@@ -1011,6 +1051,10 @@ export async function POST(req: Request) {
         status: "created",
         payment_started_at: new Date().toISOString(),
         is_recurring_payment: true,
+        plan_code: plan.code,
+        plan_name: plan.name,
+        tutor_subject: tutorSubject,
+        service_mode: plan.serviceMode,
         airwallex_customer_id: customerId,
         airwallex_payment_intent_id: resolvedIntentId,
         raw_response: {
@@ -1029,6 +1073,10 @@ export async function POST(req: Request) {
       currency: "HKD",
       country_code: "HK",
       final_amount_hkd: finalAmount,
+      plan_code: plan.code,
+      plan_name: plan.name,
+      tutor_subject: tutorSubject,
+      service_mode: plan.serviceMode,
       airwallex_customer_id: customerId,
       airwallex_env: airwallexEnv,
       airwallex_locale: checkoutLocale,
