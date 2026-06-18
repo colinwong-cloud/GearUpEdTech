@@ -472,6 +472,36 @@ function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
 }
 
+type ChoiceKey = "A" | "B" | "C" | "D";
+
+function normalizeChoiceKey(raw: string | null | undefined): ChoiceKey | null {
+  const value = String(raw ?? "").trim().toUpperCase();
+  if (value === "A" || value === "B" || value === "C" || value === "D") return value;
+  return null;
+}
+
+function getChoiceValueByKey(question: Question, choiceKey: ChoiceKey): string | null {
+  const raw =
+    choiceKey === "A"
+      ? question.opt_a
+      : choiceKey === "B"
+        ? question.opt_b
+        : choiceKey === "C"
+          ? question.opt_c
+          : question.opt_d;
+  const value = String(raw ?? "").trim();
+  return value || null;
+}
+
+function formatAnswerWithValue(question: Question, rawAnswer: string | null | undefined): string {
+  const answer = String(rawAnswer ?? "").trim();
+  if (!answer) return "未作答";
+  const choiceKey = normalizeChoiceKey(answer);
+  if (!choiceKey) return answer;
+  const choiceValue = getChoiceValueByKey(question, choiceKey);
+  return choiceValue ? `${choiceKey}（${choiceValue}）` : choiceKey;
+}
+
 function hasImage(q: Question): boolean {
   return q.image_url != null && q.image_url.trim() !== "";
 }
@@ -2964,6 +2994,10 @@ function ResultsView({
             <tbody className="divide-y divide-gray-100">
               {answers.map((answer, i) => {
                 const shortAns = isShortAnswer(answer.question);
+                const formattedStudentAnswer = formatAnswerWithValue(
+                  answer.question,
+                  answer.studentAnswer
+                );
                 return (
                   <tr
                     key={i}
@@ -2973,15 +3007,13 @@ function ResultsView({
                       {i + 1}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      {shortAns ? (
-                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[120px] truncate">
-                          {answer.studentAnswer}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">
-                          {answer.studentAnswer}
-                        </span>
-                      )}
+                      <span
+                        className={`inline-block rounded-lg bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-700 ${
+                          shortAns ? "max-w-[120px] truncate" : "max-w-[220px] break-words whitespace-normal"
+                        }`}
+                      >
+                        {formattedStudentAnswer}
+                      </span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       {answer.isCorrect ? (
@@ -3007,66 +3039,86 @@ function ResultsView({
               錯題解析
             </h2>
             <div className="space-y-4">
-              {wrongAnswers.map(({ answer, index }) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
-                >
-                  <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-500">
-                        你的答案：{answer.studentAnswer}
-                      </span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-emerald-600">
-                        正確答案：{answer.question.correct_answer}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <QuestionContentParagraphs
-                      content={answer.question.content}
-                      className="text-sm text-gray-700"
-                      paragraphGapClass="mt-3"
-                    />
-                    {hasImage(answer.question) && (
-                      <QuestionImage
-                        src={getImagePublicUrl(answer.question)!}
-                      />
-                    )}
-                    {answer.question.explanation ? (
-                      <QuestionContentParagraphs
-                        content={answer.question.explanation}
-                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
-                        paragraphGapClass="mt-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
-                    )}
-                    <div className="pt-1">
-                      <button
-                        onClick={() => handleReport(answer)}
-                        disabled={reportedIds.has(answer.question.id) || reportingId === answer.question.id}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                          reportedIds.has(answer.question.id)
-                            ? "bg-gray-100 text-gray-400 cursor-default"
+              {wrongAnswers.map(({ answer, index }) => {
+                const studentAnswerWithValue = formatAnswerWithValue(
+                  answer.question,
+                  answer.studentAnswer
+                );
+                const correctAnswerWithValue = formatAnswerWithValue(
+                  answer.question,
+                  answer.question.correct_answer
+                );
+                return (
+                  <div
+                    key={index}
+                    className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
+                  >
+                    <div className="bg-red-50 px-4 py-3 border-b border-red-100">
+                      <p className="text-sm font-semibold text-gray-800">
+                        <span className="text-red-500 mr-1">第 {index + 1} 題</span>
+                      </p>
+                    </div>
+                    <div className="px-4 py-3 space-y-3">
+                      <div className="rounded-xl border border-gray-100 bg-white p-3">
+                        <p className="text-xs font-semibold text-gray-500">題目內容</p>
+                        <QuestionContentParagraphs
+                          content={answer.question.content}
+                          className="mt-2 text-sm text-gray-700"
+                          paragraphGapClass="mt-3"
+                        />
+                        {hasImage(answer.question) && (
+                          <QuestionImage
+                            src={getImagePublicUrl(answer.question)!}
+                          />
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-red-100 bg-red-50/70 p-3">
+                        <p className="text-xs font-semibold text-red-600">你的答案（含值）</p>
+                        <p className="mt-1 text-sm font-medium text-red-700 break-words">
+                          {studentAnswerWithValue}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                        <p className="text-xs font-semibold text-emerald-700">正確答案（含值）</p>
+                        <p className="mt-1 text-sm font-medium text-emerald-700 break-words">
+                          {correctAnswerWithValue}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold text-gray-500">解釋</p>
+                        {answer.question.explanation ? (
+                          <QuestionContentParagraphs
+                            content={answer.question.explanation}
+                            className="mt-2 text-sm text-gray-600"
+                            paragraphGapClass="mt-2"
+                          />
+                        ) : (
+                          <p className="mt-2 text-sm text-gray-400 italic">沒有解釋</p>
+                        )}
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          onClick={() => handleReport(answer)}
+                          disabled={reportedIds.has(answer.question.id) || reportingId === answer.question.id}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                            reportedIds.has(answer.question.id)
+                              ? "bg-gray-100 text-gray-400 cursor-default"
+                              : reportingId === answer.question.id
+                                ? "bg-amber-50 text-amber-400 cursor-wait"
+                                : "bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-[0.97]"
+                          }`}
+                        >
+                          {reportedIds.has(answer.question.id)
+                            ? "已反映"
                             : reportingId === answer.question.id
-                              ? "bg-amber-50 text-amber-400 cursor-wait"
-                              : "bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-[0.97]"
-                        }`}
-                      >
-                        {reportedIds.has(answer.question.id)
-                          ? "已反映"
-                          : reportingId === answer.question.id
-                            ? "提交中..."
-                            : "反映這題目"}
-                      </button>
+                              ? "提交中..."
+                              : "反映這題目"}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -4833,15 +4885,21 @@ function ParentSessionDetail({
             <tbody className="divide-y divide-gray-100">
               {answers.map((a, i) => {
                 const sa = a.question.opt_a == null && a.question.opt_b == null && a.question.opt_c == null && a.question.opt_d == null;
+                const formattedStudentAnswer = formatAnswerWithValue(
+                  a.question,
+                  a.student_answer
+                );
                 return (
                   <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
                     <td className="px-3 py-3 text-center text-sm font-medium text-gray-500">{i + 1}</td>
                     <td className="px-3 py-3 text-center">
-                      {sa ? (
-                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[120px] truncate">{a.student_answer}</span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">{a.student_answer}</span>
-                      )}
+                      <span
+                        className={`inline-block rounded-lg bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-700 ${
+                          sa ? "max-w-[120px] truncate" : "max-w-[220px] break-words whitespace-normal"
+                        }`}
+                      >
+                        {formattedStudentAnswer}
+                      </span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       {a.is_correct ? (
@@ -4861,40 +4919,64 @@ function ParentSessionDetail({
           <div>
             <h2 className="text-lg font-bold text-gray-800 mb-3">錯題解析</h2>
             <div className="space-y-4">
-              {wrongAnswers.map(({ answer, index }) => (
-                <div key={index} className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden">
-                  <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-500">答案：{answer.student_answer}</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-emerald-600">正確：{answer.question.correct_answer}</span>
-                    </p>
+              {wrongAnswers.map(({ answer, index }) => {
+                const studentAnswerWithValue = formatAnswerWithValue(
+                  answer.question,
+                  answer.student_answer
+                );
+                const correctAnswerWithValue = formatAnswerWithValue(
+                  answer.question,
+                  answer.question.correct_answer
+                );
+                return (
+                  <div key={index} className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden">
+                    <div className="bg-red-50 px-4 py-3 border-b border-red-100">
+                      <p className="text-sm font-semibold text-gray-800">
+                        <span className="text-red-500 mr-1">第 {index + 1} 題</span>
+                      </p>
+                    </div>
+                    <div className="px-4 py-3 space-y-3">
+                      <div className="rounded-xl border border-gray-100 bg-white p-3">
+                        <p className="text-xs font-semibold text-gray-500">題目內容</p>
+                        <QuestionContentParagraphs
+                          content={answer.question.content}
+                          className="mt-2 text-sm text-gray-700"
+                          paragraphGapClass="mt-3"
+                        />
+                        {hasImage(answer.question) && (
+                          <QuestionImage
+                            src={getImagePublicUrl(answer.question)!}
+                          />
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-red-100 bg-red-50/70 p-3">
+                        <p className="text-xs font-semibold text-red-600">你的答案（含值）</p>
+                        <p className="mt-1 text-sm font-medium text-red-700 break-words">
+                          {studentAnswerWithValue}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                        <p className="text-xs font-semibold text-emerald-700">正確答案（含值）</p>
+                        <p className="mt-1 text-sm font-medium text-emerald-700 break-words">
+                          {correctAnswerWithValue}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <p className="text-xs font-semibold text-gray-500">解釋</p>
+                        {answer.question.explanation ? (
+                          <QuestionContentParagraphs
+                            content={answer.question.explanation}
+                            className="mt-2 text-sm text-gray-600"
+                            paragraphGapClass="mt-2"
+                          />
+                        ) : (
+                          <p className="mt-2 text-sm text-gray-400 italic">沒有解釋</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <QuestionContentParagraphs
-                      content={answer.question.content}
-                      className="text-sm text-gray-700"
-                      paragraphGapClass="mt-3"
-                    />
-                    {hasImage(answer.question) && (
-                      <QuestionImage
-                        src={getImagePublicUrl(answer.question)!}
-                      />
-                    )}
-                    {answer.question.explanation ? (
-                      <QuestionContentParagraphs
-                        content={answer.question.explanation}
-                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
-                        paragraphGapClass="mt-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
