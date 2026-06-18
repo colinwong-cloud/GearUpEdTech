@@ -39,3 +39,17 @@ Run all before production:
 7. Deploy `main` to production.
 8. Run smoke checks on production.
 9. Record deployment in README + release SOP/checklist.
+
+## Latest deployment record
+
+- Date: 2026-06-18
+- Deployment: `dpl_5gdQY3RnoDKF4koSx1LH3DBwSbJQ`
+- Production alias: https://q.hkedutech.com
+- Scope:
+  - Parent email readability enhancement for wrong-question details
+  - Student result-page readability gate restoration (no regression release gate)
+- Validation:
+  - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
+  - `npm test` (pass)
+  - `npm run build` (pass)
+  - HTTP smoke: `GET /` and `GET /admin` returned 200 on production
