@@ -73,6 +73,7 @@ function getSubjectImageUrl(path: string): string {
 function TutorPaymentContent() {
   const searchParams = useSearchParams();
   const mobile = (searchParams.get("mobile") || "").trim();
+  const returnPath = (searchParams.get("return_path") || "").trim();
   const initialSubject = normalizeTutorSubject(searchParams.get("subject"));
   const [selectedSubject, setSelectedSubject] = useState<TutorSubject | null>(
     initialSubject
@@ -89,6 +90,15 @@ function TutorPaymentContent() {
     [selectedPlan]
   );
   const canProceed = Boolean(mobile && selectedSubject && selectedPlan && !processing);
+
+  const handleBack = () => {
+    if (typeof window === "undefined") return;
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.href = returnPath || "/";
+  };
 
   const handleProceed = async () => {
     if (!mobile) {
@@ -152,9 +162,18 @@ function TutorPaymentContent() {
     <div className="min-h-screen bg-white/60 px-4 py-8">
       <div className="mx-auto w-full max-w-4xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="mb-4 flex items-center justify-between">
-          <Link href="/" className="text-sm text-gray-500 hover:text-indigo-600">
-            返回主頁
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="text-sm text-gray-500 hover:text-indigo-600"
+            >
+              返回上頁
+            </button>
+            <Link href="/" className="text-sm text-gray-500 hover:text-indigo-600">
+              返回主頁
+            </Link>
+          </div>
           <p className="text-xs text-gray-400">電話：{mobile || "—"}</p>
         </div>
 
