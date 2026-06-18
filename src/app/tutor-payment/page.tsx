@@ -65,6 +65,13 @@ function normalizeTutorSubject(raw: string | null): TutorSubject | null {
   return null;
 }
 
+function normalizeTutorPlan(raw: string | null): TutorPlanCode | null {
+  const key = (raw || "").trim().toLowerCase();
+  if (key === "tutor_monthly_1on1") return "tutor_monthly_1on1";
+  if (key === "tutor_monthly_1on2") return "tutor_monthly_1on2";
+  return null;
+}
+
 function getSubjectImageUrl(path: string): string {
   if (!SUPABASE_BASE_URL) return "";
   return `${SUPABASE_BASE_URL}/storage/v1/object/public/${path}`;
@@ -75,11 +82,12 @@ function TutorPaymentContent() {
   const mobile = (searchParams.get("mobile") || "").trim();
   const returnPath = (searchParams.get("return_path") || "").trim();
   const initialSubject = normalizeTutorSubject(searchParams.get("subject"));
+  const initialPlan = normalizeTutorPlan(searchParams.get("plan"));
   const [selectedSubject, setSelectedSubject] = useState<TutorSubject | null>(
     initialSubject
   );
   const [selectedPlan, setSelectedPlan] = useState<TutorPlanCode | null>(
-    "tutor_monthly_1on1"
+    initialPlan || "tutor_monthly_1on1"
   );
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +158,17 @@ function TutorPaymentContent() {
       checkoutUrl.searchParams.set("airwallex_locale", payload.airwallex_locale || "zh-HK");
       checkoutUrl.searchParams.set("product_label", productLabel);
       checkoutUrl.searchParams.set("plan_name", payload.plan_name || selectedPlanMeta.label);
+      const tutorReturnUrl = new URL("/tutor-payment", window.location.origin);
+      tutorReturnUrl.searchParams.set("mobile", mobile);
+      tutorReturnUrl.searchParams.set("subject", selectedSubject);
+      tutorReturnUrl.searchParams.set("plan", selectedPlanMeta.code);
+      if (returnPath) {
+        tutorReturnUrl.searchParams.set("return_path", returnPath);
+      }
+      checkoutUrl.searchParams.set(
+        "back_path",
+        `${tutorReturnUrl.pathname}${tutorReturnUrl.search}`
+      );
       window.location.href = checkoutUrl.toString();
     } catch (err) {
       setError(err instanceof Error ? err.message : "付款流程發生錯誤");

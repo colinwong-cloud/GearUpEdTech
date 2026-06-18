@@ -133,6 +133,7 @@ function PaymentAirwallexContent() {
     "GearUp 增分寶月費會員";
   const finalAmountRaw = Number(searchParams.get("final_amount_hkd") || "99");
   const finalAmount = Number.isFinite(finalAmountRaw) ? Math.max(finalAmountRaw, 0) : 99;
+  const backPath = (searchParams.get("back_path") || "").trim();
   const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,6 +176,12 @@ function PaymentAirwallexContent() {
         return ["card"];
     }
   }, [paymentMethod]);
+
+  const tutorBackHref = useMemo(() => {
+    if (!backPath) return mobile ? `/tutor-payment?mobile=${encodeURIComponent(mobile)}` : "/";
+    if (!backPath.startsWith("/")) return mobile ? `/tutor-payment?mobile=${encodeURIComponent(mobile)}` : "/";
+    return backPath;
+  }, [backPath, mobile]);
 
   const appBaseUrl =
     (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
@@ -277,6 +284,12 @@ function PaymentAirwallexContent() {
         >
           {booting ? "載入中..." : "進入 Airwallex 付款"}
         </button>
+        <Link
+          href={tutorBackHref}
+          className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        >
+          返回補習方案頁
+        </Link>
         <Link
           href="/"
           className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
