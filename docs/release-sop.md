@@ -84,13 +84,13 @@ After production deploy:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-06-18
-- Deployment ID: `dpl_3RLCGthqkGPMRUyrHERuGcb66hpG`
+- Date (UTC): 2026-06-19
+- Deployment ID: `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/3RLCGthqkGPMRUyrHERuGcb66hpG
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/D3wmAftfzJqjxHfo151fmx2BfVCR
 - Scope:
-  - recovery bundle for missing approved features (referral, payment history, admin summaries/KPI, result bottom actions, registration CTA/copy)
-  - restore result wrong-answer readability blocks (student + parent views)
+  - restore parent email readability wrong-question detail cards in `send-quiz-email`
+  - add parent-email readability as explicit must-not-break release gate in README/SOP/checklist
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)

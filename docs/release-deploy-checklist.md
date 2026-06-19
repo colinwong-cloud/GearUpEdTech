@@ -42,7 +42,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] README latest deploy + changelog updated
 - [ ] SOP/checklist updated if release gates changed
 
-## Latest executed checklist (2026-06-18)
+## Latest executed checklist (2026-06-19)
 
 - [x] Feature branch identified (`cursor/recover-missing-features-2d42`)
 - [x] Preview approved in chat
@@ -51,5 +51,5 @@ Reference SOP: `docs/release-sop.md`
 - [x] `npm run build` passed
 - [x] `npm run smoke` not available, fallback smoke used
 - [x] Fallback smoke passed on production (`/` 200, `/admin` 200, `/api/admin/console` 401)
-- [x] Production deploy executed (`dpl_3RLCGthqkGPMRUyrHERuGcb66hpG`)
+- [x] Production deploy executed (`dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`)
 - [x] README + SOP/checklist updated

@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-18** — deployment `dpl_3RLCGthqkGPMRUyrHERuGcb66hpG`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/3RLCGthqkGPMRUyrHERuGcb66hpG). **Release scope:** rebuild missing approved features bundle (referral frontend/admin, payment history, registration CTA/copy, result bottom actions, admin summaries/KPI), plus restore result-page wrong-answer readability blocks.
+**Latest production deploy:** **2026-06-19** — deployment `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/D3wmAftfzJqjxHfo151fmx2BfVCR). **Release scope:** restore parent email readability (wrong-question detail cards) and explicitly add parent-email readability into release SOP/checklist anti-regression gates.
 
 ## Must-check validation gate (mandatory)
 
@@ -110,6 +110,7 @@ Detailed runbooks:
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Parent email readability restore（已上線）**：恢復 `/api/send-quiz-email` 的「錯題詳情（家長易讀版）」電郵內容，逐題顯示題目內容、你的答案（含值）、正確答案（含值）、解釋；並把此項加入 README / `docs/release-sop.md` / `docs/release-deploy-checklist.md` 的 must-not-break gate，避免再次遺漏。 |
 | 2026-06 | **Recovery release（防回歸重建）**：重新上線多項已批准但遺失於 production/main 的功能：① 註冊推薦碼（前台 + Admin「教師編號維護」+ `supabase_tutor_referral_codes.sql`）；② paid-user「消費紀錄」按年查詢；③ 結果頁底部 `重新選擇科目` + `返回主畫面`；④ 登入頁突出「新用戶註冊」與升級文案更新；⑤ Admin「家長學生練習摘要」/「今日新註冊家長摘要」與年級練習頻率（含 subject selector）。同次修復結果頁「錯題解析」回歸，恢復逐題四段格式（題目內容／你的答案（含值）／正確答案（含值）／解釋）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
