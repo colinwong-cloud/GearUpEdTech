@@ -51,7 +51,12 @@ Every release must explicitly verify all items below:
    - 正確答案（含值）
    - 解釋
 10. Parent session detail wrong-answer readability follows same 4-block format.
-11. Account maintenance includes paid-user **消費紀錄**:
+11. Parent practice email readability includes wrong-question detail cards with:
+    - 題目內容
+    - 你的答案（含值）
+    - 正確答案（含值）
+    - 解釋
+12. Account maintenance includes paid-user **消費紀錄**:
     - default current year
     - year filter
     - date/amount/payment method columns

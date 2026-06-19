@@ -31,6 +31,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Result page has **重新選擇科目** + **返回主畫面**
 - [ ] Result wrong-answer readability block format is intact
 - [ ] Parent session detail uses same readability format
+- [ ] Parent practice email includes wrong-question readability detail cards
 - [ ] Paid-user **消費紀錄** (year filter + date/amount/method) is intact
 
 ## D. Production deploy gate

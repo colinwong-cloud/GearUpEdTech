@@ -81,6 +81,11 @@ Detailed runbooks:
   - 正確答案（含值）
   - 解釋
 - [ ] Parent session detail wrong-answer readability uses the same 4-block format.
+- [ ] Parent practice email readability includes wrong-question details:
+  - 題目內容
+  - 你的答案（含值）
+  - 正確答案（含值）
+  - 解釋
 - [ ] Account maintenance includes paid-user **消費紀錄**:
   - date / amount / payment method columns
   - default current year
