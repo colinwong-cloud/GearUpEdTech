@@ -1,67 +1,72 @@
-# Release SOP (Must-Not-Break)
+# Release SOP v2 (Hybrid Permanent Gatekeeping)
 
-This SOP is the source of truth for shipping to production without dropping previously approved features.
+This SOP is the permanent anti-regression release protocol.  
+It combines:
 
-## 1) Release source of truth
+1. branch discipline,
+2. in-repo feature registry,
+3. explicit release manifest (included + deferred),
+4. human + gatekeeper approval,
+5. machine-enforced checks.
 
-1. Preview deployment must come from a dedicated feature branch (`cursor/*-2d42`).
-2. Production deploy should come from merged `main` SHA whenever possible.
-3. Every release must record:
-   - Deployment ID
-   - Inspector URL
-   - Production URL
-   - Validation evidence
+## 1) Branch model (permanent)
 
-## 2) Mandatory merge-before-deploy flow
+- `main`: only long-term release source of truth
+- `cursor/*-2d42` or `feature/*`: active development
+- `parked/*` (or dedicated feature branch with parked status in registry): approved but intentionally paused work
+- optional `release/*`: bundled release stabilization branch
 
-Required sequence:
+**Rule:** production deploy should come from merged `main` SHA.  
+If emergency exception happens, back-merge into `main` immediately and re-baseline release records.
 
-1. Implement on feature branch
-2. Deploy preview
-3. Owner approval in chat
-4. Validate (`lint`, `test`, `build`, smoke/fallback smoke)
-5. Merge to `main`
-6. Deploy production
+## 2) Mandatory artifacts before production
 
-## 3) Critical feature registry (anti-regression)
+Each release must update:
 
-Every release must explicitly verify all items below:
+1. `docs/feature-registry.md`
+2. `docs/release-manifest.md` (from `docs/release-manifest-template.md`)
+3. `docs/release-deploy-checklist.md`
+4. `README.md` latest deploy + changelog
 
-1. Login page has standout **新用戶註冊** button.
-2. Paid-tier CTA copy is:
-   - **成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。**
-3. Registration requires **性別** selection.
-4. Registration has optional **負責教師編號** with inline errors:
-   - **錯誤編號**
-   - **編號被限，請負責老師聯絡管理員更新編號。**
-5. Admin has **教師編號維護**:
-   - create 6-digit tutor codes
-   - summary table
-   - usage details (mobile + parent paid/free status)
-6. Admin has **家長學生練習摘要** and **今日新註冊家長摘要**.
-7. Admin grade-level practice frequency summary includes:
-   - month selector
-   - subject selector (all/Chinese/English/Math)
-8. Student result page includes bottom actions:
-   - **重新選擇科目**
-   - **返回主畫面**
-9. Student result wrong-answer readability is question-by-question with:
-   - 題目內容
-   - 你的答案（含值）
-   - 正確答案（含值）
-   - 解釋
-10. Parent session detail wrong-answer readability follows same 4-block format.
-11. Parent practice email readability includes wrong-question detail cards with:
-    - 題目內容
-    - 你的答案（含值）
-    - 正確答案（含值）
-    - 解釋
-12. Account maintenance includes paid-user **消費紀錄**:
-    - default current year
-    - year filter
-    - date/amount/payment method columns
+## 3) Feature registry lifecycle governance
 
-## 4) Required validation gates
+Feature lifecycle statuses are managed in `docs/feature-registry.md`:
+
+- planned -> in_dev -> in_preview -> approved -> released
+- parked (explicitly deferred)
+- deprecated
+
+Every feature must have:
+
+- unique Feature ID
+- status
+- branch/PR/deploy trace
+- must-not-break flag
+
+This prevents loss of "developed but not yet deployed" features.
+
+## 4) Release manifest gate (included vs deferred)
+
+`docs/release-manifest.md` is mandatory and must contain:
+
+1. Included in this release
+2. Deferred/Parked (explicitly not in this release)
+3. Must-not-break verification (B1/B2 packs)
+4. Validation evidence
+5. Gatekeeper approvals
+
+No production deployment should proceed without explicit deferred list.
+
+## 5) Two-layer approval gate
+
+Production release requires both:
+
+1. **Owner approval** in chat
+2. **Gatekeeper agent result: PASS** in release manifest
+
+Agent review is mandatory but does not replace owner decision.
+
+## 6) Validation gates
 
 Run and record for each release:
 
@@ -69,20 +74,41 @@ Run and record for each release:
 2. `npm test`
 3. `npm run build`
 4. `npm run smoke` if script exists
-5. If no smoke script exists, run fallback smoke:
+5. if no smoke script, fallback smoke:
    - `GET /` returns 200
    - `GET /admin` returns 200
    - `POST /api/admin/console` without auth returns 401
 
-## 5) Release record discipline
+## 7) Automation enforcement
 
-After production deploy:
+Run release gate script:
+
+- `npm run release:gate`
+
+The script validates required files/sections for registry + manifest + checklist.
+
+Recommended CI policy:
+
+- PRs to main must pass `release:gate` before merge.
+
+## 8) Critical feature registry
+
+Must-not-break inventory and B2 test packs are maintained in:
+
+- `docs/feature-registry.md`
+
+Use this file as canonical test scope, not memory.
+
+## 9) Release record discipline
+
+After each production deploy:
 
 1. Update `README.md` latest deployment metadata.
-2. Append changelog entry for release scope.
-3. Update this SOP and `docs/release-deploy-checklist.md` when gates change.
+2. Append changelog entry.
+3. Update latest executed checklist entry.
+4. Update latest deployment record here.
 
-## 6) Latest deployment record
+## 10) Latest deployment record
 
 - Date (UTC): 2026-06-19
 - Deployment ID: `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`

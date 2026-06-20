@@ -7,19 +7,28 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Feature branch identified (`cursor/*-2d42`)
 - [ ] Preview URL and inspector URL recorded
 - [ ] Target production commit/deploy source recorded
+- [ ] `docs/release-manifest.md` updated for this release
 
-## B. Validation gate
+## B. Scope control (included vs deferred)
+
+- [ ] Included feature list completed in manifest
+- [ ] Deferred/Parked feature list completed in manifest
+- [ ] Parked items explicitly acknowledged (example: tutor package)
+- [ ] `docs/feature-registry.md` status updated for affected features
+
+## C. Validation gate
 
 - [ ] `npm run lint` passed (or only accepted existing warnings)
 - [ ] `npm test` passed
 - [ ] `npm run build` passed
+- [ ] `npm run release:gate` passed
 - [ ] `npm run smoke` passed
 - [ ] If no smoke script, fallback smoke executed:
   - [ ] `GET /` = 200
   - [ ] `GET /admin` = 200
   - [ ] `POST /api/admin/console` without auth = 401
 
-## C. Must-not-break feature checks
+## D. Must-not-break feature checks
 
 - [ ] Login page shows standout **新用戶註冊**
 - [ ] Paid-tier CTA copy is updated to include **解鎖無限題目練習**
@@ -34,9 +43,14 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Parent practice email includes wrong-question readability detail cards
 - [ ] Paid-user **消費紀錄** (year filter + date/amount/method) is intact
 
-## D. Production deploy gate
+## E. Approval gate
 
 - [ ] Preview approved in chat
+- [ ] Gatekeeper agent result recorded as PASS in manifest
+- [ ] Owner approval reference recorded in manifest
+
+## F. Production deploy gate
+
 - [ ] Production deploy executed
 - [ ] Post-deploy smoke checks completed
 - [ ] README latest deploy + changelog updated
@@ -46,10 +60,14 @@ Reference SOP: `docs/release-sop.md`
 
 - [x] Feature branch identified (`cursor/recover-missing-features-2d42`)
 - [x] Preview approved in chat
+- [x] Manifest updated with included/deferred scope
+- [x] Feature registry updated for parked and released items
 - [x] `npm run lint` passed (existing non-blocking warning only)
 - [x] `npm test` passed
 - [x] `npm run build` passed
+- [x] `npm run release:gate` passed
 - [x] `npm run smoke` not available, fallback smoke used
 - [x] Fallback smoke passed on production (`/` 200, `/admin` 200, `/api/admin/console` 401)
+- [x] Gatekeeper result recorded as PASS
 - [x] Production deploy executed (`dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`)
 - [x] README + SOP/checklist updated

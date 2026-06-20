@@ -54,6 +54,8 @@ Detailed runbooks:
 
 - `docs/release-sop.md`
 - `docs/release-deploy-checklist.md`
+- `docs/feature-registry.md`
+- `docs/release-manifest.md` (from template `docs/release-manifest-template.md`)
 
 ### A) Anti-regression source-of-truth checks
 
@@ -110,6 +112,7 @@ Detailed runbooks:
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Hybrid permanent gatekeeping SOP v2（已啟用）**：建立 `docs/feature-registry.md`（B1 功能台帳 + B2 測試包）、`docs/release-manifest.md`（Included / Deferred / Must-not-break / Gatekeeper PASS）、`docs/release-manifest-template.md`，並新增 `npm run release:gate` + `.github/workflows/release-gate.yml` 作為機械化檢查，永久防止「已開發但未部署」功能被遺漏。 |
 | 2026-06 | **Parent email readability restore（已上線）**：恢復 `/api/send-quiz-email` 的「錯題詳情（家長易讀版）」電郵內容，逐題顯示題目內容、你的答案（含值）、正確答案（含值）、解釋；並把此項加入 README / `docs/release-sop.md` / `docs/release-deploy-checklist.md` 的 must-not-break gate，避免再次遺漏。 |
 | 2026-06 | **Recovery release（防回歸重建）**：重新上線多項已批准但遺失於 production/main 的功能：① 註冊推薦碼（前台 + Admin「教師編號維護」+ `supabase_tutor_referral_codes.sql`）；② paid-user「消費紀錄」按年查詢；③ 結果頁底部 `重新選擇科目` + `返回主畫面`；④ 登入頁突出「新用戶註冊」與升級文案更新；⑤ Admin「家長學生練習摘要」/「今日新註冊家長摘要」與年級練習頻率（含 subject selector）。同次修復結果頁「錯題解析」回歸，恢復逐題四段格式（題目內容／你的答案（含值）／正確答案（含值）／解釋）。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
