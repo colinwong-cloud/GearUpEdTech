@@ -1,35 +1,21 @@
 # Release Manifest
 
-## In-flight preview candidate (not yet released)
+## Release identity
 
-- Date (UTC): 2026-06-20
-- Branch: `cursor/recover-missing-features-2d42`
+- Release date (UTC): 2026-06-20
+- Release branch: `cursor/recover-missing-features-2d42`
 - PR URL: https://github.com/colinwong-cloud/GearUpEdTech/pull/92
 - Preview URL: https://quiz-deploy-bix06wl29-colinwong-clouds-projects.vercel.app
 - Preview inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/EUntMgMpqyJAA1ZFnUarLboxS67U
-- Candidate feature: `F-REFERRAL-ADMIN-CONTACT` (tutor mobile/email on referral admin)
-- SQL prerequisite for prod: `supabase_tutor_referral_contact_fields.sql`
-
-## Release identity
-
-- Release date (UTC): 2026-06-19
-- Release branch: `cursor/recover-missing-features-2d42`
-- PR URL: https://github.com/colinwong-cloud/GearUpEdTech/pull/92
-- Preview URL: https://quiz-deploy-bmzzxlp7a-colinwong-clouds-projects.vercel.app
-- Preview inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/FWEGZHb83ADZydwGL634n4AgVGwy
 - Planned production source (`main` SHA preferred): `cursor/recover-missing-features-2d42` (temporary recovery rollout)
-- Production deployment: `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`
+- Production deployment: `dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`
 
 ## Included in this release
 
 | Feature ID | Feature | Reason for inclusion | Validation owner |
 |---|---|---|---|
-| F-EMAIL-READABILITY | Parent email wrong-question detail cards readability | Feature had regressed and required immediate restore | owner + agent |
-| F-RESULT-READABILITY-STUDENT | Student result readability 4-block format | Must-not-break recovery guard | owner + agent |
-| F-RESULT-READABILITY-PARENT | Parent session detail readability 4-block format | Must-not-break recovery guard | owner + agent |
-| F-REFERRAL-FRONTEND | Registration optional 負責教師編號 + inline errors | Previously approved and missing | owner + agent |
-| F-REFERRAL-ADMIN | Admin 教師編號維護 | Previously approved and missing | owner + agent |
-| F-PAYMENT-HISTORY | Paid-user 消費紀錄 + year filter | Previously approved and missing | owner + agent |
+| F-REFERRAL-ADMIN-CONTACT | Admin 教師編號維護新增 tutor_mobile(必填) + tutor_email(可選) 並限制一個手機只能有一個啟用碼 | Owner-requested referral contact enhancement | owner + agent |
+| F-REFERRAL-SQL | Referral SQL enhancement (`supabase_tutor_referral_contact_fields.sql`) | Required DB migration for contact fields + active mobile uniqueness | owner + agent |
 
 ## Deferred/Parked (explicitly not in this release)
 
@@ -56,10 +42,11 @@ Reference: `docs/feature-registry.md` (B1 + B2 packs)
 - `npm run lint`: PASS (existing non-blocking `next/no-img-element` warning only)
 - `npm test`: PASS
 - `npm run build`: PASS
-- `npm run smoke` or fallback smoke: fallback smoke PASS (`/` 200, `/admin` 200, `/api/admin/console` unauthorized 401)
+- `npm run release:gate`: PASS
+- `npm run smoke` or fallback smoke: fallback smoke PASS on production (`/` 200, `/admin` 200, `/api/admin/console` unauthorized 401)
 
 ## Gatekeeper approvals
 
-- Owner approval reference: chat approval before production deployment (2026-06-19)
+- Owner approval reference: chat approval before production deployment (2026-06-20)
 - Gatekeeper agent result: PASS
-- Residual risks: none beyond known existing non-blocking lint warning
+- Residual risks: SQL migration `supabase_tutor_referral_contact_fields.sql` must be applied in Supabase for full feature activation

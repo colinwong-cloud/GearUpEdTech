@@ -56,12 +56,12 @@ Reference SOP: `docs/release-sop.md`
 - [ ] README latest deploy + changelog updated
 - [ ] SOP/checklist updated if release gates changed
 
-## Latest executed checklist (2026-06-19)
+## Latest executed checklist (2026-06-20)
 
 - [x] Feature branch identified (`cursor/recover-missing-features-2d42`)
 - [x] Preview approved in chat
 - [x] Manifest updated with included/deferred scope
-- [x] Feature registry updated for parked and released items
+- [x] Feature registry updated for affected referral contact feature
 - [x] `npm run lint` passed (existing non-blocking warning only)
 - [x] `npm test` passed
 - [x] `npm run build` passed
@@ -69,5 +69,5 @@ Reference SOP: `docs/release-sop.md`
 - [x] `npm run smoke` not available, fallback smoke used
 - [x] Fallback smoke passed on production (`/` 200, `/admin` 200, `/api/admin/console` 401)
 - [x] Gatekeeper result recorded as PASS
-- [x] Production deploy executed (`dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`)
+- [x] Production deploy executed (`dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`)
 - [x] README + SOP/checklist updated

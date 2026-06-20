@@ -110,15 +110,17 @@ After each production deploy:
 
 ## 10) Latest deployment record
 
-- Date (UTC): 2026-06-19
-- Deployment ID: `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`
+- Date (UTC): 2026-06-20
+- Deployment ID: `dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/D3wmAftfzJqjxHfo151fmx2BfVCR
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BpUcdDoH2xE2bwrC1DEuU97YJzEv
 - Scope:
-  - restore parent email readability wrong-question detail cards in `send-quiz-email`
-  - add parent-email readability as explicit must-not-break release gate in README/SOP/checklist
+  - release tutor referral admin contact enhancement (`tutor_mobile` required + `tutor_email` optional)
+  - enforce one active referral code per tutor mobile via DB unique partial index
+  - add migration file `supabase_tutor_referral_contact_fields.sql` and usage snapshot columns
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
+  - `npm run release:gate` (pass)
   - fallback smoke checks on production: `/` 200, `/admin` 200, `/api/admin/console` unauthorized 401

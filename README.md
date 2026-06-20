@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-19** — deployment `dpl_D3wmAftfzJqjxHfo151fmx2BfVCR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/D3wmAftfzJqjxHfo151fmx2BfVCR). **Release scope:** restore parent email readability (wrong-question detail cards) and explicitly add parent-email readability into release SOP/checklist anti-regression gates.
+**Latest production deploy:** **2026-06-20** — deployment `dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BpUcdDoH2xE2bwrC1DEuU97YJzEv). **Release scope:** tutor referral admin contact enhancement (`tutor_mobile` required + `tutor_email` optional) with active mobile uniqueness guard.
 
 ## Must-check validation gate (mandatory)
 
@@ -112,6 +112,7 @@ Detailed runbooks:
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Tutor referral admin contact enhancement（已上線）**：Admin「教師編號維護」新增 `tutor_mobile`（必填）與 `tutor_email`（可選），查詢/摘要/匯出同步顯示；後端新增「一個教師手機只能有一個啟用中的教師編號」限制，並新增 SQL `supabase_tutor_referral_contact_fields.sql`。 |
 | 2026-06 | **Hybrid permanent gatekeeping SOP v2（已啟用）**：建立 `docs/feature-registry.md`（B1 功能台帳 + B2 測試包）、`docs/release-manifest.md`（Included / Deferred / Must-not-break / Gatekeeper PASS）、`docs/release-manifest-template.md`，並新增 `npm run release:gate` + `.github/workflows/release-gate.yml` 作為機械化檢查，永久防止「已開發但未部署」功能被遺漏。 |
 | 2026-06 | **Parent email readability restore（已上線）**：恢復 `/api/send-quiz-email` 的「錯題詳情（家長易讀版）」電郵內容，逐題顯示題目內容、你的答案（含值）、正確答案（含值）、解釋；並把此項加入 README / `docs/release-sop.md` / `docs/release-deploy-checklist.md` 的 must-not-break gate，避免再次遺漏。 |
 | 2026-06 | **Recovery release（防回歸重建）**：重新上線多項已批准但遺失於 production/main 的功能：① 註冊推薦碼（前台 + Admin「教師編號維護」+ `supabase_tutor_referral_codes.sql`）；② paid-user「消費紀錄」按年查詢；③ 結果頁底部 `重新選擇科目` + `返回主畫面`；④ 登入頁突出「新用戶註冊」與升級文案更新；⑤ Admin「家長學生練習摘要」/「今日新註冊家長摘要」與年級練習頻率（含 subject selector）。同次修復結果頁「錯題解析」回歸，恢復逐題四段格式（題目內容／你的答案（含值）／正確答案（含值）／解釋）。 |
