@@ -1,5 +1,17 @@
 # Release Manifest
 
+## In-flight preview candidate (not yet released)
+
+- Date (UTC): 2026-06-20
+- Branch: `cursor/recover-missing-features-2d42`
+- PR URL: https://github.com/colinwong-cloud/GearUpEdTech/pull/92
+- Preview URL: https://quiz-deploy-ay3n4n95i-colinwong-clouds-projects.vercel.app
+- Preview inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/CuTped3XtxGE9RGLDbBus88mAs8p
+- Candidate feature: `F-TUTOR-PORTAL` (導師入口 `/tutor`)
+- SQL prerequisites:
+  - `supabase_tutor_portal_auth.sql`
+  - `supabase_tutor_referral_contact_fields.sql`
+
 ## Release identity
 
 - Release date (UTC): 2026-06-20

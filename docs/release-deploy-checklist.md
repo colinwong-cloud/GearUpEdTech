@@ -42,6 +42,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Parent session detail uses same readability format
 - [ ] Parent practice email includes wrong-question readability detail cards
 - [ ] Paid-user **消費紀錄** (year filter + date/amount/method) is intact
+- [ ] Tutor portal `/tutor` works: first-login password change, 5-attempt lockout, linked-mobile table/search, and read-only view/back flow
 
 ## E. Approval gate
 
