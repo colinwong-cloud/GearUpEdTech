@@ -36,6 +36,7 @@ It prevents "built but forgotten" regressions by tracking:
 | F-REGISTER-GENDER | Registration gender mandatory | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-REFERRAL-FRONTEND | Registration optional 負責教師編號 + inline errors | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-REFERRAL-ADMIN | Admin 教師編號維護 module | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
+| F-REFERRAL-ADMIN-CONTACT | Admin 教師編號維護新增 tutor_mobile(必填) + tutor_email(可選) 並限制一個手機只能有一個啟用碼 | in_dev | release-critical | cursor/recover-missing-features-2d42 | #92 | not released | yes | Requires SQL `supabase_tutor_referral_contact_fields.sql` before production rollout |
 | F-REFERRAL-SQL | tutor referral SQL (`supabase_tutor_referral_codes.sql`) | released | normal | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-RESULT-BOTTOM-ACTIONS | Result bottom actions (重新選擇科目 / 返回主畫面) | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-RESULT-READABILITY-STUDENT | Student result readability 4-block format | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
@@ -138,6 +139,7 @@ Record PASS/FAIL/N/A per release in `docs/release-manifest.md`.
 - 題目管理: search + update question works
 - 付款狀態查詢: search, paid details, cancel future payment, refund preview/confirm, monthly summary, month switch, CSV download
 - 折扣碼維護: list, create/update/delete, search/filter, usage summary, CSV download
+- 教師編號維護: create requires code + tutor name + tutor mobile, tutor email optional, and active tutor mobile uniqueness enforced
 
 ### B2-7 Sharing / Tracking / Compliance
 

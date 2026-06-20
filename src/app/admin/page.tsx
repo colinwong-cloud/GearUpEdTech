@@ -138,6 +138,8 @@ interface TutorReferralCodeSummaryRow {
   id: string;
   code: string;
   tutor_name: string;
+  tutor_mobile: string | null;
+  tutor_email: string | null;
   usage_limit: number;
   current_uses: number;
   is_active: boolean;
@@ -1821,10 +1823,14 @@ function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
 function buildReferralUsagePrintHtml({
   code,
   tutorName,
+  tutorMobile,
+  tutorEmail,
   rows,
 }: {
   code: string;
   tutorName: string;
+  tutorMobile?: string | null;
+  tutorEmail?: string | null;
   rows: TutorReferralUsageDetailRow[];
 }): string {
   const esc = (value: string) =>
@@ -1855,6 +1861,8 @@ function buildReferralUsagePrintHtml({
     <h2 style="margin:0 0 8px;">教師編號使用紀錄</h2>
     <p style="margin:0 0 16px;">教師編號：<strong>${esc(code)}</strong> ｜ 教師：<strong>${esc(
     tutorName || "-"
+  )}</strong> ｜ 教師手機：<strong>${esc(tutorMobile || "-")}</strong> ｜ 教師電郵：<strong>${esc(
+    tutorEmail || "-"
   )}</strong></p>
     <table style="border-collapse:collapse; width:100%; font-size:13px;">
       <thead>
@@ -2264,6 +2272,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
 
   const [createCode, setCreateCode] = useState("");
   const [createTutorName, setCreateTutorName] = useState("");
+  const [createTutorMobile, setCreateTutorMobile] = useState("");
+  const [createTutorEmail, setCreateTutorEmail] = useState("");
 
   const [detailCode, setDetailCode] = useState("");
   const [detailResult, setDetailResult] = useState<{
@@ -2297,6 +2307,9 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
   const handleCreate = async () => {
     const code = normalizeReferralCodeInput(createCode);
     const tutorName = createTutorName.trim();
+    const tutorMobile = createTutorMobile.replace(/\D/g, "").slice(0, 8);
+    const tutorEmailInput = createTutorEmail.trim().toLowerCase();
+    const tutorEmail = tutorEmailInput || null;
     if (!/^\d{6}$/.test(code)) {
       setMsg("教師編號必須為 6 位數字");
       return;
@@ -2305,17 +2318,32 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       setMsg("請輸入教師名稱");
       return;
     }
+    if (!/^\d{8}$/.test(tutorMobile)) {
+      setMsg("請輸入 8 位數字教師手機");
+      return;
+    }
+    if (tutorEmail && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(tutorEmail)) {
+      setMsg("教師電郵格式不正確");
+      return;
+    }
     setSaveLoading(true);
     setMsg("");
     try {
       await adminConsoleRequest(
         "tutor_referral_code_create",
-        { code, tutor_name: tutorName },
+        {
+          code,
+          tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
+        },
         sessionToken
       );
       setMsg("教師編號已新增");
       setCreateCode("");
       setCreateTutorName("");
+      setCreateTutorMobile("");
+      setCreateTutorEmail("");
       await loadSummary();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "新增教師編號失敗");
@@ -2386,6 +2414,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       buildReferralUsagePrintHtml({
         code: detailResult.code.code,
         tutorName: detailResult.code.tutor_name,
+        tutorMobile: detailResult.code.tutor_mobile,
+        tutorEmail: detailResult.code.tutor_email,
         rows: detailResult.rows,
       })
     );
@@ -2412,7 +2442,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700">手動新增教師編號</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">教師編號（6位數字）</label>
             <input
@@ -2429,6 +2459,26 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               value={createTutorName}
               onChange={(e) => setCreateTutorName(e.target.value)}
               placeholder="例如 陳老師"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師手機（8位數字）</label>
+            <input
+              value={createTutorMobile}
+              onChange={(e) => setCreateTutorMobile(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder="例如 91234567"
+              maxLength={8}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師電郵（可選）</label>
+            <input
+              type="email"
+              value={createTutorEmail}
+              onChange={(e) => setCreateTutorEmail(e.target.value)}
+              placeholder="例如 tutor@example.com"
               className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
@@ -2449,7 +2499,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
             value={summarySearch}
             onChange={(e) => setSummarySearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadSummary()}
-            placeholder="搜尋教師編號或教師名稱"
+            placeholder="搜尋教師編號 / 教師名稱 / 手機 / 電郵"
             className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
           />
           <button
@@ -2467,6 +2517,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               <tr className="text-left text-gray-500 border-b">
                 <th className="py-2 pr-3">建立日期</th>
                 <th className="py-2 pr-3">教師名稱</th>
+                <th className="py-2 pr-3">教師手機</th>
+                <th className="py-2 pr-3">教師電郵</th>
                 <th className="py-2 pr-3">教師編號</th>
                 <th className="py-2 pr-3">已使用次數 / 上限</th>
                 <th className="py-2 pr-3">操作</th>
@@ -2479,6 +2531,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
                     {row.created_at ? new Date(row.created_at).toLocaleString("zh-HK") : "-"}
                   </td>
                   <td className="py-2 pr-3">{row.tutor_name}</td>
+                  <td className="py-2 pr-3">{row.tutor_mobile || "-"}</td>
+                  <td className="py-2 pr-3">{row.tutor_email || "-"}</td>
                   <td className="py-2 pr-3 font-mono">{row.code}</td>
                   <td className="py-2 pr-3">
                     {row.current_uses} / {row.usage_limit}
@@ -2495,7 +2549,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               ))}
               {summaryRows.length === 0 && !summaryLoading && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                  <td colSpan={7} className="py-4 text-center text-gray-400">
                     沒有符合條件的資料
                   </td>
                 </tr>
@@ -2528,7 +2582,9 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
         {detailResult?.found && detailResult.code && (
           <p className="text-sm text-gray-600">
             教師編號：<span className="font-mono">{detailResult.code.code}</span> ｜ 教師：
-            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 已使用：
+            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 教師手機：
+            <span className="font-semibold"> {detailResult.code.tutor_mobile || "-"}</span> ｜ 教師電郵：
+            <span className="font-semibold"> {detailResult.code.tutor_email || "-"}</span> ｜ 已使用：
             <span className="font-semibold"> {detailResult.code.current_uses}</span> /
             {detailResult.code.usage_limit}
           </p>

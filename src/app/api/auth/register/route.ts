@@ -28,6 +28,8 @@ type ReferralCodeRow = {
   id: string;
   code: string;
   tutor_name: string;
+  tutor_mobile: string | null;
+  tutor_email: string | null;
   usage_limit: number;
   current_uses: number;
   is_active: boolean;
@@ -46,6 +48,8 @@ type ReferralDb = {
           id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           usage_limit: number;
           current_uses: number;
           is_active: boolean;
@@ -56,6 +60,8 @@ type ReferralDb = {
           id?: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -65,6 +71,8 @@ type ReferralDb = {
         Update: {
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -79,6 +87,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           mobile_number: string;
           parent_id: string | null;
           used_at: string;
@@ -89,6 +99,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number: string;
           parent_id?: string | null;
           used_at?: string;
@@ -98,6 +110,8 @@ type ReferralDb = {
           code_id?: string;
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number?: string;
           parent_id?: string | null;
           used_at?: string;
@@ -120,7 +134,7 @@ const REFERRAL_CODE_RE = /^\d{6}$/;
 const REFERRAL_INVALID_ERROR = "錯誤編號";
 const REFERRAL_LIMIT_ERROR = "編號被限，請負責老師聯絡管理員更新編號。";
 const REFERRAL_TABLE_HINT =
-  "缺少教師編號資料表，請先在 Supabase 執行 supabase_tutor_referral_codes.sql。";
+  "缺少教師編號資料欄位，請先在 Supabase 執行 supabase_tutor_referral_contact_fields.sql（或最新版 supabase_tutor_referral_codes.sql）。";
 
 function getSupabaseAdmin() {
   const url =
@@ -147,7 +161,9 @@ function asReferralAdminClient(admin: AdminClient): ReferralAdminClient {
 }
 
 function isMissingReferralTableError(message: string): boolean {
-  return /tutor_referral_codes|tutor_referral_usages|42P01|does not exist/i.test(message);
+  return /tutor_referral_codes|tutor_referral_usages|tutor_mobile|tutor_email|42P01|42703|does not exist/i.test(
+    message
+  );
 }
 
 function asReferralCodeRow(value: unknown): ReferralCodeRow | null {
@@ -157,6 +173,8 @@ function asReferralCodeRow(value: unknown): ReferralCodeRow | null {
     id: String(row.id),
     code: String(row.code),
     tutor_name: String(row.tutor_name ?? ""),
+    tutor_mobile: row.tutor_mobile == null ? null : String(row.tutor_mobile),
+    tutor_email: row.tutor_email == null ? null : String(row.tutor_email),
     usage_limit: Number(row.usage_limit ?? 50),
     current_uses: Number(row.current_uses ?? 0),
     is_active: Boolean(row.is_active),
@@ -229,7 +247,7 @@ async function consumeReferralUsage({
   const referralAdmin = asReferralAdminClient(admin);
   const codeRes = await referralAdmin
     .from("tutor_referral_codes")
-    .select("id,code,tutor_name,usage_limit,current_uses,is_active")
+    .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active")
     .eq("code", code)
     .maybeSingle();
   if (codeRes.error) {
@@ -306,6 +324,8 @@ async function consumeReferralUsage({
     code_id: referralCode.id,
     code: referralCode.code,
     tutor_name: referralCode.tutor_name,
+    tutor_mobile: referralCode.tutor_mobile,
+    tutor_email: referralCode.tutor_email,
     mobile_number: mobile,
     used_at: new Date().toISOString(),
   });

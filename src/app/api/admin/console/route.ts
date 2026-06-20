@@ -57,12 +57,14 @@ type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const TUTOR_REFERRAL_CODE_RE = /^\d{6}$/;
+const TUTOR_REFERRAL_MOBILE_RE = /^\d{8}$/;
+const TUTOR_REFERRAL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
 const REFUND_SUCCESS_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED"]);
 const PAYMENT_OPS_TABLE_HINT =
   "缺少付款管理資料表，請先在 Supabase 執行 supabase_admin_payment_ops.sql。";
 const TUTOR_REFERRAL_TABLE_HINT =
-  "缺少教師編號資料表，請先在 Supabase 執行 supabase_tutor_referral_codes.sql。";
+  "缺少教師編號資料欄位，請先在 Supabase 執行 supabase_tutor_referral_contact_fields.sql（或最新版 supabase_tutor_referral_codes.sql）。";
 
 function normalizeIsoDateTime(raw: unknown): string | null {
   if (raw === null || raw === undefined || String(raw).trim() === "") return null;
@@ -220,7 +222,7 @@ function isMissingPaymentOpsTableError(message: string): boolean {
 }
 
 function isMissingTutorReferralTableError(message: string): boolean {
-  return /tutor_referral_codes|tutor_referral_usages|42P01|does not exist/i.test(message);
+  return /tutor_referral_codes|tutor_referral_usages|tutor_mobile|tutor_email|42P01|42703|does not exist/i.test(message);
 }
 type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
 
@@ -232,6 +234,8 @@ type ReferralDb = {
           id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           usage_limit: number;
           current_uses: number;
           is_active: boolean;
@@ -242,6 +246,8 @@ type ReferralDb = {
           id?: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -251,6 +257,8 @@ type ReferralDb = {
         Update: {
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -265,6 +273,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           mobile_number: string;
           parent_id: string | null;
           used_at: string;
@@ -275,6 +285,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number: string;
           parent_id?: string | null;
           used_at?: string;
@@ -284,6 +296,8 @@ type ReferralDb = {
           code_id?: string;
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number?: string;
           parent_id?: string | null;
           used_at?: string;
@@ -1148,6 +1162,9 @@ export async function POST(req: NextRequest) {
         const referralAdmin = asReferralAdminClient(admin);
         const code = String(payload.code ?? "").trim();
         const tutorName = String(payload.tutor_name ?? "").trim();
+        const tutorMobile = String(payload.tutor_mobile ?? "").trim();
+        const tutorEmailRaw = String(payload.tutor_email ?? "").trim();
+        const tutorEmail = tutorEmailRaw ? tutorEmailRaw.toLowerCase() : null;
         const createdAt = normalizeIsoDateTime(payload.created_at);
 
         if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
@@ -1156,6 +1173,12 @@ export async function POST(req: NextRequest) {
         if (!tutorName) {
           return NextResponse.json({ error: "請輸入教師名稱" }, { status: 400 });
         }
+        if (!TUTOR_REFERRAL_MOBILE_RE.test(tutorMobile)) {
+          return NextResponse.json({ error: "請輸入 8 位數字教師手機" }, { status: 400 });
+        }
+        if (tutorEmail && !TUTOR_REFERRAL_EMAIL_RE.test(tutorEmail)) {
+          return NextResponse.json({ error: "教師電郵格式不正確" }, { status: 400 });
+        }
         if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
           return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
         }
@@ -1163,6 +1186,8 @@ export async function POST(req: NextRequest) {
         const insertPayload: ReferralDb["public"]["Tables"]["tutor_referral_codes"]["Insert"] = {
           code,
           tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
           usage_limit: 50,
           current_uses: 0,
           is_active: true,
@@ -1172,11 +1197,14 @@ export async function POST(req: NextRequest) {
         const { data, error } = await referralAdmin
           .from("tutor_referral_codes")
           .insert(insertPayload)
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .single();
         if (error) {
           if (isMissingTutorReferralTableError(error.message || "")) {
             throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          if (/uq_tutor_referral_codes_active_mobile|tutor_mobile/i.test(error.message || "")) {
+            return NextResponse.json({ error: "此教師手機已有啟用中的教師編號" }, { status: 409 });
           }
           if (/duplicate key|unique/i.test(error.message || "")) {
             return NextResponse.json({ error: "教師編號已存在" }, { status: 409 });
@@ -1192,12 +1220,14 @@ export async function POST(req: NextRequest) {
 
         let query = referralAdmin
           .from("tutor_referral_codes")
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .order("created_at", { ascending: false })
           .limit(1000);
         if (q) {
           const safeQ = q.replace(/,/g, " ");
-          query = query.or(`code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%`);
+          query = query.or(
+            `code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%,tutor_mobile.ilike.%${safeQ}%,tutor_email.ilike.%${safeQ}%`
+          );
         }
         const { data: codes, error: codesErr } = await query;
         if (codesErr) {
@@ -1213,6 +1243,8 @@ export async function POST(req: NextRequest) {
               id: String(row.id ?? ""),
               code: String(row.code ?? ""),
               tutor_name: String(row.tutor_name ?? ""),
+              tutor_mobile: readString(row.tutor_mobile),
+              tutor_email: readString(row.tutor_email),
               usage_limit: Number(row.usage_limit ?? 50),
               current_uses: Number(row.current_uses ?? 0),
               is_active: Boolean(row.is_active),
@@ -1230,7 +1262,7 @@ export async function POST(req: NextRequest) {
 
         const { data: codeRow, error: codeErr } = await referralAdmin
           .from("tutor_referral_codes")
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .eq("code", code)
           .maybeSingle();
         if (codeErr) {
@@ -1295,6 +1327,8 @@ export async function POST(req: NextRequest) {
               id: String(codeRow.id),
               code: String(codeRow.code ?? ""),
               tutor_name: String(codeRow.tutor_name ?? ""),
+              tutor_mobile: readString(codeRow.tutor_mobile),
+              tutor_email: readString(codeRow.tutor_email),
               usage_limit: Number(codeRow.usage_limit ?? 50),
               current_uses: Number(codeRow.current_uses ?? 0),
               is_active: Boolean(codeRow.is_active),

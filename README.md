@@ -73,7 +73,7 @@ Detailed runbooks:
   - **錯誤編號**
   - **編號被限，請負責老師聯絡管理員更新編號。**
 - [ ] Admin console includes **家長學生練習摘要** and **今日新註冊家長摘要**.
-- [ ] Admin console includes **教師編號維護** (create code + usage enquiry + parent paid/free status).
+- [ ] Admin console includes **教師編號維護** (create code + usage enquiry + parent paid/free status), with create form requiring **code + tutor name + tutor mobile** (tutor email optional), and **one tutor mobile can only have one active code**.
 - [ ] Student result page keeps bottom actions:
   - **重新選擇科目**
   - **返回主畫面**

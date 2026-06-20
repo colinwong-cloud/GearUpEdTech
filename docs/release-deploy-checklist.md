@@ -34,7 +34,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Paid-tier CTA copy is updated to include **解鎖無限題目練習**
 - [ ] Registration **性別** is mandatory
 - [ ] Registration optional **負責教師編號** + two inline errors still work
-- [ ] Admin has **教師編號維護** (create/summary/detail with paid/free status)
+- [ ] Admin has **教師編號維護** (create/summary/detail with paid/free status); create requires code + tutor name + tutor mobile, tutor email optional, and one tutor mobile can only have one active code
 - [ ] Admin has **家長學生練習摘要** and **今日新註冊家長摘要**
 - [ ] Admin grade-frequency summary has month + subject selector
 - [ ] Result page has **重新選擇科目** + **返回主畫面**
