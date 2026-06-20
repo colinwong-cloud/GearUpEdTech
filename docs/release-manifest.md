@@ -1,5 +1,15 @@
 # Release Manifest
 
+## In-flight preview candidate (not yet released)
+
+- Date (UTC): 2026-06-20
+- Branch: `cursor/recover-missing-features-2d42`
+- PR URL: https://github.com/colinwong-cloud/GearUpEdTech/pull/92
+- Preview URL: https://quiz-deploy-bix06wl29-colinwong-clouds-projects.vercel.app
+- Preview inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/EUntMgMpqyJAA1ZFnUarLboxS67U
+- Candidate feature: `F-REFERRAL-ADMIN-CONTACT` (tutor mobile/email on referral admin)
+- SQL prerequisite for prod: `supabase_tutor_referral_contact_fields.sql`
+
 ## Release identity
 
 - Release date (UTC): 2026-06-19
