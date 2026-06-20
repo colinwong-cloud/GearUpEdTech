@@ -62,13 +62,13 @@ Reference SOP: `docs/release-sop.md`
 - [x] Feature branch identified (`cursor/recover-missing-features-2d42`)
 - [x] Preview approved in chat
 - [x] Manifest updated with included/deferred scope
-- [x] Feature registry updated for affected referral contact feature
+- [x] Feature registry updated for affected tutor portal feature
 - [x] `npm run lint` passed (existing non-blocking warning only)
 - [x] `npm test` passed
 - [x] `npm run build` passed
 - [x] `npm run release:gate` passed
 - [x] `npm run smoke` not available, fallback smoke used
-- [x] Fallback smoke passed on production (`/` 200, `/admin` 200, `/api/admin/console` 401)
+- [x] Fallback smoke passed on production (`/` 200, `/admin` 200, `/tutor` 200, `/api/admin/console` 401, `/api/tutor/session` 401)
 - [x] Gatekeeper result recorded as PASS
-- [x] Production deploy executed (`dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`)
+- [x] Production deploy executed (`dpl_G76TyVLc7ccYy9wkC4JSMZqfvbRb`)
 - [x] README + SOP/checklist updated

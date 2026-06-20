@@ -111,16 +111,16 @@ After each production deploy:
 ## 10) Latest deployment record
 
 - Date (UTC): 2026-06-20
-- Deployment ID: `dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`
+- Deployment ID: `dpl_G76TyVLc7ccYy9wkC4JSMZqfvbRb`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BpUcdDoH2xE2bwrC1DEuU97YJzEv
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/G76TyVLc7ccYy9wkC4JSMZqfvbRb
 - Scope:
-  - release tutor referral admin contact enhancement (`tutor_mobile` required + `tutor_email` optional)
-  - enforce one active referral code per tutor mobile via DB unique partial index
-  - add migration file `supabase_tutor_referral_contact_fields.sql` and usage snapshot columns
+  - release tutor portal `/tutor` with referral-code login, first-login password change, and 5-attempt temporary lockout
+  - tutor dashboard shows linked「登記手機」list with search and read-only view flow
+  - add migration file `supabase_tutor_portal_auth.sql` (tutor auth table + lockout fields)
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
   - `npm run release:gate` (pass)
-  - fallback smoke checks on production: `/` 200, `/admin` 200, `/api/admin/console` unauthorized 401
+  - fallback smoke checks on production: `/` 200, `/admin` 200, `/tutor` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401

@@ -44,7 +44,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-20** — deployment `dpl_BpUcdDoH2xE2bwrC1DEuU97YJzEv`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BpUcdDoH2xE2bwrC1DEuU97YJzEv). **Release scope:** tutor referral admin contact enhancement (`tutor_mobile` required + `tutor_email` optional) with active mobile uniqueness guard.
+**Latest production deploy:** **2026-06-20** — deployment `dpl_G76TyVLc7ccYy9wkC4JSMZqfvbRb`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/G76TyVLc7ccYy9wkC4JSMZqfvbRb). **Release scope:** tutor portal `/tutor` (referral code login, first-login password change, 5-attempt temporary lockout, read-only linked-mobile practice view).
 
 ## Must-check validation gate (mandatory)
 
@@ -74,6 +74,7 @@ Detailed runbooks:
   - **編號被限，請負責老師聯絡管理員更新編號。**
 - [ ] Admin console includes **家長學生練習摘要** and **今日新註冊家長摘要**.
 - [ ] Admin console includes **教師編號維護** (create code + usage enquiry + parent paid/free status), with create form requiring **code + tutor name + tutor mobile** (tutor email optional), and **one tutor mobile can only have one active code**.
+- [ ] Tutor portal **`/tutor`** works with referral-code login, first-login forced password change, max 5 failed attempts temporary lockout, and read-only linked-mobile practice records.
 - [ ] Student result page keeps bottom actions:
   - **重新選擇科目**
   - **返回主畫面**
@@ -112,6 +113,7 @@ Detailed runbooks:
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **Tutor portal（已上線）**：新增 `https://.../tutor` 導師入口；教師編號登入、首次登入強制改密碼、連續 5 次錯誤暫時鎖定並提示聯絡管理員；主頁以「登記手機」顯示已綁定學生清單並可搜尋；`View` 進入只讀練習記錄頁並可返回主頁。新增 SQL：`supabase_tutor_portal_auth.sql`。 |
 | 2026-06 | **Tutor referral admin contact enhancement（已上線）**：Admin「教師編號維護」新增 `tutor_mobile`（必填）與 `tutor_email`（可選），查詢/摘要/匯出同步顯示；後端新增「一個教師手機只能有一個啟用中的教師編號」限制，並新增 SQL `supabase_tutor_referral_contact_fields.sql`。 |
 | 2026-06 | **Hybrid permanent gatekeeping SOP v2（已啟用）**：建立 `docs/feature-registry.md`（B1 功能台帳 + B2 測試包）、`docs/release-manifest.md`（Included / Deferred / Must-not-break / Gatekeeper PASS）、`docs/release-manifest-template.md`，並新增 `npm run release:gate` + `.github/workflows/release-gate.yml` 作為機械化檢查，永久防止「已開發但未部署」功能被遺漏。 |
 | 2026-06 | **Parent email readability restore（已上線）**：恢復 `/api/send-quiz-email` 的「錯題詳情（家長易讀版）」電郵內容，逐題顯示題目內容、你的答案（含值）、正確答案（含值）、解釋；並把此項加入 README / `docs/release-sop.md` / `docs/release-deploy-checklist.md` 的 must-not-break gate，避免再次遺漏。 |

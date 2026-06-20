@@ -46,7 +46,8 @@ It prevents "built but forgotten" regressions by tracking:
 | F-ADMIN-PARENT-STUDENT-SUMMARY | Admin 家長學生練習摘要 | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-ADMIN-TODAY-PARENT-KPI | Admin 今日新註冊家長摘要 | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
 | F-ADMIN-GRADE-FREQ | Admin grade-level frequency summary (month + subject selector) | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_D3wmAftfzJqjxHfo151fmx2BfVCR | yes | |
-| F-TUTOR-PORTAL | Tutor portal entrance `/tutor` (referral code login + first-login password change + 5-attempt temporary lockout + read-only linked-mobile records) | in_preview | release-critical | cursor/recover-missing-features-2d42 | #92 | not released | yes | Preview: `https://quiz-deploy-ay3n4n95i-colinwong-clouds-projects.vercel.app`; SQL: `supabase_tutor_portal_auth.sql` + `supabase_tutor_referral_contact_fields.sql` |
+| F-TUTOR-PORTAL | Tutor portal entrance `/tutor` (referral code login + first-login password change + 5-attempt temporary lockout + read-only linked-mobile records) | released | release-critical | cursor/recover-missing-features-2d42 | #92 | dpl_G76TyVLc7ccYy9wkC4JSMZqfvbRb | yes | Released to production; run SQL `supabase_tutor_portal_auth.sql` + `supabase_tutor_referral_contact_fields.sql` in Supabase |
+| F-TUTOR-PORTAL-SQL | Tutor portal auth SQL (`supabase_tutor_portal_auth.sql`) | released | normal | cursor/recover-missing-features-2d42 | #92 | dpl_G76TyVLc7ccYy9wkC4JSMZqfvbRb | yes | Creates `tutor_portal_accounts` and lockout-related auth columns/indexes |
 | F-TUTOR-PACKAGE | Tutor package checkout flow | parked | release-critical | cursor/tutor-package-flow-2d42 | n/a | not released | yes | Keep explicitly listed as parked until resumed |
 
 ---
