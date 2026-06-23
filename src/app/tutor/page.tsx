@@ -16,11 +16,27 @@ type TutorStudentRow = {
   last_practice_at: string | null;
 };
 
+type TutorMessageTone = "error" | "warning" | "success" | "info";
+
 function formatDateTime(iso: string | null): string {
   if (!iso) return "-";
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "-";
   return date.toLocaleString("zh-HK");
+}
+
+function resolveMessageTone(message: string): TutorMessageTone {
+  if (!message) return "info";
+  if (/(已更新|歡迎|成功)/.test(message)) return "success";
+  if (/(鎖定|聯絡管理員|暫停|停用)/.test(message)) return "warning";
+  return "error";
+}
+
+function messageClassByTone(tone: TutorMessageTone): string {
+  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (tone === "error") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 export default function TutorPortalPage() {
@@ -194,6 +210,8 @@ export default function TutorPortalPage() {
   };
 
   const filteredRows = useMemo(() => rows, [rows]);
+  const messageTone = useMemo(() => resolveMessageTone(msg), [msg]);
+  const messageClass = useMemo(() => messageClassByTone(messageTone), [messageTone]);
 
   if (booting) {
     return (
@@ -205,40 +223,77 @@ export default function TutorPortalPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-          <h1 className="text-xl font-bold text-gray-800">導師入口</h1>
-          <p className="text-sm text-gray-500">
-            使用教師編號登入（首次密碼為 123456，首次登入後必須修改密碼）。
-          </p>
-          {msg && <p className="text-sm text-red-500">{msg}</p>}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">教師編號（6位數字）</label>
-            <input
-              value={loginCode}
-              onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              maxLength={6}
-              placeholder="例如 123456"
-              className="w-full rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">密碼</label>
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              placeholder="輸入密碼"
-              className="w-full rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
-            />
-          </div>
-          <button
-            onClick={handleLogin}
-            disabled={loginLoading}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loginLoading ? "登入中..." : "登入"}
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50 px-4 py-8 sm:py-12">
+        <div className="mx-auto grid w-full max-w-5xl gap-5 md:grid-cols-2">
+          <section className="hidden rounded-3xl border border-indigo-100/60 bg-white/80 p-7 shadow-sm backdrop-blur md:flex md:flex-col md:justify-between">
+            <div className="space-y-4">
+              <p className="inline-flex rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                GearUp 導師平台
+              </p>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">導師學生學習追蹤中心</h1>
+                <p className="text-sm leading-6 text-slate-600">
+                  查看已綁定學生的練習紀錄與表現，快速跟進學習狀況。僅限有效教師編號登入使用。
+                </p>
+              </div>
+            </div>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li className="rounded-xl border border-slate-100 bg-white px-3 py-2">一個教師編號管理其已綁定學生名單</li>
+              <li className="rounded-xl border border-slate-100 bg-white px-3 py-2">登入失敗達上限時，系統會暫時鎖定帳戶</li>
+              <li className="rounded-xl border border-slate-100 bg-white px-3 py-2">首次登入後必須更新密碼，強化帳戶安全</li>
+            </ul>
+          </section>
+
+          <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-indigo-100/40 sm:p-7">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Tutor Login</p>
+              <h2 className="text-2xl font-bold text-slate-900">導師入口</h2>
+              <p className="text-sm text-slate-600">
+                使用教師編號登入（首次密碼為 123456，首次登入後必須修改密碼）。
+              </p>
+            </div>
+
+            {msg && (
+              <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${messageClass}`}>
+                {msg}
+              </p>
+            )}
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">教師編號（6位數字）</label>
+                <input
+                  value={loginCode}
+                  onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  maxLength={6}
+                  placeholder="例如 123456"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600">密碼</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="輸入密碼"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loginLoading}
+              className="mt-5 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {loginLoading ? "登入中..." : "登入"}
+            </button>
+
+            <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              忘記密碼或帳戶被鎖？請聯絡管理員重設密碼。
+            </div>
+          </section>
         </div>
       </div>
     );
@@ -246,48 +301,60 @@ export default function TutorPortalPage() {
 
   if (mustChangePassword) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-          <h1 className="text-xl font-bold text-gray-800">首次登入請更新密碼</h1>
-          <p className="text-sm text-gray-500">為保障帳戶安全，請先更新密碼後才可查看學生練習記錄。</p>
-          {msg && <p className="text-sm text-red-500">{msg}</p>}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">目前密碼</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
-            />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-sky-50 px-4 py-8 sm:py-12">
+        <div className="mx-auto w-full max-w-xl rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-indigo-100/40 sm:p-7">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Security Update</p>
+            <h1 className="text-2xl font-bold text-slate-900">首次登入請更新密碼</h1>
+            <p className="text-sm text-slate-600">為保障帳戶安全，請先更新密碼後才可查看學生練習記錄。</p>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">新密碼</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
-            />
+
+          {msg && (
+            <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${messageClass}`}>
+              {msg}
+            </p>
+          )}
+
+          <div className="mt-5 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">目前密碼</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">新密碼</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">確認新密碼</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">確認新密碼</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
-            />
-          </div>
+
           <button
             onClick={handleChangePassword}
             disabled={changeLoading}
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="mt-5 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
           >
             {changeLoading ? "更新中..." : "更新密碼"}
           </button>
           <button
             onClick={handleLogout}
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
           >
             登出
           </button>
