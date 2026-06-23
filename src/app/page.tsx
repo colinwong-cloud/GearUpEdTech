@@ -40,6 +40,10 @@ import {
   groupBalanceTransactions,
   type GroupedBalanceTransactionRow,
 } from "@/lib/balance-transactions";
+import {
+  getLoginBackgroundImageUrl,
+  getLoginHeroLogoUrl,
+} from "@/lib/login-marketing-assets";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
@@ -1634,6 +1638,69 @@ function LoginMobileScreen({
     }),
     [shareTitle, shareDescription, shareImageUrl, whatsappShareUrl, wechatShareUrl]
   );
+  const heroLogoUrl = useMemo(() => getLoginHeroLogoUrl(), []);
+  const heroBackdropUrl = useMemo(() => getLoginBackgroundImageUrl(), []);
+  const valueProps = useMemo(
+    () => [
+      {
+        eyebrow: "AI learning",
+        title: "AI 精準補漏",
+        description: "依照學生表現安排練習，讓每次登入都更有方向。",
+      },
+      {
+        eyebrow: "Local curriculum",
+        title: "貼合香港課程",
+        description: "中、英、數三科同步學校進度，減少家長重新篩選資源的時間。",
+      },
+      {
+        eyebrow: "Actionable insights",
+        title: "家長即時掌握進度",
+        description: "登入後即可查看練習表現、完成趨勢與後續提升空間。",
+      },
+    ],
+    []
+  );
+  const proofPoints = useMemo(
+    () => [
+      { value: "3", label: "核心科目整合" },
+      { value: "AI", label: "即時批改回饋" },
+      { value: "24/7", label: "隨時登入練習" },
+    ],
+    []
+  );
+  const quickSteps = useMemo(
+    () => [
+      { step: "01", title: "輸入電話號碼", description: "使用已登記的電話號碼快速登入。", accent: "bg-indigo-500" },
+      { step: "02", title: "輸入 6 位密碼", description: "支援英文字母或數字組合，登入更直接。", accent: "bg-cyan-500" },
+      { step: "03", title: "開始使用平台", description: "學生可做練習，家長可查看報告與帳戶資料。", accent: "bg-emerald-500" },
+    ],
+    []
+  );
+  const faqItems = useMemo(
+    () => [
+      {
+        question: "平台涵蓋哪些年級和科目？",
+        answer:
+          "平台主要為香港小學 P1 至 P6 設計，覆蓋中文、英文及數學三科，方便家庭用同一個入口管理學習。",
+      },
+      {
+        question: "相比其他平台，有什麼不同？",
+        answer:
+          "除了練習題外，平台也提供家長報告與 AI 補漏建議，讓登入後不只是做題，而是能快速看到表現方向。",
+      },
+      {
+        question: "收費模式是怎樣？",
+        answer:
+          "免費用戶可先體驗平台；月費會員則可解鎖更完整的練習與排名資訊，現時月費為每月 HK$99。",
+      },
+      {
+        question: "是否設有自動批改功能？",
+        answer:
+          "是。學生提交後會獲得即時回饋與解說，幫助家長與學生更快知道下一步要集中練習什麼。",
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
     if (!isWeChatUa || !wechatSdkLoaded || typeof window === "undefined") return;
@@ -1787,7 +1854,7 @@ function LoginMobileScreen({
 
   return (
     <div
-      className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
+      className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-slate-900"
       onContextMenu={preventContextMenu}
     >
       {isWeChatUa && (
@@ -1799,238 +1866,357 @@ function LoginMobileScreen({
           onError={() => setWechatSdkLoaded(false)}
         />
       )}
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-28">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/question-images/Banana%20images/GearUplogo.png`}
-              alt="GearUp Quiz"
-              className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
-              draggable={false}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.35),_transparent_32%),radial-gradient(circle_at_85%_15%,_rgba(56,189,248,0.28),_transparent_24%),radial-gradient(circle_at_50%_100%,_rgba(16,185,129,0.22),_transparent_30%),linear-gradient(180deg,#020617_0%,#0f172a_50%,#111827_100%)]"
+      />
+      {heroBackdropUrl && (
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-cover bg-center opacity-10 mix-blend-screen"
+          style={{ backgroundImage: `url("${heroBackdropUrl}")` }}
+        />
+      )}
+      <div aria-hidden className="absolute inset-0 bg-slate-950/20" />
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-1 flex-col justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,1.15fr)_430px] lg:gap-8">
+          <section className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-white/10 p-6 text-white shadow-[0_32px_120px_-48px_rgba(15,23,42,0.95)] backdrop-blur-2xl sm:p-8 lg:p-10">
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05)_45%,transparent_75%)]"
             />
-            <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
-              GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
-            </p>
-            <p className="mt-2 text-[15px] text-gray-600 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
-              請輸入電話號碼及密碼登入
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                電話號碼
-              </label>
-              <input
-                type="tel"
-                autoComplete="username"
-                value={mobileNumber}
-                onChange={(e) => {
-                  setMobileNumber(e.target.value);
-                  if (error) setError(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
-                placeholder="例如：91234567"
-                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
-              />
+            <div className="relative">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.28em] text-indigo-100/90">
+                  Contemporary login concept
+                </span>
+                <span className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                  Login, support, and value message in one view
+                </span>
+              </div>
+              <div className="mt-6 max-w-3xl">
+                {heroLogoUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={heroLogoUrl}
+                      alt="GearUp Quiz"
+                      className="h-14 w-auto sm:h-16"
+                      draggable={false}
+                    />
+                  </>
+                ) : (
+                  <p className="text-xl font-semibold tracking-tight text-white">GearUp Quiz</p>
+                )}
+                <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                  讓登入頁更像一個清晰、可信、現代的學習入口
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+                  我把畫面重整為「品牌價值 + 登入卡」的雙欄結構，減少舊版把文案、FAQ、分享與表單全部堆在同一條窄欄中的壓迫感，讓家長或導師一進頁就知道平台是什麼、如何登入，以及登入後能得到什麼。
+                </p>
+              </div>
+
+              <div className="mt-8 grid gap-3 md:grid-cols-3">
+                {valueProps.map((item) => (
+                  <div
+                    key={item.title}
+                    className="rounded-3xl border border-white/10 bg-white/8 p-4 shadow-lg shadow-slate-950/20"
+                  >
+                    <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-indigo-100/80">
+                      {item.eyebrow}
+                    </p>
+                    <h2 className="mt-3 text-lg font-semibold text-white">{item.title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-200/90">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                {proofPoints.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-white/10 bg-slate-950/20 px-4 py-4"
+                  >
+                    <p className="text-2xl font-semibold tracking-tight text-white">{item.value}</p>
+                    <p className="mt-1 text-sm text-slate-300">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+                <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">3-step login journey</p>
+                      <p className="mt-1 text-sm text-slate-300">
+                        用更簡短的節奏說明，讓使用者不用閱讀大量段落也知道下一步。
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-slate-200">
+                      Above the fold
+                    </span>
+                  </div>
+                  <div className="mt-5 space-y-3">
+                    {quickSteps.map((item) => (
+                      <div
+                        key={item.step}
+                        className="flex gap-4 rounded-2xl border border-white/10 bg-white/6 px-4 py-3"
+                      >
+                        <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold text-white ${item.accent}`}>
+                          {item.step}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.title}</p>
+                          <p className="mt-1 text-sm leading-6 text-slate-300">{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.75rem] border border-white/10 bg-white/8 p-5">
+                  <p className="text-sm font-semibold text-white">分享增分寶給其他家長</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    分享入口保留，但被整理成獨立小卡，不再與登入表單混在一起爭搶注意力。
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-400"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={WHATSAPP_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
+                      WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShareWeChat}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-green-500"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={WECHAT_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
+                      WeChat
+                    </button>
+                  </div>
+                  {shareNotice && (
+                    <p className="mt-4 rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3 text-sm leading-6 text-slate-200">
+                      {shareNotice}
+                    </p>
+                  )}
+                  <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm leading-6 text-amber-50">
+                    有問題或意見？歡迎電郵至{" "}
+                    <a
+                      href="mailto:cs@hkedutech.com"
+                      className="font-semibold text-white underline decoration-amber-200/60 underline-offset-2"
+                    >
+                      cs@hkedutech.com
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                密碼
-              </label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => {
-                  setPin(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
-                  if (error) setError(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
-                placeholder="6 位英文或數字密碼"
-                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
-              />
-              {pin.length > 0 && !pinValid && (
-                <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
-              )}
-            </div>
-            {error && (
-              <p className="text-sm text-red-500 font-medium">{error}</p>
-            )}
-            <button
-              onClick={onSubmit}
-              disabled={!canLogin}
-              className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-                canLogin
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              登入
-            </button>
-            <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
+          </section>
+
+          <section className="relative">
+            <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-white/95 shadow-[0_32px_90px_-42px_rgba(15,23,42,0.95)] backdrop-blur-xl">
+              <div className="bg-slate-900 px-6 py-5 text-white sm:px-7">
+                <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-indigo-200">
+                  Secure sign in
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight">登入 GearUp 平台</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  使用電話號碼及 6 位英文字母或數字密碼登入。整個表單維持熟悉流程，只更新為更清楚的視覺階層。
+                </p>
+              </div>
+
+              <div className="space-y-6 p-6 sm:p-7">
+                {error && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-5">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <label className="text-sm font-semibold text-slate-800">電話號碼</label>
+                      <span className="text-xs text-slate-500">8 位數字</span>
+                    </div>
+                    <input
+                      type="tel"
+                      autoComplete="username"
+                      value={mobileNumber}
+                      onChange={(e) => {
+                        setMobileNumber(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
+                      placeholder="例如：91234567"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <label className="text-sm font-semibold text-slate-800">密碼</label>
+                      <button
+                        onClick={onForgotPassword}
+                        className="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+                      >
+                        忘記密碼？
+                      </button>
+                    </div>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      maxLength={6}
+                      value={pin}
+                      onChange={(e) => {
+                        setPin(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
+                        if (error) setError(null);
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
+                      placeholder="6 位英文或數字密碼"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    />
+                    {pin.length > 0 && !pinValid && (
+                      <p className="mt-2 text-xs text-rose-500">請輸入 6 位英文字母或數字</p>
+                    )}
+                  </div>
+                </div>
+
                 <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
+                  onClick={onSubmit}
+                  disabled={!canLogin}
+                  className={`w-full rounded-2xl px-4 py-3.5 text-base font-semibold transition-all duration-200 ${
+                    canLogin
+                      ? "bg-slate-950 text-white shadow-lg shadow-slate-950/20 hover:-translate-y-0.5 hover:bg-slate-800"
+                      : "cursor-not-allowed bg-slate-200 text-slate-400"
+                  }`}
                 >
-                  新用戶註冊
+                  登入
                 </button>
-              </p>
-              <button
-                onClick={onForgotPassword}
-                className="text-xs text-indigo-500 hover:text-indigo-700"
-              >
-                忘記密碼？
-              </button>
-            </div>
-          </div>
-          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
-            有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
-              cs@hkedutech.com
-            </a>
-          </div>
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
-            <p className="text-sm font-semibold text-gray-800">分享增分寶給其他家長</p>
-            <p className="mt-1 text-xs text-gray-500">
-              一鍵分享到 WhatsApp 或 WeChat，讓朋友輕鬆開始使用。
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={handleShareWhatsApp}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={WHATSAPP_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
-                WhatsApp
-              </button>
-              <button
-                type="button"
-                onClick={handleShareWeChat}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={WECHAT_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
-                WeChat
-              </button>
-            </div>
-            {shareNotice && (
-              <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
-                {shareNotice}
-              </p>
-            )}
-          </div>
-          {showWechatOverlay && (
-            <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 pt-16">
-              <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-200 text-center">
-                <p className="text-base font-semibold text-gray-900">準備前往 WeChat</p>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  我們會帶你前往 WeChat，請在對話框貼上連結分享。
-                </p>
-                <button
-                  type="button"
-                  onClick={handleProceedWechatShare}
-                  className="mt-4 w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
-                >
-                  關閉並前往 WeChat
-                </button>
+
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-sm font-semibold text-indigo-700">
+                      New
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">還沒有帳戶？</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        新用戶可以先完成註冊，再回來使用同一個登入入口管理練習與報告。
+                      </p>
+                      <button
+                        onClick={onRegister}
+                        className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-100 transition-colors hover:bg-indigo-50"
+                      >
+                        新用戶註冊
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">設計建議重點</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                    <li>1. 主視覺與表單分欄，讓登入動作更聚焦。</li>
+                    <li>2. 精簡上方文案，改用短句與亮點卡片取代大段文字。</li>
+                    <li>3. FAQ 改到下方可展開區塊，保持首屏乾淨。</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          )}
-          <div
-            className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
-            style={{ fontFamily: "var(--font-baloo2), var(--font-noto-sans-tc), system-ui, sans-serif" }}
-          >
-            <section className="space-y-3">
-              <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
-                平台簡介
-              </div>
-              <p className="text-sm leading-7 text-gray-700">
-                增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI
-                個人化學習與香港本地課程掛鉤的平台。
-              </p>
-              <ul className="space-y-3 text-sm leading-7 text-gray-700">
-                <li className="rounded-2xl border border-amber-100 bg-white/80 px-3 py-2">
-                  <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
-                  不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
-                </li>
-                <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
-                  <span className="font-semibold text-gray-900">AI 智能精準補漏，提升學習效率：</span>
-                  利用 AI
-                  演算法追蹤學生的薄弱環節，並提供即時自動批改與詳細解說，幫助孩子從錯誤中學習，確保每分鐘的練習都能發揮最大效用。
-                </li>
-                <li className="rounded-2xl border border-violet-100 bg-white/80 px-3 py-2">
-                  <span className="font-semibold text-gray-900">100% 貼合香港教育局課程：</span>
-                  內容完全根據香港教育局（EDB）課程指引編寫，涵蓋中、英、數三科核心學科，確保學習內容與學校進度同步，直接有效提升校內成績。
-                </li>
-              </ul>
-            </section>
-
-            <hr className="border-amber-200" />
-
-            <section className="space-y-4">
-              <div className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">
-                常見問題（FAQ）
-              </div>
-
-              <div className="space-y-1 rounded-2xl border border-sky-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">1. 平台涵蓋哪些年級和科目？</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  平台專為香港小學 P1 至 P6 學生設計。核心科目包括中文、英文及數學，全方位照顧小學階段的學術需求。
-                </p>
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-violet-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">2. 相比其他平台，你們的優勢在哪裡？</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  目前的競爭對手主要集中於線上練習，家長未能掌握學生學習強弱，以致與同級其他同學的成績差異。
-                </p>
-                <p className="text-sm leading-7 text-gray-700">我們的優勢在於：</p>
-                <ol className="list-decimal space-y-2 pl-5 text-sm leading-7 text-gray-700">
-                  <li>既有 AI 驅動的每日練習，且在中文、英文及數學三科捆綁訂閱上的價格更具競爭力。</li>
-                  <li>平台有詳細的家長報告，讓您充分掌握學生與其他同級學生的練習成績差異，讓您知己知彼。</li>
-                  <li>每月免費 200 題不同科目練習。</li>
-                </ol>
-              </div>
-
-              <div className="space-y-1 rounded-2xl border border-amber-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">3. 家長如何了解孩子的學習進度？</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  平台設有專為家長設計的進度報告與數據儀表板。您可以即時查看孩子的正確率、完成進度以及 AI
-                  分析出的強項與弱項，隨時隨地掌握學習情況。
-                </p>
-              </div>
-
-              <div className="space-y-1 rounded-2xl border border-emerald-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">4. 平台的收費模式是怎樣的？</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  我們提供超靈活的月費計劃，無需長期綁約，讓您可以根據孩子的學習進度隨時開始或暫停，給予家長最輕鬆、無壓力的學習彈性。每月
-                  $99 港幣即可享用中、英、數三科全開的專業版無限題練習。月費會員更可將學生成績與全港或按各區學生成績作比較，得知與其他學生的練習成績差異。
-                </p>
-              </div>
-
-              <div className="space-y-1 rounded-2xl border border-rose-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">5. 練習內容是否設有自動批改功能？</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  是的。平台提供即時自動批改系統，學生提交答案後會立即獲得回饋與解釋。這不僅能減輕家長對稿的時間負擔，也能讓學生在記憶最清晰時糾正錯誤概念。
-                </p>
-              </div>
-            </section>
-          </div>
+          </section>
         </div>
-      </div>
-      <footer
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-10 border-t border-gray-200/70 bg-white/55 py-3 text-center backdrop-blur-sm sm:py-3.5"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-      >
-        <p className="pointer-events-auto text-[11px] text-gray-500/90 sm:text-xs">
+
+        <section className="relative mt-6 rounded-[2rem] border border-white/12 bg-white/95 p-6 shadow-[0_28px_80px_-48px_rgba(15,23,42,0.95)] backdrop-blur-xl sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <div>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-600">
+                Why this direction works
+              </span>
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+                把舊版內容保留下來，但換成更符合 2026 年 SaaS / learning portal 的展示方式
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
+                核心策略不是改變功能，而是重整信息順序：先讓人建立信任，再完成登入，最後在下方補足平台介紹與 FAQ。這樣既能保留原本重要資訊，也能提升首頁的現代感與可讀性。
+              </p>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">視覺語言</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    以深色漸層與玻璃卡面取代舊版白底長頁，感覺更精緻。
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">內容密度</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    把長文拆成卡片、步驟與 FAQ，降低閱讀阻力。
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">轉換焦點</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    首屏只保留一個主要 CTA：登入，其餘動作變成輔助層級。
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">常見問題（FAQ）</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    用可展開形式取代一整排長段落，畫面更輕巧。
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs text-slate-500 ring-1 ring-slate-200">
+                  Collapsible
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {faqItems.map((item) => (
+                  <details
+                    key={item.question}
+                    className="group rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-slate-900">
+                      <span>{item.question}</span>
+                      <span className="text-slate-400 transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {showWechatOverlay && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/60 px-4 pt-16 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-[1.75rem] border border-slate-200 bg-white p-5 text-center shadow-2xl">
+              <p className="text-base font-semibold text-slate-900">準備前往 WeChat</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                我們會帶你前往 WeChat，請在對話框貼上連結分享。
+              </p>
+              <button
+                type="button"
+                onClick={handleProceedWechatShare}
+                className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+              >
+                關閉並前往 WeChat
+              </button>
+            </div>
+          </div>
+        )}
+
+        <footer className="pt-6 text-center text-[11px] text-slate-400 sm:text-xs">
           © 2026 GearUp EduTech Limited
-        </p>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -4028,109 +4214,159 @@ function RoleSelectScreen({
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="relative min-h-screen overflow-hidden bg-slate-950"
       onContextMenu={preventContextMenu}
     >
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">選擇身份</h1>
-          <p className="mt-2 text-gray-500">請選擇登入身份</p>
-          <div className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-            tierStatus.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
-          }`}>
-            {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
-          </div>
-        </div>
-        {!tierStatus.is_paid && (
-          <button
-            onClick={onUpgrade}
-            className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
-          >
-            成為月費會員(每月$99)，即可以獲得學生排名資訊。
-          </button>
-        )}
-        <div className="space-y-3">
-          <button
-            onClick={onStudent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
-          >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xl">
-              📝
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.32),_transparent_30%),radial-gradient(circle_at_85%_15%,_rgba(16,185,129,0.2),_transparent_26%),linear-gradient(180deg,#020617_0%,#0f172a_55%,#111827_100%)]"
+      />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-8 sm:px-6">
+        <div className="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:gap-8">
+          <section className="rounded-[2rem] border border-white/12 bg-white/10 p-6 text-white shadow-[0_28px_90px_-50px_rgba(15,23,42,0.95)] backdrop-blur-2xl sm:p-8">
+            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-indigo-100/90">
+              Next step after login
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              選擇你現在要進入的平台功能
+            </h1>
+            <p className="mt-4 text-sm leading-7 text-slate-200 sm:text-base">
+              我把身份選擇頁也一併換成與登入頁一致的視覺語言：更清楚的階層、更強的卡片焦點，以及更明顯的月費狀態提示。
+            </p>
+
+            <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-slate-950/20 p-5">
+              <p className="text-sm font-semibold text-white">目前帳戶狀態</p>
+              <div
+                className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                  tierStatus.is_paid
+                    ? "bg-emerald-400/15 text-emerald-100"
+                    : "bg-white/10 text-slate-200"
+                }`}
+              >
+                {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {tierStatus.is_paid
+                  ? "已可使用更完整的數據與支援服務。"
+                  : "升級後可查看更完整的學生排名與進階分析資料。"}
+              </p>
             </div>
-            <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">學生</p>
-              <p className="text-sm text-gray-500">開始練習</p>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
+                <p className="text-sm font-semibold text-white">學生入口</p>
+                <p className="mt-1 text-sm leading-6 text-slate-300">
+                  直接開始中、英、數練習，讓登入後的下一步更明確。
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
+                <p className="text-sm font-semibold text-white">家長入口</p>
+                <p className="mt-1 text-sm leading-6 text-slate-300">
+                  查看練習報告、趨勢表現與同級比較資訊。
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
+                <p className="text-sm font-semibold text-white">戶口管理</p>
+                <p className="mt-1 text-sm leading-6 text-slate-300">
+                  管理題目餘額、個人資料與其他帳戶設定。
+                </p>
+              </div>
             </div>
-          </button>
-          <button
-            onClick={onParent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
-          >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
-              📊
-            </div>
-            <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">家長</p>
-              <p className="text-sm text-gray-500">查看練習報告</p>
-            </div>
-          </button>
-          <button
-            onClick={onAccount}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
-          >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
-              ⚙️
-            </div>
-            <div className="text-left">
-              <p className="text-base font-semibold text-gray-900">戶口管理</p>
-              <p className="text-sm text-gray-500">題目餘額及管理戶口資料</p>
-            </div>
-          </button>
-          {tierStatus.is_paid && (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
-            >
-              <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  aria-hidden="true"
-                  focusable="false"
+          </section>
+
+          <section className="rounded-[2rem] border border-white/12 bg-white/95 p-5 shadow-[0_28px_90px_-50px_rgba(15,23,42,0.95)] backdrop-blur-xl sm:p-6">
+            {!tierStatus.is_paid && (
+              <button
+                onClick={onUpgrade}
+                className="mb-4 w-full rounded-[1.5rem] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-cyan-50 px-4 py-4 text-left transition hover:border-indigo-300 hover:from-indigo-100 hover:to-cyan-100"
+              >
+                <p className="text-sm font-semibold text-slate-900">升級月費會員</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  每月 $99，即可獲得學生排名資訊與更完整的家長報告。
+                </p>
+              </button>
+            )}
+
+            <div className="space-y-3">
+              <button
+                onClick={onStudent}
+                className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-sm font-semibold text-indigo-700">
+                  ST
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">學生</p>
+                  <p className="mt-1 text-sm text-slate-500">開始練習</p>
+                </div>
+                <span className="text-slate-300 transition-transform group-hover:translate-x-1">-&gt;</span>
+              </button>
+
+              <button
+                onClick={onParent}
+                className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-sm font-semibold text-emerald-700">
+                  PA
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">家長</p>
+                  <p className="mt-1 text-sm text-slate-500">查看練習報告</p>
+                </div>
+                <span className="text-slate-300 transition-transform group-hover:translate-x-1">-&gt;</span>
+              </button>
+
+              <button
+                onClick={onAccount}
+                className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-sm font-semibold text-amber-700">
+                  AC
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">戶口管理</p>
+                  <p className="mt-1 text-sm text-slate-500">題目餘額及管理戶口資料</p>
+                </div>
+                <span className="text-slate-300 transition-transform group-hover:translate-x-1">-&gt;</span>
+              </button>
+
+              {tierStatus.is_paid ? (
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-slate-200 bg-white px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-green-300 hover:shadow-lg"
                 >
-                  <path
-                    fill="currentColor"
-                    d="M20.52 3.48A11.82 11.82 0 0 0 12.12 0C5.54 0 .18 5.36.18 11.94c0 2.1.55 4.15 1.6 5.97L0 24l6.28-1.65a11.9 11.9 0 0 0 5.84 1.5h.01c6.58 0 11.94-5.36 11.94-11.94 0-3.2-1.25-6.2-3.55-8.43ZM12.13 21.8h-.01a9.86 9.86 0 0 1-5.03-1.38l-.36-.22-3.72.98 1-3.62-.24-.37a9.82 9.82 0 0 1-1.5-5.25c0-5.44 4.42-9.86 9.87-9.86 2.64 0 5.12 1.03 6.98 2.9a9.8 9.8 0 0 1 2.9 6.97c0 5.44-4.43 9.85-9.88 9.85Zm5.4-7.35c-.3-.15-1.8-.89-2.08-.99-.28-.1-.49-.15-.69.15-.2.3-.79.99-.96 1.2-.18.2-.36.23-.67.08-.3-.15-1.29-.47-2.46-1.5-.91-.8-1.52-1.8-1.7-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.34.45-.5.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.69-1.67-.95-2.29-.25-.6-.5-.52-.69-.53h-.59c-.2 0-.53.08-.8.38-.28.3-1.06 1.03-1.06 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.13 4.54.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.8-.74 2.05-1.45.26-.72.26-1.33.18-1.45-.07-.13-.28-.2-.58-.35Z"
-                  />
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-base font-semibold text-gray-900">客戶服務</p>
-                <p className="text-sm text-gray-500">WhatsApp 即時查詢</p>
-              </div>
-            </a>
-          )}
-        </div>
-        {!tierStatus.is_paid && (
-          <p className="mt-4 text-center text-sm text-gray-500">
-            有問題或意見? 歡迎電郵至{" "}
-            <a
-              href="mailto:cs@hkedutech.com"
-              className="font-semibold text-indigo-600 hover:text-indigo-700"
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-sm font-semibold text-green-700">
+                    CS
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold text-slate-900">客戶服務</p>
+                    <p className="mt-1 text-sm text-slate-500">WhatsApp 即時查詢</p>
+                  </div>
+                  <span className="text-slate-300 transition-transform group-hover:translate-x-1">-&gt;</span>
+                </a>
+              ) : (
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+                  有問題或意見？歡迎電郵至{" "}
+                  <a
+                    href="mailto:cs@hkedutech.com"
+                    className="font-semibold text-indigo-600 hover:text-indigo-700"
+                  >
+                    cs@hkedutech.com
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onBack}
+              className="mt-5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
             >
-              cs@hkedutech.com
-            </a>
-          </p>
-        )}
-        <button
-          onClick={onBack}
-          className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
-        >
-          返回
-        </button>
+              返回
+            </button>
+          </section>
+        </div>
       </div>
     </div>
   );
