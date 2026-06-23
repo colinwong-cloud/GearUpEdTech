@@ -2271,6 +2271,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
   const [resetLoading, setResetLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
 
   const [createCode, setCreateCode] = useState("");
   const [createTutorName, setCreateTutorName] = useState("");
@@ -2429,25 +2430,26 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
 
   const handleResetPassword = async () => {
     const code = normalizeReferralCodeInput(resetCode);
+    setResetMsg("");
     if (!/^\d{6}$/.test(code)) {
-      setMsg("請輸入 6 位數字教師編號以重設密碼");
+      setResetMsg("請輸入 6 位數字教師編號以重設密碼");
       return;
     }
     if (!window.confirm(`確認重設教師編號 ${code} 的密碼為 123456？`)) {
       return;
     }
     setResetLoading(true);
-    setMsg("");
+    setResetMsg("");
     try {
       const result = await adminConsoleRequest<{
         code: string;
         tutor_name: string;
         message: string;
       }>("tutor_referral_password_reset", { code }, sessionToken);
-      setMsg(result.message || "已重設為預設密碼 123456，下次登入需先更新密碼。");
+      setResetMsg(result.message || "已重設此教師編號密碼為 123456，下次登入需先更新密碼。");
       setResetCode("");
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "重設教師密碼失敗");
+      setResetMsg(err instanceof Error ? err.message : "重設教師密碼失敗");
     } finally {
       setResetLoading(false);
     }
@@ -2690,6 +2692,17 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
             {resetLoading ? "重設中..." : "重設為 123456"}
           </button>
         </div>
+        {resetMsg && (
+          <p
+            className={`text-sm ${
+              resetMsg.includes("失敗") || resetMsg.includes("錯誤")
+                ? "text-red-500"
+                : "text-emerald-600"
+            }`}
+          >
+            {resetMsg}
+          </p>
+        )}
       </div>
     </div>
   );

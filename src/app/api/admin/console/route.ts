@@ -1371,9 +1371,7 @@ export async function POST(req: NextRequest) {
               is_active: result.isActiveCode,
               reset_password: "123456",
               must_change_password: true,
-              message: result.isActiveCode
-                ? "已重設為預設密碼 123456，下次登入需先更新密碼。"
-                : "已重設為預設密碼 123456（此教師編號目前未啟用，下次啟用後登入仍需先更新密碼）。",
+              message: "已重設此教師編號密碼為 123456，下次登入需先更新密碼。",
             },
           });
         } catch (error) {
