@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-17** — deployment `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/BLrenEY5hxJWnbMWutJRPFn1FGkw). **Release scope:** 家長免費升級月費按鈕文案更新（強調無限題目練習 + 學生排名資訊）。
+**Latest production deploy:** **2026-06-23** — deployment `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z). **Release scope:** Admin「教師編號維護」新增 Part 3 密碼重設（重設為 `123456`、清除鎖定、強制下次登入改密碼），並把成功提示訊息顯示於 Part 3 區塊底部。
 
 ## Release SOP / checklist (mandatory)
 
@@ -333,6 +333,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **導師登入密碼重設（Admin 教師編號維護 Part 3）上線**：Admin 可輸入教師編號重設密碼為 `123456`；重設時同時清除 5 次錯誤鎖定（`failed_attempts=0`, `locked_until=null`）並設為首次登入需改密碼（`must_change_password=true`）。成功訊息顯示於 Part 3 區塊底部。 |
 | 2026-06 | **家長免費升級月費按鈕文案更新（UI only）**：將文案更新為「成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。」；無 API/SQL/邏輯變更。 |
 | 2026-06 | **註冊推薦碼 + Admin 教師編號維護上線**：註冊頁新增可選 `負責教師編號`（6 位數字）並強制錯碼/超限驗證；錯誤提示改為顯示在推薦碼欄位下方且保留已填內容。Admin 新增 `教師編號維護`（手動新增、摘要查詢、明細查詢、CSV/PDF 匯出），明細含家長付費狀態（free/paid）。同步新增 SQL：`supabase_tutor_referral_codes.sql`。 |
 | 2026-06 | **結果頁錯題解析（學生可讀性升級）**：錯題改為逐題卡片格式，明確顯示「題目內容」「你的答案（值）」「正確答案（值）」「解釋」，幫助學生更快理解錯誤原因。 |
@@ -557,6 +558,32 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `POST /api/admin/console` (no auth)=401
     - `POST /api/admin/business-today` (no auth)=401
     - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-06-23 (tutor password reset rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. Admin `教師編號維護` 新增 **Part 3：重設導師登入密碼**。
+  2. Admin 輸入教師編號後可重設密碼為 `123456`。
+  3. 重設時會同步清除鎖定狀態（`failed_attempts=0`、`locked_until=null`）。
+  4. 下次登入導師入口仍需先更新密碼（`must_change_password=true`）。
+  5. 成功訊息固定顯示於 **Part 3 區塊底部**：
+     `已重設此教師編號密碼為 123456，下次登入需先更新密碼。`
+
+- 本次部署資訊：
+  - deployment: `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm test` ✅
+  - `npm run build` ✅
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
 
 ## Setup
 

@@ -62,3 +62,19 @@ After production deploy, update:
 - `README.md` latest deployment metadata
 - changelog entry
 - handover note with gate evidence and smoke outcomes
+
+## 6) Latest deployment record
+
+- Date (UTC): 2026-06-23
+- Deployment ID: `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+- Production URL: https://q.hkedutech.com
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z
+- Scope:
+  - Admin `教師編號維護` Part 3 add tutor password reset by code
+  - reset sets password to `123456`, clears lockout state, and enforces first-login password change
+  - reset success message rendered in Part 3 section bottom
+- Validation:
+  - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
+  - `npm test` (pass)
+  - `npm run build` (pass)
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401
