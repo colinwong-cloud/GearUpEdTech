@@ -11,13 +11,23 @@ import {
   isValidMonthKey,
 } from "@/lib/admin-paid-summary";
 import {
+  buildGradeLevelPracticeFrequencyRows,
   buildStudentPracticeSummaryRows,
+  type RawGradePracticeSessionRow,
   type RawPracticeSessionRow,
 } from "@/lib/admin-student-practice-summary";
+import {
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
+  PRIMARY_QUIZ_SUBJECT,
+} from "@/lib/quiz-subjects";
+import { resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
 
 type AdminAction =
   | "search_parent"
   | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -33,6 +43,7 @@ type AdminAction =
   | "tutor_referral_code_create"
   | "tutor_referral_code_summary"
   | "tutor_referral_code_usage_details"
+  | "tutor_referral_password_reset"
   | "payment_status_enquiry"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
@@ -44,14 +55,20 @@ type RequestBody = {
   payload?: Record<string, unknown>;
 };
 
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const TUTOR_REFERRAL_CODE_RE = /^\d{6}$/;
+const TUTOR_REFERRAL_MOBILE_RE = /^\d{8}$/;
+const TUTOR_REFERRAL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
 const REFUND_SUCCESS_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED"]);
 const PAYMENT_OPS_TABLE_HINT =
   "缺少付款管理資料表，請先在 Supabase 執行 supabase_admin_payment_ops.sql。";
 const TUTOR_REFERRAL_TABLE_HINT =
-  "缺少教師編號資料表，請先在 Supabase 執行 supabase_tutor_referral_codes.sql。";
+  "缺少教師編號資料欄位，請先在 Supabase 執行 supabase_tutor_referral_contact_fields.sql（或最新版 supabase_tutor_referral_codes.sql）。";
+const TUTOR_PORTAL_TABLE_HINT =
+  "缺少導師入口資料表，請先在 Supabase 執行 supabase_tutor_portal_auth.sql。";
 
 function normalizeIsoDateTime(raw: unknown): string | null {
   if (raw === null || raw === undefined || String(raw).trim() === "") return null;
@@ -140,6 +157,27 @@ function readString(value: unknown): string | null {
   return trimmed || null;
 }
 
+function normalizeGradeSummarySubject(value: unknown): GradeSummarySubject | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "all";
+  const lowered = raw.toLowerCase();
+  if (lowered === "all" || lowered === "all subject" || lowered === "all_subject") return "all";
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return null;
+}
+
+function normalizePracticeSessionSubject(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Unknown";
+  const lowered = raw.toLowerCase();
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return raw;
+}
+
 type AirwallexApiBody = {
   json: Record<string, unknown> | null;
   text: string;
@@ -188,294 +226,12 @@ function isMissingPaymentOpsTableError(message: string): boolean {
 }
 
 function isMissingTutorReferralTableError(message: string): boolean {
-  return /tutor_referral_codes|tutor_referral_usages|42P01|does not exist/i.test(message);
+  return /tutor_referral_codes|tutor_referral_usages|tutor_mobile|tutor_email|42P01|42703|does not exist/i.test(message);
 }
 
-function isMissingTableErrorMessage(message: string): boolean {
-  return /42P01|does not exist|relation .* does not exist/i.test(message);
+function isMissingTutorPortalTableError(message: string): boolean {
+  return /tutor_portal_accounts|42P01|42703|does not exist/i.test(message);
 }
-
-async function deleteWhereEq({
-  admin,
-  table,
-  column,
-  value,
-}: {
-  admin: AdminClient;
-  table: string;
-  column: string;
-  value: string;
-}) {
-  const { error } = await admin.from(table).delete().eq(column, value);
-  if (!error) return;
-  if (isMissingTableErrorMessage(error.message || "")) return;
-  throw new Error(`刪除 ${table} 失敗：${error.message}`);
-}
-
-async function deleteWhereIn({
-  admin,
-  table,
-  column,
-  values,
-}: {
-  admin: AdminClient;
-  table: string;
-  column: string;
-  values: string[];
-}) {
-  if (values.length === 0) return;
-  for (const chunk of chunkArray(values, 500)) {
-    const { error } = await admin.from(table).delete().in(column, chunk);
-    if (!error) continue;
-    if (isMissingTableErrorMessage(error.message || "")) return;
-    throw new Error(`刪除 ${table} 失敗：${error.message}`);
-  }
-}
-
-async function fetchIdsWhereEq({
-  admin,
-  table,
-  column,
-  value,
-}: {
-  admin: AdminClient;
-  table: string;
-  column: string;
-  value: string;
-}): Promise<string[]> {
-  const { data, error } = await admin.from(table).select("id").eq(column, value).limit(20000);
-  if (error) {
-    if (isMissingTableErrorMessage(error.message || "")) return [];
-    throw error;
-  }
-  return (data ?? [])
-    .map((row) => readString((row as { id?: unknown }).id) ?? "")
-    .filter(Boolean);
-}
-
-async function deleteParentWithRelations({
-  admin,
-  mobile,
-}: {
-  admin: AdminClient;
-  mobile: string;
-}): Promise<{ deleted: boolean; students_deleted: number; reason?: string }> {
-  const parent = await getParentByMobile(admin, mobile);
-  if (!parent) {
-    return { deleted: false, students_deleted: 0, reason: "Parent not found" };
-  }
-
-  const { data: studentRows, error: studentErr } = await admin
-    .from("students")
-    .select("id")
-    .eq("parent_id", parent.id)
-    .limit(5000);
-  if (studentErr) throw studentErr;
-  const studentIds = (studentRows ?? [])
-    .map((row) => readString((row as { id?: unknown }).id) ?? "")
-    .filter(Boolean);
-
-  const sessionIds: string[] = [];
-  if (studentIds.length > 0) {
-    for (const chunk of chunkArray(studentIds, 400)) {
-      const { data, error } = await admin
-        .from("quiz_sessions")
-        .select("id")
-        .in("student_id", chunk)
-        .limit(50000);
-      if (error) {
-        if (isMissingTableErrorMessage(error.message || "")) break;
-        throw error;
-      }
-      for (const row of data ?? []) {
-        const id = readString((row as { id?: unknown }).id);
-        if (id) sessionIds.push(id);
-      }
-    }
-  }
-
-  const paymentOrderIds = new Set<string>();
-  for (const id of await fetchIdsWhereEq({
-    admin,
-    table: "parent_payment_orders",
-    column: "parent_id",
-    value: parent.id,
-  })) {
-    paymentOrderIds.add(id);
-  }
-  for (const id of await fetchIdsWhereEq({
-    admin,
-    table: "parent_payment_orders",
-    column: "mobile_number",
-    value: mobile,
-  })) {
-    paymentOrderIds.add(id);
-  }
-
-  // Remove parent-linked reset tokens first; FK is NOT NULL in some deployments.
-  await deleteWhereEq({
-    admin,
-    table: "password_reset_tokens",
-    column: "parent_id",
-    value: parent.id,
-  });
-
-  await deleteWhereEq({
-    admin,
-    table: "parent_dashboard_view_log",
-    column: "parent_id",
-    value: parent.id,
-  });
-
-  // Remove all session-linked rows before deleting quiz_sessions.
-  await deleteWhereIn({
-    admin,
-    table: "question_reports",
-    column: "session_id",
-    values: sessionIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "session_answers",
-    column: "session_id",
-    values: sessionIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "balance_transactions",
-    column: "session_id",
-    values: sessionIds,
-  });
-
-  await deleteWhereIn({
-    admin,
-    table: "question_reports",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "balance_transactions",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "student_balances",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "student_rank_performance",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "student_grade_rankings",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "parent_weights",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "parent_dashboard_view_log",
-    column: "student_id",
-    values: studentIds,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "quiz_sessions",
-    column: "student_id",
-    values: studentIds,
-  });
-
-  const paymentOrderIdList = Array.from(paymentOrderIds);
-  await deleteWhereIn({
-    admin,
-    table: "parent_payment_refunds",
-    column: "payment_order_id",
-    values: paymentOrderIdList,
-  });
-  await deleteWhereIn({
-    admin,
-    table: "admin_payment_actions",
-    column: "payment_order_id",
-    values: paymentOrderIdList,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_payment_refunds",
-    column: "parent_id",
-    value: parent.id,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "admin_payment_actions",
-    column: "parent_id",
-    value: parent.id,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_recurring_profiles",
-    column: "parent_id",
-    value: parent.id,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_payment_orders",
-    column: "parent_id",
-    value: parent.id,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_payment_refunds",
-    column: "mobile_number",
-    value: mobile,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "admin_payment_actions",
-    column: "mobile_number",
-    value: mobile,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_recurring_profiles",
-    column: "mobile_number",
-    value: mobile,
-  });
-  await deleteWhereEq({
-    admin,
-    table: "parent_payment_orders",
-    column: "mobile_number",
-    value: mobile,
-  });
-
-  await deleteWhereEq({
-    admin,
-    table: "students",
-    column: "parent_id",
-    value: parent.id,
-  });
-
-  const { error: parentDeleteErr } = await admin.from("parents").delete().eq("id", parent.id);
-  if (parentDeleteErr) {
-    throw new Error(`刪除家長資料失敗：${parentDeleteErr.message}`);
-  }
-
-  return {
-    deleted: true,
-    students_deleted: studentIds.length,
-  };
-}
-
 type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
 
 type ReferralDb = {
@@ -486,6 +242,8 @@ type ReferralDb = {
           id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           usage_limit: number;
           current_uses: number;
           is_active: boolean;
@@ -496,6 +254,8 @@ type ReferralDb = {
           id?: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -505,6 +265,8 @@ type ReferralDb = {
         Update: {
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
@@ -519,6 +281,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
           mobile_number: string;
           parent_id: string | null;
           used_at: string;
@@ -529,6 +293,8 @@ type ReferralDb = {
           code_id: string;
           code: string;
           tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number: string;
           parent_id?: string | null;
           used_at?: string;
@@ -538,6 +304,8 @@ type ReferralDb = {
           code_id?: string;
           code?: string;
           tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
           mobile_number?: string;
           parent_id?: string | null;
           used_at?: string;
@@ -1001,6 +769,91 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+      case "grade_level_practice_frequency_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        const subjectKey = normalizeGradeSummarySubject(payload.subject);
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        if (!subjectKey) {
+          return NextResponse.json(
+            { error: "科目必須為 all/Chinese/English/Math" },
+            { status: 400 }
+          );
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let sessions: RawGradePracticeSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,subject,questions_attempted,time_spent_seconds")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: false })
+          .limit(50000);
+        if (richRes.error) {
+          const errMsg = richRes.error.message || "";
+          if (/time_spent_seconds|column .* does not exist|42703/i.test(errMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,subject,questions_attempted")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: false })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = ((fallbackRes.data as RawGradePracticeSessionRow[] | null) ?? []).map(
+              (row) => ({
+                student_id: row.student_id,
+                subject: row.subject,
+                questions_attempted: row.questions_attempted,
+                time_spent_seconds: null,
+              })
+            );
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as RawGradePracticeSessionRow[] | null) ?? [];
+        }
+
+        const filteredSessions =
+          subjectKey === "all"
+            ? sessions
+            : sessions.filter(
+                (row) => normalizePracticeSessionSubject(row.subject) === subjectKey
+              );
+
+        const studentIdSet = new Set<string>();
+        for (const row of filteredSessions) {
+          const studentId = String(row.student_id || "").trim();
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentGradeMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,grade_level")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const id = readString(student.id);
+            if (!id) continue;
+            studentGradeMap.set(id, readString(student.grade_level) || "未設定年級");
+          }
+        }
+
+        const rows = buildGradeLevelPracticeFrequencyRows(filteredSessions, studentGradeMap);
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            subject: subjectKey,
+            rows,
+          },
+        });
+      }
       case "add_quota": {
         const studentId = String(payload.p_student_id ?? "");
         const subject = String(payload.p_subject ?? "Math");
@@ -1014,14 +867,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ data });
       }
       case "delete_parent": {
-        const mobile = String(payload.p_mobile ?? "").trim();
-        if (!mobile) {
-          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
-        }
-        const data = await deleteParentWithRelations({
-          admin,
-          mobile,
+        const mobile = String(payload.p_mobile ?? "");
+        const { data, error } = await admin.rpc("admin_delete_parent", {
+          p_mobile: mobile,
         });
+        if (error) throw error;
         return NextResponse.json({ data });
       }
       case "get_settings": {
@@ -1320,6 +1170,9 @@ export async function POST(req: NextRequest) {
         const referralAdmin = asReferralAdminClient(admin);
         const code = String(payload.code ?? "").trim();
         const tutorName = String(payload.tutor_name ?? "").trim();
+        const tutorMobile = String(payload.tutor_mobile ?? "").trim();
+        const tutorEmailRaw = String(payload.tutor_email ?? "").trim();
+        const tutorEmail = tutorEmailRaw ? tutorEmailRaw.toLowerCase() : null;
         const createdAt = normalizeIsoDateTime(payload.created_at);
 
         if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
@@ -1328,6 +1181,12 @@ export async function POST(req: NextRequest) {
         if (!tutorName) {
           return NextResponse.json({ error: "請輸入教師名稱" }, { status: 400 });
         }
+        if (!TUTOR_REFERRAL_MOBILE_RE.test(tutorMobile)) {
+          return NextResponse.json({ error: "請輸入 8 位數字教師手機" }, { status: 400 });
+        }
+        if (tutorEmail && !TUTOR_REFERRAL_EMAIL_RE.test(tutorEmail)) {
+          return NextResponse.json({ error: "教師電郵格式不正確" }, { status: 400 });
+        }
         if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
           return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
         }
@@ -1335,6 +1194,8 @@ export async function POST(req: NextRequest) {
         const insertPayload: ReferralDb["public"]["Tables"]["tutor_referral_codes"]["Insert"] = {
           code,
           tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
           usage_limit: 50,
           current_uses: 0,
           is_active: true,
@@ -1344,11 +1205,14 @@ export async function POST(req: NextRequest) {
         const { data, error } = await referralAdmin
           .from("tutor_referral_codes")
           .insert(insertPayload)
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .single();
         if (error) {
           if (isMissingTutorReferralTableError(error.message || "")) {
             throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          if (/uq_tutor_referral_codes_active_mobile|tutor_mobile/i.test(error.message || "")) {
+            return NextResponse.json({ error: "此教師手機已有啟用中的教師編號" }, { status: 409 });
           }
           if (/duplicate key|unique/i.test(error.message || "")) {
             return NextResponse.json({ error: "教師編號已存在" }, { status: 409 });
@@ -1364,12 +1228,14 @@ export async function POST(req: NextRequest) {
 
         let query = referralAdmin
           .from("tutor_referral_codes")
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .order("created_at", { ascending: false })
           .limit(1000);
         if (q) {
           const safeQ = q.replace(/,/g, " ");
-          query = query.or(`code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%`);
+          query = query.or(
+            `code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%,tutor_mobile.ilike.%${safeQ}%,tutor_email.ilike.%${safeQ}%`
+          );
         }
         const { data: codes, error: codesErr } = await query;
         if (codesErr) {
@@ -1385,6 +1251,8 @@ export async function POST(req: NextRequest) {
               id: String(row.id ?? ""),
               code: String(row.code ?? ""),
               tutor_name: String(row.tutor_name ?? ""),
+              tutor_mobile: readString(row.tutor_mobile),
+              tutor_email: readString(row.tutor_email),
               usage_limit: Number(row.usage_limit ?? 50),
               current_uses: Number(row.current_uses ?? 0),
               is_active: Boolean(row.is_active),
@@ -1402,7 +1270,7 @@ export async function POST(req: NextRequest) {
 
         const { data: codeRow, error: codeErr } = await referralAdmin
           .from("tutor_referral_codes")
-          .select("id,code,tutor_name,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
           .eq("code", code)
           .maybeSingle();
         if (codeErr) {
@@ -1467,6 +1335,8 @@ export async function POST(req: NextRequest) {
               id: String(codeRow.id),
               code: String(codeRow.code ?? ""),
               tutor_name: String(codeRow.tutor_name ?? ""),
+              tutor_mobile: readString(codeRow.tutor_mobile),
+              tutor_email: readString(codeRow.tutor_email),
               usage_limit: Number(codeRow.usage_limit ?? 50),
               current_uses: Number(codeRow.current_uses ?? 0),
               is_active: Boolean(codeRow.is_active),
@@ -1482,6 +1352,37 @@ export async function POST(req: NextRequest) {
             })),
           },
         });
+      }
+      case "tutor_referral_password_reset": {
+        await ensureTutorReferralTables(admin);
+        const code = String(payload.code ?? "").trim();
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+        try {
+          const result = await resetTutorPasswordByCodeForAdmin({ code });
+          if (!result.ok) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
+          }
+          return NextResponse.json({
+            data: {
+              code: result.code,
+              tutor_name: result.tutorName,
+              is_active: result.isActiveCode,
+              reset_password: "123456",
+              must_change_password: true,
+              message: result.isActiveCode
+                ? "已重設為預設密碼 123456，下次登入需先更新密碼。"
+                : "已重設為預設密碼 123456（此教師編號目前未啟用，下次啟用後登入仍需先更新密碼）。",
+            },
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : "";
+          if (isMissingTutorPortalTableError(errMsg)) {
+            throw new Error(TUTOR_PORTAL_TABLE_HINT);
+          }
+          throw error;
+        }
       }
       case "payment_status_enquiry": {
         const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();

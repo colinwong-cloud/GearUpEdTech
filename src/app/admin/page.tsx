@@ -18,6 +18,7 @@ type AdminConsoleAction =
   | "search_questions"
   | "update_question"
   | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
@@ -26,6 +27,7 @@ type AdminConsoleAction =
   | "tutor_referral_code_create"
   | "tutor_referral_code_summary"
   | "tutor_referral_code_usage_details"
+  | "tutor_referral_password_reset"
   | "payment_status_enquiry"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
@@ -137,6 +139,8 @@ interface TutorReferralCodeSummaryRow {
   id: string;
   code: string;
   tutor_name: string;
+  tutor_mobile: string | null;
+  tutor_email: string | null;
   usage_limit: number;
   current_uses: number;
   is_active: boolean;
@@ -290,6 +294,29 @@ interface ParentStudentsPracticeSummaryResult {
   summary_rows: ParentStudentPracticeSummaryRow[];
 }
 
+interface GradeLevelPracticeFrequencyRow {
+  grade_level: string;
+  unique_students_started_practice: number;
+  avg_questions_completed_per_session: number;
+  avg_time_used_seconds_per_session: number;
+  sessions_count: number;
+}
+
+interface GradeLevelPracticeFrequencyResult {
+  month: string;
+  subject: "all" | "Math" | "Chinese" | "English";
+  rows: GradeLevelPracticeFrequencyRow[];
+}
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+
+const GRADE_SUMMARY_SUBJECT_OPTIONS: Array<{ value: GradeSummarySubject; label: string }> = [
+  { value: "all", label: "all subject" },
+  { value: "Chinese", label: "Chinese" },
+  { value: "English", label: "English" },
+  { value: "Math", label: "Math" },
+];
+
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [sessionToken, setSessionToken] = useState("");
@@ -433,12 +460,12 @@ export default function AdminPage() {
         <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-red-500">登出</button>
       </div>
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex gap-2 mb-6 overflow-x-auto">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                 tab === t.key ? "bg-indigo-600 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
               }`}
             >
@@ -585,11 +612,7 @@ function DeleteSection({ sessionToken }: { sessionToken: string }) {
     if (!mobile.trim()) return;
     setLoading(true);
     try {
-      const result = await adminConsoleRequest<{
-        deleted: boolean;
-        students_deleted?: number;
-        reason?: string;
-      }>(
+      const result = await adminConsoleRequest<{ deleted: boolean; students_deleted?: number }>(
         "delete_parent",
         { p_mobile: mobile.trim() },
         sessionToken
@@ -599,11 +622,9 @@ function DeleteSection({ sessionToken }: { sessionToken: string }) {
         setParentInfo(null);
         setConfirmDelete(false);
       } else {
-        setMsg(result.reason ? `刪除失敗：${result.reason}` : "刪除失敗");
+        setMsg("刪除失敗");
       }
-    } catch (err) {
-      setMsg(err instanceof Error ? `刪除失敗：${err.message}` : "刪除失敗");
-    }
+    } catch { setMsg("刪除失敗"); }
     finally { setLoading(false); }
   };
 
@@ -914,9 +935,16 @@ function formatHkdAmount(value: number): string {
 function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [month, setMonth] = useState(() => getCurrentHktMonthKey());
+  const [gradeSummarySubject, setGradeSummarySubject] = useState<GradeSummarySubject>("all");
+  const [gradeSummaryMonth, setGradeSummaryMonth] = useState(() => getCurrentHktMonthKey());
   const [loading, setLoading] = useState(false);
+  const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [gradeSummaryMsg, setGradeSummaryMsg] = useState("");
   const [result, setResult] = useState<ParentStudentsPracticeSummaryResult | null>(null);
+  const [gradeSummaryResult, setGradeSummaryResult] = useState<GradeLevelPracticeFrequencyResult | null>(
+    null
+  );
 
   const summaryRowsByStudent = useMemo(() => {
     if (!result) return new Map<string, ParentStudentPracticeSummaryRow[]>();
@@ -966,12 +994,125 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     }
   }, [mobile, month, sessionToken]);
 
+  const loadGradeSummary = useCallback(async () => {
+    if (!/^\d{4}-\d{2}$/.test(gradeSummaryMonth)) {
+      setGradeSummaryMsg("月份格式必須為 YYYY-MM");
+      setGradeSummaryResult(null);
+      return;
+    }
+    setGradeSummaryLoading(true);
+    setGradeSummaryMsg("");
+    try {
+      const data = await adminConsoleRequest<GradeLevelPracticeFrequencyResult>(
+        "grade_level_practice_frequency_summary",
+        { month: gradeSummaryMonth, subject: gradeSummarySubject },
+        sessionToken
+      );
+      setGradeSummaryResult(data);
+    } catch (err) {
+      setGradeSummaryMsg(err instanceof Error ? err.message : "載入年級練習頻率摘要失敗");
+      setGradeSummaryResult(null);
+    } finally {
+      setGradeSummaryLoading(false);
+    }
+  }, [gradeSummaryMonth, gradeSummarySubject, sessionToken]);
+
+  useEffect(() => {
+    void loadGradeSummary();
+  }, [loadGradeSummary]);
+
+  const formatAvgMinutes = useCallback((seconds: number) => {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    return (safeSeconds / 60).toFixed(2);
+  }, []);
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-gray-800">家長學生練習摘要</h2>
       <p className="text-sm text-gray-500">
         依家長電話號碼顯示所有已註冊學生資料，並按學生分組查看所選月份每日各科練習正確率摘要。
       </p>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-sm font-bold text-gray-800">平台練習頻率摘要（按年級）</h3>
+          <div className="flex items-center gap-2">
+            <select
+              value={gradeSummarySubject}
+              onChange={(e) => setGradeSummarySubject(e.target.value as GradeSummarySubject)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white"
+            >
+              {GRADE_SUMMARY_SUBJECT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="month"
+              value={gradeSummaryMonth}
+              onChange={(e) => setGradeSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadGradeSummary()}
+              disabled={gradeSummaryLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {gradeSummaryLoading ? "載入中..." : "查詢"}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          指標：① 啟動練習學生數（當月有開始練習）② 每節平均完成題數 ③ 每節平均完成時間。
+        </p>
+        {gradeSummaryMsg && (
+          <p
+            className={`text-sm ${
+              gradeSummaryMsg.includes("失敗") || gradeSummaryMsg.includes("格式")
+                ? "text-red-500"
+                : "text-emerald-600"
+            }`}
+          >
+            {gradeSummaryMsg}
+          </p>
+        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">年級</th>
+                <th className="py-2 pr-3">啟動練習學生數</th>
+                <th className="py-2 pr-3">每節平均完成題數</th>
+                <th className="py-2 pr-3">每節平均完成時間（分鐘）</th>
+                <th className="py-2 pr-3">練習節數</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(gradeSummaryResult?.rows ?? []).map((row) => (
+                <tr key={row.grade_level} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-semibold text-gray-800">{row.grade_level}</td>
+                  <td className="py-2 pr-3">{row.unique_students_started_practice}</td>
+                  <td className="py-2 pr-3">{row.avg_questions_completed_per_session.toFixed(2)}</td>
+                  <td className="py-2 pr-3">{formatAvgMinutes(row.avg_time_used_seconds_per_session)}</td>
+                  <td className="py-2 pr-3">{row.sessions_count}</td>
+                </tr>
+              ))}
+              {(gradeSummaryResult?.rows?.length ?? 0) === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                    {gradeSummaryLoading
+                      ? "載入中..."
+                      : `此科目/月份（${gradeSummaryResult?.subject || gradeSummarySubject} / ${
+                          gradeSummaryResult?.month || gradeSummaryMonth
+                        }）沒有練習紀錄`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -1683,10 +1824,14 @@ function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
 function buildReferralUsagePrintHtml({
   code,
   tutorName,
+  tutorMobile,
+  tutorEmail,
   rows,
 }: {
   code: string;
   tutorName: string;
+  tutorMobile?: string | null;
+  tutorEmail?: string | null;
   rows: TutorReferralUsageDetailRow[];
 }): string {
   const esc = (value: string) =>
@@ -1717,6 +1862,8 @@ function buildReferralUsagePrintHtml({
     <h2 style="margin:0 0 8px;">教師編號使用紀錄</h2>
     <p style="margin:0 0 16px;">教師編號：<strong>${esc(code)}</strong> ｜ 教師：<strong>${esc(
     tutorName || "-"
+  )}</strong> ｜ 教師手機：<strong>${esc(tutorMobile || "-")}</strong> ｜ 教師電郵：<strong>${esc(
+    tutorEmail || "-"
   )}</strong></p>
     <table style="border-collapse:collapse; width:100%; font-size:13px;">
       <thead>
@@ -2121,11 +2268,15 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
   const [summaryRows, setSummaryRows] = useState<TutorReferralCodeSummaryRow[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
   const [createCode, setCreateCode] = useState("");
   const [createTutorName, setCreateTutorName] = useState("");
+  const [createTutorMobile, setCreateTutorMobile] = useState("");
+  const [createTutorEmail, setCreateTutorEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
 
   const [detailCode, setDetailCode] = useState("");
   const [detailResult, setDetailResult] = useState<{
@@ -2159,6 +2310,9 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
   const handleCreate = async () => {
     const code = normalizeReferralCodeInput(createCode);
     const tutorName = createTutorName.trim();
+    const tutorMobile = createTutorMobile.replace(/\D/g, "").slice(0, 8);
+    const tutorEmailInput = createTutorEmail.trim().toLowerCase();
+    const tutorEmail = tutorEmailInput || null;
     if (!/^\d{6}$/.test(code)) {
       setMsg("教師編號必須為 6 位數字");
       return;
@@ -2167,17 +2321,32 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       setMsg("請輸入教師名稱");
       return;
     }
+    if (!/^\d{8}$/.test(tutorMobile)) {
+      setMsg("請輸入 8 位數字教師手機");
+      return;
+    }
+    if (tutorEmail && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(tutorEmail)) {
+      setMsg("教師電郵格式不正確");
+      return;
+    }
     setSaveLoading(true);
     setMsg("");
     try {
       await adminConsoleRequest(
         "tutor_referral_code_create",
-        { code, tutor_name: tutorName },
+        {
+          code,
+          tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
+        },
         sessionToken
       );
       setMsg("教師編號已新增");
       setCreateCode("");
       setCreateTutorName("");
+      setCreateTutorMobile("");
+      setCreateTutorEmail("");
       await loadSummary();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "新增教師編號失敗");
@@ -2248,12 +2417,40 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       buildReferralUsagePrintHtml({
         code: detailResult.code.code,
         tutorName: detailResult.code.tutor_name,
+        tutorMobile: detailResult.code.tutor_mobile,
+        tutorEmail: detailResult.code.tutor_email,
         rows: detailResult.rows,
       })
     );
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
+  };
+
+  const handleResetPassword = async () => {
+    const code = normalizeReferralCodeInput(resetCode);
+    if (!/^\d{6}$/.test(code)) {
+      setMsg("請輸入 6 位數字教師編號以重設密碼");
+      return;
+    }
+    if (!window.confirm(`確認重設教師編號 ${code} 的密碼為 123456？`)) {
+      return;
+    }
+    setResetLoading(true);
+    setMsg("");
+    try {
+      const result = await adminConsoleRequest<{
+        code: string;
+        tutor_name: string;
+        message: string;
+      }>("tutor_referral_password_reset", { code }, sessionToken);
+      setMsg(result.message || "已重設為預設密碼 123456，下次登入需先更新密碼。");
+      setResetCode("");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "重設教師密碼失敗");
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -2274,7 +2471,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700">手動新增教師編號</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">教師編號（6位數字）</label>
             <input
@@ -2291,6 +2488,26 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               value={createTutorName}
               onChange={(e) => setCreateTutorName(e.target.value)}
               placeholder="例如 陳老師"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師手機（8位數字）</label>
+            <input
+              value={createTutorMobile}
+              onChange={(e) => setCreateTutorMobile(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder="例如 91234567"
+              maxLength={8}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師電郵（可選）</label>
+            <input
+              type="email"
+              value={createTutorEmail}
+              onChange={(e) => setCreateTutorEmail(e.target.value)}
+              placeholder="例如 tutor@example.com"
               className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
@@ -2311,7 +2528,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
             value={summarySearch}
             onChange={(e) => setSummarySearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadSummary()}
-            placeholder="搜尋教師編號或教師名稱"
+            placeholder="搜尋教師編號 / 教師名稱 / 手機 / 電郵"
             className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
           />
           <button
@@ -2329,6 +2546,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               <tr className="text-left text-gray-500 border-b">
                 <th className="py-2 pr-3">建立日期</th>
                 <th className="py-2 pr-3">教師名稱</th>
+                <th className="py-2 pr-3">教師手機</th>
+                <th className="py-2 pr-3">教師電郵</th>
                 <th className="py-2 pr-3">教師編號</th>
                 <th className="py-2 pr-3">已使用次數 / 上限</th>
                 <th className="py-2 pr-3">操作</th>
@@ -2341,6 +2560,8 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
                     {row.created_at ? new Date(row.created_at).toLocaleString("zh-HK") : "-"}
                   </td>
                   <td className="py-2 pr-3">{row.tutor_name}</td>
+                  <td className="py-2 pr-3">{row.tutor_mobile || "-"}</td>
+                  <td className="py-2 pr-3">{row.tutor_email || "-"}</td>
                   <td className="py-2 pr-3 font-mono">{row.code}</td>
                   <td className="py-2 pr-3">
                     {row.current_uses} / {row.usage_limit}
@@ -2357,7 +2578,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               ))}
               {summaryRows.length === 0 && !summaryLoading && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                  <td colSpan={7} className="py-4 text-center text-gray-400">
                     沒有符合條件的資料
                   </td>
                 </tr>
@@ -2390,7 +2611,9 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
         {detailResult?.found && detailResult.code && (
           <p className="text-sm text-gray-600">
             教師編號：<span className="font-mono">{detailResult.code.code}</span> ｜ 教師：
-            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 已使用：
+            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 教師手機：
+            <span className="font-semibold"> {detailResult.code.tutor_mobile || "-"}</span> ｜ 教師電郵：
+            <span className="font-semibold"> {detailResult.code.tutor_email || "-"}</span> ｜ 已使用：
             <span className="font-semibold"> {detailResult.code.current_uses}</span> /
             {detailResult.code.usage_limit}
           </p>
@@ -2442,6 +2665,30 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               匯出 PDF
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 3：重設導師登入密碼</h3>
+        <p className="text-xs text-gray-500">
+          輸入教師編號後可重設密碼為 <span className="font-mono">123456</span>。重設後會清除錯誤次數鎖定，並要求導師下次登入先更新密碼。
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={resetCode}
+            onChange={(e) => setResetCode(normalizeReferralCodeInput(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+            placeholder="輸入 6 位數字教師編號"
+            maxLength={6}
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={handleResetPassword}
+            disabled={resetLoading}
+            className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50"
+          >
+            {resetLoading ? "重設中..." : "重設為 123456"}
+          </button>
         </div>
       </div>
     </div>

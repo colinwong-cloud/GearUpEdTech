@@ -233,6 +233,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - [ ] Part 1 summary shows create date / tutor name / code / usage count
 - [ ] Part 2 code enquiry shows used date / mobile / parent paid status (free/paid)
 - [ ] Usage export (CSV/PDF) works for current query result
+- [ ] Part 3 reset supports admin input tutor code to reset password to `123456`; tutor next login must follow first-time password change flow
 
 ### 7) Sharing / Tracking / Compliance
 

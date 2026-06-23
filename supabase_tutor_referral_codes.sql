@@ -7,30 +7,122 @@ CREATE TABLE IF NOT EXISTS public.tutor_referral_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   tutor_name TEXT NOT NULL,
+  tutor_mobile TEXT,
+  tutor_email TEXT,
   usage_limit INTEGER NOT NULL DEFAULT 50 CHECK (usage_limit > 0),
   current_uses INTEGER NOT NULL DEFAULT 0 CHECK (current_uses >= 0),
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT tutor_referral_codes_code_digits_chk CHECK (code ~ '^[0-9]{6}$'),
+  CONSTRAINT tutor_referral_codes_tutor_mobile_chk CHECK (
+    tutor_mobile IS NULL OR tutor_mobile ~ '^[0-9]{8}$'
+  ),
+  CONSTRAINT tutor_referral_codes_tutor_email_chk CHECK (
+    tutor_email IS NULL OR tutor_email = '' OR
+    tutor_email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
+  ),
   CONSTRAINT tutor_referral_codes_current_uses_limit_chk CHECK (current_uses <= usage_limit)
 );
 
+ALTER TABLE public.tutor_referral_codes
+  ADD COLUMN IF NOT EXISTS tutor_mobile TEXT,
+  ADD COLUMN IF NOT EXISTS tutor_email TEXT;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'tutor_referral_codes_tutor_mobile_chk'
+      AND conrelid = 'public.tutor_referral_codes'::regclass
+  ) THEN
+    ALTER TABLE public.tutor_referral_codes
+      ADD CONSTRAINT tutor_referral_codes_tutor_mobile_chk
+      CHECK (tutor_mobile IS NULL OR tutor_mobile ~ '^[0-9]{8}$');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'tutor_referral_codes_tutor_email_chk'
+      AND conrelid = 'public.tutor_referral_codes'::regclass
+  ) THEN
+    ALTER TABLE public.tutor_referral_codes
+      ADD CONSTRAINT tutor_referral_codes_tutor_email_chk
+      CHECK (
+        tutor_email IS NULL OR tutor_email = '' OR
+        tutor_email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
+      );
+  END IF;
+END
+$$;
+
 CREATE INDEX IF NOT EXISTS idx_tutor_referral_codes_created_at
   ON public.tutor_referral_codes (created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_tutor_referral_codes_active_mobile
+  ON public.tutor_referral_codes (tutor_mobile)
+  WHERE is_active = true AND tutor_mobile IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_tutor_referral_codes_tutor_email_lower
+  ON public.tutor_referral_codes (LOWER(tutor_email))
+  WHERE tutor_email IS NOT NULL AND tutor_email <> '';
 
 CREATE TABLE IF NOT EXISTS public.tutor_referral_usages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code_id UUID NOT NULL REFERENCES public.tutor_referral_codes(id) ON DELETE RESTRICT,
   code TEXT NOT NULL,
   tutor_name TEXT NOT NULL,
+  tutor_mobile TEXT,
+  tutor_email TEXT,
   mobile_number TEXT NOT NULL,
   parent_id UUID NULL REFERENCES public.parents(id) ON DELETE SET NULL,
   used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT tutor_referral_usages_code_digits_chk CHECK (code ~ '^[0-9]{6}$'),
+  CONSTRAINT tutor_referral_usages_tutor_mobile_chk CHECK (
+    tutor_mobile IS NULL OR tutor_mobile ~ '^[0-9]{8}$'
+  ),
+  CONSTRAINT tutor_referral_usages_tutor_email_chk CHECK (
+    tutor_email IS NULL OR tutor_email = '' OR
+    tutor_email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
+  ),
   CONSTRAINT tutor_referral_usages_mobile_chk CHECK (mobile_number ~ '^[0-9]{8}$')
 );
+
+ALTER TABLE public.tutor_referral_usages
+  ADD COLUMN IF NOT EXISTS tutor_mobile TEXT,
+  ADD COLUMN IF NOT EXISTS tutor_email TEXT;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'tutor_referral_usages_tutor_mobile_chk'
+      AND conrelid = 'public.tutor_referral_usages'::regclass
+  ) THEN
+    ALTER TABLE public.tutor_referral_usages
+      ADD CONSTRAINT tutor_referral_usages_tutor_mobile_chk
+      CHECK (tutor_mobile IS NULL OR tutor_mobile ~ '^[0-9]{8}$');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'tutor_referral_usages_tutor_email_chk'
+      AND conrelid = 'public.tutor_referral_usages'::regclass
+  ) THEN
+    ALTER TABLE public.tutor_referral_usages
+      ADD CONSTRAINT tutor_referral_usages_tutor_email_chk
+      CHECK (
+        tutor_email IS NULL OR tutor_email = '' OR
+        tutor_email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
+      );
+  END IF;
+END
+$$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_tutor_referral_usages_mobile_number
   ON public.tutor_referral_usages (mobile_number);
@@ -74,6 +166,17 @@ WHERE c.current_uses <> 0
     SELECT 1
     FROM public.tutor_referral_usages u
     WHERE u.code_id = c.id
+  );
+
+-- Backfill tutor contact snapshots for existing usage records.
+UPDATE public.tutor_referral_usages u
+SET tutor_mobile = c.tutor_mobile,
+    tutor_email = c.tutor_email
+FROM public.tutor_referral_codes c
+WHERE u.code_id = c.id
+  AND (
+    u.tutor_mobile IS DISTINCT FROM c.tutor_mobile OR
+    u.tutor_email IS DISTINCT FROM c.tutor_email
   );
 
 ALTER TABLE public.tutor_referral_codes ENABLE ROW LEVEL SECURITY;
