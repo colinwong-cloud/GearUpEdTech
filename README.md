@@ -42,14 +42,312 @@ The app is deployed on Vercel (custom domain **q.hkedutech.com**; Vercel project
 
 Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deploy`). Ship to production: `npx vercel deploy --prod`.
 
+### Mandatory deployment gate (must follow for every session)
+
+1. All development changes must be validated on **Preview** deployment first.
+2. Share the Preview URL for review and wait for **explicit owner approval**.
+3. **Do not deploy to Production** until approval is explicitly given in chat.
+4. After production deploy, run production smoke checks and record sign-off in the release checklist.
+
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-04-29** — deployment `dpl_6AAcK8KowLhaQoLrx7WKPKPRpETj`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6AAcK8KowLhaQoLrx7WKPKPRpETj). **Supabase:** `supabase_grade_ranking_per_subject.sql` + `recalculate_student_grade_rankings()` for per-subject rank; **English 30-session seed:** `supabase_seed_english_30_sessions_91917838.sql`.
+**Latest production deploy:** **2026-07-02** — deployment `dpl_7D8PTuBBjykiRLFcVSYfHsNNhisR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7D8PTuBBjykiRLFcVSYfHsNNhisR). **Release scope:** Hotfix 回復家長練習電郵的錯題可讀性區塊（題目內容 / 你的答案 / 正確答案 / 解釋），避免 parent email readability 回歸遺失。
+
+## Release SOP / checklist (mandatory)
+
+- SOP: `docs/release-sop.md`
+- Checklist: `docs/release-deploy-checklist.md`
+
+## Feature inventory + mandatory health checks (run on every new release)
+
+> Purpose: prevent any regression where older features become missing or non-functional after new development.
+
+### 0) Test Preconditions (must prepare)
+
+- [ ] Free parent test account available
+- [ ] Paid parent test account available (with payment history)
+- [ ] Admin test account available
+- [ ] Test student set includes P1-P6 and both genders/avatars/schools
+- [ ] Test discount code exists
+- [ ] Browser set: Safari + Chrome
+
+### 1) E2E Entry / Authentication
+
+#### Login page (`/`)
+- [ ] Top banner/logo renders correctly
+- [ ] Marketing text renders correctly
+- [ ] "請輸入電話號碼及密碼登入" shown
+- [ ] Platform brief block exists
+- [ ] FAQ block exists
+- [ ] WhatsApp + WeChat share buttons exist
+- [ ] Cookie banner/settings entry behavior correct (login page only)
+
+#### Register flow
+- [ ] Click "新用戶註冊" enters register screen
+- [ ] Gender selection is mandatory (must select 男生 / 女生 before submit)
+- [ ] Privacy statement consent required before submit
+- [ ] Optional referral code field (`負責教師編號`) validates 6-digit numeric format
+- [ ] Invalid/exhausted referral code errors render under referral field without clearing other form inputs
+- [ ] Register submit works for valid input
+- [ ] Register success returns expected next step/login state
+
+#### Login flow
+- [ ] Mobile + PIN login success works
+- [ ] Invalid login shows proper error
+- [ ] Login context created correctly (no pseudo-login)
+
+#### Reset password flow
+- [ ] Forgot password page has mobile + email fields
+- [ ] Validation works (mobile format / required email)
+- [ ] Reset email API sends successfully
+- [ ] Reset link page accepts token and resets PIN
+- [ ] Return action leads to clean `login_mobile` state
+
+#### Session guard
+- [ ] If auth context missing, protected screens auto-redirect to login
+- [ ] Logout clears state completely
+
+### 2) Student-side Flow
+
+#### Start practice
+- [ ] Role select -> student path works
+- [ ] Student selection works
+- [ ] Subject selection includes Math / Chinese / English
+- [ ] Question count selection works
+- [ ] Quiz session starts successfully
+
+#### Question drawing logic
+- [ ] Strict AI-only mode active (`source='AI'`)
+- [ ] If AI pool insufficient, blocked with correct message
+- [ ] If sufficient, quiz proceeds normally
+
+#### Answering behavior
+- [ ] MCQ selection/submit behavior correct
+- [ ] Short-answer input + submit correct
+- [ ] Image/question rendering normal
+- [ ] Per-question deduction logic works (free tier)
+
+#### Result screen
+- [ ] Score/accuracy values correct
+- [ ] Practice summary shown correctly
+- [ ] Wrong-answer analysis is easy to read, question-by-question
+- [ ] Each wrong question shows: question content / student answer with value / correct answer with value / explanation
+- [ ] Optional follow-up actions work (next/back/send email etc.)
+
+### 3) Parent-side Flow
+
+#### Parent dashboard
+- [ ] Role select -> parent path works
+- [ ] Subject selector works
+- [ ] Month selector works
+- [ ] Session list loads correctly
+- [ ] Session detail opens correctly
+- [ ] Chart renders correctly
+- [ ] Grade-rank section renders by selected subject
+
+#### Tier display
+- [ ] Free/Paid tier badge/status correct
+- [ ] Paid-until date display correct
+- [ ] Upgrade entry visible for free users
+- [ ] Free-tier upgrade invite copy remains: `成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。`
+
+### 4) Account Maintenance
+
+#### Account menu and profile
+- [ ] Account menu reachable
+- [ ] Profile edit save works
+- [ ] Student gender/avatar/school edit works
+- [ ] Add-student form works (including validation)
+
+#### Balance and transactions
+- [ ] Balance view reachable
+- [ ] Transactions grouped by date/student correctly
+- [ ] Chinese/Math/English transaction labels correct
+- [ ] Paid-tier transaction logging appears
+- [ ] `balance_after = -1` shown as `Unlimited` correctly
+
+### 5) Payment Module (Airwallex)
+
+#### Checkout
+- [ ] Upgrade/payment entry works
+- [ ] Terms and conditions acceptance required
+- [ ] Discount code validate/apply works
+- [ ] Checkout payload generated successfully
+- [ ] Locale behavior correct (`zh-HK`)
+
+#### Payment methods safeguard
+- [ ] Hosted payment page supports Card / Apple Pay / Google Pay / AlipayHK / WeChat Pay
+- [ ] Method safeguard logic test passes (no accidental drop)
+
+#### Post-payment
+- [ ] Callback/verify marks paid status correctly
+- [ ] Webhook idempotency works (no duplicate processing)
+- [ ] Parent tier update reflected in UI
+- [ ] Recurring charge cron path remains healthy
+
+### 6) Admin Console (critical)
+
+#### Admin access
+- [ ] `/admin` login works
+- [ ] All tabs visible (must-have): 業務概覽 / 題目配額 / 學生練習摘要 / 刪除帳戶 / 電郵通知 / 題目管理 / 付款狀態查詢 / 折扣碼維護 / 教師編號維護
+
+#### Tab: 業務概覽
+- [ ] Today KPI loads
+- [ ] Monthly trend loads
+- [ ] Refresh button works
+- [ ] Data not polluted by excluded test rules (as intended)
+
+#### Tab: 題目配額
+- [ ] Search parent by mobile works
+- [ ] Add quota works and refreshes balance
+
+#### Tab: 刪除帳戶
+- [ ] Search and delete flow works with confirmation
+
+#### Tab: 電郵通知
+- [ ] Setting load/save works
+
+#### Tab: 題目管理
+- [ ] Search question works
+- [ ] Update question works
+
+#### Tab: 付款狀態查詢
+- [ ] Search parent payment status by mobile works
+- [ ] Paid detail fields display correctly
+- [ ] Cancel future payment works
+- [ ] Refund last payment preview works
+- [ ] Refund confirm works
+- [ ] Monthly paid summary loads
+- [ ] Month selector changes summary
+- [ ] CSV download works
+
+#### Tab: 折扣碼維護
+- [ ] Discount code list loads
+- [ ] Create/update/delete works
+- [ ] Search/filter works
+- [ ] Usage summary loads
+- [ ] Usage CSV download works
+
+#### Tab: 教師編號維護
+- [ ] Manual add (6-digit code + tutor name) works
+- [ ] Part 1 summary shows create date / tutor name / code / usage count
+- [ ] Part 2 code enquiry shows used date / mobile / parent paid status (free/paid)
+- [ ] Usage export (CSV/PDF) works for current query result
+- [ ] Part 3 reset supports admin input tutor code to reset password to `123456`; tutor next login must follow first-time password change flow
+
+### 7) Sharing / Tracking / Compliance
+
+#### Social sharing
+- [ ] WhatsApp button opens native/share flow correctly
+- [ ] WeChat overlay appears with instruction then proceeds
+- [ ] WeChat/WhatsApp icons display correctly
+- [ ] Share URL and metadata logic correct
+
+#### GTM / GA events
+- [ ] `anon_visit` fires
+- [ ] `anon_engaged_30s_no_auth` fires
+- [ ] `register_start` / `register_submit_attempt` / `register_success` fire
+- [ ] `login_attempt` / `login_success` fire
+- [ ] Event dedup/session logic works
+
+#### Cookie consent (PCPD)
+- [ ] Banner appears on first login-page visit
+- [ ] Accept/reject/save preferences work
+- [ ] Preferences persist to localStorage
+- [ ] Cookie policy modal works in zh-HK + EN
+- [ ] Cookie UI does not appear on student practice pages
+
+### 8) API/RPC/SQL Health (release safety)
+
+- [ ] `/api/admin/*` routes return expected data
+- [ ] `/api/payment/checkout|verify|webhook` healthy
+- [ ] `/api/send-reset-email` healthy
+- [ ] `/api/share-events` and `/api/wechat/share-config` healthy
+- [ ] Required SQL migrations for recent features already applied in Supabase
+- [ ] No NOT NULL/constraint regression in balance/payment flows
+
+### 9) Build + Quality Gate
+
+- [ ] `npm test` pass
+- [ ] `npm run lint` pass (or only accepted known warnings)
+- [ ] `npm run build` pass
+- [ ] Preview smoke test pass
+- [ ] Owner explicit approval received for Preview
+- [ ] Production smoke test pass
+
+### 10) Release sign-off record (for each release)
+
+- [ ] Release ID / commit
+- [ ] Tester name
+- [ ] Date/time
+- [ ] Failures found + fix commits
+- [ ] Final approval
+
+#### Latest sign-off log
+
+- **Release ID / commit:** `0cb062f` (free-tier to paid invite copy update)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-06-17
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `POST /api/admin/business-today` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production deployment:** `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
+- **Release ID / commit:** `7fd98e3` (referral registration + admin tutor code management)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-06-17
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `POST /api/admin/business-today` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production deployment:** `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
+- **Release ID / commit:** `653536a` (result-page readability enhancement)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-06-16
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `POST /api/admin/business-today` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production deployment:** `dpl_972VJtfHgLVtbtVxWHEFLtWMgfv4`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** smoke 初次失敗因 Playwright browser 缺失；已先執行 `npx playwright install chromium` 後重跑 smoke 全綠（無功能代碼修正）
+- **Final approval:** received from owner before `--prod` deploy
+
+- **Release ID / commit:** `e84fa4f` (UI change commit: `beec703`)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-05-20
+- **Scope confirmation:** 本次上線僅涉及登入頁 CTA 視覺層（`src/app/page.tsx`）與 README 記錄更新；未改動註冊配額/GA 事件/後端業務邏輯。
+- **Validation:** `npm test` ✅, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）, `PLAYWRIGHT_BASE_URL=https://q.hkedutech.com npm run smoke` ✅（5/5 passed）
+- **Production deployment:** `dpl_4YMLJsdQTzhUwzJxNNP5Nir4SoXU`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
+- **Release ID / commit:** `c671699` (includes `187a536` cascade delete hardening commit)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat
+- **Date/time (UTC):** 2026-05-19
+- **Validation:** `npm test` ✅, `npm run lint` ✅ (1 existing non-blocking warning), `npm run build` ✅, `npm run smoke` ✅ (5/5 passed)
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `POST /api/admin/console` (without session) returns expected `Unauthorized`
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
 
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **Hotfix：家長練習電郵錯題可讀性回復**：回復 parent practice email 內錯題詳解區塊，顯示「題目內容 / 你的答案 / 正確答案 / 解釋」，並保留 `wrong_question_details` 解析流程。 |
+| 2026-06 | **Recovery release（防回歸）**：修復分支基線偏移造成的功能遺失。上線內容：①家長同級排名/比較基準排除 `999*` 測試家長資料（live-only cohort）；②結果頁錯題詳解維持「題目內容 / 你的答案（值） / 正確答案（值） / 解釋」；③月費家長「消費紀錄」回復（年份篩選、付款日期/金額/方式）。 |
+| 2026-06 | **導師登入密碼重設（Admin 教師編號維護 Part 3）上線**：Admin 可輸入教師編號重設密碼為 `123456`；重設時同時清除 5 次錯誤鎖定（`failed_attempts=0`, `locked_until=null`）並設為首次登入需改密碼（`must_change_password=true`）。成功訊息顯示於 Part 3 區塊底部。 |
+| 2026-06 | **家長免費升級月費按鈕文案更新（UI only）**：將文案更新為「成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。」；無 API/SQL/邏輯變更。 |
+| 2026-06 | **註冊推薦碼 + Admin 教師編號維護上線**：註冊頁新增可選 `負責教師編號`（6 位數字）並強制錯碼/超限驗證；錯誤提示改為顯示在推薦碼欄位下方且保留已填內容。Admin 新增 `教師編號維護`（手動新增、摘要查詢、明細查詢、CSV/PDF 匯出），明細含家長付費狀態（free/paid）。同步新增 SQL：`supabase_tutor_referral_codes.sql`。 |
+| 2026-06 | **結果頁錯題解析（學生可讀性升級）**：錯題改為逐題卡片格式，明確顯示「題目內容」「你的答案（值）」「正確答案（值）」「解釋」，幫助學生更快理解錯誤原因。 |
+| 2026-05 | **登入頁 CTA UI 強化（A/B 測試向）**：把「新用戶註冊」由卡片內小連結改為登入區上方全寬獨立按鈕（尺寸貼近登入輸入欄），提升可見度；不涉及註冊流程邏輯變更。 |
+| 2026-05 | **Ranking 測試數據補齊腳本（99990009~99990012）**：新增小批次 SQL（每個 mobile × 每個科目一份）把 English/Chinese 題量補至每位學生至少 100 題：`supabase_rank_topup_9999000{9..12}_{english|chinese}.sql`，最後執行 `supabase_rank_recalculate_verify_99990009_99990012.sql` 重算並驗證快照。 |
+| 2026-05 | **Admin 刪除帳戶（PCPD）修正**：修復刪除家長時的 FK 失敗（含 `password_reset_tokens`、`question_reports`、`balance_transactions.session_id` 相關順序），並在 Admin UI 顯示後端實際錯誤訊息，便於快速定位。 |
+| 2026-05 | **客服電郵 UI 統一更新**：登入頁、角色頁、家長/學生相關客服提示與 Cookie/Privacy 聯絡資訊中的 `cs@hkedutech.com` 已統一改為 `cs@gearupquiz.com`（純 UI 文案更新，無資料庫或業務邏輯變更）。 |
+| 2026-05 | **註冊/新增學生性別必填強化**：前端把「性別」明確標示為必填，並改由後端 API（`/api/auth/register`、`/api/auth/add-student`）做二次驗證；若未選男/女會直接阻擋提交。成功建立學生後會即時寫入 `students.gender`（M/F），避免 Admin 練習摘要出現空白性別。 |
+| 2026-05 | **Admin 新增「家長學生練習摘要」**：可按家長電話號碼查詢所有已註冊學生（學校/年級/性別），並按學生分組顯示指定月份每日各科練習摘要（練習節數、作答題數、答對題數、正確率），支援月份切換。 |
+| 2026-05 | **Deployment policy hardening**：新增強制流程「Preview 先驗證 + 必須取得 owner 明確批准後才可 deploy production」，並把「Preview 已獲 owner 批准」加入 release gate 檢查項。 |
+| 2026-05 | **Release Gate 升級**：README 的 Must-Not-Break 清單已擴充為完整 0-10 檢查（涵蓋 E2E、學生、家長、帳戶維護、付款、Admin、追蹤、API/SQL、Build、Sign-off），並新增 `.github/PULL_REQUEST_TEMPLATE.md` 強制 PR 勾選。 |
+| 2026-05 | **Admin 功能復原 + 防回歸清單**：分支同步後已恢復 Admin 缺失模組（含 `付款狀態查詢`、`折扣碼維護` 等），並新增「Feature inventory + mandatory health checks」區段，規範每次改版後必做 smoke test，避免功能被覆蓋或遺失。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
 | 2026-04 | **題幹分段顯示**：`QuestionContentParagraphs` — 題目／解釋支援 **單個 `\n` 換行** 與 **空行 `\n\n` 分段**（不需改表結構；在 Supabase `questions.content`／`explanation` 內輸入換行即可）。用於答題泡泡、結果頁與家長詳情。**無 SQL**。 |
@@ -71,6 +369,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 | 2026-04 | **Admin 業務概覽** (`/admin` → 業務概覽): 今日實時 KPI（刷新）+ 月結靜態趨勢圖。Supabase 執行 `supabase_admin_business_kpi.sql` 與 `supabase_profile_update.sql`；Vercel 需 `SUPABASE_SERVICE_ROLE_KEY`。API：`POST` `/api/admin/business-today`、`/api/admin/business-monthly`（帳密同 `ADMIN_CONSOLE_*`）。家長儀表板載入時呼叫 `log_parent_dashboard_view`；學生「姓別」按鈕同步寫入 `students.gender` (M/F)。 |
 | 2026-04 | Parent dashboard: subject selector **above** grade-rank block (`src/app/page.tsx` / `ParentDashboard`). |
 | 2026-04 | Cron: `/api/cron-recalculate-averages` `part=rank` / `part=grade`, `SUPABASE_SERVICE_ROLE_KEY`, SQL chain for `grade_averages` + `student_grade_rankings` (see sections above). |
+| 2026-05 | **Cookie / 私隱合規（PCPD）**：新增 Cookie 同意橫幅（接受全部 / 拒絕非必要 / 管理設定）、可重開「Cookie 設定」按鈕，以及雙語（繁中/EN）Cookie 與私隱聲明 overlay。目前 UI 僅顯示於 `login_mobile`，選擇儲存在 `localStorage`（`gearup_cookie_consent_v1`）。檔案：`src/lib/cookie-consent.ts`、`src/lib/cookie-consent.test.ts`、`src/app/page.tsx`。 |
 | 2026-05 | **Business KPI 排除測試數據（`9999*` 手機）**：前後端 KPI 邏輯已統一排除測試家長資料；新增一鍵 SQL：`supabase_admin_business_kpi_exclude_test_mobile_9999.sql`（更新 `admin_today_business`、`admin_business_monthly_summary`、`admin_business_school_details`）。另修正「今日新增月費用戶／月費新增趨勢」來源改以 `parents.paid_started_at` 為準（舊環境保留 fallback）。 |
 | 2026-05 | **Admin 折扣碼使用摘要**：`實付總額 / 原價總額 / 折扣總額` 改為僅統計 `status = paid` 訂單，避免把未付款紀錄算入金額。 |
 | 2026-05 | **家長端 UI 微調（已上線）**：① 登入頁新增宣傳句並套用較活潑字型；② 練習結果頁「小香蕉圖示」改為 banner（可用 `NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL` 覆蓋，預設走 Supabase Storage）；③ 身份選擇頁新增客服入口：月費家長顯示 WhatsApp `wa.me/85252861715?text=客戶服務查詢`、免費家長顯示 `cs@hkedutech.com`；④ 家長頁面客服電郵統一為 `cs@hkedutech.com`；⑤ 免費家長升級文案更新。 |
@@ -130,6 +429,216 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
   2. 到 `/admin` → `付款狀態查詢` 下方，切換月份確認摘要數字與明細表會更新；下載 CSV 檢查欄位完整性。
   3. 隨機抽一個年級/科目開題，確認 AI 題庫不足時會顯示阻擋訊息；題庫足夠時正常進入練習。
   4. 跑一次 `npm test && npm run lint && npm run build`，確認無回歸。
+
+## Handover note — 2026-05-18 (CS email migration + registration hardening)
+
+- 本日已完成並上線：
+  1. **性別必填強化**（註冊 / 新增學生）：
+     - UI 明確顯示 `性別（必填）`
+     - 後端 API `POST /api/auth/register`、`POST /api/auth/add-student` 做二次驗證
+     - 建立學生後即時寫入 `students.gender`（M/F）
+  2. **客服電郵 UI 統一更新**：
+     - `cs@hkedutech.com` → `cs@gearupquiz.com`（登入頁、角色頁、家長/學生客服提示、Cookie/Privacy UI 文案）
+  3. **Production 部署**：
+     - deployment: `dpl_6zJyaHeoR5pPRrb1nG8JKLfLoTVi`
+     - live alias: `https://q.hkedutech.com`
+
+- 本日明確保留不改（依 owner 指示）：
+  - 外部 statement 文字檔仍維持舊 email（live）：
+    - `.../Webpage_statements/privacy_statment.txt`
+    - `.../Webpage_statements/payment_terms_condition.txt`
+
+- 明日開工建議第一步：
+  1. 若要把 statement 也改成新 email，直接更新上述兩個 Supabase Storage `.txt` 檔內容即可（前端會自動讀取新文案，無需改程式碼）。
+  2. 先用 Preview 驗證 statement modal 顯示，再按既有 gate 走 owner 批准後才上 Production。
+  3. 例行跑 `npm test && npm run lint && npm run build && npm run smoke`。
+
+## Handover note — 2026-05-20 (register CTA production rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. **登入頁「新用戶註冊」CTA 強化**：按鈕改為登入卡片上方、全寬、尺寸與輸入欄一致（提升可見度）。
+  2. **Release gate 全數通過**：`npm test`、`npm run lint`、`npm run build`、`npm run smoke` 全綠；Production URL 再跑一次 smoke 亦全綠。
+  3. **Production 部署資訊**：
+     - deployment: `dpl_4YMLJsdQTzhUwzJxNNP5Nir4SoXU`
+     - live alias: `https://q.hkedutech.com`
+
+- 本次變更邊界（重要）：
+  - 僅 UI 變更（`src/app/page.tsx`）+ 文檔更新。
+  - **未改動**：註冊題目配額邏輯、GA/GTM 事件埋點、Supabase SQL/RPC。
+
+- 下次若要處理「新註冊 200 題」策略，建議獨立開一個 backend 任務與 release：
+  1. 先確認現行生產資料實際來源（RPC/觸發器/後補腳本）；
+  2. 補一份對應 SQL migration + 回歸測試；
+  3. 依 Preview→owner 批准→Production gate 流程上線。
+
+## Handover note — 2026-06-16 (result page wrong-answer readability rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 學生完成練習後的「錯題解析」改為更易讀的逐題卡片格式。
+  2. 每題錯題固定顯示：
+     - 題目內容
+     - 你的答案（值）
+     - 正確答案（值）
+     - 解釋
+  3. Choice 題會顯示答案 key + 選項文字（例如 `C（選項內容）`）。
+
+- 本次部署資訊：
+  - deployment: `dpl_972VJtfHgLVtbtVxWHEFLtWMgfv4`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/972VJtfHgLVtbtVxWHEFLtWMgfv4`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed；先安裝 Playwright Chromium）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+- SOP/checklist 已補齊（for later reference）：
+  - `docs/release-sop.md`
+  - `docs/release-deploy-checklist.md`
+
+## Handover note — 2026-06-17 (referral system production rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 註冊頁新增可選 `負責教師編號`（6 位數字）欄位。
+  2. 推薦碼錯誤訊息（錯誤編號/超限）改為顯示在推薦碼欄位正下方，且保留其他已填註冊資料。
+  3. Admin 新增 `教師編號維護`：
+     - 手動新增推薦碼
+     - Part 1 摘要（建立日期、教師名稱、編號、使用次數）
+     - Part 2 明細（使用日期、電話號碼、家長狀態 free/paid）
+     - CSV/PDF 匯出
+
+- 本次部署資訊：
+  - deployment: `dpl_EXnAPUbGi2PwfNDoLC4ce6daGVY6`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/EXnAPUbGi2PwfNDoLC4ce6daGVY6`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+- 上線後注意：
+  - 若環境尚未執行 `supabase_tutor_referral_codes.sql`，推薦碼功能會因資料表缺失而無法使用；請先在 Supabase SQL Editor 執行該檔。
+
+## Handover note — 2026-06-17 (free-tier paid-invite copy update rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 家長身份選擇頁的免費升級月費按鈕文案更新為：
+     `成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。`
+  2. 本次屬 **UI-only** 文案更新；無 API、SQL、資料結構或邏輯變更。
+
+- 本次部署資訊：
+  - deployment: `dpl_BLrenEY5hxJWnbMWutJRPFn1FGkw`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/BLrenEY5hxJWnbMWutJRPFn1FGkw`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-06-23 (tutor password reset rollout)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. Admin `教師編號維護` 新增 **Part 3：重設導師登入密碼**。
+  2. Admin 輸入教師編號後可重設密碼為 `123456`。
+  3. 重設時會同步清除鎖定狀態（`failed_attempts=0`、`locked_until=null`）。
+  4. 下次登入導師入口仍需先更新密碼（`must_change_password=true`）。
+  5. 成功訊息固定顯示於 **Part 3 區塊底部**：
+     `已重設此教師編號密碼為 123456，下次登入需先更新密碼。`
+
+- 本次部署資訊：
+  - deployment: `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm test` ✅
+  - `npm run build` ✅
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
+
+## Handover note — 2026-06-29 (recovery release: ranking live cohort + payment history restore)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 家長同級排名/比較基準改為排除測試家長 mobile `999*`（live cohort only）。
+  2. 結果頁錯題詳解（題目內容 / 你的答案（值） / 正確答案（值） / 解釋）確認維持。
+  3. 月費家長「消費紀錄」功能回復並上線（年份篩選、付款日期/金額/方式；免費家長顯示限制提示）。
+
+- 本次部署資訊：
+  - deployment: `dpl_HdTDYK97WfusGgSp9wchS3zZvpFS`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/HdTDYK97WfusGgSp9wchS3zZvpFS`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/payment/history` invalid payload=400
+
+## Handover note — 2026-07-02 (hotfix: parent email wrong-question readability restore)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 回復家長練習電郵錯題詳解顯示（題目內容 / 你的答案 / 正確答案 / 解釋）。
+  2. 回復 `wrong_question_details` 解析與渲染流程，避免錯題段落在電郵缺失。
+  3. 變更範圍限制於 `src/app/api/send-quiz-email/route.ts`（hotfix 最小化）。
+
+- 本次部署資訊：
+  - deployment: `dpl_7D8PTuBBjykiRLFcVSYfHsNNhisR`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/7D8PTuBBjykiRLFcVSYfHsNNhisR`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/payment/history` invalid payload=400
+    - `POST /api/send-quiz-email` invalid payload=400
 
 ## Setup
 

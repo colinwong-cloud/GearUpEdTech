@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
 import {
   buildPaidTransactionsCsv,
@@ -17,11 +17,17 @@ type AdminConsoleAction =
   | "set_email_notification"
   | "search_questions"
   | "update_question"
+  | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
   | "discount_code_delete"
   | "discount_code_usage_summary"
+  | "tutor_referral_code_create"
+  | "tutor_referral_code_summary"
+  | "tutor_referral_code_usage_details"
+  | "tutor_referral_password_reset"
   | "payment_status_enquiry"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
@@ -62,7 +68,9 @@ type Tab =
   | "questions"
   | "business"
   | "discount_codes"
-  | "payment_status";
+  | "tutor_referral_codes"
+  | "payment_status"
+  | "student_practice_summary";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -125,6 +133,26 @@ interface DiscountCodeUsageRawRecord {
   mobile_number: string;
   merchant_order_id: string;
   payment_method: string | null;
+}
+
+interface TutorReferralCodeSummaryRow {
+  id: string;
+  code: string;
+  tutor_name: string;
+  tutor_mobile: string | null;
+  tutor_email: string | null;
+  usage_limit: number;
+  current_uses: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface TutorReferralUsageDetailRow {
+  id: string;
+  used_at: string;
+  mobile_number: string;
+  parent_id: string | null;
+  parent_status: "free" | "paid";
 }
 
 interface PaymentStatusMonthRow {
@@ -231,6 +259,63 @@ interface PaymentMonthlyPaidSummaryResult {
   parents: PaymentMonthlyPaidParentRow[];
   records: PaidTransactionAuditRow[];
 }
+
+interface ParentStudentPracticeStudentRow {
+  id: string;
+  student_name: string;
+  grade_level: string;
+  gender: string | null;
+  gender_label: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  school_district: string | null;
+}
+
+interface ParentStudentPracticeSummaryRow {
+  student_id: string;
+  practice_date: string;
+  subject: string;
+  sessions_count: number;
+  questions_attempted: number;
+  correct_count: number;
+  correct_rate: number;
+}
+
+interface ParentStudentsPracticeSummaryResult {
+  found: boolean;
+  month: string;
+  parent?: {
+    id: string;
+    mobile_number: string;
+    parent_name: string | null;
+    email: string | null;
+  };
+  students: ParentStudentPracticeStudentRow[];
+  summary_rows: ParentStudentPracticeSummaryRow[];
+}
+
+interface GradeLevelPracticeFrequencyRow {
+  grade_level: string;
+  unique_students_started_practice: number;
+  avg_questions_completed_per_session: number;
+  avg_time_used_seconds_per_session: number;
+  sessions_count: number;
+}
+
+interface GradeLevelPracticeFrequencyResult {
+  month: string;
+  subject: "all" | "Math" | "Chinese" | "English";
+  rows: GradeLevelPracticeFrequencyRow[];
+}
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+
+const GRADE_SUMMARY_SUBJECT_OPTIONS: Array<{ value: GradeSummarySubject; label: string }> = [
+  { value: "all", label: "all subject" },
+  { value: "Chinese", label: "Chinese" },
+  { value: "English", label: "English" },
+  { value: "Math", label: "Math" },
+];
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -359,11 +444,13 @@ export default function AdminPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "business", label: "業務概覽" },
     { key: "quota", label: "題目配額" },
+    { key: "student_practice_summary", label: "學生練習摘要" },
     { key: "payment_status", label: "付款狀態查詢" },
     { key: "delete", label: "刪除帳戶" },
     { key: "email", label: "電郵通知" },
     { key: "questions", label: "題目管理" },
     { key: "discount_codes", label: "折扣碼維護" },
+    { key: "tutor_referral_codes", label: "教師編號維護" },
   ];
 
   return (
@@ -389,11 +476,13 @@ export default function AdminPage() {
 
         {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
         {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "student_practice_summary" && <StudentPracticeSummarySection sessionToken={sessionToken} />}
         {tab === "payment_status" && <PaymentStatusSection sessionToken={sessionToken} />}
         {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}
         {tab === "email" && <EmailSection sessionToken={sessionToken} />}
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
         {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
+        {tab === "tutor_referral_codes" && <TutorReferralCodeSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
@@ -841,6 +930,323 @@ function formatDateTimeDisplay(value: string | null | undefined): string {
 
 function formatHkdAmount(value: number): string {
   return Number(value || 0).toFixed(2);
+}
+
+function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
+  const [mobile, setMobile] = useState("");
+  const [month, setMonth] = useState(() => getCurrentHktMonthKey());
+  const [gradeSummarySubject, setGradeSummarySubject] = useState<GradeSummarySubject>("all");
+  const [gradeSummaryMonth, setGradeSummaryMonth] = useState(() => getCurrentHktMonthKey());
+  const [loading, setLoading] = useState(false);
+  const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [gradeSummaryMsg, setGradeSummaryMsg] = useState("");
+  const [result, setResult] = useState<ParentStudentsPracticeSummaryResult | null>(null);
+  const [gradeSummaryResult, setGradeSummaryResult] = useState<GradeLevelPracticeFrequencyResult | null>(
+    null
+  );
+
+  const summaryRowsByStudent = useMemo(() => {
+    if (!result) return new Map<string, ParentStudentPracticeSummaryRow[]>();
+    const grouped = new Map<string, ParentStudentPracticeSummaryRow[]>();
+    for (const row of result.summary_rows ?? []) {
+      const list = grouped.get(row.student_id) ?? [];
+      list.push(row);
+      grouped.set(row.student_id, list);
+    }
+    return grouped;
+  }, [result]);
+
+  const handleSearch = useCallback(async () => {
+    if (!mobile.trim()) {
+      setMsg("請輸入家長電話號碼");
+      setResult(null);
+      return;
+    }
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      setMsg("月份格式必須為 YYYY-MM");
+      setResult(null);
+      return;
+    }
+
+    setLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<ParentStudentsPracticeSummaryResult>(
+        "parent_students_practice_summary",
+        {
+          mobile_number: mobile.trim(),
+          month,
+        },
+        sessionToken
+      );
+      if (!data?.found) {
+        setMsg("找不到此電話號碼");
+        setResult(null);
+        return;
+      }
+      setResult(data);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "載入學生練習摘要失敗");
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [mobile, month, sessionToken]);
+
+  const loadGradeSummary = useCallback(async () => {
+    if (!/^\d{4}-\d{2}$/.test(gradeSummaryMonth)) {
+      setGradeSummaryMsg("月份格式必須為 YYYY-MM");
+      setGradeSummaryResult(null);
+      return;
+    }
+    setGradeSummaryLoading(true);
+    setGradeSummaryMsg("");
+    try {
+      const data = await adminConsoleRequest<GradeLevelPracticeFrequencyResult>(
+        "grade_level_practice_frequency_summary",
+        { month: gradeSummaryMonth, subject: gradeSummarySubject },
+        sessionToken
+      );
+      setGradeSummaryResult(data);
+    } catch (err) {
+      setGradeSummaryMsg(err instanceof Error ? err.message : "載入年級練習頻率摘要失敗");
+      setGradeSummaryResult(null);
+    } finally {
+      setGradeSummaryLoading(false);
+    }
+  }, [gradeSummaryMonth, gradeSummarySubject, sessionToken]);
+
+  useEffect(() => {
+    void loadGradeSummary();
+  }, [loadGradeSummary]);
+
+  const formatAvgMinutes = useCallback((seconds: number) => {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    return (safeSeconds / 60).toFixed(2);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-gray-800">家長學生練習摘要</h2>
+      <p className="text-sm text-gray-500">
+        依家長電話號碼顯示所有已註冊學生資料，並按學生分組查看所選月份每日各科練習正確率摘要。
+      </p>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-sm font-bold text-gray-800">平台練習頻率摘要（按年級）</h3>
+          <div className="flex items-center gap-2">
+            <select
+              value={gradeSummarySubject}
+              onChange={(e) => setGradeSummarySubject(e.target.value as GradeSummarySubject)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400 bg-white"
+            >
+              {GRADE_SUMMARY_SUBJECT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="month"
+              value={gradeSummaryMonth}
+              onChange={(e) => setGradeSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadGradeSummary()}
+              disabled={gradeSummaryLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {gradeSummaryLoading ? "載入中..." : "查詢"}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          指標：① 啟動練習學生數（當月有開始練習）② 每節平均完成題數 ③ 每節平均完成時間。
+        </p>
+        {gradeSummaryMsg && (
+          <p
+            className={`text-sm ${
+              gradeSummaryMsg.includes("失敗") || gradeSummaryMsg.includes("格式")
+                ? "text-red-500"
+                : "text-emerald-600"
+            }`}
+          >
+            {gradeSummaryMsg}
+          </p>
+        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">年級</th>
+                <th className="py-2 pr-3">啟動練習學生數</th>
+                <th className="py-2 pr-3">每節平均完成題數</th>
+                <th className="py-2 pr-3">每節平均完成時間（分鐘）</th>
+                <th className="py-2 pr-3">練習節數</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(gradeSummaryResult?.rows ?? []).map((row) => (
+                <tr key={row.grade_level} className="border-b border-gray-100">
+                  <td className="py-2 pr-3 font-semibold text-gray-800">{row.grade_level}</td>
+                  <td className="py-2 pr-3">{row.unique_students_started_practice}</td>
+                  <td className="py-2 pr-3">{row.avg_questions_completed_per_session.toFixed(2)}</td>
+                  <td className="py-2 pr-3">{formatAvgMinutes(row.avg_time_used_seconds_per_session)}</td>
+                  <td className="py-2 pr-3">{row.sessions_count}</td>
+                </tr>
+              ))}
+              {(gradeSummaryResult?.rows?.length ?? 0) === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-gray-400">
+                    {gradeSummaryLoading
+                      ? "載入中..."
+                      : `此科目/月份（${gradeSummaryResult?.subject || gradeSummarySubject} / ${
+                          gradeSummaryResult?.month || gradeSummaryMonth
+                        }）沒有練習紀錄`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={mobile}
+          onChange={(e) => {
+            setMobile(e.target.value);
+            setMsg("");
+          }}
+          onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
+          placeholder="輸入家長電話號碼"
+          className="flex-1 min-w-[220px] p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+        />
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+        />
+        <button
+          onClick={() => void handleSearch()}
+          disabled={loading}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {loading ? "載入中..." : "查詢"}
+        </button>
+      </div>
+
+      {msg && (
+        <p className={`text-sm ${msg.includes("失敗") || msg.includes("找不到") ? "text-red-500" : "text-emerald-600"}`}>
+          {msg}
+        </p>
+      )}
+
+      {result?.found && result.parent && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2 text-sm">
+            <p className="text-gray-500">
+              家長：<span className="font-semibold text-gray-800">{result.parent.mobile_number}</span>
+              {result.parent.parent_name ? ` (${result.parent.parent_name})` : ""}
+            </p>
+            <p className="text-gray-500">
+              電郵：<span className="font-semibold text-gray-800">{result.parent.email || "—"}</span>
+            </p>
+            <p className="text-gray-500">
+              查詢月份：<span className="font-semibold text-gray-800">{result.month}</span>
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <h3 className="text-sm font-bold text-gray-800 mb-3">學生資料</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">學生姓名</th>
+                    <th className="py-2 pr-3">年級</th>
+                    <th className="py-2 pr-3">性別</th>
+                    <th className="py-2 pr-3">學校</th>
+                    <th className="py-2 pr-3">學校地區</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.students.map((student) => (
+                    <tr key={student.id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3 font-semibold text-gray-800">{student.student_name || "—"}</td>
+                      <td className="py-2 pr-3">{student.grade_level || "—"}</td>
+                      <td className="py-2 pr-3">{student.gender_label || student.gender || "—"}</td>
+                      <td className="py-2 pr-3">{student.school_name || "—"}</td>
+                      <td className="py-2 pr-3">{student.school_district || "—"}</td>
+                    </tr>
+                  ))}
+                  {result.students.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center text-gray-400">
+                        此家長目前沒有學生資料
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {result.students.map((student) => {
+            const rows = summaryRowsByStudent.get(student.id) ?? [];
+            return (
+              <div key={`summary-${student.id}`} className="bg-white rounded-xl border border-gray-100 p-4">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">
+                  {student.student_name || "未命名學生"}（{student.grade_level || "—"}）
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  每日按科目加權正確率（正確題數 / 作答題數）
+                </p>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b">
+                        <th className="py-2 pr-3">日期</th>
+                        <th className="py-2 pr-3">科目</th>
+                        <th className="py-2 pr-3">練習節數</th>
+                        <th className="py-2 pr-3">作答題數</th>
+                        <th className="py-2 pr-3">答對題數</th>
+                        <th className="py-2 pr-3">正確率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={`${row.student_id}-${row.practice_date}-${row.subject}`} className="border-b border-gray-100">
+                          <td className="py-2 pr-3">{row.practice_date}</td>
+                          <td className="py-2 pr-3">{row.subject}</td>
+                          <td className="py-2 pr-3">{row.sessions_count}</td>
+                          <td className="py-2 pr-3">{row.questions_attempted}</td>
+                          <td className="py-2 pr-3">{row.correct_count}</td>
+                          <td className="py-2 pr-3 font-semibold text-indigo-700">{row.correct_rate.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                      {rows.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-4 text-center text-gray-400">
+                            此學生於 {result.month} 沒有練習紀錄
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
@@ -1349,6 +1755,10 @@ function normalizeCodeInput(raw: string): string {
   return raw.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
 }
 
+function normalizeReferralCodeInput(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 6);
+}
+
 function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
   const headers = [
     "id",
@@ -1396,6 +1806,77 @@ function buildCsv(rows: DiscountCodeUsageRawRecord[]): string {
       .join(",")
   );
   return [headers.join(","), ...body].join("\n");
+}
+
+function buildReferralUsageCsv(rows: TutorReferralUsageDetailRow[]): string {
+  const headers = ["used_at", "mobile_number", "parent_status"];
+  const escape = (value: unknown): string => {
+    const text = value === null || value === undefined ? "" : String(value);
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+  const body = rows.map((row) => [row.used_at, row.mobile_number, row.parent_status].map(escape).join(","));
+  return [headers.join(","), ...body].join("\n");
+}
+
+function buildReferralUsagePrintHtml({
+  code,
+  tutorName,
+  tutorMobile,
+  tutorEmail,
+  rows,
+}: {
+  code: string;
+  tutorName: string;
+  tutorMobile?: string | null;
+  tutorEmail?: string | null;
+  rows: TutorReferralUsageDetailRow[];
+}): string {
+  const esc = (value: string) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  const rowHtml =
+    rows.length === 0
+      ? `<tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:center;color:#666;">沒有資料</td></tr>`
+      : rows
+          .map(
+            (row) =>
+              `<tr><td style="padding:8px;border:1px solid #ddd;">${esc(
+                row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"
+              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(
+                row.mobile_number
+              )}</td><td style="padding:8px;border:1px solid #ddd;">${esc(row.parent_status)}</td></tr>`
+          )
+          .join("");
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>教師編號使用紀錄 ${esc(code)}</title>
+  </head>
+  <body style="font-family:Arial, 'PingFang TC', 'Microsoft JhengHei', sans-serif; padding:24px;">
+    <h2 style="margin:0 0 8px;">教師編號使用紀錄</h2>
+    <p style="margin:0 0 16px;">教師編號：<strong>${esc(code)}</strong> ｜ 教師：<strong>${esc(
+    tutorName || "-"
+  )}</strong> ｜ 教師手機：<strong>${esc(tutorMobile || "-")}</strong> ｜ 教師電郵：<strong>${esc(
+    tutorEmail || "-"
+  )}</strong></p>
+    <table style="border-collapse:collapse; width:100%; font-size:13px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">使用日期</th>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">電話號碼</th>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f8fafc;">家長狀態</th>
+        </tr>
+      </thead>
+      <tbody>${rowHtml}</tbody>
+    </table>
+  </body>
+</html>`;
 }
 
 function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
@@ -1777,6 +2258,451 @@ function DiscountCodeSection({ sessionToken }: { sessionToken: string }) {
             匯出 CSV
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
+  const [summarySearch, setSummarySearch] = useState("");
+  const [summaryRows, setSummaryRows] = useState<TutorReferralCodeSummaryRow[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+
+  const [createCode, setCreateCode] = useState("");
+  const [createTutorName, setCreateTutorName] = useState("");
+  const [createTutorMobile, setCreateTutorMobile] = useState("");
+  const [createTutorEmail, setCreateTutorEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+
+  const [detailCode, setDetailCode] = useState("");
+  const [detailResult, setDetailResult] = useState<{
+    found: boolean;
+    code: TutorReferralCodeSummaryRow | null;
+    rows: TutorReferralUsageDetailRow[];
+  } | null>(null);
+
+  const loadSummary = async (q = summarySearch) => {
+    setSummaryLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<TutorReferralCodeSummaryRow[]>(
+        "tutor_referral_code_summary",
+        { q: q.trim() },
+        sessionToken
+      );
+      setSummaryRows(data || []);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "教師編號摘要載入失敗");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSummary("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionToken]);
+
+  const handleCreate = async () => {
+    const code = normalizeReferralCodeInput(createCode);
+    const tutorName = createTutorName.trim();
+    const tutorMobile = createTutorMobile.replace(/\D/g, "").slice(0, 8);
+    const tutorEmailInput = createTutorEmail.trim().toLowerCase();
+    const tutorEmail = tutorEmailInput || null;
+    if (!/^\d{6}$/.test(code)) {
+      setMsg("教師編號必須為 6 位數字");
+      return;
+    }
+    if (!tutorName) {
+      setMsg("請輸入教師名稱");
+      return;
+    }
+    if (!/^\d{8}$/.test(tutorMobile)) {
+      setMsg("請輸入 8 位數字教師手機");
+      return;
+    }
+    if (tutorEmail && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(tutorEmail)) {
+      setMsg("教師電郵格式不正確");
+      return;
+    }
+    setSaveLoading(true);
+    setMsg("");
+    try {
+      await adminConsoleRequest(
+        "tutor_referral_code_create",
+        {
+          code,
+          tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
+        },
+        sessionToken
+      );
+      setMsg("教師編號已新增");
+      setCreateCode("");
+      setCreateTutorName("");
+      setCreateTutorMobile("");
+      setCreateTutorEmail("");
+      await loadSummary();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "新增教師編號失敗");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const loadDetail = async (rawCode = detailCode) => {
+    const code = normalizeReferralCodeInput(rawCode);
+    setDetailCode(code);
+    if (!/^\d{6}$/.test(code)) {
+      setMsg("請輸入 6 位數字教師編號");
+      setDetailResult(null);
+      return;
+    }
+
+    setDetailLoading(true);
+    setMsg("");
+    try {
+      const data = await adminConsoleRequest<{
+        found: boolean;
+        code: TutorReferralCodeSummaryRow | null;
+        rows: TutorReferralUsageDetailRow[];
+      }>("tutor_referral_code_usage_details", { code }, sessionToken);
+      setDetailResult(data);
+      if (!data.found) {
+        setMsg("找不到此教師編號");
+      }
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "教師編號使用紀錄查詢失敗");
+      setDetailResult(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const exportDetailCsv = () => {
+    if (!detailResult?.found || !detailResult.code || detailResult.rows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const csv = buildReferralUsageCsv(detailResult.rows);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `tutor-referral-usage-${detailResult.code.code}-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDetailPdf = () => {
+    if (!detailResult?.found || !detailResult.code || detailResult.rows.length === 0) {
+      setMsg("目前沒有可匯出的使用紀錄");
+      return;
+    }
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+    if (!printWindow) {
+      setMsg("無法開啟列印視窗，請檢查瀏覽器是否封鎖彈出視窗。");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(
+      buildReferralUsagePrintHtml({
+        code: detailResult.code.code,
+        tutorName: detailResult.code.tutor_name,
+        tutorMobile: detailResult.code.tutor_mobile,
+        tutorEmail: detailResult.code.tutor_email,
+        rows: detailResult.rows,
+      })
+    );
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  const handleResetPassword = async () => {
+    const code = normalizeReferralCodeInput(resetCode);
+    setResetMsg("");
+    if (!/^\d{6}$/.test(code)) {
+      setResetMsg("請輸入 6 位數字教師編號以重設密碼");
+      return;
+    }
+    if (!window.confirm(`確認重設教師編號 ${code} 的密碼為 123456？`)) {
+      return;
+    }
+    setResetLoading(true);
+    setResetMsg("");
+    try {
+      const result = await adminConsoleRequest<{
+        code: string;
+        tutor_name: string;
+        message: string;
+      }>("tutor_referral_password_reset", { code }, sessionToken);
+      setResetMsg(result.message || "已重設此教師編號密碼為 123456，下次登入需先更新密碼。");
+      setResetCode("");
+    } catch (err) {
+      setResetMsg(err instanceof Error ? err.message : "重設教師密碼失敗");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-gray-800">教師編號維護</h2>
+
+      {msg && (
+        <p
+          className={`text-sm ${
+            msg.includes("失敗") || msg.includes("錯誤") || msg.includes("找不到")
+              ? "text-red-500"
+              : "text-emerald-600"
+          }`}
+        >
+          {msg}
+        </p>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">手動新增教師編號</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師編號（6位數字）</label>
+            <input
+              value={createCode}
+              onChange={(e) => setCreateCode(normalizeReferralCodeInput(e.target.value))}
+              placeholder="例如 123456"
+              maxLength={6}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師名稱</label>
+            <input
+              value={createTutorName}
+              onChange={(e) => setCreateTutorName(e.target.value)}
+              placeholder="例如 陳老師"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師手機（8位數字）</label>
+            <input
+              value={createTutorMobile}
+              onChange={(e) => setCreateTutorMobile(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder="例如 91234567"
+              maxLength={8}
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">教師電郵（可選）</label>
+            <input
+              type="email"
+              value={createTutorEmail}
+              onChange={(e) => setCreateTutorEmail(e.target.value)}
+              placeholder="例如 tutor@example.com"
+              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+        <button
+          onClick={handleCreate}
+          disabled={saveLoading}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {saveLoading ? "儲存中..." : "新增教師編號"}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 1：教師編號使用摘要</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={summarySearch}
+            onChange={(e) => setSummarySearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadSummary()}
+            placeholder="搜尋教師編號 / 教師名稱 / 手機 / 電郵"
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadSummary()}
+            disabled={summaryLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {summaryLoading ? "載入中..." : "搜尋"}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">建立日期</th>
+                <th className="py-2 pr-3">教師名稱</th>
+                <th className="py-2 pr-3">教師手機</th>
+                <th className="py-2 pr-3">教師電郵</th>
+                <th className="py-2 pr-3">教師編號</th>
+                <th className="py-2 pr-3">已使用次數 / 上限</th>
+                <th className="py-2 pr-3">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">
+                    {row.created_at ? new Date(row.created_at).toLocaleString("zh-HK") : "-"}
+                  </td>
+                  <td className="py-2 pr-3">{row.tutor_name}</td>
+                  <td className="py-2 pr-3">{row.tutor_mobile || "-"}</td>
+                  <td className="py-2 pr-3">{row.tutor_email || "-"}</td>
+                  <td className="py-2 pr-3 font-mono">{row.code}</td>
+                  <td className="py-2 pr-3">
+                    {row.current_uses} / {row.usage_limit}
+                  </td>
+                  <td className="py-2 pr-3">
+                    <button
+                      onClick={() => loadDetail(row.code)}
+                      className="px-2 py-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-semibold"
+                    >
+                      查詢使用
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {summaryRows.length === 0 && !summaryLoading && (
+                <tr>
+                  <td colSpan={7} className="py-4 text-center text-gray-400">
+                    沒有符合條件的資料
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 2：教師編號使用明細查詢</h3>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={detailCode}
+            onChange={(e) => setDetailCode(normalizeReferralCodeInput(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && loadDetail()}
+            placeholder="輸入 6 位數字教師編號"
+            maxLength={6}
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={() => loadDetail()}
+            disabled={detailLoading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {detailLoading ? "查詢中..." : "查詢"}
+          </button>
+        </div>
+
+        {detailResult?.found && detailResult.code && (
+          <p className="text-sm text-gray-600">
+            教師編號：<span className="font-mono">{detailResult.code.code}</span> ｜ 教師：
+            <span className="font-semibold"> {detailResult.code.tutor_name}</span> ｜ 教師手機：
+            <span className="font-semibold"> {detailResult.code.tutor_mobile || "-"}</span> ｜ 教師電郵：
+            <span className="font-semibold"> {detailResult.code.tutor_email || "-"}</span> ｜ 已使用：
+            <span className="font-semibold"> {detailResult.code.current_uses}</span> /
+            {detailResult.code.usage_limit}
+          </p>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-2 pr-3">使用日期</th>
+                <th className="py-2 pr-3">電話號碼</th>
+                <th className="py-2 pr-3">家長狀態</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(detailResult?.rows ?? []).map((row) => (
+                <tr key={row.id} className="border-b border-gray-100">
+                  <td className="py-2 pr-3">
+                    {row.used_at ? new Date(row.used_at).toLocaleString("zh-HK") : "-"}
+                  </td>
+                  <td className="py-2 pr-3">{row.mobile_number}</td>
+                  <td className="py-2 pr-3">{row.parent_status}</td>
+                </tr>
+              ))}
+              {!detailLoading && (detailResult?.rows ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-gray-400">
+                    沒有可顯示的使用明細
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <p className="text-xs text-gray-500">可匯出目前查詢結果（CSV / PDF）</p>
+          <div className="flex gap-2">
+            <button
+              onClick={exportDetailCsv}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+            >
+              匯出 CSV
+            </button>
+            <button
+              onClick={exportDetailPdf}
+              className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800"
+            >
+              匯出 PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700">Part 3：重設導師登入密碼</h3>
+        <p className="text-xs text-gray-500">
+          輸入教師編號後可重設密碼為 <span className="font-mono">123456</span>。重設後會清除錯誤次數鎖定，並要求導師下次登入先更新密碼。
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={resetCode}
+            onChange={(e) => setResetCode(normalizeReferralCodeInput(e.target.value))}
+            onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+            placeholder="輸入 6 位數字教師編號"
+            maxLength={6}
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+          <button
+            onClick={handleResetPassword}
+            disabled={resetLoading}
+            className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50"
+          >
+            {resetLoading ? "重設中..." : "重設為 123456"}
+          </button>
+        </div>
+        {resetMsg && (
+          <p
+            className={`text-sm ${
+              resetMsg.includes("失敗") || resetMsg.includes("錯誤")
+                ? "text-red-500"
+                : "text-emerald-600"
+            }`}
+          >
+            {resetMsg}
+          </p>
+        )}
       </div>
     </div>
   );
