@@ -50,6 +50,9 @@ Every release must re-check these critical features:
    - paid users can view `消費紀錄`
    - includes year filter and columns for date / amount / payment method
 10. Ranking/benchmark cohort excludes test parents (`mobile_number LIKE '999%'`).
+11. Parent practice email readability remains available:
+   - wrong-question details block appears in email
+   - includes question content / student answer / correct answer / explanation
 
 ## 4) Validation gate
 
@@ -69,19 +72,17 @@ After production deploy, update:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-06-29
-- Deployment ID: `dpl_HdTDYK97WfusGgSp9wchS3zZvpFS`
+- Date (UTC): 2026-07-02
+- Deployment ID: `dpl_7D8PTuBBjykiRLFcVSYfHsNNhisR`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/HdTDYK97WfusGgSp9wchS3zZvpFS
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7D8PTuBBjykiRLFcVSYfHsNNhisR
 - Scope:
-  - recovery release to prevent feature-regression baseline drift
-  - keep result-page detailed wrong-answer readability blocks
-  - restore paid-user payment history (`消費紀錄`) with year filter
-  - exclude test parents (`999*`) from ranking and grade benchmark cohorts
-  - SQL applied via `supabase_parent_dashboard_exclude_test_mobile_999.sql`
+  - hotfix restore for parent email wrong-question readability
+  - restore wrong-question details block in parent practice email
+  - keep scope limited to `src/app/api/send-quiz-email/route.ts`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/payment/history` invalid payload 400
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/payment/history` invalid payload 400, `/api/send-quiz-email` invalid payload 400
