@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-03** — deployment `dpl_2H1oMBmiUaQwEkKWHHmF5JRKDLVb`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2H1oMBmiUaQwEkKWHHmF5JRKDLVb). **Release scope:** Hotfix 回復 `www.gearupquiz.com/tutor` 的當代化設計（approved Variant B：Modern Gradient / Glass）。
+**Latest production deploy:** **2026-07-03** — deployment `dpl_4P7DPDzz33ZocVG8Y3sL2KMkbwrs`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/4P7DPDzz33ZocVG8Y3sL2KMkbwrs). **Release scope:** Tutor student detail page UI polish（`返回導師主頁` / `登出` 改為頁底同款淺藍按鈕；僅 UI 變更）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -665,6 +665,32 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /reset-password`=200
     - `POST /api/admin/console` (no auth)=401
     - `GET /api/tutor/session` (no auth)=401
+
+## Handover note — 2026-07-03 (ui: tutor detail page bottom light-blue back/logout actions)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 導師學生詳情頁（`/tutor/student/[mobile]`）把 `返回導師主頁` 與 `登出` 移到頁底。
+  2. 兩個按鈕統一為同款淺藍樣式，手機與桌面版維持一致視覺語言。
+  3. 僅改 `src/app/tutor/student/[mobile]/page.tsx` UI 排版與樣式，無 API / auth / business logic 變更。
+
+- 本次部署資訊：
+  - deployment: `dpl_4P7DPDzz33ZocVG8Y3sL2KMkbwrs`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/4P7DPDzz33ZocVG8Y3sL2KMkbwrs`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup
 

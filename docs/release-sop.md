@@ -56,6 +56,9 @@ Every release must re-check these critical features:
 12. Tutor entrance modern UI remains available:
    - `/tutor` uses approved contemporary Variant B style
    - first-login password-change page matches the same design language
+13. Tutor student detail page action layout remains available:
+   - `/tutor/student/[mobile]` keeps `返回導師主頁` + `登出` at page bottom
+   - both actions use the same light-blue button style
 
 ## 4) Validation gate
 
@@ -76,16 +79,16 @@ After production deploy, update:
 ## 6) Latest deployment record
 
 - Date (UTC): 2026-07-03
-- Deployment ID: `dpl_2H1oMBmiUaQwEkKWHHmF5JRKDLVb`
+- Deployment ID: `dpl_4P7DPDzz33ZocVG8Y3sL2KMkbwrs`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2H1oMBmiUaQwEkKWHHmF5JRKDLVb
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/4P7DPDzz33ZocVG8Y3sL2KMkbwrs
 - Scope:
-  - hotfix restore for tutor contemporary UI (approved Variant B)
-  - restore `/tutor` login and first-login password-change modern design
-  - keep scope limited to `src/app/tutor/page.tsx`
+  - UI-only polish for tutor student detail page action area
+  - move `返回導師主頁` and `登出` to page bottom with unified light-blue style
+  - keep scope limited to `src/app/tutor/student/[mobile]/page.tsx`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
