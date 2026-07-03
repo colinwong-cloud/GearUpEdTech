@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-02** — deployment `dpl_7D8PTuBBjykiRLFcVSYfHsNNhisR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7D8PTuBBjykiRLFcVSYfHsNNhisR). **Release scope:** Hotfix 回復家長練習電郵的錯題可讀性區塊（題目內容 / 你的答案 / 正確答案 / 解釋），避免 parent email readability 回歸遺失。
+**Latest production deploy:** **2026-07-03** — deployment `dpl_2H1oMBmiUaQwEkKWHHmF5JRKDLVb`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2H1oMBmiUaQwEkKWHHmF5JRKDLVb). **Release scope:** Hotfix 回復 `www.gearupquiz.com/tutor` 的當代化設計（approved Variant B：Modern Gradient / Glass）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -333,6 +333,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **Hotfix：回復導師入口現代化設計（Variant B）**：回復 `/tutor` 登入與首次改密碼頁面的 Modern Gradient / Glass 設計；僅調整 `src/app/tutor/page.tsx` 視覺樣式，不改 auth/API 邏輯。 |
 | 2026-07 | **Hotfix：家長練習電郵錯題可讀性回復**：回復 parent practice email 內錯題詳解區塊，顯示「題目內容 / 你的答案 / 正確答案 / 解釋」，並保留 `wrong_question_details` 解析流程。 |
 | 2026-06 | **Recovery release（防回歸）**：修復分支基線偏移造成的功能遺失。上線內容：①家長同級排名/比較基準排除 `999*` 測試家長資料（live-only cohort）；②結果頁錯題詳解維持「題目內容 / 你的答案（值） / 正確答案（值） / 解釋」；③月費家長「消費紀錄」回復（年份篩選、付款日期/金額/方式）。 |
 | 2026-06 | **導師登入密碼重設（Admin 教師編號維護 Part 3）上線**：Admin 可輸入教師編號重設密碼為 `123456`；重設時同時清除 5 次錯誤鎖定（`failed_attempts=0`, `locked_until=null`）並設為首次登入需改密碼（`must_change_password=true`）。成功訊息顯示於 Part 3 區塊底部。 |
@@ -639,6 +640,31 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /api/tutor/session` (no auth)=401
     - `POST /api/payment/history` invalid payload=400
     - `POST /api/send-quiz-email` invalid payload=400
+
+## Handover note — 2026-07-03 (hotfix: restore tutor contemporary UI Variant B)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 回復 `/tutor` 當代化設計（approved Variant B：Modern Gradient / Glass）。
+  2. 涵蓋導師登入頁與首次登入改密碼頁視覺樣式。
+  3. 僅調整 `src/app/tutor/page.tsx` UI，無 API / auth 邏輯變更。
+
+- 本次部署資訊：
+  - deployment: `dpl_2H1oMBmiUaQwEkKWHHmF5JRKDLVb`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/2H1oMBmiUaQwEkKWHHmF5JRKDLVb`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
 
 ## Setup
 

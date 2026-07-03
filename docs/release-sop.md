@@ -53,6 +53,9 @@ Every release must re-check these critical features:
 11. Parent practice email readability remains available:
    - wrong-question details block appears in email
    - includes question content / student answer / correct answer / explanation
+12. Tutor entrance modern UI remains available:
+   - `/tutor` uses approved contemporary Variant B style
+   - first-login password-change page matches the same design language
 
 ## 4) Validation gate
 
@@ -72,17 +75,17 @@ After production deploy, update:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-07-02
-- Deployment ID: `dpl_7D8PTuBBjykiRLFcVSYfHsNNhisR`
+- Date (UTC): 2026-07-03
+- Deployment ID: `dpl_2H1oMBmiUaQwEkKWHHmF5JRKDLVb`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7D8PTuBBjykiRLFcVSYfHsNNhisR
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2H1oMBmiUaQwEkKWHHmF5JRKDLVb
 - Scope:
-  - hotfix restore for parent email wrong-question readability
-  - restore wrong-question details block in parent practice email
-  - keep scope limited to `src/app/api/send-quiz-email/route.ts`
+  - hotfix restore for tutor contemporary UI (approved Variant B)
+  - restore `/tutor` login and first-login password-change modern design
+  - keep scope limited to `src/app/tutor/page.tsx`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/payment/history` invalid payload 400, `/api/send-quiz-email` invalid payload 400
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401
