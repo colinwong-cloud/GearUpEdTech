@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-03** — deployment `dpl_65UFtxFy416nohgBK48PftDxVqfK`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/65UFtxFy416nohgBK48PftDxVqfK). **Release scope:** Tutor dashboard logout button moved to page bottom（與 tutor detail page 同款淺藍按鈕；僅 UI 變更）。
+**Latest production deploy:** **2026-07-03** — deployment `dpl_85g8VFkunNusq9MiVKXttqzoZBpv`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/85g8VFkunNusq9MiVKXttqzoZBpv). **Release scope:** 回復 Admin KPI「今日新註冊家長摘要」表格（位於今日實時與 MTD 區塊之間）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -716,6 +716,34 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /reset-password`=200
     - `GET /api/tutor/session` (no auth)=401
     - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-07-03 (hotfix: restore admin KPI today new parent summary table)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 回復 `/admin` → 業務概覽頁中「今日新註冊家長摘要」表格。
+  2. 顯示位置回到「今日實時」區塊內（在今日指標下方、月結及趨勢區塊上方）。
+  3. 回復 `/api/admin/business-today` payload：`today_new_parent_registrations`（`mobile_number` / `email` / `created_at`）。
+  4. 變更僅限 `src/app/admin/business-kpi.tsx` 與 `src/app/api/admin/business-today/route.ts`，無 SQL migration。
+
+- 本次部署資訊：
+  - deployment: `dpl_85g8VFkunNusq9MiVKXttqzoZBpv`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/85g8VFkunNusq9MiVKXttqzoZBpv`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/admin/business-today` (no auth)=401
     - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup

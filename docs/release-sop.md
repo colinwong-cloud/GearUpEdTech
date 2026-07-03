@@ -62,6 +62,9 @@ Every release must re-check these critical features:
 14. Tutor dashboard logout action layout remains available:
    - `/tutor` keeps `登出` at page bottom action area (not header)
    - logout button style matches the same light-blue action style
+15. Admin business KPI today new parent summary table remains available:
+   - `/admin` > `業務概覽` shows `今日新註冊家長摘要` between 今日實時 and 月結及趨勢 sections
+   - table columns include `手機號碼` / `電郵` / `建立時間（HKT）`
 
 ## 4) Validation gate
 
@@ -82,17 +85,17 @@ After production deploy, update:
 ## 6) Latest deployment record
 
 - Date (UTC): 2026-07-03
-- Deployment ID: `dpl_65UFtxFy416nohgBK48PftDxVqfK`
+- Deployment ID: `dpl_85g8VFkunNusq9MiVKXttqzoZBpv`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/65UFtxFy416nohgBK48PftDxVqfK
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/85g8VFkunNusq9MiVKXttqzoZBpv
 - Scope:
-  - UI-only polish for tutor dashboard action area
-  - move `/tutor` logout from header to page bottom action area
-  - keep `/tutor` logout style aligned with light-blue action style
-  - keep scope limited to `src/app/tutor/page.tsx`
+  - hotfix restore for Admin KPI `今日新註冊家長摘要` table
+  - restore API payload field `today_new_parent_registrations` in `/api/admin/business-today`
+  - restore summary table UI in `/admin` Business KPI section
+  - keep scope limited to `src/app/api/admin/business-today/route.ts` and `src/app/admin/business-kpi.tsx`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/admin/business-today` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
