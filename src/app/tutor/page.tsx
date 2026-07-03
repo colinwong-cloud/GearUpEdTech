@@ -368,12 +368,6 @@ export default function TutorPortalPage() {
               教師編號：<span className="font-mono">{session.code || "-"}</span>
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 sm:w-auto"
-          >
-            登出
-          </button>
         </div>
 
         {msg && <p className="text-sm text-red-500">{msg}</p>}
@@ -431,6 +425,17 @@ export default function TutorPortalPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              onClick={handleLogout}
+              className="w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 sm:w-auto"
+            >
+              登出
+            </button>
+          </div>
         </div>
       </div>
     </div>
