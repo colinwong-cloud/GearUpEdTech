@@ -195,22 +195,8 @@ export default function TutorStudentDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="space-y-1">
-            <button
-              onClick={() => router.push("/tutor")}
-              className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600"
-            >
-              ← 返回導師主頁
-            </button>
-            <h1 className="text-xl font-bold text-gray-800">練習記錄（登記手機：{registeredMobile}）</h1>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
-          >
-            登出
-          </button>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-800">練習記錄（登記手機：{registeredMobile}）</h1>
         </div>
 
         {msg && <p className="text-sm text-red-500">{msg}</p>}
@@ -436,6 +422,23 @@ export default function TutorStudentDetailPage() {
             </div>
           </div>
         )}
+
+        <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              onClick={() => router.push("/tutor")}
+              className="w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 sm:w-auto"
+            >
+              返回導師主頁
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 sm:w-auto"
+            >
+              登出
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
