@@ -370,7 +370,7 @@ export default function TutorPortalPage() {
           </div>
           <button
             onClick={handleLogout}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
+            className="w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 sm:w-auto"
           >
             登出
           </button>
