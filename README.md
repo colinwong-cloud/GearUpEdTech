@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-03** — deployment `dpl_4P7DPDzz33ZocVG8Y3sL2KMkbwrs`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/4P7DPDzz33ZocVG8Y3sL2KMkbwrs). **Release scope:** Tutor student detail page UI polish（`返回導師主頁` / `登出` 改為頁底同款淺藍按鈕；僅 UI 變更）。
+**Latest production deploy:** **2026-07-03** — deployment `dpl_65UFtxFy416nohgBK48PftDxVqfK`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/65UFtxFy416nohgBK48PftDxVqfK). **Release scope:** Tutor dashboard logout button moved to page bottom（與 tutor detail page 同款淺藍按鈕；僅 UI 變更）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -676,6 +676,32 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - 本次部署資訊：
   - deployment: `dpl_4P7DPDzz33ZocVG8Y3sL2KMkbwrs`
   - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/4P7DPDzz33ZocVG8Y3sL2KMkbwrs`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-07-03 (ui: tutor dashboard logout moved to page bottom)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 導師登入後總覽頁（`/tutor`）的 `登出` 按鈕由頁首移至頁底操作區。
+  2. `登出` 按鈕保持與導師詳情頁一致的淺藍樣式。
+  3. 僅改 `src/app/tutor/page.tsx` UI 排版與樣式，無 API / auth / business logic 變更。
+
+- 本次部署資訊：
+  - deployment: `dpl_65UFtxFy416nohgBK48PftDxVqfK`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/65UFtxFy416nohgBK48PftDxVqfK`
   - live alias: `https://q.hkedutech.com`
 
 - 本次驗證：
