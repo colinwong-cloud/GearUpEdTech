@@ -83,11 +83,12 @@ function formatAnswerWithValue(question: SessionDetailQuestion, answer: string):
 const SUBJECTS = [PRIMARY_QUIZ_SUBJECT, CHINESE_QUIZ_SUBJECT, ENGLISH_QUIZ_SUBJECT] as const;
 
 export default function TutorStudentDetailPage() {
-  const params = useParams<{ mobile: string }>();
+  const params = useParams<{ hash: string }>();
   const router = useRouter();
 
-  const registeredMobile = String(params?.mobile || "").trim();
+  const studentHash = String(params?.hash || "").trim();
 
+  const [registeredMobile, setRegisteredMobile] = useState("");
   const [subject, setSubject] = useState<string>(PRIMARY_QUIZ_SUBJECT);
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
@@ -116,8 +117,8 @@ export default function TutorStudentDetailPage() {
   }, [router]);
 
   const loadSessions = useCallback(async () => {
-    if (!/^\d{8}$/.test(registeredMobile)) {
-      setMsg("登記手機格式不正確。");
+    if (!studentHash) {
+      setMsg("連結參數不正確。");
       setSessions([]);
       return;
     }
@@ -127,18 +128,21 @@ export default function TutorStudentDetailPage() {
       const ok = await ensureTutorSession();
       if (!ok) return;
       const res = await fetch(
-        `/api/tutor/sessions?mobile=${encodeURIComponent(registeredMobile)}&subject=${encodeURIComponent(
+        `/api/tutor/sessions?hash=${encodeURIComponent(studentHash)}&subject=${encodeURIComponent(
           subject
         )}&year=${monthCursor.year}&month=${monthCursor.month}`,
         { method: "GET", cache: "no-store" }
       );
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { sessions?: TutorSessionSummary[] }; error?: string }
+        | { data?: { sessions?: TutorSessionSummary[]; registered_mobile?: string }; error?: string }
         | null;
       if (!res.ok) {
         throw new Error(payload?.error || "無法載入練習紀錄。");
       }
       setSessions(payload?.data?.sessions ?? []);
+      if (payload?.data?.registered_mobile) {
+        setRegisteredMobile(String(payload.data.registered_mobile));
+      }
       setDetail(null);
     } catch (err) {
       setSessions([]);
@@ -147,7 +151,7 @@ export default function TutorStudentDetailPage() {
     } finally {
       setLoadingSessions(false);
     }
-  }, [ensureTutorSession, monthCursor.month, monthCursor.year, registeredMobile, subject]);
+  }, [ensureTutorSession, monthCursor.month, monthCursor.year, studentHash, subject]);
 
   useEffect(() => {
     loadSessions();
