@@ -57,7 +57,7 @@ Every release must re-check these critical features:
    - `/tutor` uses approved contemporary Variant B style
    - first-login password-change page matches the same design language
 13. Tutor student detail page action layout remains available:
-   - `/tutor/student/[mobile]` keeps `返回導師主頁` + `登出` at page bottom
+   - `/tutor/student/[hash]` keeps `返回導師主頁` + `登出` at page bottom
    - both actions use the same light-blue button style
 14. Tutor dashboard logout action layout remains available:
    - `/tutor` keeps `登出` at page bottom action area (not header)
@@ -65,6 +65,10 @@ Every release must re-check these critical features:
 15. Admin business KPI today new parent summary table remains available:
    - `/admin` > `業務概覽` shows `今日新註冊家長摘要` between 今日實時 and 月結及趨勢 sections
    - table columns include `手機號碼` / `電郵` / `建立時間（HKT）`
+16. Tutor student-summary URL hides the raw mobile:
+   - tutor list links to `/tutor/student/<hash>` (opaque HMAC token), never the mobile number
+   - opening a student summary loads sessions correctly and still shows `登記手機` in the page header
+   - a tutor can only resolve hashes for mobiles bound under their own referral code
 
 ## 4) Validation gate
 
@@ -84,18 +88,19 @@ After production deploy, update:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-07-03
-- Deployment ID: `dpl_85g8VFkunNusq9MiVKXttqzoZBpv`
+- Date (UTC): 2026-07-06
+- Deployment ID: `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/85g8VFkunNusq9MiVKXttqzoZBpv
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8VuVM7hiqRPrJQcpDHNTQGMJdTTV
 - Scope:
-  - hotfix restore for Admin KPI `今日新註冊家長摘要` table
-  - restore API payload field `today_new_parent_registrations` in `/api/admin/business-today`
-  - restore summary table UI in `/admin` Business KPI section
-  - keep scope limited to `src/app/api/admin/business-today/route.ts` and `src/app/admin/business-kpi.tsx`
+  - tutor student-summary URL now uses an opaque one-way hash instead of the registered mobile (`/tutor/student/[mobile]` → `/tutor/student/[hash]`)
+  - `/api/tutor/students` returns a `hash` per row; tutor list links via the hash
+  - `/api/tutor/sessions` accepts `hash`, resolves it to a mobile scoped to the tutor's own bound mobiles (also the auth check), and returns `registered_mobile` for the header
+  - new `src/lib/server/tutor-student-hash.ts` + unit tests; no UI or tutor-function change; mobile still shown in page body
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
-  - `npm test` (pass)
+  - `npm test` (pass, 49 incl. 6 new hash-util tests)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/admin/business-today` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
+  - production functional check: tutor `112233` login → student list → summary opens at `/tutor/student/<hex hash>` (not the mobile); header still shows `登記手機 91919195`; sessions load

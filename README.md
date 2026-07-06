@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-03** — deployment `dpl_85g8VFkunNusq9MiVKXttqzoZBpv`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/85g8VFkunNusq9MiVKXttqzoZBpv). **Release scope:** 回復 Admin KPI「今日新註冊家長摘要」表格（位於今日實時與 MTD 區塊之間）。
+**Latest production deploy:** **2026-07-06** — deployment `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8VuVM7hiqRPrJQcpDHNTQGMJdTTV). **Release scope:** 導師學生練習摘要頁改用不可逆雜湊（hash）作為網址識別碼，網址不再顯示學生登記手機（`/tutor/student/<hash>`）；UI 與導師功能不變，頁面內仍顯示登記手機。
 
 ## Release SOP / checklist (mandatory)
 
@@ -285,6 +285,17 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release ID / commit:** `b56ffa9` (tutor student-summary URL uses opaque hash instead of mobile)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat（"the preview is good to deploy"）
+- **Date/time (UTC):** 2026-07-06
+- **Scope confirmation:** 僅改導師學生摘要網址識別碼（`/tutor/student/[mobile]` → `/tutor/student/[hash]`）；新增 `src/lib/server/tutor-student-hash.ts`、`/api/tutor/students` 回傳 `hash`、`/api/tutor/sessions` 接受 `hash` 並回傳 `registered_mobile`。UI 與導師功能不變，頁面內仍顯示登記手機。基於現行生產 UI 分支（modern tutor login + 底部淺藍操作鍵）。
+- **Validation:** `npm test` ✅（49 passed，含 6 個新 hash-util 測試）, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /tutor` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `GET /api/tutor/session` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production functional check:** 以導師帳號 `112233` 於 `https://q.hkedutech.com` 登入 → 學生清單 → 開啟學生摘要，網址為 `.../tutor/student/<hex hash>`（非手機號），頁首仍顯示登記手機 `91919195`，練習列表正常載入。
+- **Production deployment:** `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
 - **Release ID / commit:** `0cb062f` (free-tier to paid invite copy update)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat
 - **Date/time (UTC):** 2026-06-17
@@ -333,6 +344,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **導師學生摘要網址改用雜湊（隱藏手機號）**：`/tutor/student/[mobile]` 改為 `/tutor/student/[hash]`，`hash` 為以導師 session secret 加密的單向 HMAC-SHA256。導師清單改用 hash 連結；`/api/tutor/sessions` 接受 `hash` 並在導師自身綁定手機範圍內反解回手機（同時作為授權檢查），回傳 `registered_mobile` 供頁面顯示。UI 與導師功能不變，僅網址不再暴露手機號。新增 `src/lib/server/tutor-student-hash.ts` + 單元測試。 |
 | 2026-07 | **Hotfix：回復導師入口現代化設計（Variant B）**：回復 `/tutor` 登入與首次改密碼頁面的 Modern Gradient / Glass 設計；僅調整 `src/app/tutor/page.tsx` 視覺樣式，不改 auth/API 邏輯。 |
 | 2026-07 | **Hotfix：家長練習電郵錯題可讀性回復**：回復 parent practice email 內錯題詳解區塊，顯示「題目內容 / 你的答案 / 正確答案 / 解釋」，並保留 `wrong_question_details` 解析流程。 |
 | 2026-06 | **Recovery release（防回歸）**：修復分支基線偏移造成的功能遺失。上線內容：①家長同級排名/比較基準排除 `999*` 測試家長資料（live-only cohort）；②結果頁錯題詳解維持「題目內容 / 你的答案（值） / 正確答案（值） / 解釋」；③月費家長「消費紀錄」回復（年份篩選、付款日期/金額/方式）。 |
@@ -745,6 +757,35 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `POST /api/admin/console` (no auth)=401
     - `POST /api/admin/business-today` (no auth)=401
     - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-07-06 (tutor student-summary URL uses opaque hash)
+
+- 本日已完成並上線（owner 已在 chat 明確批准："the preview is good to deploy"）：
+  1. 導師學生摘要頁網址由 `/tutor/student/<登記手機>` 改為 `/tutor/student/<hash>`；`hash` 為以導師 session secret（`TUTOR_SESSION_SECRET`，退回 `ADMIN_SESSION_SECRET`）加密的單向 HMAC-SHA256，網址不再暴露學生手機號，且無法由網址反推手機。
+  2. `/api/tutor/students` 每列新增 `hash`；導師清單改用 hash 連結（清單表格仍顯示手機，屬既有 UI）。
+  3. `/api/tutor/sessions` 接受 `hash` 參數，於「該導師編號綁定的手機」範圍內反解回手機（同時作為授權檢查），並回傳 `registered_mobile` 供摘要頁頁首顯示；保留舊 `mobile` 參數以相容。
+  4. 路由改名 `src/app/tutor/student/[mobile]` → `[hash]`；新增 `src/lib/server/tutor-student-hash.ts` 與單元測試。
+  5. UI 與導師功能不變；頁面內（頁首與詳情面板）仍顯示登記手機。基於現行生產 UI 分支（modern tutor login + 底部淺藍操作鍵）。
+
+- 本次部署資訊：
+  - deployment: `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/8VuVM7hiqRPrJQcpDHNTQGMJdTTV`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（49 passed，含 6 個新 hash-util 測試）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+  - production functional check：導師帳號 `112233` 登入 → 學生清單 → 開啟摘要，網址為 `.../tutor/student/<hex hash>`（非手機），頁首仍顯示登記手機 `91919195`，練習列表正常載入。
 
 ## Setup
 
