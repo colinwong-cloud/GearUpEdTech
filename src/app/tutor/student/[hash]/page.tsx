@@ -4,11 +4,22 @@ import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
+  OverallChart,
+  TypeCharts,
+  type ChartDataPayload,
+} from "@/components/student-performance-charts";
+import {
   CHINESE_QUIZ_SUBJECT,
   ENGLISH_QUIZ_SUBJECT,
   PRIMARY_QUIZ_SUBJECT,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
+
+type TutorStudentChart = {
+  student_id: string;
+  student_name: string;
+  data: ChartDataPayload;
+};
 
 type TutorSessionSummary = {
   id: string;
@@ -95,6 +106,7 @@ export default function TutorStudentDetailPage() {
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
   });
   const [sessions, setSessions] = useState<TutorSessionSummary[]>([]);
+  const [charts, setCharts] = useState<TutorStudentChart[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TutorSessionDetailPayload | null>(null);
@@ -134,18 +146,27 @@ export default function TutorStudentDetailPage() {
         { method: "GET", cache: "no-store" }
       );
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { sessions?: TutorSessionSummary[]; registered_mobile?: string }; error?: string }
+        | {
+            data?: {
+              sessions?: TutorSessionSummary[];
+              registered_mobile?: string;
+              charts?: TutorStudentChart[];
+            };
+            error?: string;
+          }
         | null;
       if (!res.ok) {
         throw new Error(payload?.error || "無法載入練習紀錄。");
       }
       setSessions(payload?.data?.sessions ?? []);
+      setCharts(payload?.data?.charts ?? []);
       if (payload?.data?.registered_mobile) {
         setRegisteredMobile(String(payload.data.registered_mobile));
       }
       setDetail(null);
     } catch (err) {
       setSessions([]);
+      setCharts([]);
       setDetail(null);
       setMsg(err instanceof Error ? err.message : "無法載入練習紀錄。");
     } finally {
@@ -283,6 +304,27 @@ export default function TutorStudentDetailPage() {
             <p className="mt-1 text-2xl font-bold text-amber-600">{summary.accuracy}%</p>
           </div>
         </div>
+
+        {charts.length > 0 && (
+          <div className="space-y-6">
+            {charts.map((c) => (
+              <div key={c.student_id} className="space-y-2">
+                {charts.length > 1 && (
+                  <p className="text-sm font-semibold text-gray-700">
+                    {c.student_name}（{subjectDisplayLabel(subject)}）
+                  </p>
+                )}
+                <OverallChart chartData={c.data} />
+                {c.data.type_sessions.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-gray-700">各題型正確率趨勢</p>
+                    <TypeCharts chartData={c.data} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm overflow-x-auto">
           <table className="min-w-full text-sm">
