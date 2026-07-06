@@ -35,6 +35,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Parent free-tier upgrade CTA copy still includes unlimited-practice + ranking value
 - [ ] Tutor student-summary URL uses an opaque hash (`/tutor/student/<hash>`), not the mobile; summary still loads and header shows `登記手機`
 - [ ] Tutor student summary shows `整體正確率趨勢` + `各題型正確率趨勢` above the sessions table; parent dashboard trend chart still renders (shared component)
+- [ ] Grade ranking: `rank_in_grade` ≤ `total_eligible_in_grade` (ranked among eligible students only). If ranking SQL changed, `supabase_fix_ranking_eligible_only.sql` applied and `recalculate_student_grade_rankings()` re-run.
 
 ## E) Release record
 
