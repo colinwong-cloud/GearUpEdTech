@@ -33,6 +33,7 @@ Reference SOP: `docs/release-sop.md`
 - [ ] Admin `教師編號維護` summary/detail/export works (including parent paid status free/paid)
 - [ ] Admin `教師編號維護` reset section works: input tutor code -> reset password to `123456` -> tutor next login is forced to change password
 - [ ] Parent free-tier upgrade CTA copy still includes unlimited-practice + ranking value
+- [ ] Tutor student-summary URL uses an opaque hash (`/tutor/student/<hash>`), not the mobile; summary still loads and header shows `登記手機`
 
 ## E) Release record
 
