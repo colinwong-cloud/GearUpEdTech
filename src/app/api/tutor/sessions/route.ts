@@ -7,6 +7,7 @@ import {
   quizSubjectDbPatterns,
 } from "@/lib/quiz-subjects";
 import { requireTutorSession } from "@/lib/server/tutor-session";
+import { computeTutorStudentHash, getTutorHashSecret } from "@/lib/server/tutor-student-hash";
 
 function getSupabaseAdmin() {
   const url =
@@ -49,13 +50,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "系統未配置 Supabase 管理金鑰。" }, { status: 503 });
   }
 
-  const mobile = String(req.nextUrl.searchParams.get("mobile") || "").trim();
+  const hashParam = String(req.nextUrl.searchParams.get("hash") || "").trim();
+  const mobileParam = String(req.nextUrl.searchParams.get("mobile") || "").trim();
   const subject = String(req.nextUrl.searchParams.get("subject") || "").trim();
   const year = String(req.nextUrl.searchParams.get("year") || "").trim();
   const month = String(req.nextUrl.searchParams.get("month") || "").trim();
-  if (!/^\d{8}$/.test(mobile)) {
-    return NextResponse.json({ error: "請提供有效的登記手機。" }, { status: 400 });
-  }
   const allowedSubjects = new Set([
     PRIMARY_QUIZ_SUBJECT,
     CHINESE_QUIZ_SUBJECT,
@@ -69,18 +68,55 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "年月參數不正確。" }, { status: 400 });
   }
 
-  const usageRes = await admin
-    .from("tutor_referral_usages")
-    .select("id")
-    .eq("code_id", profile.codeId)
-    .eq("mobile_number", mobile)
-    .limit(1)
-    .maybeSingle();
-  if (usageRes.error) {
-    return NextResponse.json({ error: usageRes.error.message || "無法驗證資料權限。" }, { status: 500 });
-  }
-  if (!usageRes.data) {
-    return NextResponse.json({ error: "你只能查看已綁定在此教師編號下的登記手機。" }, { status: 403 });
+  // Resolve the visible URL token (hash) back to a registered mobile, scoped to
+  // the mobiles bound under this tutor's referral code. This both hides the raw
+  // mobile from the weblink and enforces that a tutor only sees their own students.
+  let mobile = "";
+  if (hashParam) {
+    const boundRes = await admin
+      .from("tutor_referral_usages")
+      .select("mobile_number")
+      .eq("code_id", profile.codeId)
+      .limit(10000);
+    if (boundRes.error) {
+      return NextResponse.json(
+        { error: boundRes.error.message || "無法驗證資料權限。" },
+        { status: 500 }
+      );
+    }
+    const hashSecret = getTutorHashSecret();
+    for (const row of boundRes.data ?? []) {
+      const candidate = String(row.mobile_number ?? "").trim();
+      if (!candidate) continue;
+      if (computeTutorStudentHash(candidate, hashSecret) === hashParam) {
+        mobile = candidate;
+        break;
+      }
+    }
+    if (!mobile) {
+      return NextResponse.json(
+        { error: "你只能查看已綁定在此教師編號下的登記手機。" },
+        { status: 403 }
+      );
+    }
+  } else {
+    mobile = mobileParam;
+    if (!/^\d{8}$/.test(mobile)) {
+      return NextResponse.json({ error: "請提供有效的登記手機。" }, { status: 400 });
+    }
+    const usageRes = await admin
+      .from("tutor_referral_usages")
+      .select("id")
+      .eq("code_id", profile.codeId)
+      .eq("mobile_number", mobile)
+      .limit(1)
+      .maybeSingle();
+    if (usageRes.error) {
+      return NextResponse.json({ error: usageRes.error.message || "無法驗證資料權限。" }, { status: 500 });
+    }
+    if (!usageRes.data) {
+      return NextResponse.json({ error: "你只能查看已綁定在此教師編號下的登記手機。" }, { status: 403 });
+    }
   }
 
   const parentRes = await admin
@@ -95,7 +131,7 @@ export async function GET(req: NextRequest) {
     new Set((parentRes.data ?? []).map((row) => String(row.id ?? "").trim()).filter(Boolean))
   );
   if (parentIds.length === 0) {
-    return NextResponse.json({ data: { sessions: [] } });
+    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile } });
   }
 
   const studentNameById = new Map<string, string>();
@@ -120,7 +156,7 @@ export async function GET(req: NextRequest) {
     }
   }
   if (studentIds.length === 0) {
-    return NextResponse.json({ data: { sessions: [] } });
+    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile } });
   }
 
   const subjects = quizSubjectDbPatterns(subject);
@@ -172,5 +208,5 @@ export async function GET(req: NextRequest) {
     return bTs - aTs;
   });
 
-  return NextResponse.json({ data: { sessions } });
+  return NextResponse.json({ data: { sessions, registered_mobile: mobile } });
 }
