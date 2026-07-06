@@ -106,19 +106,33 @@ BEGIN
       (ps.lifetime_questions >= 100) AS is_eligible
     FROM per_student ps
   ),
-  ranked AS (
+  -- Rank + cohort count over ELIGIBLE students only, so rank_in_grade
+  -- can never exceed total_eligible_in_grade.
+  ranked_eligible AS (
     SELECT
-      w.*,
-      CASE WHEN w.is_eligible THEN
-        RANK() OVER (
-          PARTITION BY w.grade_level, w.subject_key
-          ORDER BY w.last_10_avg DESC NULLS LAST, w.student_id
-        )
-      END AS rk,
-      COUNT(*) FILTER (WHERE w.is_eligible) OVER (
+      w.student_id,
+      w.grade_level,
+      w.subject_key,
+      RANK() OVER (
+        PARTITION BY w.grade_level, w.subject_key
+        ORDER BY w.last_10_avg DESC NULLS LAST, w.student_id
+      ) AS rk,
+      COUNT(*) OVER (
         PARTITION BY w.grade_level, w.subject_key
       ) AS tot_elig
     FROM with_elig w
+    WHERE w.is_eligible
+  ),
+  ranked AS (
+    SELECT
+      w.*,
+      re.rk,
+      COALESCE(re.tot_elig, 0) AS tot_elig
+    FROM with_elig w
+    LEFT JOIN ranked_eligible re
+      ON re.student_id = w.student_id
+     AND re.grade_level = w.grade_level
+     AND re.subject_key = w.subject_key
   )
   INSERT INTO public.student_grade_rankings (
     calculated_at,

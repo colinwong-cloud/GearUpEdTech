@@ -1,43 +1,24 @@
 -- ============================================================
--- Per-subject grade rankings (nightly batch + parent read)
--- Run in Supabase SQL Editor after backup.
+-- Fix: grade ranking must rank ONLY among eligible students
+-- (students with >= 100 lifetime questions in that subject).
 --
--- Changes:
--- 1) `student_grade_rankings.subject` — canonical key: Math | Chinese | English | …
---    Math sessions include legacy `數學` in `quiz_sessions.subject`.
--- 2) UNIQUE (grade_level, student_id, subject) — one row per student per grade per subject.
--- 3) `recalculate_student_grade_rankings()` — recomputes all subject buckets.
--- 4) `get_parent_student_grade_rank(p_student_id, p_subject)` — reads rank for that subject tab.
+-- Bug: recalculate_student_grade_rankings() computed RANK() over ALL
+-- students in the grade+subject (eligible AND ineligible), while
+-- total_eligible_in_grade counted only eligible students. When an
+-- ineligible peer had a higher recent average, an eligible student's
+-- rank_in_grade could exceed total_eligible_in_grade — e.g. the parent
+-- dashboard showed "排第 5 名（共 1 人）" (rank 5 of 1).
 --
--- After apply: run `recalculate_student_grade_rankings()` once (or wait for cron).
--- Frontend must pass `p_subject` (already aligned with quiz subject keys).
+-- Fix: compute both RANK() and the cohort COUNT over the eligible-only
+-- subset, then LEFT JOIN back. Guarantees rank_in_grade <= total.
+-- Keeps subject normalization and the 999 test-mobile exclusion.
+--
+-- After apply, re-run: SELECT public.recalculate_student_grade_rankings();
+-- (or wait for the nightly cron) to rewrite the snapshot.
 -- ============================================================
 
--- ---------- 1) Schema: subject column + unique constraint ----------
-ALTER TABLE public.student_grade_rankings
-  DROP CONSTRAINT IF EXISTS uq_ranking_student_grade;
+BEGIN;
 
-ALTER TABLE public.student_grade_rankings
-  DROP CONSTRAINT IF EXISTS uq_ranking_student_grade_subject;
-
-ALTER TABLE public.student_grade_rankings
-  ADD COLUMN IF NOT EXISTS subject TEXT;
-
-DELETE FROM public.student_grade_rankings WHERE true;
-
-ALTER TABLE public.student_grade_rankings
-  ALTER COLUMN subject SET NOT NULL;
-
-ALTER TABLE public.student_grade_rankings
-  ADD CONSTRAINT uq_ranking_student_grade_subject UNIQUE (grade_level, student_id, subject);
-
-CREATE INDEX IF NOT EXISTS idx_sgr_student_subject
-  ON public.student_grade_rankings (student_id, subject);
-
-CREATE INDEX IF NOT EXISTS idx_sgr_grade_subject
-  ON public.student_grade_rankings (grade_level, subject);
-
--- ---------- 2) Batch recompute (per subject_key) ----------
 CREATE OR REPLACE FUNCTION public.recalculate_student_grade_rankings()
 RETURNS void
 LANGUAGE plpgsql
@@ -61,9 +42,12 @@ BEGIN
         ELSE trim(qs.subject)
       END AS subject_key
     FROM public.quiz_sessions qs
+    INNER JOIN public.students st ON st.id = qs.student_id
+    INNER JOIN public.parents p ON p.id = st.parent_id
     WHERE qs.student_id IS NOT NULL
       AND qs.questions_attempted > 0
       AND trim(coalesce(qs.subject, '')) <> ''
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '999%')
   ),
   ranked_sessions AS (
     SELECT
@@ -177,62 +161,9 @@ BEGIN
 END;
 $$;
 
--- ---------- 3) Parent read RPC (second arg required for PostgREST) ----------
-DROP FUNCTION IF EXISTS public.get_parent_student_grade_rank(uuid);
-DROP FUNCTION IF EXISTS public.get_parent_student_grade_rank(uuid, text);
-
-CREATE OR REPLACE FUNCTION public.get_parent_student_grade_rank(
-  p_student_id uuid,
-  p_subject text
-)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-DECLARE
-  v_row public.student_grade_rankings%ROWTYPE;
-  v_lookup text;
-BEGIN
-  v_lookup := CASE
-    WHEN p_subject IS NULL OR trim(p_subject) = '' THEN 'Math'
-    WHEN lower(trim(p_subject)) IN ('math', '數學') THEN 'Math'
-    WHEN lower(trim(p_subject)) = 'chinese' THEN 'Chinese'
-    WHEN lower(trim(p_subject)) = 'english' THEN 'English'
-    ELSE trim(p_subject)
-  END;
-
-  SELECT * INTO v_row
-  FROM public.student_grade_rankings
-  WHERE student_id = p_student_id
-    AND subject = v_lookup
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    RETURN json_build_object(
-      'has_snapshot', false,
-      'error', 'no_ranking_data',
-      'subject', v_lookup
-    );
-  END IF;
-
-  RETURN json_build_object(
-    'has_snapshot', true,
-    'subject', v_row.subject,
-    'calculated_at', v_row.calculated_at,
-    'grade_level', v_row.grade_level,
-    'student_id', v_row.student_id,
-    'student_name', v_row.student_name,
-    'lifetime_questions', v_row.lifetime_questions,
-    'session_count_in_avg', v_row.session_count_in_avg,
-    'last_10_avg_correct_pct', v_row.last_10_avg_correct_pct,
-    'rank_in_grade', v_row.rank_in_grade,
-    'total_eligible_in_grade', v_row.total_eligible_in_grade,
-    'is_eligible', (v_row.lifetime_questions >= 100)
-  );
-END;
-$$;
-
 GRANT EXECUTE ON FUNCTION public.recalculate_student_grade_rankings() TO postgres, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_parent_student_grade_rank(uuid, text) TO postgres, anon, authenticated, service_role;
+
+COMMIT;
+
+-- Rewrite the snapshot immediately (safe to run any time; nightly cron also runs it):
+-- SELECT public.recalculate_student_grade_rankings();
