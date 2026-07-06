@@ -73,6 +73,10 @@ Every release must re-check these critical features:
    - `整體正確率趨勢（最近30次）` and `各題型正確率趨勢` render between the summary cards and the sessions table
    - charts follow the selected subject tab and reuse the shared `src/components/student-performance-charts.tsx`
    - parent dashboard still renders the same trend chart (shared component, no regression)
+18. Grade ranking is consistent and eligible-only:
+   - `rank_in_grade` never exceeds `total_eligible_in_grade` (no "rank 5 of 1")
+   - both are computed only among eligible students (≥100 lifetime questions in that subject)
+   - see `supabase_fix_ranking_eligible_only.sql`; after any ranking-SQL change, re-run `recalculate_student_grade_rankings()`
 
 ## 4) Validation gate
 

@@ -285,6 +285,18 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release type:** Supabase SQL migration (no app-code / Vercel deploy).
+- **Release ID / commit:** ranking eligible-only fix (`supabase_fix_ranking_eligible_only.sql`)
+- **Tester:** Cursor Cloud Agent + owner approval in chat（"please implement the fix … do all the needed tests, and write release sop"）
+- **Date/time (UTC):** 2026-07-06
+- **Scope confirmation:** `recalculate_student_grade_rankings()` now computes `rank_in_grade` and `total_eligible_in_grade` over the eligible-only subset (students with ≥100 lifetime questions in that subject). No frontend change (`src/app/page.tsx` already displays the snapshot values).
+- **Validation:**
+  - Production bug reproduced (read-only, via anon RPC, tutor account `91917838`): Heihei P1 shows Math `rank 5 / total 1`, Chinese `rank 2 / total 1` (rank > total).
+  - Local PostgreSQL 16 test of the exact `supabase_fix_ranking_eligible_only.sql`: buggy fn reproduces `5 of 1`; fixed fn yields Heihei `1 of 1`, and multi-eligible cohort ranks correctly (`1 of 2`, `2 of 2`); ineligible peers excluded from rank order; `999*` test parent excluded.
+  - `npm test` ✅ (49), `npm run lint` ✅ (0 errors), `npm run build` ✅ (no app-code change).
+- **Production apply (required, Supabase-side):** run `supabase_fix_ranking_eligible_only.sql` in Supabase SQL Editor, then `SELECT public.recalculate_student_grade_rankings();` (or wait for nightly cron). DDL cannot be applied via the anon/service REST API, so this step is done in Supabase.
+- **Post-apply verification:** re-check `get_parent_student_grade_rank` for Heihei — expect Math `rank 1 / total 1` (rank ≤ total for all eligible students).
+
 - **Release ID / commit:** `2cd27c6` (tutor student summary: add parent-dashboard trending charts)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat（"the preview is approved, please deploy"）
 - **Date/time (UTC):** 2026-07-06
@@ -355,6 +367,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **同級排名修正：只計算「合資格」學生（該科累積 ≥100 題）**：修正 `recalculate_student_grade_rankings()` 先前把「未合資格（該科 <100 題）」的同級同學也算進 `RANK()` 排序，但 `total_eligible_in_grade` 只計合資格學生，導致家長儀表板出現「排第 5 名（共 1 人）」等 rank > total 的矛盾。現改為**只在合資格學生子集內**計算名次與人數（rank ≤ total 必然成立），並保留科目正規化與 `999*` 測試帳號排除。SQL：`supabase_fix_ranking_eligible_only.sql`（執行後跑一次 `SELECT public.recalculate_student_grade_rankings();`）。 |
 | 2026-07 | **導師學生摘要頁新增趨勢圖**：在摘要卡與練習列表之間顯示家長儀表板同款「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」。將圖表元件抽出為共用 `src/components/student-performance-charts.tsx`（`OverallChart` / `TypeCharts`），家長儀表板改為 import；`/api/tutor/sessions` 於導師授權範圍內以既有 `get_student_chart_data` RPC 回傳每位學生圖表資料。無新增圖表邏輯或新 RPC；趨勢圖依科目分頁、顯示最近約 30 次（與月份選擇獨立）。 |
 | 2026-07 | **導師學生摘要網址改用雜湊（隱藏手機號）**：`/tutor/student/[mobile]` 改為 `/tutor/student/[hash]`，`hash` 為以導師 session secret 加密的單向 HMAC-SHA256。導師清單改用 hash 連結；`/api/tutor/sessions` 接受 `hash` 並在導師自身綁定手機範圍內反解回手機（同時作為授權檢查），回傳 `registered_mobile` 供頁面顯示。UI 與導師功能不變，僅網址不再暴露手機號。新增 `src/lib/server/tutor-student-hash.ts` + 單元測試。 |
 | 2026-07 | **Hotfix：回復導師入口現代化設計（Variant B）**：回復 `/tutor` 登入與首次改密碼頁面的 Modern Gradient / Glass 設計；僅調整 `src/app/tutor/page.tsx` 視覺樣式，不改 auth/API 邏輯。 |
@@ -826,6 +839,16 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `POST /api/admin/console` (no auth)=401
     - `POST /api/auth/mobile-login` invalid payload=400
   - production functional check：導師 `112233` 開啟學生摘要，練習列表上方顯示「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」；家長儀表板（`99990002`）趨勢圖仍正常（共用元件無回歸）。
+
+## Handover note — 2026-07-06 (fix: grade ranking eligible-only; rank ≤ total)
+
+- 問題：家長儀表板同級排名出現 `rank > total`（例如 Heihei P1 數學「排第 5 名（共 1 人）」）。已用只讀 anon RPC 在生產重現：Heihei P1 數學 `rank 5 / total 1`、中文 `rank 2 / total 1`。
+- 根因：`recalculate_student_grade_rankings()` 的 `RANK()` 視窗涵蓋該年級+科目「所有」有練習的學生（含未達 100 題的未合資格者），但 `total_eligible_in_grade` 只計合資格者；當未合資格同學近期平均較高時，合資格學生的名次會超過合資格總人數。
+- 修正：名次與人數改為只在「合資格（該科累積 ≥100 題）」子集內計算，再 LEFT JOIN 回全體；保證 `rank_in_grade ≤ total_eligible_in_grade`。保留科目正規化與 `999*` 測試帳號排除。前端無變更（`src/app/page.tsx` 只顯示快照值）。
+- 交付物：`supabase_fix_ranking_eligible_only.sql`（可直接執行的修正函數），並同步修正兩個既有排名 SQL 來源的同一段 CTE。
+- 測試：本機 PostgreSQL 16 以實際交付檔驗證 — buggy 函數重現 `5 of 1`；修正後 Heihei `1 of 1`，多合資格年級 `1 of 2`/`2 of 2`；未合資格同學不計入名次；`999*` 測試家長被排除。`npm test`/`lint`/`build` 綠（無 app 代碼變更）。
+- **上線步驟（Supabase 端，DDL 無法經 REST 套用）：** 在 Supabase SQL Editor 執行 `supabase_fix_ranking_eligible_only.sql`，再執行 `SELECT public.recalculate_student_grade_rankings();`（或等每日 cron）。
+- 上線後驗證：重查 `get_parent_student_grade_rank`（Heihei 數學應為 `rank 1 / total 1`）。
 
 ## Setup
 
