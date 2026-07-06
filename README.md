@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-06** — deployment `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8VuVM7hiqRPrJQcpDHNTQGMJdTTV). **Release scope:** 導師學生練習摘要頁改用不可逆雜湊（hash）作為網址識別碼，網址不再顯示學生登記手機（`/tutor/student/<hash>`）；UI 與導師功能不變，頁面內仍顯示登記手機。
+**Latest production deploy:** **2026-07-06** — deployment `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6h5ziATUeApRJzYcBZbmChkHqepT). **Release scope:** 導師學生摘要頁新增家長儀表板同款趨勢圖（整體正確率趨勢 + 各題型正確率趨勢），位於摘要卡與練習列表之間；沿用既有 `get_student_chart_data` RPC 與圖表元件，抽出為共用元件供家長儀表板與導師頁共用。
 
 ## Release SOP / checklist (mandatory)
 
@@ -285,6 +285,17 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 #### Latest sign-off log
 
+- **Release ID / commit:** `2cd27c6` (tutor student summary: add parent-dashboard trending charts)
+- **Tester:** Cursor Cloud Agent + owner manual approval in chat（"the preview is approved, please deploy"）
+- **Date/time (UTC):** 2026-07-06
+- **Scope confirmation:** 導師學生摘要頁新增趨勢圖（整體 + 各題型），位於摘要卡與練習列表之間。將家長儀表板圖表抽出為共用元件 `src/components/student-performance-charts.tsx`（家長儀表板改為 import，行為不變）；`/api/tutor/sessions` 於導師授權範圍內以既有 `get_student_chart_data` RPC 回傳每位學生圖表資料。無新增圖表邏輯或新 RPC。
+- **Validation:** `npm test` ✅（49 passed）, `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）, `npm run build` ✅, `npm run smoke` ✅（5/5 passed）
+- **Production smoke checks:** `GET /` = 200, `GET /admin` = 200, `GET /tutor` = 200, `GET /reset-password` = 200, `POST /api/admin/console` (without session) = 401, `GET /api/tutor/session` (without session) = 401, `POST /api/auth/mobile-login` invalid payload = 400
+- **Production functional check:** 導師 `112233` 於 `https://q.hkedutech.com` 登入 → 學生摘要頁在練習列表上方顯示「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」；家長儀表板（`99990002`）趨勢圖仍正常（共用元件無回歸）。
+- **Production deployment:** `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`（alias：`https://q.hkedutech.com`）
+- **Failures found + fix commits:** none in final production run
+- **Final approval:** received from owner before `--prod` deploy
+
 - **Release ID / commit:** `b56ffa9` (tutor student-summary URL uses opaque hash instead of mobile)
 - **Tester:** Cursor Cloud Agent + owner manual approval in chat（"the preview is good to deploy"）
 - **Date/time (UTC):** 2026-07-06
@@ -344,6 +355,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **導師學生摘要頁新增趨勢圖**：在摘要卡與練習列表之間顯示家長儀表板同款「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」。將圖表元件抽出為共用 `src/components/student-performance-charts.tsx`（`OverallChart` / `TypeCharts`），家長儀表板改為 import；`/api/tutor/sessions` 於導師授權範圍內以既有 `get_student_chart_data` RPC 回傳每位學生圖表資料。無新增圖表邏輯或新 RPC；趨勢圖依科目分頁、顯示最近約 30 次（與月份選擇獨立）。 |
 | 2026-07 | **導師學生摘要網址改用雜湊（隱藏手機號）**：`/tutor/student/[mobile]` 改為 `/tutor/student/[hash]`，`hash` 為以導師 session secret 加密的單向 HMAC-SHA256。導師清單改用 hash 連結；`/api/tutor/sessions` 接受 `hash` 並在導師自身綁定手機範圍內反解回手機（同時作為授權檢查），回傳 `registered_mobile` 供頁面顯示。UI 與導師功能不變，僅網址不再暴露手機號。新增 `src/lib/server/tutor-student-hash.ts` + 單元測試。 |
 | 2026-07 | **Hotfix：回復導師入口現代化設計（Variant B）**：回復 `/tutor` 登入與首次改密碼頁面的 Modern Gradient / Glass 設計；僅調整 `src/app/tutor/page.tsx` 視覺樣式，不改 auth/API 邏輯。 |
 | 2026-07 | **Hotfix：家長練習電郵錯題可讀性回復**：回復 parent practice email 內錯題詳解區塊，顯示「題目內容 / 你的答案 / 正確答案 / 解釋」，並保留 `wrong_question_details` 解析流程。 |
@@ -786,6 +798,34 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `POST /api/admin/console` (no auth)=401
     - `POST /api/auth/mobile-login` invalid payload=400
   - production functional check：導師帳號 `112233` 登入 → 學生清單 → 開啟摘要，網址為 `.../tutor/student/<hex hash>`（非手機），頁首仍顯示登記手機 `91919195`，練習列表正常載入。
+
+## Handover note — 2026-07-06 (tutor student summary: parent-dashboard trending charts)
+
+- 本日已完成並上線（owner 已在 chat 明確批准："the preview is approved, please deploy"）：
+  1. 導師學生摘要頁（`/tutor/student/[hash]`）新增家長儀表板同款趨勢圖：「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」，位置在四張摘要卡與練習列表之間。
+  2. 將家長儀表板圖表抽出為共用元件 `src/components/student-performance-charts.tsx`（`OverallChart` / `TypeCharts` / `pctColor` / `ChartTooltip` / `ChartDataPayload` + recharts dynamic imports）；`src/app/page.tsx` 改為 import 同一元件，家長儀表板行為不變。
+  3. `/api/tutor/sessions` 於導師授權範圍（該教師編號綁定手機）內，對每位學生以既有 `get_student_chart_data(p_student_id, p_subject)` RPC 取回圖表資料，回傳 `charts`。無新增圖表邏輯或新 RPC。
+  4. 趨勢圖依所選科目分頁；沿用家長儀表板行為，顯示最近約 30 次練習（與月份選擇獨立，因此當月無資料時摘要卡為 0，但趨勢圖仍可顯示歷史）。導師頁同時顯示整體與各題型（家長端各題型受付費層 gating，導師端不設限）。
+
+- 本次部署資訊：
+  - deployment: `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/6h5ziATUeApRJzYcBZbmChkHqepT`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（49 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+  - production functional check：導師 `112233` 開啟學生摘要，練習列表上方顯示「整體正確率趨勢（最近30次）」與「各題型正確率趨勢」；家長儀表板（`99990002`）趨勢圖仍正常（共用元件無回歸）。
 
 ## Setup
 

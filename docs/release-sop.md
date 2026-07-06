@@ -69,6 +69,10 @@ Every release must re-check these critical features:
    - tutor list links to `/tutor/student/<hash>` (opaque HMAC token), never the mobile number
    - opening a student summary loads sessions correctly and still shows `登記手機` in the page header
    - a tutor can only resolve hashes for mobiles bound under their own referral code
+17. Tutor student summary shows the parent-dashboard trending charts:
+   - `整體正確率趨勢（最近30次）` and `各題型正確率趨勢` render between the summary cards and the sessions table
+   - charts follow the selected subject tab and reuse the shared `src/components/student-performance-charts.tsx`
+   - parent dashboard still renders the same trend chart (shared component, no regression)
 
 ## 4) Validation gate
 
@@ -89,18 +93,17 @@ After production deploy, update:
 ## 6) Latest deployment record
 
 - Date (UTC): 2026-07-06
-- Deployment ID: `dpl_8VuVM7hiqRPrJQcpDHNTQGMJdTTV`
+- Deployment ID: `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/8VuVM7hiqRPrJQcpDHNTQGMJdTTV
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6h5ziATUeApRJzYcBZbmChkHqepT
 - Scope:
-  - tutor student-summary URL now uses an opaque one-way hash instead of the registered mobile (`/tutor/student/[mobile]` → `/tutor/student/[hash]`)
-  - `/api/tutor/students` returns a `hash` per row; tutor list links via the hash
-  - `/api/tutor/sessions` accepts `hash`, resolves it to a mobile scoped to the tutor's own bound mobiles (also the auth check), and returns `registered_mobile` for the header
-  - new `src/lib/server/tutor-student-hash.ts` + unit tests; no UI or tutor-function change; mobile still shown in page body
+  - tutor student summary now shows the parent-dashboard trending charts (`整體正確率趨勢（最近30次）` + `各題型正確率趨勢`) between the summary cards and the sessions table
+  - parent-dashboard charts extracted into shared `src/components/student-performance-charts.tsx`; `src/app/page.tsx` imports the same component (behaviour unchanged)
+  - `/api/tutor/sessions` returns per-student `charts` via the existing `get_student_chart_data` RPC, scoped to the tutor's bound mobiles; no new chart logic or new RPC
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
-  - `npm test` (pass, 49 incl. 6 new hash-util tests)
+  - `npm test` (pass, 49)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
   - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
-  - production functional check: tutor `112233` login → student list → summary opens at `/tutor/student/<hex hash>` (not the mobile); header still shows `登記手機 91919195`; sessions load
+  - production functional check: tutor `112233` login → student summary shows `整體正確率趨勢（最近30次）` + `各題型正確率趨勢` above the sessions table; parent dashboard (`99990002`) trend chart still renders (shared component, no regression)

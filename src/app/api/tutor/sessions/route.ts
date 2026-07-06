@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     new Set((parentRes.data ?? []).map((row) => String(row.id ?? "").trim()).filter(Boolean))
   );
   if (parentIds.length === 0) {
-    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile } });
+    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile, charts: [] } });
   }
 
   const studentNameById = new Map<string, string>();
@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
     }
   }
   if (studentIds.length === 0) {
-    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile } });
+    return NextResponse.json({ data: { sessions: [], registered_mobile: mobile, charts: [] } });
   }
 
   const subjects = quizSubjectDbPatterns(subject);
@@ -208,5 +208,25 @@ export async function GET(req: NextRequest) {
     return bTs - aTs;
   });
 
-  return NextResponse.json({ data: { sessions, registered_mobile: mobile } });
+  // Reuse the parent-dashboard trending data (get_student_chart_data) per student
+  // under this mobile, for the selected subject. Best-effort: chart failures must
+  // not break the sessions list.
+  const charts: Array<{ student_id: string; student_name: string; data: unknown }> = [];
+  for (const studentId of studentIds) {
+    const chartRes = await admin.rpc("get_student_chart_data", {
+      p_student_id: studentId,
+      p_subject: subject,
+    });
+    if (chartRes.error) continue;
+    const data = chartRes.data as { sessions?: unknown[] } | null;
+    if (data && Array.isArray(data.sessions) && data.sessions.length > 0) {
+      charts.push({
+        student_id: studentId,
+        student_name: studentNameById.get(studentId) || "學生",
+        data,
+      });
+    }
+  }
+
+  return NextResponse.json({ data: { sessions, registered_mobile: mobile, charts } });
 }
