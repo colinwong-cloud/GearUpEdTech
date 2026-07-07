@@ -3317,6 +3317,17 @@ function ResultsView({
       });
       if (error) throw error;
       setReportedIds((prev) => new Set(prev).add(answer.question.id));
+
+      void fetch("/api/report-question-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question_id: answer.question.id,
+          student_id: studentId,
+          session_id: sessionId,
+          student_answer: answer.studentAnswer,
+        }),
+      }).catch(() => null);
     } catch {
       // silent fail — non-critical
     } finally {
