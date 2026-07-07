@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-23** — deployment `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z). **Release scope:** Admin「教師編號維護」新增 Part 3 密碼重設（重設為 `123456`、清除鎖定、強制下次登入改密碼），並把成功提示訊息顯示於 Part 3 區塊底部。
+**Latest production deploy:** **2026-07-07** — deployment `dpl_5ckCtihyieVWzg32bdEiF9z9yUxR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/5ckCtihyieVWzg32bdEiF9z9yUxR). **Release scope:** 練習結果頁底部新增 `回到主畫面` 按鈕（回到角色選擇頁），保留既有 `再做一次` / `登出`。
 
 ## Release SOP / checklist (mandatory)
 
@@ -584,6 +584,33 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /tutor`=200
     - `POST /api/admin/console` (no auth)=401
     - `GET /api/tutor/session` (no auth)=401
+
+## Handover note — 2026-07-07 (result page add back-to-home button)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 練習結果頁底部操作區新增第三個按鈕：`回到主畫面`。
+  2. `回到主畫面` 會回到角色選擇頁（`login_role`）。
+  3. 保留既有按鈕與行為：`再做一次`、`登出`。
+  4. 變更範圍僅 `src/app/page.tsx`（UI/flow enhancement，無 SQL migration）。
+
+- 本次部署資訊：
+  - deployment: `dpl_5ckCtihyieVWzg32bdEiF9z9yUxR`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/5ckCtihyieVWzg32bdEiF9z9yUxR`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（43 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `POST /api/admin/console` (no auth)=401
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup
 
