@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-07** — deployment `dpl_7tg7oGgd5vgZKad1uNn93e82ksT5`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7tg7oGgd5vgZKad1uNn93e82ksT5). **Release scope:** 以 2026-07-06 導師改版為 baseline 回復上線（保留 `/tutor/student/[hash]` 與導師趨勢圖），並保留結果頁底部新按鈕 `回到主畫面`（回到角色選擇頁）。
+**Latest production deploy:** **2026-07-07** — deployment `dpl_FsWe1CGa8x87mgZwSnDCxPHadJZo`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/FsWe1CGa8x87mgZwSnDCxPHadJZo). **Release scope:** 結果頁「反映這題目」新增通知電郵流程（寄送至 `colin.wong@hkedutech.com`，含題目 ID / 內容 / 正確答案），並保留既有 `report_question` 寫入。
 
 ## Release SOP / checklist (mandatory)
 
@@ -875,6 +875,34 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /reset-password`=200
     - `GET /api/tutor/session` (no auth)=401
     - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
+
+## Handover note — 2026-07-07 (result feedback click sends notification email)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 結果頁學生按下 `反映這題目` 後，除了既有 `report_question` 寫入 `question_reports`，新增通知電郵流程。
+  2. 新增 API：`/api/report-question-feedback`，以 Resend 發送通知至 `colin.wong@hkedutech.com`。
+  3. 電郵內容包含：題目 ID、題目內容、正確答案（並附上學生答案與 student/session context 方便追蹤）。
+  4. 變更範圍：`src/app/page.tsx`、`src/app/api/report-question-feedback/route.ts`；無 SQL migration。
+
+- 本次部署資訊：
+  - deployment: `dpl_FsWe1CGa8x87mgZwSnDCxPHadJZo`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/FsWe1CGa8x87mgZwSnDCxPHadJZo`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（49 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/report-question-feedback` invalid payload=400
     - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup

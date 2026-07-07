@@ -80,6 +80,10 @@ Every release must re-check these critical features:
    - `rank_in_grade` never exceeds `total_eligible_in_grade` (no "rank 5 of 1")
    - both are computed only among eligible students (≥100 lifetime questions in that subject)
    - see `supabase_fix_ranking_eligible_only.sql`; after any ranking-SQL change, re-run `recalculate_student_grade_rankings()`
+19. Result-page feedback notification email remains available:
+   - clicking `反映這題目` still writes feedback via `report_question`
+   - system sends notification email to `colin.wong@hkedutech.com`
+   - email includes question id, question content, and correct answer
 
 ## 4) Validation gate
 
@@ -100,18 +104,18 @@ After production deploy, update:
 ## 6) Latest deployment record
 
 - Date (UTC): 2026-07-07
-- Deployment ID: `dpl_7tg7oGgd5vgZKad1uNn93e82ksT5`
+- Deployment ID: `dpl_FsWe1CGa8x87mgZwSnDCxPHadJZo`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7tg7oGgd5vgZKad1uNn93e82ksT5
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/FsWe1CGa8x87mgZwSnDCxPHadJZo
 - Scope:
-  - release baseline recovered to keep the approved tutor-console enhancements from 2026-07-06 (hashed student-summary URL + tutor trending charts)
-  - results page bottom action row adds `回到主畫面` and returns to role selection (`login_role`)
-  - existing result actions `再做一次` and `登出` remain unchanged
-  - keep scope limited to `src/app/page.tsx` on top of recovered baseline
+  - add feedback-notification email flow when student clicks `反映這題目` on result page
+  - keep existing `report_question` DB logging and append notification API call
+  - new API route `/api/report-question-feedback` sends email to `colin.wong@hkedutech.com` with question id/content/correct answer
+  - keep scope limited to `src/app/page.tsx` and `src/app/api/report-question-feedback/route.ts`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass, 49)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
-  - production functional check: tutor console uses `/tutor/student/[hash]` route and keeps trend-chart section; results page shows `再做一次` / `回到主畫面` / `登出`
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/report-question-feedback` invalid payload 400, `/api/auth/mobile-login` invalid payload 400
+  - functional check: result-page feedback click still records report and triggers notification email to target inbox
