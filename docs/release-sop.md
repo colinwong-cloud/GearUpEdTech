@@ -24,7 +24,10 @@ Every release must re-check these critical features:
 
 1. Login page standalone **「新用戶註冊」** CTA.
 2. Registration/add-student **gender required**.
-3. Student result page action buttons remain correct.
+3. Student result page action buttons remain correct:
+   - `再做一次` works
+   - `回到主畫面` returns to role-selection page
+   - `登出` works
 4. Student result page wrong-answer analysis remains readable and includes:
    - question content
    - student answer (with value)
@@ -96,18 +99,19 @@ After production deploy, update:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-07-06
-- Deployment ID: `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`
+- Date (UTC): 2026-07-07
+- Deployment ID: `dpl_7tg7oGgd5vgZKad1uNn93e82ksT5`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6h5ziATUeApRJzYcBZbmChkHqepT
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7tg7oGgd5vgZKad1uNn93e82ksT5
 - Scope:
-  - tutor student summary now shows the parent-dashboard trending charts (`整體正確率趨勢（最近30次）` + `各題型正確率趨勢`) between the summary cards and the sessions table
-  - parent-dashboard charts extracted into shared `src/components/student-performance-charts.tsx`; `src/app/page.tsx` imports the same component (behaviour unchanged)
-  - `/api/tutor/sessions` returns per-student `charts` via the existing `get_student_chart_data` RPC, scoped to the tutor's bound mobiles; no new chart logic or new RPC
+  - release baseline recovered to keep the approved tutor-console enhancements from 2026-07-06 (hashed student-summary URL + tutor trending charts)
+  - results page bottom action row adds `回到主畫面` and returns to role selection (`login_role`)
+  - existing result actions `再做一次` and `登出` remain unchanged
+  - keep scope limited to `src/app/page.tsx` on top of recovered baseline
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass, 49)
   - `npm run build` (pass)
   - `npm run smoke` (pass, 5/5)
   - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
-  - production functional check: tutor `112233` login → student summary shows `整體正確率趨勢（最近30次）` + `各題型正確率趨勢` above the sessions table; parent dashboard (`99990002`) trend chart still renders (shared component, no regression)
+  - production functional check: tutor console uses `/tutor/student/[hash]` route and keeps trend-chart section; results page shows `再做一次` / `回到主畫面` / `登出`
