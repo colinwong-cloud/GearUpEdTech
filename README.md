@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-07-06** — deployment `dpl_6h5ziATUeApRJzYcBZbmChkHqepT`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/6h5ziATUeApRJzYcBZbmChkHqepT). **Release scope:** 導師學生摘要頁新增家長儀表板同款趨勢圖（整體正確率趨勢 + 各題型正確率趨勢），位於摘要卡與練習列表之間；沿用既有 `get_student_chart_data` RPC 與圖表元件，抽出為共用元件供家長儀表板與導師頁共用。
+**Latest production deploy:** **2026-07-07** — deployment `dpl_7tg7oGgd5vgZKad1uNn93e82ksT5`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/7tg7oGgd5vgZKad1uNn93e82ksT5). **Release scope:** 以 2026-07-06 導師改版為 baseline 回復上線（保留 `/tutor/student/[hash]` 與導師趨勢圖），並保留結果頁底部新按鈕 `回到主畫面`（回到角色選擇頁）。
 
 ## Release SOP / checklist (mandatory)
 
@@ -849,6 +849,33 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 - 測試：本機 PostgreSQL 16 以實際交付檔驗證 — buggy 函數重現 `5 of 1`；修正後 Heihei `1 of 1`，多合資格年級 `1 of 2`/`2 of 2`；未合資格同學不計入名次；`999*` 測試家長被排除。`npm test`/`lint`/`build` 綠（無 app 代碼變更）。
 - **上線步驟（Supabase 端，DDL 無法經 REST 套用）：** 在 Supabase SQL Editor 執行 `supabase_fix_ranking_eligible_only.sql`，再執行 `SELECT public.recalculate_student_grade_rankings();`（或等每日 cron）。
 - 上線後驗證：重查 `get_parent_student_grade_rank`（Heihei 數學應為 `rank 1 / total 1`）。
+
+## Handover note — 2026-07-07 (recover tutor-console enhancements + keep result-page home action)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 以含 2026-07-06 導師改版的最新分支作為 baseline 回復部署，避免舊基線覆蓋導師頁改動。
+  2. 導師學生摘要頁保持 `/tutor/student/[hash]`（網址不暴露手機）與趨勢圖區塊（整體正確率 + 各題型）。
+  3. 同步保留本日已核准結果頁變更：底部三按鈕 `再做一次` / `回到主畫面` / `登出`。
+  4. 本次代碼新增僅為 `src/app/page.tsx` 的 `回到主畫面` 行為，其他導師功能由回復 baseline 一併保留。
+
+- 本次部署資訊：
+  - deployment: `dpl_7tg7oGgd5vgZKad1uNn93e82ksT5`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/7tg7oGgd5vgZKad1uNn93e82ksT5`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅（49 passed）
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run smoke` ✅（5/5 passed）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /admin`=200
+    - `GET /tutor`=200
+    - `GET /reset-password`=200
+    - `GET /api/tutor/session` (no auth)=401
+    - `POST /api/admin/console` (no auth)=401
+    - `POST /api/auth/mobile-login` invalid payload=400
 
 ## Setup
 
