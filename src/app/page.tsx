@@ -1,20 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
 import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
-
-const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), { ssr: false });
-const Bar = dynamic(() => import("recharts").then((m) => m.Bar), { ssr: false });
-const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false });
-const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false });
-const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), { ssr: false });
-const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
-const ReferenceLine = dynamic(() => import("recharts").then((m) => m.ReferenceLine), { ssr: false });
-const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false });
-const Cell = dynamic(() => import("recharts").then((m) => m.Cell), { ssr: false });
+import { OverallChart, TypeCharts, type ChartDataPayload } from "@/components/student-performance-charts";
 import type {
   Student,
   Question,
@@ -28,6 +18,16 @@ import {
   quizSubjectDbPatterns,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
+import {
+  COOKIE_CONSENT_STORAGE_KEY,
+  COOKIE_POLICY_COPY,
+  type CookieConsentAction,
+  type CookieConsentPreferences,
+  type CookiePreferenceDraft,
+  type CookiePolicyLanguage,
+  createCookieConsentPreferences,
+  parseCookieConsentPreferences,
+} from "@/lib/cookie-consent";
 import {
   AI_QUESTION_SOURCE,
   buildStrictAiQuestionPoolErrorMessage,
@@ -45,6 +45,7 @@ import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
 } from "@/lib/session-practice-summary";
+import { genderFromAvatarStyle } from "@/lib/student-gender";
 import {
   StudentQuizExperience,
   getQuizSoundEnabled,
@@ -57,6 +58,7 @@ const MAX_IMAGE = 1;
 const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
+const COOKIE_PREF_DEFAULTS = { analytics: false, advertising: false } as const;
 const MONTHLY_PAID_PRICE_HKD = 99;
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
 const WECHAT_SDK_SRC = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
@@ -334,6 +336,7 @@ type AppScreen =
   | "parent_session_detail"
   | "account_menu"
   | "balance_view"
+  | "payment_history"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
@@ -351,6 +354,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "parent_session_detail",
   "account_menu",
   "balance_view",
+  "payment_history",
   "profile_edit",
   "add_student_form",
   "parent_student_select",
@@ -373,36 +377,6 @@ interface SessionDetailAnswer {
   is_correct: boolean;
   question_order: number | null;
   question: Question;
-}
-
-interface ChartSession {
-  id: string;
-  created_at: string;
-  questions_attempted: number;
-  score: number;
-  correct_pct: number;
-}
-
-interface ChartTypeSession {
-  question_type: string;
-  session_id: string;
-  created_at: string;
-  total: number;
-  correct: number;
-  correct_pct: number;
-}
-
-interface GradeAverage {
-  question_type: string;
-  avg_correct_pct: number;
-  total_sessions: number;
-}
-
-interface ChartDataPayload {
-  grade_level: string;
-  sessions: ChartSession[];
-  type_sessions: ChartTypeSession[];
-  grade_averages: GradeAverage[];
 }
 
 /** Nightly cache from student_grade_rankings; see get_parent_student_grade_rank RPC */
@@ -438,6 +412,17 @@ interface ParentBalanceView {
   transactions: (BalanceTransaction & { student_name: string })[];
 }
 
+interface ParentPaymentHistoryRow {
+  id: string;
+  paid_at: string | null;
+  created_at: string | null;
+  final_amount_hkd: number | null;
+  payment_method: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
+}
+
 type ParentTier = "free" | "paid";
 
 interface ParentTierStatus {
@@ -456,6 +441,25 @@ interface DiscountValidationResult {
 
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
+}
+
+function getOptionValueByKey(question: Question, rawKey: string): string | null {
+  const key = rawKey.trim().toUpperCase();
+  if (!key) return null;
+  if (key === "A") return question.opt_a?.trim() || null;
+  if (key === "B") return question.opt_b?.trim() || null;
+  if (key === "C") return question.opt_c?.trim() || null;
+  if (key === "D") return question.opt_d?.trim() || null;
+  return null;
+}
+
+function formatAnswerWithValue(question: Question, rawAnswer: string | null | undefined): string {
+  const answer = String(rawAnswer ?? "").trim();
+  if (!answer) return "（未作答）";
+  if (isShortAnswer(question)) return answer;
+  const optionValue = getOptionValueByKey(question, answer);
+  if (!optionValue) return answer;
+  return `${answer.toUpperCase()}（${optionValue}）`;
 }
 
 function hasImage(q: Question): boolean {
@@ -614,6 +618,306 @@ function preventQuizDragStart(e: React.DragEvent) {
   e.preventDefault();
 }
 
+function CookieConsentBanner({
+  onAcceptAll,
+  onRejectNonEssential,
+  onManageSettings,
+  onOpenPolicy,
+}: {
+  onAcceptAll: () => void;
+  onRejectNonEssential: () => void;
+  onManageSettings: () => void;
+  onOpenPolicy: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-indigo-100 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-sm leading-6 text-gray-700">
+          我們使用 Cookie 以維持網站運作、分析流量及廣告重定向。你可接受全部、拒絕非必要，或自訂設定。
+          <button
+            type="button"
+            onClick={onOpenPolicy}
+            className="ml-1 inline font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+          >
+            查看 Cookie / 私隱聲明
+          </button>
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onAcceptAll}
+            className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            接受全部
+          </button>
+          <button
+            type="button"
+            onClick={onRejectNonEssential}
+            className="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            拒絕非必要
+          </button>
+          <button
+            type="button"
+            onClick={onManageSettings}
+            className="rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+          >
+            管理設定
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CookieSettingsLauncher({
+  onOpen,
+  compact,
+}: {
+  onOpen: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`fixed z-[65] rounded-full border border-gray-200 bg-white/95 px-4 py-2 text-xs font-semibold text-gray-700 shadow-md backdrop-blur hover:bg-gray-50 ${
+        compact ? "bottom-2 left-2" : "bottom-4 right-4"
+      }`}
+      aria-label="Open cookie settings"
+    >
+      Cookie 設定
+    </button>
+  );
+}
+
+function CookieSettingsModal({
+  open,
+  draft,
+  onToggleAnalytics,
+  onToggleAdvertising,
+  onAcceptAll,
+  onRejectNonEssential,
+  onSavePreferences,
+  onOpenPolicy,
+  onClose,
+}: {
+  open: boolean;
+  draft: CookiePreferenceDraft;
+  onToggleAnalytics: () => void;
+  onToggleAdvertising: () => void;
+  onAcceptAll: () => void;
+  onRejectNonEssential: () => void;
+  onSavePreferences: () => void;
+  onOpenPolicy: () => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/45 p-4 sm:items-center"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-settings-title"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-gray-100 px-5 py-4">
+          <h2 id="cookie-settings-title" className="text-lg font-bold text-gray-900">
+            Cookie 設定 / Cookie settings
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            你可按需要開啟或關閉非必要 Cookie，設定會儲存在此瀏覽器。
+          </p>
+        </div>
+        <div className="space-y-3 px-5 py-4 text-sm">
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">必要 Cookie（不可關閉）</p>
+              <p className="text-gray-600">維持登入流程與平台基本安全功能。</p>
+            </div>
+            <input
+              type="checkbox"
+              checked
+              disabled
+              aria-label="Necessary cookies always enabled"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+          </label>
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">分析 Cookie（可選）</p>
+              <p className="text-gray-600">用於流量與行為分析，協助我們改善功能與頁面體驗。</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={draft.analytics}
+              onChange={onToggleAnalytics}
+              aria-label="Enable analytics cookies"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          </label>
+          <label className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3">
+            <div>
+              <p className="font-semibold text-gray-900">廣告 / 重定向 Cookie（可選）</p>
+              <p className="text-gray-600">用於社交媒體再行銷與成效衡量，幫助我們優化推廣內容。</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={draft.advertising}
+              onChange={onToggleAdvertising}
+              aria-label="Enable advertising cookies"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          </label>
+        </div>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <div className="mb-3 text-xs text-gray-500">
+            想查看完整聲明？
+            <button
+              type="button"
+              onClick={onOpenPolicy}
+              className="ml-1 font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+            >
+              開啟 Cookie / 私隱聲明
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onSavePreferences}
+              className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              儲存設定
+            </button>
+            <button
+              type="button"
+              onClick={onAcceptAll}
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              接受全部
+            </button>
+            <button
+              type="button"
+              onClick={onRejectNonEssential}
+              className="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              拒絕非必要
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-200 px-3.5 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CookiePolicyModal({
+  open,
+  language,
+  onChangeLanguage,
+  onClose,
+}: {
+  open: boolean;
+  language: CookiePolicyLanguage;
+  onChangeLanguage: (language: CookiePolicyLanguage) => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  const content = COOKIE_POLICY_COPY[language];
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cookie-policy-title"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h2 id="cookie-policy-title" className="text-lg font-bold text-gray-900">
+              {content.heading}
+            </h2>
+            <p className="text-xs text-gray-500">Last updated: {content.lastUpdated}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            aria-label="Close cookie policy"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="border-b border-gray-100 px-5 py-3">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => onChangeLanguage("zh-HK")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                language === "zh-HK" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600"
+              }`}
+            >
+              繁中
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeLanguage("en")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                language === "en" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-600"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+        </div>
+        <div className="space-y-4 overflow-y-auto px-5 py-4 text-sm leading-7 text-gray-700">
+          {content.intro.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          {content.sections.map((section) => (
+            <section key={section.title}>
+              <h3 className="text-base font-semibold text-gray-900">{section.title}</h3>
+              {section.paragraphs.map((paragraph) => (
+                <p key={paragraph} className="mt-2">
+                  {paragraph}
+                </p>
+              ))}
+              {section.bullets && section.bullets.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-6">
+                  {section.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+          {content.footer.map((paragraph) => (
+            <p key={paragraph} className="text-xs text-gray-500">
+              {paragraph}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QuizApp() {
   const [screen, setScreen] = useState<AppScreen>("login_mobile");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -654,6 +958,72 @@ export default function QuizApp() {
   
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
   const [gradeRank, setGradeRank] = useState<ParentGradeRankPayload | null>(null);
+  const [cookieConsent, setCookieConsent] =
+    useState<CookieConsentPreferences | null>(null);
+  const [cookieBannerVisible, setCookieBannerVisible] = useState(false);
+  const [cookieSettingsOpen, setCookieSettingsOpen] = useState(false);
+  const [cookiePolicyOpen, setCookiePolicyOpen] = useState(false);
+  const [cookiePolicyLanguage, setCookiePolicyLanguage] =
+    useState<CookiePolicyLanguage>("zh-HK");
+  const [cookieDraft, setCookieDraft] = useState<CookiePreferenceDraft>({
+    analytics: COOKIE_PREF_DEFAULTS.analytics,
+    advertising: COOKIE_PREF_DEFAULTS.advertising,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let savedRaw: string | null = null;
+    try {
+      savedRaw = window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
+    } catch {
+      // If localStorage is blocked, show banner so user can still choose.
+      setCookieBannerVisible(true);
+      return;
+    }
+    const saved = parseCookieConsentPreferences(savedRaw);
+    if (saved) {
+      setCookieConsent(saved);
+      setCookieDraft({
+        analytics: saved.analytics,
+        advertising: saved.advertising,
+      });
+      setCookieBannerVisible(false);
+      return;
+    }
+    setCookieConsent(null);
+    setCookieDraft({
+      analytics: COOKIE_PREF_DEFAULTS.analytics,
+      advertising: COOKIE_PREF_DEFAULTS.advertising,
+    });
+    setCookieBannerVisible(true);
+  }, []);
+
+  const persistCookieConsent = useCallback(
+    (
+      draft: CookiePreferenceDraft,
+      action: CookieConsentAction
+    ) => {
+      const next = createCookieConsentPreferences(draft, action);
+      setCookieConsent(next);
+      setCookieDraft({
+        analytics: next.analytics,
+        advertising: next.advertising,
+      });
+      setCookieBannerVisible(false);
+      setCookieSettingsOpen(false);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            COOKIE_CONSENT_STORAGE_KEY,
+            JSON.stringify(next)
+          );
+        }
+      } catch {
+        // Ignore localStorage failures.
+      }
+    },
+    []
+  );
   const [parentTierStatus, setParentTierStatus] = useState<ParentTierStatus>({
     tier: "free",
     is_paid: false,
@@ -796,8 +1166,14 @@ export default function QuizApp() {
       gradeLevel: string;
       email: string;
       schoolId: string | null;
+      referralCode: string;
     }) => {
       if (!mobileNumber.trim()) return;
+      const gender = genderFromAvatarStyle(form.avatarStyle);
+      if (!gender) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       markAuthIntent();
       pushGtmEventOncePerSession("register_submit_attempt", {
         screen_name: "register",
@@ -805,19 +1181,30 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+            referralCode: form.referralCode || null,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -845,20 +1232,33 @@ export default function QuizApp() {
         setError("登入狀態已失效，請重新登入後再試。");
         return;
       }
+      if (!genderFromAvatarStyle(form.avatarStyle)) {
+        setError("請選擇學生性別（男生或女生）。");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: pinInput.trim(),
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/add-student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            pinCode: pinInput.trim(),
+            studentName: form.studentName,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            schoolId: form.schoolId,
+          }),
         });
-        if (rpcErr) throw rpcErr;
-        if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
-        const newStudent = data as Student;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "新增學生失敗，請重試。");
+        }
+        const newStudent = payload.student;
         setStudents((prev) => [...prev, newStudent]);
         await refreshParentTierStatus();
         setScreen("account_menu");
@@ -868,7 +1268,7 @@ export default function QuizApp() {
         const isDuplicateGradeError = /每個年級只可新增一位學生|同年級|same grade/i.test(rawMessage);
         setError(
           isDuplicateGradeError
-            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com"
+            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@gearupquiz.com"
             : rawMessage
         );
       } finally {
@@ -1218,6 +1618,16 @@ export default function QuizApp() {
     setError(null);
   };
 
+  const handleBackToHome = () => {
+    setScreen("login_role");
+    setSelectedSubject(null);
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
   const handleLogout = () => {
     setScreen("login_mobile");
     setMobileNumber("");
@@ -1239,10 +1649,84 @@ export default function QuizApp() {
     setError(null);
   };
 
-  if (loading) return <LoadingScreen />;
+  const renderWithCookieUi = (content: React.ReactNode) => {
+    const showCookieUiOnThisScreen = screen === "login_mobile";
+    if (!showCookieUiOnThisScreen) return <>{content}</>;
+
+    return (
+      <>
+        {content}
+        {cookieBannerVisible && (
+          <CookieConsentBanner
+            onAcceptAll={() =>
+              persistCookieConsent(
+                { analytics: true, advertising: true },
+                "accept_all"
+              )
+            }
+            onRejectNonEssential={() =>
+              persistCookieConsent(
+                { analytics: false, advertising: false },
+                "reject_non_essential"
+              )
+            }
+            onManageSettings={() => setCookieSettingsOpen(true)}
+            onOpenPolicy={() => setCookiePolicyOpen(true)}
+          />
+        )}
+        {!cookieBannerVisible && cookieConsent && (
+          <CookieSettingsLauncher
+            compact={screen === "login_mobile"}
+            onOpen={() => setCookieSettingsOpen(true)}
+          />
+        )}
+        <CookieSettingsModal
+          open={cookieSettingsOpen}
+          draft={cookieDraft}
+          onToggleAnalytics={() =>
+            setCookieDraft((prev) => ({
+              ...prev,
+              analytics: !prev.analytics,
+            }))
+          }
+          onToggleAdvertising={() =>
+            setCookieDraft((prev) => ({
+              ...prev,
+              advertising: !prev.advertising,
+            }))
+          }
+          onAcceptAll={() =>
+            persistCookieConsent(
+              { analytics: true, advertising: true },
+              "accept_all"
+            )
+          }
+          onRejectNonEssential={() =>
+            persistCookieConsent(
+              { analytics: false, advertising: false },
+              "reject_non_essential"
+            )
+          }
+          onSavePreferences={() =>
+            persistCookieConsent(cookieDraft, "save_preferences")
+          }
+          onOpenPolicy={() => setCookiePolicyOpen(true)}
+          onClose={() => setCookieSettingsOpen(false)}
+        />
+        <CookiePolicyModal
+          open={cookiePolicyOpen}
+          language={cookiePolicyLanguage}
+          onChangeLanguage={setCookiePolicyLanguage}
+          onClose={() => setCookiePolicyOpen(false)}
+        />
+      </>
+    );
+  };
+
+  if (loading) return renderWithCookieUi(<LoadingScreen />);
 
   if (screen === "login_mobile") {
-    return (
+    return renderWithCookieUi(
       <LoginMobileScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
@@ -1266,7 +1750,7 @@ export default function QuizApp() {
   }
 
   if (screen === "login_role") {
-    return (
+    return renderWithCookieUi(
       <RoleSelectScreen
         onStudent={() => setScreen("login_student")}
         onParent={() => {
@@ -1293,11 +1777,12 @@ export default function QuizApp() {
   }
 
   if (screen === "account_menu") {
-    return (
+    return renderWithCookieUi(
       <AccountMenuScreen
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
@@ -1306,7 +1791,7 @@ export default function QuizApp() {
   }
 
   if (screen === "balance_view") {
-    return (
+    return renderWithCookieUi(
       <BalanceViewScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
@@ -1314,8 +1799,18 @@ export default function QuizApp() {
     );
   }
 
-  if (screen === "profile_edit") {
+  if (screen === "payment_history") {
     return (
+      <PaymentHistoryScreen
+        mobileNumber={mobileNumber}
+        isPaidUser={parentTierStatus.is_paid}
+        onBack={() => setScreen("account_menu")}
+      />
+    );
+  }
+
+  if (screen === "profile_edit") {
+    return renderWithCookieUi(
       <ProfileEditScreen
         mobileNumber={mobileNumber}
         onSaved={() => setScreen("account_menu")}
@@ -1325,7 +1820,7 @@ export default function QuizApp() {
   }
 
   if (screen === "add_student_form") {
-    return (
+    return renderWithCookieUi(
       <AddStudentScreen
         mobileNumber={mobileNumber}
         onSubmit={handleAddStudentSubmit}
@@ -1337,7 +1832,7 @@ export default function QuizApp() {
   }
 
   if (screen === "parent_student_select") {
-    return (
+    return renderWithCookieUi(
       <StudentSelectScreen
         students={students}
         onSelect={(student) => {
@@ -1358,16 +1853,16 @@ export default function QuizApp() {
   }
 
   if (screen === "forgot_password") {
-    return (
+    return renderWithCookieUi(
       <ForgotPasswordScreen
         mobileNumber={mobileNumber}
-        onBack={() => setScreen("login_mobile")}
+        onBack={handleLogout}
       />
     );
   }
 
   if (screen === "parent_dashboard") {
-    return (
+    return renderWithCookieUi(
       <ParentDashboard
         studentName={selectedStudent?.student_name || ""}
         gradeRank={gradeRank}
@@ -1414,7 +1909,7 @@ export default function QuizApp() {
   }
 
   if (screen === "parent_session_detail") {
-    return (
+    return renderWithCookieUi(
       <ParentSessionDetail
         session={parentDetailSession!}
         answers={parentDetailAnswers}
@@ -1426,7 +1921,7 @@ export default function QuizApp() {
   }
 
   if (screen === "register") {
-    return (
+    return renderWithCookieUi(
       <RegisterScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
@@ -1442,7 +1937,7 @@ export default function QuizApp() {
   }
 
   if (screen === "login_student") {
-    return (
+    return renderWithCookieUi(
       <StudentSelectScreen
         students={students}
         onSelect={handleStudentSelect}
@@ -1452,7 +1947,7 @@ export default function QuizApp() {
   }
 
   if (screen === "subject_select") {
-    return (
+    return renderWithCookieUi(
       <SubjectSelectScreen
         studentName={selectedStudent?.student_name || ""}
         onSelect={handleSubjectSelect}
@@ -1463,7 +1958,7 @@ export default function QuizApp() {
   }
 
   if (screen === "question_count_select") {
-    return (
+    return renderWithCookieUi(
       <QuestionCountScreen
         studentName={selectedStudent?.student_name || ""}
         subjectKey={selectedSubject || ""}
@@ -1476,7 +1971,7 @@ export default function QuizApp() {
   }
 
   if (screen === "results") {
-    return (
+    return renderWithCookieUi(
       <ResultsView
         answers={answers}
         studentName={selectedStudent?.student_name || ""}
@@ -1484,6 +1979,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToHome={handleBackToHome}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -1491,19 +1987,23 @@ export default function QuizApp() {
   }
 
   if (error) {
-    return <ErrorScreen error={error} onRetry={handleRestart} />;
+    return renderWithCookieUi(
+      <ErrorScreen error={error} onRetry={handleRestart} />
+    );
   }
 
   const currentQuestion = questions[currentIndex];
   if (!currentQuestion) {
-    return <ErrorScreen error="沒有可用的題目。" onRetry={handleRestart} />;
+    return renderWithCookieUi(
+      <ErrorScreen error="沒有可用的題目。" onRetry={handleRestart} />
+    );
   }
 
   const shortAnswer = isShortAnswer(currentQuestion);
   const canSubmit =
     shortAnswer && textAnswer.trim().length > 0 && !submitting;
 
-  return (
+  return renderWithCookieUi(
     <div
       className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
       onContextMenu={preventContextMenu}
@@ -1816,6 +2316,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1870,15 +2376,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -1889,8 +2386,8 @@ function LoginMobileScreen({
           </div>
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
-              cs@hkedutech.com
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@gearupquiz.com
             </a>
           </div>
           <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
@@ -2060,6 +2557,7 @@ function RegisterScreen({
     gradeLevel: string;
     email: string;
     schoolId: string | null;
+    referralCode: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -2070,6 +2568,7 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileBypass, setTurnstileBypass] = useState(false);
   const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
@@ -2138,7 +2637,9 @@ function RegisterScreen({
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const REFERRAL_CODE_RE = /^\d{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const referralCodeValid = referralCode.length === 0 || REFERRAL_CODE_RE.test(referralCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const privacyStatementUrl = getPrivacyStatementTxtUrl();
@@ -2150,9 +2651,18 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    referralCodeValid &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
     (siteKey && !turnstileBypass ? turnstileToken !== null : true);
+  const referralServerError =
+    error &&
+    (error === "錯誤編號" ||
+      error === "編號被限，請負責老師聯絡管理員更新編號。" ||
+      error === "此電話已使用教師編號。")
+      ? error
+      : null;
+  const generalRegisterError = referralServerError ? null : error;
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -2246,7 +2756,7 @@ function RegisterScreen({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              姓別
+              性別（必填）
             </label>
             <div className="flex gap-3">
               {avatars.map((a) => (
@@ -2363,6 +2873,33 @@ function RegisterScreen({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              負責教師編號（選填）
+            </label>
+            <input
+              type="text"
+              value={referralCode}
+              onChange={(e) => {
+                setReferralCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="6位數字"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                referralCode.length > 0 && !referralCodeValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {referralCode.length > 0 && !referralCodeValid && (
+              <p className="mt-1 text-xs text-red-500">錯誤編號</p>
+            )}
+            {referralServerError && (
+              <p className="mt-1 text-xs text-red-500">{referralServerError}</p>
+            )}
+          </div>
+
           {siteKey && (
             <div className="flex justify-center">
               <Turnstile
@@ -2394,8 +2931,8 @@ function RegisterScreen({
             </p>
           )}
 
-          {error && (
-            <p className="text-sm text-red-500 font-medium">{error}</p>
+          {generalRegisterError && (
+            <p className="text-sm text-red-500 font-medium">{generalRegisterError}</p>
           )}
 
           <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
@@ -2429,7 +2966,15 @@ function RegisterScreen({
                 setError("輸入的電郵已經登記");
                 return;
               }
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+              onSubmit({
+                studentName: studentName.trim(),
+                pinCode,
+                avatarStyle,
+                gradeLevel,
+                email: email.trim(),
+                schoolId: selectedSchoolId,
+                referralCode: referralCode.trim(),
+              });
             }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
@@ -2733,6 +3278,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToHome,
   onLogout,
   balance,
 }: {
@@ -2742,6 +3288,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToHome: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -2770,6 +3317,17 @@ function ResultsView({
       });
       if (error) throw error;
       setReportedIds((prev) => new Set(prev).add(answer.question.id));
+
+      void fetch("/api/report-question-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question_id: answer.question.id,
+          student_id: studentId,
+          session_id: sessionId,
+          student_answer: answer.studentAnswer,
+        }),
+      }).catch(() => null);
     } catch {
       // silent fail — non-critical
     } finally {
@@ -2900,37 +3458,47 @@ function ResultsView({
                   className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
                 >
                   <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-500">
-                        你的答案：{answer.studentAnswer}
-                      </span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-emerald-600">
-                        正確答案：{answer.question.correct_answer}
-                      </span>
-                    </p>
+                    <p className="text-sm font-semibold text-red-600">第 {index + 1} 題</p>
                   </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <QuestionContentParagraphs
-                      content={answer.question.content}
-                      className="text-sm text-gray-700"
-                      paragraphGapClass="mt-3"
-                    />
+                  <div className="px-4 py-4 space-y-3">
+                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">題目內容</p>
+                      <QuestionContentParagraphs
+                        content={answer.question.content}
+                        className="text-sm text-gray-800"
+                        paragraphGapClass="mt-2"
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                        <p className="text-xs font-semibold text-red-500 mb-1">你的答案（值）</p>
+                        <p className="text-sm font-semibold text-red-700">
+                          {formatAnswerWithValue(answer.question, answer.studentAnswer)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                        <p className="text-xs font-semibold text-emerald-600 mb-1">正確答案（值）</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {formatAnswerWithValue(answer.question, answer.question.correct_answer)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">解釋</p>
+                      {answer.question.explanation ? (
+                        <QuestionContentParagraphs
+                          content={answer.question.explanation}
+                          className="text-sm text-gray-700"
+                          paragraphGapClass="mt-2"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">沒有解釋</p>
+                      )}
+                    </div>
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
-                    )}
-                    {answer.question.explanation ? (
-                      <QuestionContentParagraphs
-                        content={answer.question.explanation}
-                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
-                        paragraphGapClass="mt-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
                     <div className="pt-1">
                       <button
@@ -2977,6 +3545,12 @@ function ResultsView({
               />
             </svg>
             再做一次
+          </button>
+          <button
+            onClick={onBackToHome}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-indigo-700 font-semibold rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-all duration-200"
+          >
+            回到主畫面
           </button>
           <button
             onClick={onLogout}
@@ -3146,7 +3720,7 @@ function AddStudentScreen({
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">性別（必填）</label>
             <div className="flex gap-3">
               {avatars.map((a) => (
                 <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}
@@ -3247,6 +3821,7 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onPaymentHistory,
   onUpgrade,
   tierStatus,
   onBack,
@@ -3254,6 +3829,7 @@ function AccountMenuScreen({
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onPaymentHistory: () => void;
   onUpgrade: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
@@ -3281,9 +3857,23 @@ function AccountMenuScreen({
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">題目餘額</p>
-              <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
+              <p className="text-sm text-gray-500">查看餘額及作答扣減記錄</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <button
+              onClick={onPaymentHistory}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+                💳
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">消費紀錄</p>
+                <p className="text-sm text-gray-500">查看付款日期、金額及付款方式</p>
+              </div>
+            </button>
+          )}
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -3615,6 +4205,12 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
   const emailValid = email.trim().length > 0;
   const canSubmit = mobileValid && emailValid && !loading;
 
+  useEffect(() => {
+    if (!mobile.trim() && mobileNumber.trim()) {
+      setMobile(mobileNumber.trim());
+    }
+  }, [mobileNumber, mobile]);
+
   const handleSubmit = async () => {
     if (!mobileValid) {
       setMsg("請先輸入 8 位電話號碼。");
@@ -3631,7 +4227,11 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
       });
       const data = await res.json();
       if (data.found === false) {
-        setMsg("此電郵地址與你的帳戶記錄不符，請重新輸入。");
+        if (data.reason === "parent_not_found") {
+          setMsg("找不到此電話號碼的帳戶，請檢查後重試。");
+        } else {
+          setMsg("此電話號碼與電郵地址記錄不符，請重新輸入。");
+        }
       } else if (data.sent) {
         setSent(true);
       } else if (!res.ok && data.code === "missing_mobile") {
@@ -3699,7 +4299,7 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setMsg(""); }}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            onKeyDown={(e) => e.key === "Enter" && canSubmit && handleSubmit()}
             placeholder="輸入電郵地址"
             className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
           />
@@ -3718,117 +4318,6 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
           <button onClick={onBack} className="w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function pctColor(pct: number): string {
-  if (pct >= 80) return "#059669";
-  if (pct >= 60) return "#d97706";
-  return "#dc2626";
-}
-
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { datetime: string; pct: number } }> }) {
-  if (!active || !payload || !payload[0]) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 text-xs">
-      <p className="text-gray-500">{d.datetime}</p>
-      <p className="font-bold" style={{ color: pctColor(d.pct) }}>{d.pct}%</p>
-    </div>
-  );
-}
-
-function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
-  const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
-  const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s, i) => {
-    const d = new Date(s.created_at);
-    return {
-      idx: i,
-      date: `${d.getMonth() + 1}/${d.getDate()}`,
-      datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-      pct: s.correct_pct,
-      fill: pctColor(s.correct_pct),
-    };
-  });
-
-  return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 mb-4">
-      <h3 className="text-sm font-bold text-gray-800 mb-3">整體正確率趨勢（最近30次）</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="idx" tick={{ fontSize: 10 }} interval="preserveStartEnd"
-            tickFormatter={(idx: number) => data[idx]?.date || ""} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip content={<ChartTooltip />} />
-          {overallAvg && (
-            <ReferenceLine y={Number(overallAvg.avg_correct_pct)} stroke="#f59e0b" strokeDasharray="5 5"
-              label={{ value: `同級平均 ${overallAvg.avg_correct_pct}%`, position: "insideTopRight", fontSize: 10, fill: "#f59e0b" }} />
-          )}
-          <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
-            {data.map((entry, i) => (
-              <Cell key={i} fill={entry.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      <p className="text-xs text-gray-400 mt-2">如同一天多於一次練習，則會有多個棒型以同一日標示。</p>
-    </div>
-  );
-}
-
-function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
-  const typeCounts = new Map<string, number>();
-  chartData.type_sessions.forEach((t) => typeCounts.set(t.question_type, (typeCounts.get(t.question_type) || 0) + 1));
-  const types = [...typeCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([t]) => t);
-  const avgMap = new Map(chartData.grade_averages.map((g) => [g.question_type, Number(g.avg_correct_pct)]));
-
-  return (
-    <div className="mt-3 space-y-4">
-      {types.map((type) => {
-        const sessions = chartData.type_sessions
-          .filter((t) => t.question_type === type)
-          .sort((a, b) => a.created_at.localeCompare(b.created_at));
-        const data = sessions.map((s, i) => {
-          const d = new Date(s.created_at);
-          return {
-            idx: i,
-            date: `${d.getMonth() + 1}/${d.getDate()}`,
-            datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-            pct: s.correct_pct,
-            fill: pctColor(s.correct_pct),
-          };
-        });
-        const avg = avgMap.get(type);
-
-        return (
-          <div key={type} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <h4 className="text-xs font-bold text-gray-700 mb-2">{type}</h4>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="idx" tick={{ fontSize: 9 }} interval="preserveStartEnd"
-                  tickFormatter={(i: number) => data[i]?.date || ""} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip content={<ChartTooltip />} />
-                {avg !== undefined && (
-                  <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5"
-                    label={{ value: `平均${avg}%`, position: "insideTopRight", fontSize: 9, fill: "#f59e0b" }} />
-                )}
-                <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
-                  {data.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -3996,13 +4485,176 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   );
 }
 
+function PaymentHistoryScreen({
+  mobileNumber,
+  isPaidUser,
+  onBack,
+}: {
+  mobileNumber: string;
+  isPaidUser: boolean;
+  onBack: () => void;
+}) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
+  const [records, setRecords] = useState<ParentPaymentHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!isPaidUser) {
+        setLoading(false);
+        setError(null);
+        setRecords([]);
+        setYearOptions([currentYear]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/payment/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile_number: mobileNumber.trim(),
+            year: selectedYear,
+          }),
+        });
+        const payload = (await res.json()) as {
+          records?: ParentPaymentHistoryRow[];
+          available_years?: number[];
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "未能載入消費紀錄");
+        }
+        if (cancelled) return;
+        const years = (payload.available_years ?? [])
+          .filter((y) => Number.isInteger(y))
+          .sort((a, b) => b - a);
+        setYearOptions(years.length > 0 ? years : [currentYear]);
+        setRecords(payload.records ?? []);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "未能載入消費紀錄");
+        setRecords([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber, selectedYear, currentYear, isPaidUser]);
+
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || Number.isNaN(amount)) return "—";
+    return `HKD ${Math.round(amount)}`;
+  };
+
+  const formatPaymentMethod = (record: ParentPaymentHistoryRow) => {
+    return (
+      record.payment_method_label ||
+      record.payment_method_brand ||
+      record.payment_method_type ||
+      record.payment_method ||
+      "—"
+    );
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("zh-HK", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        {!isPaidUser ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center">
+            <p className="text-sm font-semibold text-amber-700">目前僅限月費用戶查看消費紀錄。</p>
+          </div>
+        ) : (
+          <>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
+            年份
+          </label>
+          <select
+            id="payment-history-year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year} 年
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8"><Spinner size="lg" /></div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        ) : records.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">金額</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">付款方式</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatDate(record.paid_at || record.created_at)}</td>
+                    <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{formatAmount(record.final_amount_hkd)}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatPaymentMethod(record)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
+          </div>
+        )}
+          </>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
 function ContactFooter() {
   return (
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
       <p className="text-xs text-gray-400">
         有問題或意見？請聯絡{" "}
-        <a href="mailto:cs@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
-          cs@hkedutech.com
+        <a href="mailto:cs@gearupquiz.com" className="text-indigo-500 hover:text-indigo-600">
+          cs@gearupquiz.com
         </a>
       </p>
     </div>
@@ -4046,7 +4698,7 @@ function RoleSelectScreen({
             onClick={onUpgrade}
             className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
           >
-            成為月費會員(每月$99)，即可以獲得學生排名資訊。
+            成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。
           </button>
         )}
         <div className="space-y-3">
@@ -4118,10 +4770,10 @@ function RoleSelectScreen({
           <p className="mt-4 text-center text-sm text-gray-500">
             有問題或意見? 歡迎電郵至{" "}
             <a
-              href="mailto:cs@hkedutech.com"
+              href="mailto:cs@gearupquiz.com"
               className="font-semibold text-indigo-600 hover:text-indigo-700"
             >
-              cs@hkedutech.com
+              cs@gearupquiz.com
             </a>
           </p>
         )}
