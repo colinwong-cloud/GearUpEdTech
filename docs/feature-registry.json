@@ -1,0 +1,73 @@
+{
+  "version": "2026-07-08",
+  "description": "Must-retain product features that cannot regress across releases.",
+  "requiredFiles": [
+    "src/app/api/payment/history/route.ts",
+    "src/app/api/report-question-feedback/route.ts",
+    "src/app/tutor/page.tsx",
+    "src/app/tutor/student/[hash]/page.tsx",
+    "src/app/api/tutor/session/route.ts",
+    "src/app/api/tutor/students/route.ts",
+    "src/app/api/tutor/sessions/route.ts",
+    "src/app/api/tutor/session-detail/route.ts",
+    "src/components/student-performance-charts.tsx",
+    "src/lib/server/tutor-student-hash.ts",
+    "src/app/api/send-quiz-email/route.ts",
+    "src/app/admin/business-kpi.tsx",
+    "src/app/api/admin/business-today/route.ts"
+  ],
+  "requiredSubstrings": [
+    {
+      "file": "src/app/page.tsx",
+      "values": [
+        "回到主畫面",
+        "/api/report-question-feedback",
+        "/api/payment/history",
+        "錯題解析",
+        "消費紀錄"
+      ]
+    },
+    {
+      "file": "src/app/api/send-quiz-email/route.ts",
+      "values": [
+        "wrong_question_details",
+        "題目內容",
+        "你的答案：",
+        "正確答案：",
+        "解釋"
+      ]
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "values": [
+        "學生練習摘要",
+        "教師編號維護",
+        "付款狀態查詢"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/console/route.ts",
+      "values": [
+        "grade_level_practice_frequency_summary",
+        "tutor_referral_password_reset",
+        "payment_recurring_monitor_summary"
+      ]
+    },
+    {
+      "file": "src/app/admin/business-kpi.tsx",
+      "values": [
+        "today_new_parent_registrations",
+        "今日新註冊家長摘要",
+        "建立時間（HKT）"
+      ]
+    },
+    {
+      "file": "src/app/api/admin/business-today/route.ts",
+      "values": [
+        "today_new_parent_registrations",
+        ".from(\"parents\")",
+        ".not(\"mobile_number\", \"like\", \"9999%\")"
+      ]
+    }
+  ]
+}

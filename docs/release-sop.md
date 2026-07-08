@@ -59,6 +59,21 @@ Every release must pass validation, include rollback context, and confirm that p
    - payment status / recurring monitor actions
 3. Cross-check GitHub PR history (`gh pr list --state all`) to ensure feature branches that introduced current baseline modules are still represented before releasing.
 
+## Automated anti-missing framework (enforced)
+
+1. Machine-readable feature registry:
+   - `docs/feature-registry.json`
+2. Automated checker:
+   - `scripts/feature-retention-check.mjs`
+   - local command: `npm run feature:retention`
+3. Full gate command (local and CI):
+   - `npm run release:gate`
+4. CI policy:
+   - GitHub Action `.github/workflows/release-gate.yml` runs on PRs to `main`
+   - build must fail if required files/markers are missing
+5. Change policy:
+   - every newly approved "must-retain" feature must be added to `docs/feature-registry.json` in the same PR
+
 ## Release record
 
 ### 2026-07-08 — Daily recurring policy hardening

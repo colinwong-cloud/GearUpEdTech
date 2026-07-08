@@ -46,10 +46,17 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **Latest production deploy:** **2026-07-08** — deployment `dpl_2FoQABCJ9eK6uh4v1wJoFWovTrxD`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/2FoQABCJ9eK6uh4v1wJoFWovTrxD). **Release SOP record:** `docs/release-sop.md`.
 
+**Anti-missing framework (enforced):**
+- Feature registry: `docs/feature-registry.json` and `docs/feature-registry.md`
+- Local retention gate: `npm run feature:retention`
+- Full release gate: `npm run release:gate`
+- CI gate: `.github/workflows/release-gate.yml` (PR to `main`)
+
 ## Changelog (recent)
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-07 | **Anti-missing framework（自動化）**：新增機器可讀 feature registry（`docs/feature-registry.json`）+ 自動檢查腳本（`scripts/feature-retention-check.mjs`）+ PR Gate workflow（`.github/workflows/release-gate.yml`）；`npm run release:gate` 會在發版前強制檢查 must-retain 檔案與功能標記，避免再次漏功能。 |
 | 2026-07 | **Airwallex recurring status hardening（每日執行）**：`/api/cron-recurring-payments` 改為先對未完成 recurring 訂單做對帳，再決定是否開新一筆；按 Airwallex 回傳分流 `paid/pending/failed`，`paid` 才延長 `paid_until`；`pending`/`failed` 走每日重試，避免首失敗後永久停擺。部署：`dpl_2FoQABCJ9eK6uh4v1wJoFWovTrxD`。SOP：`docs/release-sop.md`。 |
 | 2026-04 | **測試數據（英文 30 節）**：`supabase_seed_english_30_sessions_91917838.sql` — 手機 **91917838**、**Loklok/Heihei** 各 30 節 **English**、每節 10 題、正確率 **20–100%**（`session_token` 前綴 `gearup_seed_english_30-`）。計劃：`test_plan_seed_english_30_sessions_91917838.md`。 |
 | 2026-04 | **同級排名按科目**：`student_grade_rankings.subject`；`recalculate_student_grade_rankings()` 按科目分桶；`get_parent_student_grade_rank(uuid, text)` 與家長科目分頁一致。SQL：`supabase_grade_ranking_per_subject.sql`（會清空排名表）；執行後請跑 `recalculate_student_grade_rankings()`。前端 `loadParentSessions` 傳 `p_subject`。 |
