@@ -26,6 +26,7 @@ type AdminAction =
   | "discount_code_delete"
   | "discount_code_usage_summary"
   | "payment_status_enquiry"
+  | "payment_recurring_monitor_summary"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
@@ -190,11 +191,16 @@ type ParentRow = {
 type RecurringProfileRow = {
   id: string;
   parent_id: string | null;
+  mobile_number?: string | null;
   status: string | null;
   airwallex_payment_consent_id: string | null;
   payment_method_label: string | null;
   payment_method_type: string | null;
   payment_method_brand: string | null;
+  next_charge_at?: string | null;
+  last_charged_at?: string | null;
+  last_order_status?: string | null;
+  last_error?: string | null;
 };
 
 type PaidOrderRow = {
@@ -213,6 +219,17 @@ type PaidOrderRow = {
   is_recurring_payment?: boolean | null;
   airwallex_payment_intent_id?: string | null;
   airwallex_payment_attempt_id?: string | null;
+};
+
+type RecurringMonitorOrderRow = {
+  id: string;
+  mobile_number: string;
+  status: string;
+  created_at: string;
+  paid_at: string | null;
+  is_recurring_payment?: boolean | null;
+  payment_method?: string | null;
+  final_amount_hkd?: number | string | null;
 };
 
 async function ensurePaymentOpsTables(admin: AdminClient) {
@@ -939,6 +956,208 @@ export async function POST(req: NextRequest) {
                   latest_refund: latestRefund,
                 }
               : null,
+          },
+        });
+      }
+      case "payment_recurring_monitor_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+        const nowIso = new Date().toISOString();
+
+        const { data: paidParents, error: paidParentsErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,paid_until")
+          .not("paid_until", "is", null)
+          .gte("paid_until", nowIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_until", { ascending: true })
+          .limit(20000);
+        if (paidParentsErr) throw paidParentsErr;
+
+        const normalizedParents = (paidParents ?? [])
+          .map((row) => ({
+            parent_id: String(row.id),
+            mobile_number: String(row.mobile_number || "").trim(),
+            parent_name:
+              row.parent_name === null || row.parent_name === undefined
+                ? null
+                : String(row.parent_name),
+            paid_until: normalizeIsoDateTime(row.paid_until),
+          }))
+          .filter((row) => Boolean(row.mobile_number && row.paid_until));
+
+        const paidMobiles = normalizedParents.map((row) => row.mobile_number);
+        const recurringByMobile = new Map<string, RecurringProfileRow>();
+        const monthOrdersByMobile = new Map<string, RecurringMonitorOrderRow[]>();
+
+        for (const chunk of chunkArray(paidMobiles, 500)) {
+          const recurringRes = await admin
+            .from("parent_recurring_profiles")
+            .select(
+              "id,parent_id,mobile_number,status,airwallex_payment_consent_id,payment_method_label,payment_method_type,payment_method_brand,next_charge_at,last_charged_at,last_order_status,last_error"
+            )
+            .in("mobile_number", chunk);
+          if (recurringRes.error) {
+            const recurringErrMsg = recurringRes.error.message || "";
+            if (!/parent_recurring_profiles|42P01|does not exist/i.test(recurringErrMsg)) {
+              throw recurringRes.error;
+            }
+          } else {
+            for (const profile of (recurringRes.data as RecurringProfileRow[] | null) ?? []) {
+              const mobile = String(profile.mobile_number || "").trim();
+              if (!mobile) continue;
+              recurringByMobile.set(mobile, profile);
+            }
+          }
+
+          let monthOrders: RecurringMonitorOrderRow[] = [];
+          const richOrdersRes = await admin
+            .from("parent_payment_orders")
+            .select(
+              "id,mobile_number,status,created_at,paid_at,is_recurring_payment,payment_method,final_amount_hkd"
+            )
+            .in("mobile_number", chunk)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso)
+            .order("created_at", { ascending: false })
+            .limit(20000);
+          if (richOrdersRes.error) {
+            const ordersErrMsg = richOrdersRes.error.message || "";
+            if (/is_recurring_payment/i.test(ordersErrMsg)) {
+              const fallbackOrdersRes = await admin
+                .from("parent_payment_orders")
+                .select("id,mobile_number,status,created_at,paid_at,payment_method,final_amount_hkd")
+                .in("mobile_number", chunk)
+                .gte("created_at", startIso)
+                .lt("created_at", endIso)
+                .eq("payment_method", "recurring_auto_charge")
+                .order("created_at", { ascending: false })
+                .limit(20000);
+              if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
+              monthOrders = (fallbackOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? [];
+            } else {
+              throw richOrdersRes.error;
+            }
+          } else {
+            monthOrders = ((richOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
+              if (row.is_recurring_payment === true) return true;
+              return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
+            });
+          }
+
+          for (const order of monthOrders) {
+            const mobile = String(order.mobile_number || "").trim();
+            if (!mobile) continue;
+            const rows = monthOrdersByMobile.get(mobile) ?? [];
+            rows.push(order);
+            monthOrdersByMobile.set(mobile, rows);
+          }
+        }
+
+        for (const orders of monthOrdersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime = normalizeIsoDateTime(a.created_at) || "";
+            const bTime = normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+
+        const totals = {
+          currently_paid_users: normalizedParents.length,
+          recurring_active: 0,
+          recurring_paused: 0,
+          recurring_failed: 0,
+          recurring_cancelled: 0,
+          recurring_no_profile: 0,
+          this_month_success: 0,
+          this_month_pending: 0,
+          this_month_failed: 0,
+          this_month_no_attempt: 0,
+        };
+
+        const users = normalizedParents.map((parent) => {
+          const recurringProfile = recurringByMobile.get(parent.mobile_number) ?? null;
+          const recurringStatus = recurringProfile?.status
+            ? String(recurringProfile.status).trim().toLowerCase()
+            : "no_profile";
+
+          if (recurringStatus === "active") totals.recurring_active += 1;
+          else if (recurringStatus === "paused") totals.recurring_paused += 1;
+          else if (recurringStatus === "failed") totals.recurring_failed += 1;
+          else if (recurringStatus === "cancelled") totals.recurring_cancelled += 1;
+          else totals.recurring_no_profile += 1;
+
+          const monthOrders = monthOrdersByMobile.get(parent.mobile_number) ?? [];
+          const hasMonthPaid = monthOrders.some(
+            (row) => String(row.status || "").trim().toLowerCase() === "paid"
+          );
+          const hasMonthPending = monthOrders.some(
+            (row) => String(row.status || "").trim().toLowerCase() === "created"
+          );
+          const hasMonthFailed = monthOrders.some((row) =>
+            ["failed", "cancelled"].includes(String(row.status || "").trim().toLowerCase())
+          );
+
+          const monthPaymentStatus = hasMonthPaid
+            ? "success"
+            : hasMonthPending
+              ? "pending"
+              : hasMonthFailed
+                ? "failed"
+                : "no_attempt";
+
+          if (monthPaymentStatus === "success") totals.this_month_success += 1;
+          else if (monthPaymentStatus === "pending") totals.this_month_pending += 1;
+          else if (monthPaymentStatus === "failed") totals.this_month_failed += 1;
+          else totals.this_month_no_attempt += 1;
+
+          const latestMonthOrder = monthOrders[0] ?? null;
+          const thisMonthPaidAmountHkd = Math.round(
+            monthOrders
+              .filter((row) => String(row.status || "").trim().toLowerCase() === "paid")
+              .reduce((sum, row) => sum + toSafeNumber(row.final_amount_hkd), 0) * 100
+          ) / 100;
+
+          return {
+            parent_id: parent.parent_id,
+            mobile_number: parent.mobile_number,
+            parent_name: parent.parent_name,
+            paid_until: parent.paid_until,
+            current_payment_status: recurringStatus,
+            next_payment_date: normalizeIsoDateTime(recurringProfile?.next_charge_at),
+            this_month_payment_success: monthPaymentStatus === "success",
+            this_month_payment_status: monthPaymentStatus,
+            this_month_last_attempt_at: latestMonthOrder
+              ? normalizeIsoDateTime(latestMonthOrder.created_at)
+              : null,
+            this_month_latest_paid_at: monthOrders
+              .map((row) => normalizeIsoDateTime(row.paid_at) || normalizeIsoDateTime(row.created_at))
+              .find((time, index) => {
+                if (!time) return false;
+                const row = monthOrders[index];
+                return String(row.status || "").trim().toLowerCase() === "paid";
+              }) || null,
+            this_month_paid_amount_hkd: thisMonthPaidAmountHkd,
+            recurring_last_error: readString(recurringProfile?.last_error),
+            recurring_last_order_status: readString(recurringProfile?.last_order_status),
+            recurring_last_charged_at: normalizeIsoDateTime(recurringProfile?.last_charged_at),
+          };
+        });
+
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            totals,
+            users: users.sort((a, b) => {
+              const aNext = a.next_payment_date || "9999-12-31T23:59:59.000Z";
+              const bNext = b.next_payment_date || "9999-12-31T23:59:59.000Z";
+              if (aNext !== bNext) return aNext.localeCompare(bNext);
+              return a.mobile_number.localeCompare(b.mobile_number);
+            }),
           },
         });
       }
