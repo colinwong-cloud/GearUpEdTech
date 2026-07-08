@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "feature:retention": "node scripts/feature-retention-check.mjs",
+    "release:gate": "npm run feature:retention && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.0",
