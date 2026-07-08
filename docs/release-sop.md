@@ -76,6 +76,45 @@ Every release must pass validation, include rollback context, and confirm that p
 
 ## Release record
 
+### 2026-07-08 — Feature retention recovery + anti-missing framework deployment
+
+- Branch: `cursor/recover-feature-retention-pack-2d42`
+- Commits:
+  - `f1d2e30` restore missing retained feature modules
+  - `7d18e9d` restore shared consent/gender utility dependencies
+  - `520a652` add automated anti-missing framework (registry + checker + CI gate)
+- PR: https://github.com/colinwong-cloud/GearUpEdTech/pull/109
+- Production deployment:
+  - ID: `dpl_HyPm4q4sJXyDE6uXr8fesSMJPj3y`
+  - Inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/HyPm4q4sJXyDE6uXr8fesSMJPj3y
+  - URL: https://quiz-deploy-obojf2uda-colinwong-clouds-projects.vercel.app
+  - Alias: https://q.hkedutech.com
+- Scope:
+  - Restore missing approved modules/features:
+    - result page retained actions and readability markers
+    - parent email wrong-question readability block
+    - payment history API path
+    - feedback notification API path
+    - tutor portal pages/API and related shared modules
+    - Admin KPI today-new-parent registration table/payload
+  - Enforce anti-missing framework in repository and CI:
+    - `docs/feature-registry.json`
+    - `scripts/feature-retention-check.mjs`
+    - `.github/workflows/release-gate.yml`
+    - npm scripts: `feature:retention`, `release:gate`
+- Validation evidence:
+  - `npm run release:gate` passed
+    - `npm run feature:retention` passed (13 file checks + 22 marker checks)
+    - `npm run lint` passed (1 pre-existing warning: `@next/next/no-img-element` in `src/app/page.tsx`)
+    - `npm test` passed (12 files, 49 tests)
+    - `npm run build` passed
+  - Production smoke checks passed:
+    - `GET /` => 200
+    - `GET /admin` => 200
+    - `GET /tutor` => 200
+    - `GET /api/cron-recurring-payments` without bearer => 401
+- SQL required: none for this release.
+
 ### 2026-07-08 — Daily recurring policy hardening
 
 - Branch: `cursor/airwallex-recurring-daily-policy-2d42`
