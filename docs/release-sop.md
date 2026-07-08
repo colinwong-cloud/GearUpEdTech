@@ -37,6 +37,28 @@ Every release must pass validation, include rollback context, and confirm that p
 4. If renewal fails, retry on next daily run.
 5. If no successful renewal extends `paid_until`, account naturally becomes unpaid.
 
+## Feature retention gate (must-check before preview/prod)
+
+1. Cross-check Admin console tabs against required baseline:
+   - `業務概覽`
+   - `題目配額`
+   - `學生練習摘要`
+   - `付款狀態查詢`
+   - `刪除帳戶`
+   - `電郵通知`
+   - `題目管理`
+   - `折扣碼維護`
+   - `教師編號維護`
+2. Cross-check API actions in `src/app/api/admin/console/route.ts` include:
+   - `parent_students_practice_summary`
+   - `grade_level_practice_frequency_summary`
+   - `tutor_referral_code_create`
+   - `tutor_referral_code_summary`
+   - `tutor_referral_code_usage_details`
+   - `tutor_referral_password_reset`
+   - payment status / recurring monitor actions
+3. Cross-check GitHub PR history (`gh pr list --state all`) to ensure feature branches that introduced current baseline modules are still represented before releasing.
+
 ## Release record
 
 ### 2026-07-08 — Daily recurring policy hardening
