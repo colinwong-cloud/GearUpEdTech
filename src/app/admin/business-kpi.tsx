@@ -30,6 +30,11 @@ type TodayPayload = {
   new_students_today: number;
   free_tier_new_users_today?: number;
   paid_tier_new_users_today?: number;
+  today_new_parent_registrations?: Array<{
+    mobile_number: string;
+    email: string | null;
+    created_at: string | null;
+  }>;
 };
 
 type TrendPoint = {
@@ -98,6 +103,22 @@ type SchoolDetailsPayload = {
 function subjectEntries(obj: Record<string, number> | null | undefined) {
   if (!obj || typeof obj !== "object") return [];
   return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function formatHktDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("zh-HK", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
 }
 
 export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
@@ -327,6 +348,45 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
             </div>
           </div>
         )}
+        {today &&
+          !tErr &&
+          Array.isArray(today.today_new_parent_registrations) && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+              <h3 className="text-sm font-bold text-gray-800">今日新註冊家長摘要</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-gray-600">
+                      <th className="py-2 pr-3 font-semibold">手機號碼</th>
+                      <th className="py-2 pr-3 font-semibold">電郵</th>
+                      <th className="py-2 pr-3 font-semibold">建立時間（HKT）</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {today.today_new_parent_registrations.map((row) => (
+                      <tr
+                        key={`${row.mobile_number}-${row.created_at || "none"}`}
+                        className="border-b border-gray-100"
+                      >
+                        <td className="py-2 pr-3 font-mono">{row.mobile_number || "—"}</td>
+                        <td className="py-2 pr-3">{row.email || "—"}</td>
+                        <td className="py-2 pr-3">
+                          {formatHktDateTime(row.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                    {today.today_new_parent_registrations.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-3 text-center text-gray-400">
+                          今日暫未有新註冊家長
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         {!today && tLoading && (
           <p className="text-sm text-gray-500">載入中…</p>
         )}

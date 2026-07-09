@@ -1,0 +1,2245 @@
+{
+  "schema_version": 1,
+  "contract_name": "GearUp anti-missing feature contract",
+  "coverage_start_date": "2026-04-01",
+  "generated_timezone": "UTC",
+  "policy": {
+    "objective": "No approved feature is allowed to silently disappear in future releases.",
+    "payment_module_priority": "Payment and recurring module checks are mandatory release gates.",
+    "required_feature_months": [
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ]
+  },
+  "features": [
+    {
+      "id": "core-quiz-results-screen",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Quiz results screen with score summary",
+      "evidence_commits": [
+        "5019de2",
+        "a2f7dea"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "測驗完成！"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "錯題解析"
+        }
+      ]
+    },
+    {
+      "id": "quiz-wrong-answer-details",
+      "month": "2026-07",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Wrong-answer detail cards include value + explanation",
+      "evidence_commits": [
+        "c38c510"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "你的答案（值）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "正確答案（值）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "反映這題目"
+        }
+      ]
+    },
+    {
+      "id": "quiz-results-actions",
+      "month": "2026-07",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Results action buttons: replay, home, logout",
+      "evidence_commits": [
+        "4b4ad35",
+        "c38c510"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "再做一次"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "回到主畫面"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "登出"
+        }
+      ]
+    },
+    {
+      "id": "quiz-question-count-selection",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Question-count selection (10/20/30)",
+      "evidence_commits": [
+        "6717a93"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "QUESTION_COUNT_OPTIONS = [10, 20, 30]"
+        }
+      ]
+    },
+    {
+      "id": "quiz-short-answer-and-image-support",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Short-answer mode + image-question support",
+      "evidence_commits": [
+        "c4c9fbb"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "const MAX_SHORT_ANSWER = 2;"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "const MAX_IMAGE = 1;"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "function QuestionImage("
+        }
+      ]
+    },
+    {
+      "id": "quiz-anticheat-copy-guard",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Disable copy / right-click protections",
+      "evidence_commits": [
+        "9e3145f"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "onContextMenu={preventContextMenu}"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "onCopy={preventQuizClipboard}"
+        }
+      ]
+    },
+    {
+      "id": "quiz-speed-reminder",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Speed reminder overlay for suspiciously fast answers",
+      "evidence_commits": [
+        "539ac60",
+        "4e92d0e"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "看清題目，細心回答"
+        }
+      ]
+    },
+    {
+      "id": "question-content-paragraph-rendering",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "high",
+      "title": "Question content paragraph and newline rendering",
+      "evidence_commits": [
+        "a61852b"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/question-content-paragraphs.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/question-content-blocks.ts"
+        }
+      ]
+    },
+    {
+      "id": "student-practice-summary-bubble",
+      "month": "2026-04",
+      "category": "quiz-core",
+      "priority": "high",
+      "title": "Session practice summary bubble on results",
+      "evidence_commits": [
+        "e8d2d99"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/session-practice-summary.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "小香蕉的練習小結"
+        }
+      ]
+    },
+    {
+      "id": "parent-email-practice-summary-readability",
+      "month": "2026-07",
+      "category": "communications",
+      "priority": "critical",
+      "title": "Parent email practice summary readability and light mode",
+      "evidence_commits": [
+        "4b4ad35"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "meta name=\"color-scheme\" content=\"light\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "老師給家長的練習小結"
+        }
+      ]
+    },
+    {
+      "id": "mobile-pin-single-screen-login",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "critical",
+      "title": "Mobile + PIN login flow",
+      "evidence_commits": [
+        "73ec679",
+        "6a7f72e"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/auth/mobile-login/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "\"login_mobile\""
+        }
+      ]
+    },
+    {
+      "id": "registration-flow-and-validation",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "critical",
+      "title": "Registration flow with required fields and validation",
+      "evidence_commits": [
+        "67c1239",
+        "859a298",
+        "47d8acb"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "register_submit_attempt"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_registration_checks.sql"
+        }
+      ]
+    },
+    {
+      "id": "registration-school-cascading-dropdown",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "high",
+      "title": "School selection (3-tier cascading) during registration",
+      "evidence_commits": [
+        "fa81da4"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_schools_feature.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "schoolId"
+        }
+      ]
+    },
+    {
+      "id": "privacy-statement-consent",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "critical",
+      "title": "Privacy statement checkbox and consent gate",
+      "evidence_commits": [
+        "49a4499"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "同意並繼續"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/privacy-statement.ts"
+        }
+      ]
+    },
+    {
+      "id": "turnstile-registration-captcha",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "critical",
+      "title": "Cloudflare Turnstile on registration",
+      "evidence_commits": [
+        "7a44e01"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "Turnstile"
+        }
+      ]
+    },
+    {
+      "id": "password-reset-email-flow",
+      "month": "2026-04",
+      "category": "auth",
+      "priority": "high",
+      "title": "Password reset by email with reset link",
+      "evidence_commits": [
+        "04532b8"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/send-reset-email/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_password_reset.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/reset-password/page.tsx"
+        }
+      ]
+    },
+    {
+      "id": "add-student-multi-child-parent-flow",
+      "month": "2026-04",
+      "category": "account",
+      "priority": "high",
+      "title": "Add-student flow and multi-student selector",
+      "evidence_commits": [
+        "5611b50",
+        "87fda71"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "\"add_student_form\""
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_add_student.sql"
+        }
+      ]
+    },
+    {
+      "id": "parent-profile-update-flow",
+      "month": "2026-04",
+      "category": "account",
+      "priority": "high",
+      "title": "Parent profile update flow",
+      "evidence_commits": [
+        "88b7cb8"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_profile_update.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "\"profile_edit\""
+        }
+      ]
+    },
+    {
+      "id": "question-balance-shared-family-pool",
+      "month": "2026-04",
+      "category": "balance",
+      "priority": "critical",
+      "title": "Question balance shared by siblings and deducted per answer",
+      "evidence_commits": [
+        "826dffe",
+        "d8bc990"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_question_balance_per_answer.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "題目餘額"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/balance-transactions.ts"
+        }
+      ]
+    },
+    {
+      "id": "subject-support-math-chinese-english",
+      "month": "2026-04",
+      "category": "learning-content",
+      "priority": "critical",
+      "title": "Math/Chinese/English subject support",
+      "evidence_commits": [
+        "c756361",
+        "549bfc3",
+        "5d226be"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/quiz-subjects.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "PRIMARY_QUIZ_SUBJECT = \"Math\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "CHINESE_QUIZ_SUBJECT = \"Chinese\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "ENGLISH_QUIZ_SUBJECT = \"English\""
+        }
+      ]
+    },
+    {
+      "id": "legacy-math-subject-compatibility",
+      "month": "2026-04",
+      "category": "learning-content",
+      "priority": "high",
+      "title": "Legacy 數學 compatibility during migration to Math",
+      "evidence_commits": [
+        "1568a4e"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "LEGACY_PRIMARY_QUIZ_SUBJECT_KEY = \"數學\""
+        }
+      ]
+    },
+    {
+      "id": "strict-ai-only-question-pool",
+      "month": "2026-05",
+      "category": "learning-content",
+      "priority": "high",
+      "title": "Strict AI-only question selection",
+      "evidence_commits": [
+        "e4d0884"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/question-source.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_questions_ai_source_strict_mode.sql"
+        }
+      ]
+    },
+    {
+      "id": "login-add-to-home-and-brief",
+      "month": "2026-04",
+      "category": "growth",
+      "priority": "high",
+      "title": "Login add-to-home entry and platform brief",
+      "evidence_commits": [
+        "99290c5",
+        "9c30374"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/login-add-to-home-button.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/login-add-to-home-button.tsx",
+          "snippet": "加入主畫面"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/login-marketing-assets.ts"
+        }
+      ]
+    },
+    {
+      "id": "social-share-whatsapp-wechat",
+      "month": "2026-05",
+      "category": "growth",
+      "priority": "high",
+      "title": "Social sharing buttons with WeChat/WhatsApp tracking",
+      "evidence_commits": [
+        "92d6158",
+        "8c54453"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/share-events/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/share-banner/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/wechat/share-config/route.ts"
+        }
+      ]
+    },
+    {
+      "id": "admin-console-base",
+      "month": "2026-04",
+      "category": "admin",
+      "priority": "critical",
+      "title": "Admin console with quota/delete/email/question management",
+      "evidence_commits": [
+        "6870e00"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/admin/page.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_admin_console.sql"
+        }
+      ]
+    },
+    {
+      "id": "admin-business-kpi-suite",
+      "month": "2026-04",
+      "category": "admin",
+      "priority": "critical",
+      "title": "Admin business KPI APIs and UI",
+      "evidence_commits": [
+        "d23f006",
+        "13e6cef"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/admin/business-kpi.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/admin/business-today/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/admin/business-monthly/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/admin/business-school-details/route.ts"
+        }
+      ]
+    },
+    {
+      "id": "admin-kpi-today-new-registration-summary",
+      "month": "2026-07",
+      "category": "admin",
+      "priority": "critical",
+      "title": "Business KPI today-new-parent registration details table",
+      "evidence_commits": [
+        "5fd1606"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/business-kpi.tsx",
+          "snippet": "今日新註冊家長摘要"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/business-today/route.ts",
+          "snippet": "today_new_parent_registrations"
+        }
+      ]
+    },
+    {
+      "id": "admin-kpi-exclude-test-mobiles",
+      "month": "2026-05",
+      "category": "admin",
+      "priority": "high",
+      "title": "Exclude 9999 test mobiles from business KPI",
+      "evidence_commits": [
+        "bfe53cc"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_admin_business_kpi_exclude_test_mobile_9999.sql"
+        }
+      ]
+    },
+    {
+      "id": "admin-discount-code-maintenance-and-summary",
+      "month": "2026-05",
+      "category": "admin",
+      "priority": "high",
+      "title": "Admin discount-code maintenance, summary and CSV",
+      "evidence_commits": [
+        "b6bd6e9",
+        "b32bc11"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "折扣碼"
+        }
+      ]
+    },
+    {
+      "id": "admin-payment-status-and-ops",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Admin payment status enquiry with cancel/refund operations",
+      "evidence_commits": [
+        "d3af158",
+        "4cf834b"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "付款狀態查詢"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "月費家長月度明細"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_admin_payment_ops.sql"
+        }
+      ]
+    },
+    {
+      "id": "paid-tier-payment-module-foundation",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Paid-tier payment module and parent tier gating",
+      "evidence_commits": [
+        "78bfc27",
+        "639d96e"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_paid_tier_payment_module.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_paid_tier_payment_module_hotfix_search_path.sql"
+        }
+      ]
+    },
+    {
+      "id": "payment-checkout-api-recurring",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Airwallex checkout API with recurring consent flow",
+      "evidence_commits": [
+        "4610f8d",
+        "7b9a269",
+        "22f51b6"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/payment/checkout/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "payment_consent"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = \"zh-HK\""
+        }
+      ]
+    },
+    {
+      "id": "payment-verify-and-webhook-routes",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Payment verify and webhook finalize routes",
+      "evidence_commits": [
+        "4610f8d"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/payment/verify/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/payment/webhook/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/payment-finalize.ts"
+        }
+      ]
+    },
+    {
+      "id": "payment-method-safeguard-library",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Airwallex method safeguard helper and tests",
+      "evidence_commits": [
+        "17596ee",
+        "3ff7c56"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/airwallex-checkout-methods.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/airwallex-checkout-methods.test.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.ts",
+          "snippet": "\"applepay\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.ts",
+          "snippet": "\"googlepay\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.ts",
+          "snippet": "\"card\""
+        }
+      ]
+    },
+    {
+      "id": "payment-recurring-cron-job",
+      "month": "2026-06",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Daily recurring payment cron execution route",
+      "evidence_commits": [
+        "7e2a2f2"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/cron-recurring-payments/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "merchant_trigger_reason: \"scheduled\""
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "/api/cron-recurring-payments"
+        }
+      ]
+    },
+    {
+      "id": "payment-recurring-storage-and-sql",
+      "month": "2026-06",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Recurring payment schema and autoprocess SQL",
+      "evidence_commits": [
+        "7e2a2f2"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_paid_tier_recurring_autocharging.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_payment_order_start_and_recurring_flag_hotfix.sql"
+        }
+      ]
+    },
+    {
+      "id": "payment-paid-balance-history-hotfix",
+      "month": "2026-05",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Paid-tier balance history hotfix with NOT NULL-safe sentinel",
+      "evidence_commits": [
+        "22d3d5a"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_fix_paid_tier_balance_history_logging.sql"
+        }
+      ]
+    },
+    {
+      "id": "grade-ranking-and-cron-batch",
+      "month": "2026-04",
+      "category": "analytics",
+      "priority": "high",
+      "title": "Per-grade ranking and nightly recalculate cron",
+      "evidence_commits": [
+        "15c4627",
+        "f23ed8b",
+        "fda2739"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/api/cron-recalculate-averages/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_grade_ranking_per_subject.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "/api/cron-recalculate-averages?part=rank"
+        }
+      ]
+    },
+    {
+      "id": "grade-averages-performance-optimizations",
+      "month": "2026-04",
+      "category": "analytics",
+      "priority": "high",
+      "title": "Grade-average batch performance and split-cron SQL chain",
+      "evidence_commits": [
+        "675b4d9",
+        "9c8f633",
+        "77a7f04"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_optimize_ranking_batch_performance.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_optimize_grade_averages_batch.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_split_grade_averages_cron.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_grade_averages_two_step_per_grade.sql"
+        }
+      ]
+    },
+    {
+      "id": "admin-business-kpi-school-queries",
+      "month": "2026-04",
+      "category": "analytics",
+      "priority": "high",
+      "title": "School-specific KPI detail and chart SQL optimizations",
+      "evidence_commits": [
+        "13e6cef",
+        "2bfbb03"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_admin_business_school_charts_subject_grade_hotfix.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_admin_business_school_details_district_ambiguous_hotfix.sql"
+        }
+      ]
+    },
+    {
+      "id": "gtm-funnel-tracking",
+      "month": "2026-07",
+      "category": "analytics",
+      "priority": "high",
+      "title": "GTM container and conversion funnel tracking",
+      "evidence_commits": [
+        "4255c12",
+        "5fd1606"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/gtm-events.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "pushGtmEventOncePerSession"
+        }
+      ]
+    },
+    {
+      "id": "security-rls-and-rpc-only-writes",
+      "month": "2026-04",
+      "category": "security",
+      "priority": "critical",
+      "title": "RLS lock-down and RPC-only write model",
+      "evidence_commits": [
+        "3c9553b",
+        "299d934"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_rls_policies.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_rpc_functions.sql"
+        }
+      ]
+    },
+    {
+      "id": "security-admin-auth-pin-hardening",
+      "month": "2026-05",
+      "category": "security",
+      "priority": "critical",
+      "title": "Admin session + PIN security hardening",
+      "evidence_commits": [
+        "6a7f72e"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_security_auth_hardening.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/admin-session.ts"
+        }
+      ]
+    },
+    {
+      "id": "question-image-url-hardening",
+      "month": "2026-04",
+      "category": "reliability",
+      "priority": "high",
+      "title": "Question image URL decode/public URL stability",
+      "evidence_commits": [
+        "e652236"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "decodeURIComponent(match[1])"
+        }
+      ]
+    },
+    {
+      "id": "test-seed-benchmark-datasets",
+      "month": "2026-04",
+      "category": "test-data",
+      "priority": "high",
+      "title": "Large seed datasets for QA and KPI benchmark",
+      "evidence_commits": [
+        "170647b",
+        "e69f6fe",
+        "aa3a915",
+        "22694bb",
+        "343c2b4",
+        "dd9f159"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_english_30_sessions_91917838.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_chinese_30_sessions_91917838.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990003.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990004.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990005.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990006.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990007.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_seed_test_data_99990008.sql"
+        }
+      ]
+    },
+    {
+      "id": "release-retention-regression-tests",
+      "month": "2026-07",
+      "category": "release-gate",
+      "priority": "critical",
+      "title": "Anti-missing regression tests for critical UX",
+      "evidence_commits": [
+        "4b4ad35",
+        "c38c510"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/anti-missing-regressions.test.ts"
+        }
+      ]
+    }
+  ],
+  "generated_at": "2026-07-09T12:59:29.484Z",
+  "commit_inventory": [
+    {
+      "sha": "c38c51023436472ef1cdae54be7603a30cb2e924",
+      "date": "2026-07-09",
+      "summary": "Restore wrong-answer value details and button color"
+    },
+    {
+      "sha": "4b4ad35a99e0259bfb1adedb23f5dd5806e5fe00",
+      "date": "2026-07-09",
+      "summary": "Restore results home button and parent email readability"
+    },
+    {
+      "sha": "5fd160674efc1aade0faabe8ac5b443719da0eea",
+      "date": "2026-05-15",
+      "summary": "Add GTM funnel events for auth conversion tracking"
+    },
+    {
+      "sha": "4255c1262def6fe23d2965d7f1e139789a418363",
+      "date": "2026-05-15",
+      "summary": "Add Google Tag Manager container integration"
+    },
+    {
+      "sha": "20defd1e6f7dfafe9200da85b217e7187b09890e",
+      "date": "2026-05-13",
+      "summary": "Guard protected screens and fix forgot-password return"
+    },
+    {
+      "sha": "dbf33d35830a0328ef540c5c77cfd2980aeeebd0",
+      "date": "2026-05-13",
+      "summary": "Fix forgot password flow mobile validation and errors"
+    },
+    {
+      "sha": "c107826ed2d147d96689558568a4581027b1f829",
+      "date": "2026-05-13",
+      "summary": "Update README handover note for 2026-05-13"
+    },
+    {
+      "sha": "22d3d5a67d7d29e571a105431b0ef9aebf1f37f2",
+      "date": "2026-05-13",
+      "summary": "Hotfix paid balance history NOT NULL constraint"
+    },
+    {
+      "sha": "1d0ac33c0d9b49ef05e894203b873b693d73ea09",
+      "date": "2026-05-13",
+      "summary": "Fix paid-tier balance transaction history logging"
+    },
+    {
+      "sha": "d321efb2ef4adc31e8e81f48cc37113f04c8618d",
+      "date": "2026-05-13",
+      "summary": "Add monthly paid parent summary and audit CSV"
+    },
+    {
+      "sha": "e4d0884d38324690aea5f3b35a8d235b04f77dd6",
+      "date": "2026-05-13",
+      "summary": "Enforce strict AI-only question drawing"
+    },
+    {
+      "sha": "7cd6005f819b83f5d07764cdb7ad2f881be86081",
+      "date": "2026-05-13",
+      "summary": "Tune share tracking URLs and top-align WeChat overlay"
+    },
+    {
+      "sha": "8c54453327527a9ac5cafb95c730dc84386da80b",
+      "date": "2026-05-13",
+      "summary": "Refine social share UX and add brand icons"
+    },
+    {
+      "sha": "f350952281173e00ce54f19c45820ea122e10043",
+      "date": "2026-05-13",
+      "summary": "Fix share callback hook dependency warning"
+    },
+    {
+      "sha": "92d6158ec782cd4645d1410bf2e5382771cfb214",
+      "date": "2026-05-13",
+      "summary": "Add login social sharing buttons with WeChat support"
+    },
+    {
+      "sha": "3ff7c569a683b9d526ce862f2dfd652c03559014",
+      "date": "2026-05-11",
+      "summary": "Add checkout method safeguards and handover notes"
+    },
+    {
+      "sha": "17596ee83dd8d66331e69c021e71e9aa5702f939",
+      "date": "2026-05-11",
+      "summary": "Send full requested payment method list to HPP"
+    },
+    {
+      "sha": "6d30b6db93191765ce73a2977577c70362cccafd",
+      "date": "2026-05-11",
+      "summary": "Restore oneoff method availability for HPP method list"
+    },
+    {
+      "sha": "c5dbeb6f6b5ae8dd6078fddc798cf4037e970541",
+      "date": "2026-05-11",
+      "summary": "Adjust HPP wallet method visibility for checkout"
+    },
+    {
+      "sha": "b59bcdc84c64c1a7942fb088f106f4877dfecc35",
+      "date": "2026-05-11",
+      "summary": "Fix Airwallex metadata format for payment intent creation"
+    },
+    {
+      "sha": "ad8b6676e0418345671ab9d3fbc2f6ca476c4221",
+      "date": "2026-05-11",
+      "summary": "Add Apple Pay availability diagnostics for recurring checkout"
+    },
+    {
+      "sha": "22f51b64ad9dc4b2cb14bef4069be31553349b89",
+      "date": "2026-05-11",
+      "summary": "Add recurring Apple Pay options and zh-HK HPP locale"
+    },
+    {
+      "sha": "1f466e3ea2191920d6f97aa1fec39bc0a951b6fc",
+      "date": "2026-05-11",
+      "summary": "Enable Apple Pay capability and domain activation"
+    },
+    {
+      "sha": "a12a58010af3b52a9debaf2f7eddbd2ae2a1e099",
+      "date": "2026-05-11",
+      "summary": "Fix MTD parent dashboard views KPI counting"
+    },
+    {
+      "sha": "5269a0f28baacbd4170ebce0d205ade1c901e77c",
+      "date": "2026-05-11",
+      "summary": "Align KPI fallback student counts with test-data exclusion"
+    },
+    {
+      "sha": "e96f6d723da9c4b22be7a5ecffd5f07550361aad",
+      "date": "2026-05-11",
+      "summary": "Add timeout-safe fallback for monthly KPI API"
+    },
+    {
+      "sha": "3dbbefc91d3fb6626120eb294379a1b0ec4b1d38",
+      "date": "2026-05-08",
+      "summary": "Add 2026-05-08 project handover record"
+    },
+    {
+      "sha": "80308e0dca8741e310bb2be9fb2c58f8e5636b1c",
+      "date": "2026-05-08",
+      "summary": "Update free-tier dashboard upgrade copy"
+    },
+    {
+      "sha": "0c0d368493e04b42021019d4e5ea7ad7ff3dea4a",
+      "date": "2026-05-08",
+      "summary": "Update dashboard contact email to cs mailbox"
+    },
+    {
+      "sha": "b61ad9b1ddcb0ef64139401fc359805aa4f702bb",
+      "date": "2026-05-08",
+      "summary": "Add tier-based customer service entry on role screen"
+    },
+    {
+      "sha": "f53bf95a7c23b502cb87d304a426208197a088ca",
+      "date": "2026-05-08",
+      "summary": "Replace result mascot with practice banner"
+    },
+    {
+      "sha": "6f867c0bac25618651d440c0d09624eba8ec39aa",
+      "date": "2026-05-08",
+      "summary": "Tweak login headline copy and casual font styling"
+    },
+    {
+      "sha": "b32bc11cf049718348bc2599c8fde80107d96929",
+      "date": "2026-05-08",
+      "summary": "Fix discount summary paid total aggregation"
+    },
+    {
+      "sha": "34548f186d6749c30f5c7b28728d621cf806b325",
+      "date": "2026-05-08",
+      "summary": "Fix paid KPI to use paid_started_at timestamp"
+    },
+    {
+      "sha": "bfe53ccfa3d54dcb6e00ffb482de8b38f08f27ef",
+      "date": "2026-05-08",
+      "summary": "Exclude 9999 test mobiles from business KPI"
+    },
+    {
+      "sha": "46d80c997dff87c43f2a4adf6c46b0a1efbbf1c2",
+      "date": "2026-05-08",
+      "summary": "Reorder KPI district selector above school charts"
+    },
+    {
+      "sha": "13e6cef8666e0fdca538590ad5cda55e88b6e0be",
+      "date": "2026-05-08",
+      "summary": "Reshape KPI charts and add school subject-grade trends"
+    },
+    {
+      "sha": "2bfbb03947844ed028acf2e8cf69d8ee93ff3571",
+      "date": "2026-05-08",
+      "summary": "Fix KPI school details district ambiguity"
+    },
+    {
+      "sha": "12e78a108e095c60968718b8016e9f1453f19d5c",
+      "date": "2026-05-08",
+      "summary": "Default Airwallex runtime and SDK to production"
+    },
+    {
+      "sha": "52a40d1736f890e6cfc5cfa4c7302daaccfaaa5a",
+      "date": "2026-05-08",
+      "summary": "Avoid stale checkout intents and sync Airwallex env"
+    },
+    {
+      "sha": "2ea2665475a6cb120066b675466c798e1919b3cc",
+      "date": "2026-05-08",
+      "summary": "Harden Airwallex SDK readiness before checkout"
+    },
+    {
+      "sha": "4cf834b24b0f0a6eebc980c75c66d6df7cc47b3b",
+      "date": "2026-05-08",
+      "summary": "Add admin recurring cancel and last-payment refund ops"
+    },
+    {
+      "sha": "d3af1585e8d78dd668bb75078e6967fbd488e574",
+      "date": "2026-05-08",
+      "summary": "Add admin payment status enquiry tab"
+    },
+    {
+      "sha": "771d5333e6451047a74c4b2d015a1977f7852363",
+      "date": "2026-05-08",
+      "summary": "Use official Airwallex SDK namespace for checkout"
+    },
+    {
+      "sha": "c1b3062be97e1dede1cacf98d84c70f816afcf09",
+      "date": "2026-05-08",
+      "summary": "Handle Airwallex payments API variations safely"
+    },
+    {
+      "sha": "a50e44ea30fbc4f4a708b1a56aa3156890c497d8",
+      "date": "2026-05-08",
+      "summary": "Fix Airwallex SDK script URL for payment pages"
+    },
+    {
+      "sha": "d4e9754e387feb920f4ebe8c16ae21a85f4f57fa",
+      "date": "2026-05-08",
+      "summary": "Fix payment button disabled state when Airwallex SDK preloaded"
+    },
+    {
+      "sha": "a5bd1287e93d1c9de600142321de50e0ae502650",
+      "date": "2026-05-08",
+      "summary": "Enforce one-page payment flow for legacy checkout URLs"
+    },
+    {
+      "sha": "7e99c94985d19dec41044c5c9ee48949a6a255e2",
+      "date": "2026-05-08",
+      "summary": "Add Turnstile fallback mode for signup errors"
+    },
+    {
+      "sha": "2e40a8dda48aba1f2167164e5eabd56ff83e2703",
+      "date": "2026-05-08",
+      "summary": "Fix legacy pending orders to bypass second payment page"
+    },
+    {
+      "sha": "c612a9367159eb84b066a162592943e9d970f112",
+      "date": "2026-05-08",
+      "summary": "Add paid and free tier trend metrics to admin KPI"
+    },
+    {
+      "sha": "3d0f76bb2b9d906af023158ae3617fee000ad553",
+      "date": "2026-05-08",
+      "summary": "Fix MTD parent dashboard views KPI fallback count"
+    },
+    {
+      "sha": "9e53d92c1fc2cb72d258c32eb0fe26c01282450b",
+      "date": "2026-05-08",
+      "summary": "Split admin KPI into summary and on-demand school filters"
+    },
+    {
+      "sha": "5f0774d47f882c42604493d417887250acca6396",
+      "date": "2026-05-08",
+      "summary": "Refactor paid checkout to single-page Airwallex redirect"
+    },
+    {
+      "sha": "f70b98f8270500116df4603c878ca8d1dac6e8a7",
+      "date": "2026-05-08",
+      "summary": "Use lightweight static banner for WhatsApp link previews"
+    },
+    {
+      "sha": "baa3e920cd012d742a74922c97bb5f9d1d8ccb62",
+      "date": "2026-05-08",
+      "summary": "Serve social share banner via same-domain proxy for WhatsApp"
+    },
+    {
+      "sha": "8c963b09949b2b0647430ee5582673280bfbc894",
+      "date": "2026-05-08",
+      "summary": "Configure social share metadata banner and platform message"
+    },
+    {
+      "sha": "6dcac6faf468349ce42150becc5f17262bd53ac9",
+      "date": "2026-05-08",
+      "summary": "Update duplicate-grade function error message for add-student flow"
+    },
+    {
+      "sha": "85b41bd087322d4531ace015ac88acac15b4b8a1",
+      "date": "2026-05-08",
+      "summary": "Update add-student UI and duplicate-grade error copy"
+    },
+    {
+      "sha": "7e2a2f2c829cf3fc50d7f71ea31956e30e583672",
+      "date": "2026-05-06",
+      "summary": "Implement monthly recurring auto-charge and payment method tracking"
+    },
+    {
+      "sha": "dd9f159cb44cd5ac5517cbddc5506a8940a7799d",
+      "date": "2026-05-06",
+      "summary": "Add one-shot seed SQL for parent 99990008 English-Chinese dataset"
+    },
+    {
+      "sha": "343c2b42972f0807a3d0017018649bf2ff656e1b",
+      "date": "2026-05-06",
+      "summary": "Add one-shot seed SQL for parent 99990007 English-Chinese dataset"
+    },
+    {
+      "sha": "22694bb3a69fd392f281cc253c892bc5a3353f5e",
+      "date": "2026-05-06",
+      "summary": "Add one-shot seed SQL for parent 99990006 large mixed-grade data"
+    },
+    {
+      "sha": "776e4081f803a5233ae9fa08d1608d54efdd6033",
+      "date": "2026-05-06",
+      "summary": "Add SQL to top-up seeded users for ranking eligibility"
+    },
+    {
+      "sha": "aa3a915b764cfee01dbe5aaeb80ecf315c896e6d",
+      "date": "2026-05-05",
+      "summary": "Add one-shot seed SQL for parent 99990005 bulk practice data"
+    },
+    {
+      "sha": "fff832889154495f9ae21726575e5a3cc153f683",
+      "date": "2026-05-05",
+      "summary": "Fix 99990004 seed script temp table lifecycle for verification"
+    },
+    {
+      "sha": "480fc52c0694996e24d51f8512fbb0a5b07360dc",
+      "date": "2026-05-05",
+      "summary": "Add one-shot seed SQL for parent 99990004 practice test data"
+    },
+    {
+      "sha": "3f69b52084680293dff977c4f6876801d22ed5cf",
+      "date": "2026-05-04",
+      "summary": "Add one-shot seed SQL for parent 99990003 practice test data"
+    },
+    {
+      "sha": "b6bd6e9ebfd0e3002341e9dbb2734f68876a7d24",
+      "date": "2026-05-04",
+      "summary": "Add admin discount code maintenance, summary, and CSV export"
+    },
+    {
+      "sha": "201742e93b46702c2fbfc596db9803c1ae560ee7",
+      "date": "2026-05-04",
+      "summary": "Translate login support contact line to Traditional Chinese"
+    },
+    {
+      "sha": "c49ba73c1383fcda2e58cc266bc64005b0d98536",
+      "date": "2026-05-04",
+      "summary": "Polish login page support note and playful brief FAQ style"
+    },
+    {
+      "sha": "9c303742bf0216a1033877c3e1fdf16fa424fd97",
+      "date": "2026-05-04",
+      "summary": "Add login page platform brief and FAQ sections"
+    },
+    {
+      "sha": "3e6556673bd590d3b710a8e3e1f2f04cf6e9fc48",
+      "date": "2026-05-04",
+      "summary": "Fix admin KPI MTD metrics and parent view logging"
+    },
+    {
+      "sha": "448ef4ef0ba9e162c5b00a1a3ec325f94463d055",
+      "date": "2026-05-04",
+      "summary": "Group balance history by date and student"
+    },
+    {
+      "sha": "83fec300f61b8b2eba8f0215debba23d824c85a9",
+      "date": "2026-05-04",
+      "summary": "Return student role flow to role selection"
+    },
+    {
+      "sha": "7193871309f4529e9200b39dc3dd591009ee7d47",
+      "date": "2026-05-04",
+      "summary": "Refresh student state after profile save"
+    },
+    {
+      "sha": "1e7e519031f2c45cd9be85c6b76cf7ff177ffe60",
+      "date": "2026-05-04",
+      "summary": "Fix student profile update to avoid sibling grade overwrite"
+    },
+    {
+      "sha": "d4c935bacc4cbe1d5ba883c79bef93f8055ab245",
+      "date": "2026-05-04",
+      "summary": "Fix paid balance display and include paid transaction history"
+    },
+    {
+      "sha": "b1534d61520ac9b784e1800a1b176d22f7591d2a",
+      "date": "2026-05-04",
+      "summary": "Finalize pending payment links before creating new checkout"
+    },
+    {
+      "sha": "583815b580b0b404e727c34fab7dffe601e6292f",
+      "date": "2026-05-04",
+      "summary": "Remove payment method radios from payment page"
+    },
+    {
+      "sha": "7b9a269e1ab74581abc519f33ef331637f188de2",
+      "date": "2026-05-04",
+      "summary": "Align checkout with Airwallex payment link API schema"
+    },
+    {
+      "sha": "d71f8801fc8d94c783efd9cbd7826077fdfe35d6",
+      "date": "2026-05-04",
+      "summary": "Harden Airwallex checkout base URL and error handling"
+    },
+    {
+      "sha": "4610f8d07c542db1e44014b6847ae90d1b078aad",
+      "date": "2026-05-04",
+      "summary": "Harden Airwallex payment flow with webhook idempotency"
+    },
+    {
+      "sha": "639d96e8f960c2145db3edb4560c7c66acd338c8",
+      "date": "2026-05-04",
+      "summary": "Fix pgcrypto search_path for parent auth functions"
+    },
+    {
+      "sha": "78bfc277b006148e34e8db0168e35a8ebbe0c067",
+      "date": "2026-05-04",
+      "summary": "Add parent tier gating and payment module foundation"
+    },
+    {
+      "sha": "718f1b2f6acf84750bf7f1293d591986b1281baf",
+      "date": "2026-05-02",
+      "summary": "chore: trigger fresh vercel production build"
+    },
+    {
+      "sha": "472f994a6376a08f452b5addb0f276b9869ba016",
+      "date": "2026-05-02",
+      "summary": "Support header token fallback for admin session auth"
+    },
+    {
+      "sha": "84c8cbae4b46484ad23ee9ed0e617bef362eaf3b",
+      "date": "2026-05-02",
+      "summary": "Fix admin KPI unauthorized session fetches"
+    },
+    {
+      "sha": "6a7f72e1ddb2466caeb311a0008952059d6b4aa5",
+      "date": "2026-05-02",
+      "summary": "Harden admin auth and PIN security flows"
+    },
+    {
+      "sha": "6f96255a29ac8a7520f70d114e0d89005acdb204",
+      "date": "2026-05-02",
+      "summary": "chore: fix eslint (privacy effect, balance load, session summary, drop dead ProgressBar)"
+    },
+    {
+      "sha": "ae6dff7e8f12748061c476e939e052fa1c819a80",
+      "date": "2026-05-02",
+      "summary": "chore: sync package-lock for restored full app dependencies"
+    },
+    {
+      "sha": "d5036e7d6f536f4d6fe29ba36a9dddeaee2c370f",
+      "date": "2026-05-01",
+      "summary": "fix(quiz): use login_by_mobile + RPC session/answers for RLS"
+    },
+    {
+      "sha": "adc88caf3f5a46345b8d173fac582c86e5972ea1",
+      "date": "2026-05-01",
+      "summary": "fix(quiz): use nil UUID for demo student_id (column is uuid)"
+    },
+    {
+      "sha": "1e8bd860583db8f3b6f1f8826c25f1f8a5bac550",
+      "date": "2026-05-01",
+      "summary": "fix(quiz): bridge SUPABASE_ANON_KEY for browser client; clearer login errors"
+    },
+    {
+      "sha": "e00d6467bc8ea5702b929ac538a9047ece918535",
+      "date": "2026-05-01",
+      "summary": "fix: bridge SUPABASE_URL to client for login bg; explicit favicon link tags"
+    },
+    {
+      "sha": "6d20156aa91a40653140bee76ab332500147dcce",
+      "date": "2026-05-01",
+      "summary": "feat(login): tiled blurred bk background; favicon from banana student logo"
+    },
+    {
+      "sha": "21d4c363de253464b193dfeec6d04c5618e57540",
+      "date": "2026-05-01",
+      "summary": "fix(login): show bk.png via fixed img layer; SUPABASE_URL fallback for assets"
+    },
+    {
+      "sha": "79aa84042688704af8b91e8e4f4643772e40f17a",
+      "date": "2026-05-01",
+      "summary": "fix(login): remove trial note, warm brief card; bg from NEXT_PUBLIC_SUPABASE_URL"
+    },
+    {
+      "sha": "d920766c61accb7e8d31847994dc271a549b5330",
+      "date": "2026-05-01",
+      "summary": "fix(login): restore body background, frosted shell, and hero GearUplogo"
+    },
+    {
+      "sha": "7e879cd414a2497e8546d7be365ba8aa231db9b1",
+      "date": "2026-05-01",
+      "summary": "docs: Vercel deploy steps and login page asset README"
+    },
+    {
+      "sha": "99290c560ccdc4883a1bd4b6ef03be9018034411",
+      "date": "2026-05-01",
+      "summary": "feat(login): add to home screen, logo, platform brief from Storage"
+    },
+    {
+      "sha": "0fbddc65db7283df991eebc32e6da1283c5e0283",
+      "date": "2026-04-30",
+      "summary": "fix(quiz): block copy on stem; normalize newlines for paragraphs"
+    },
+    {
+      "sha": "583c59dbec2f745f203dd3c958374a3bf7be12be",
+      "date": "2026-04-30",
+      "summary": "docs: deploy id after English seed test plan"
+    },
+    {
+      "sha": "170647b1b23cb5f17fc984ebb262043486dcdb0e",
+      "date": "2026-04-30",
+      "summary": "docs: English 30-session seed SQL and test plan for 91917838"
+    },
+    {
+      "sha": "586ddf2c16c3a89f980252869186237515251630",
+      "date": "2026-04-30",
+      "summary": "docs: deploy id and Supabase note for per-subject ranking"
+    },
+    {
+      "sha": "f23ed8b6b9451a302b05a958b2d4ef393f584ab1",
+      "date": "2026-04-30",
+      "summary": "feat: per-subject grade rank RPC and batch SQL"
+    },
+    {
+      "sha": "cca54c8998656efbc8f05d81ddc4ed6da21533e2",
+      "date": "2026-04-30",
+      "summary": "docs: deploy id for English subject"
+    },
+    {
+      "sha": "549bfc35396ee4c19dee1822a1e50cc465d88202",
+      "date": "2026-04-30",
+      "summary": "feat: English subject + clarify parent rank vs per-subject charts"
+    },
+    {
+      "sha": "cfa78d82d29d98262774967cd487d015f7d44c43",
+      "date": "2026-04-30",
+      "summary": "docs: deploy id for question paragraphs"
+    },
+    {
+      "sha": "a61852bcec3ae5f6a32cdac69a86d789508de894",
+      "date": "2026-04-30",
+      "summary": "feat(quiz): paragraph breaks in question stem and explanations"
+    },
+    {
+      "sha": "c4f6881895a5f30aa24067d2e3b04ea43b0d6a28",
+      "date": "2026-04-30",
+      "summary": "docs: update deploy id and quiz changelog for MCQ wrap"
+    },
+    {
+      "sha": "8c76a5cbf0b9377a539031b963f7deeb26ede648",
+      "date": "2026-04-30",
+      "summary": "fix(quiz): allow MCQ option text to wrap multiple lines"
+    },
+    {
+      "sha": "6d0a5a145df319b5f71e71cd1d5f14e5b102fadb",
+      "date": "2026-04-30",
+      "summary": "fix(seed): align quiz_sessions with exported schema (session_token unique)"
+    },
+    {
+      "sha": "78a363695edd4646dab2dda8620889c09cd99ed2",
+      "date": "2026-04-30",
+      "summary": "fix(seed): no ALTER TABLE; use session_practice_summary marker"
+    },
+    {
+      "sha": "e69f6feb86b9da301d2932a7d1a180207e9da993",
+      "date": "2026-04-30",
+      "summary": "docs: test plan + SQL seed 30 Chinese sessions for 91917838"
+    },
+    {
+      "sha": "85e80a4f67448790df7508e6a623556436496873",
+      "date": "2026-04-30",
+      "summary": "docs: record deploy for parent chart subject filter"
+    },
+    {
+      "sha": "ddc7bf8eaa295f5e753dbdda51a2f93d5b8650dd",
+      "date": "2026-04-30",
+      "summary": "fix(parent-dashboard): filter chart RPC by subject (Math vs Chinese)"
+    },
+    {
+      "sha": "7c29f254f4cf38aa38d3538da61686c08db50bcb",
+      "date": "2026-04-30",
+      "summary": "docs: record Chinese subject deploy id"
+    },
+    {
+      "sha": "c756361771d4a4d5ba5a7d8d3c0134a587a74f81",
+      "date": "2026-04-30",
+      "summary": "feat: add Chinese subject for student, parent dashboard, and balance"
+    },
+    {
+      "sha": "58e6f81360d0857cf972b9ab9bb4fcb183185393",
+      "date": "2026-04-30",
+      "summary": "docs: record deploy after privacy checkbox copy trim"
+    },
+    {
+      "sha": "ff7976789cd2feccbd77b80b671102ac148d2bf8",
+      "date": "2026-04-30",
+      "summary": "fix(register): shorten privacy checkbox label copy"
+    },
+    {
+      "sha": "7ebb695ef9a131480ab4d1a5deeef625f3e38af0",
+      "date": "2026-04-30",
+      "summary": "docs: record privacy registration deploy id"
+    },
+    {
+      "sha": "1b06d6362eeed9193e4aa8b2dee925ef7d337f22",
+      "date": "2026-04-30",
+      "summary": "docs: fix README changelog line for privacy URL"
+    },
+    {
+      "sha": "49a44993946fed61360a9a4f246e10562eeb77a2",
+      "date": "2026-04-30",
+      "summary": "feat(register): privacy statement checkbox, modal, 同意並繼續"
+    },
+    {
+      "sha": "0d1adb6da5085df21ed71aec0f6532688b71ab0a",
+      "date": "2026-04-29",
+      "summary": "docs: record 2026-04-29 deploy and balance SQL prerequisite"
+    },
+    {
+      "sha": "d8bc99098970333271a708d2536a2c26e225d92f",
+      "date": "2026-04-29",
+      "summary": "fix(balance): deduct per answer, shared parent pool, Math/數學 history"
+    },
+    {
+      "sha": "6f3def5399b0c7e7d262650fcf2435e0d498bb8a",
+      "date": "2026-04-28",
+      "summary": "docs: record production deploy and apple-touch-icon assets"
+    },
+    {
+      "sha": "d7862743198f14e692c6d0632f347cb43c4bbd1e",
+      "date": "2026-04-28",
+      "summary": "chore: set apple touch icon and favicon to banana mascot logo"
+    },
+    {
+      "sha": "1568a4e8313bb3b9cb0e3c344c5944d136618374",
+      "date": "2026-04-28",
+      "summary": "fix(quiz): load Math questions when DB rows still use 數學"
+    },
+    {
+      "sha": "5d226beeab6613ab0e6f712600b8297a5f860297",
+      "date": "2026-04-28",
+      "summary": "fix: use Math as DB subject key (was 數學); UI label unchanged"
+    },
+    {
+      "sha": "b3b59e29c84f0dad75034a78df4f567407edcd05",
+      "date": "2026-04-28",
+      "summary": "feat: separate parent-email practice summary (teacher tone)"
+    },
+    {
+      "sha": "e8d2d9900ffafb1b46f254a881ee167831bac914",
+      "date": "2026-04-27",
+      "summary": "feat: session practice summary (ZH), DB, email, mascot bubble, tests"
+    },
+    {
+      "sha": "545b2eb67992ba8d6785e948183bd272a4e5b626",
+      "date": "2026-04-27",
+      "summary": "style(quiz): increase body text by two steps for readability"
+    },
+    {
+      "sha": "5ff5db27d0dc6d1eb33a1120a61131c7915d9c14",
+      "date": "2026-04-27",
+      "summary": "refine(quiz): remove mascot, single-line options, tap-to-advance MCQ"
+    },
+    {
+      "sha": "cb8d237e21253846ba08b85844c3be28a5b02673",
+      "date": "2026-04-26",
+      "summary": "feat(quiz): fun student UI with mascot, Framer Motion, sound toggle"
+    },
+    {
+      "sha": "5ca04d796eaed66aa231616845052fb5acf91c7d",
+      "date": "2026-04-26",
+      "summary": "chore(admin): simplify business KPI section headings"
+    },
+    {
+      "sha": "5c2dbb48ce5165c3d3829fa984844e457ec43a09",
+      "date": "2026-04-26",
+      "summary": "perf(admin): school monthly rate from quiz_sessions, not session_answers"
+    },
+    {
+      "sha": "8909f8e53aba9a5f5f3cc811d10bccbf766bca5c",
+      "date": "2026-04-26",
+      "summary": "fix(sql): remove SET LOCAL from admin KPI RPCs (avoids non-volatile SET error)"
+    },
+    {
+      "sha": "5aad89761f5b80c5388f94381e0a6b87ed7474bd",
+      "date": "2026-04-26",
+      "summary": "fix: admin SQL VOLATILE for SET LOCAL, enable copy on /admin"
+    },
+    {
+      "sha": "01dad7842ab0496a4dd702ff7ea264f122eb6941",
+      "date": "2026-04-26",
+      "summary": "fix(admin): speed up admin_business_monthly and extend API maxDuration"
+    },
+    {
+      "sha": "f9fa4dd14a436f92e50bb48a11f61f526a6cd340",
+      "date": "2026-04-26",
+      "summary": "fix(sql): HKT index via generated hkt_date column, no cast in CREATE INDEX"
+    },
+    {
+      "sha": "51ddd26a28dd58ed096e55ea47562b12c180bb53",
+      "date": "2026-04-26",
+      "summary": "fix(sql): index on HKT date using date() without any :: operator"
+    },
+    {
+      "sha": "7db018a96f88f1891051cc1fccb7c5633e810d10",
+      "date": "2026-04-26",
+      "summary": "fix(sql): parent_dashboard_view_log index without nested :: cast"
+    },
+    {
+      "sha": "d23f0063d8760a3a98035f9fc437a0ebc5310628",
+      "date": "2026-04-26",
+      "summary": "feat(admin): business KPI tab, dashboard view log, and gender sync"
+    },
+    {
+      "sha": "0d6b2c84d6b674720464cc5bcdb39445ce691221",
+      "date": "2026-04-26",
+      "summary": "ui: parent dashboard — subject before grade rank; document in README"
+    },
+    {
+      "sha": "b6efb90422ddd953a468311f46c534136d9442a8",
+      "date": "2026-04-26",
+      "summary": "fix: cron—timeout detection, per-grade safe fallback, delete RPC, GRANTs"
+    },
+    {
+      "sha": "77a7f04345b07d0d15236cf4bc14a0bef80155be",
+      "date": "2026-04-26",
+      "summary": "Add SQL: grade cron query plans and indexes (students/questions-driven)"
+    },
+    {
+      "sha": "0e887e4ec1874300821a323507175476a45dd959",
+      "date": "2026-04-26",
+      "summary": "fix: per (grade, question_type) RPC for grade_averages cron"
+    },
+    {
+      "sha": "9691455096abfb5c3a035f53581e22183ad41456",
+      "date": "2026-04-26",
+      "summary": "perf: add session_answers(session_id) index in two-step SQL"
+    },
+    {
+      "sha": "9c8f6338a99ef5991ae4dbded9eadfbfac4053d5",
+      "date": "2026-04-26",
+      "summary": "fix: split grade average per grade into overall + by-type RPCs"
+    },
+    {
+      "sha": "2860452316b22213affa9deab79fec19a0c4338d",
+      "date": "2026-04-26",
+      "summary": "fix: treat PostgREST missing-function errors as missing RPC"
+    },
+    {
+      "sha": "9c08daf21c532a5319aaea960e840ca4d885c7b4",
+      "date": "2026-04-26",
+      "summary": "fix: part=grade iterates per grade level via new RPCs"
+    },
+    {
+      "sha": "a0f4f59916594635a16cb4aca3a85d9b41f3617b",
+      "date": "2026-04-26",
+      "summary": "fix: faster recalculate_grade_aversages join + supabase SQL"
+    },
+    {
+      "sha": "fda27391211a6a83792d3c496be3bda081ca05c5",
+      "date": "2026-04-26",
+      "summary": "fix: split nightly cron (rank vs grade) to avoid PostgREST timeout"
+    },
+    {
+      "sha": "675b4d9dd5dfad4191c7bc2c73447f5ce13f6427",
+      "date": "2026-04-26",
+      "summary": "perf: speed up grade ranking batch + allow long cron"
+    },
+    {
+      "sha": "908f0ef1fb7ccd65fcddbe48eb0a68025a6cf63d",
+      "date": "2026-04-26",
+      "summary": "fix: batch SQL DELETE must use WHERE true (Supabase)"
+    },
+    {
+      "sha": "15c4627f2380733008a08bdc01ab1016df2c3e11",
+      "date": "2026-04-26",
+      "summary": "feat: parent dashboard grade-level rank (nightly batch + UI)"
+    },
+    {
+      "sha": "1560af4f032f13d732b96b2dab692b436ee8b319",
+      "date": "2026-04-21",
+      "summary": "fix: pin login copyright footer to viewport bottom"
+    },
+    {
+      "sha": "9084700cdeeb6327d61732eb81201fecad044cda",
+      "date": "2026-04-21",
+      "summary": "feat: add copyright footer to mobile login screen"
+    },
+    {
+      "sha": "68e79e3a29cb141ee3a98346825ec8f8e6a651db",
+      "date": "2026-04-21",
+      "summary": "fix: document missing storage images and show figures in review screens"
+    },
+    {
+      "sha": "e04a16a93194179633ed0cd3937c7ccd67d0467e",
+      "date": "2026-04-21",
+      "summary": "docs: handshake summary for next agent with lessons learned and architecture"
+    },
+    {
+      "sha": "e652236e98de12f8252457e67237741205bde47e",
+      "date": "2026-04-21",
+      "summary": "fix: question image broken when URL contains encoded spaces (%20)"
+    },
+    {
+      "sha": "2b92599464426c9f96206d584226fa61e03c25ae",
+      "date": "2026-04-21",
+      "summary": "docs: test data SQL for good students (top school per district)"
+    },
+    {
+      "sha": "89d2bff0a60b1e821da7086f0d6cf30e825cc1a6",
+      "date": "2026-04-21",
+      "summary": "docs: test data generation SQL scripts for AI summary development"
+    },
+    {
+      "sha": "47d8acba3070d71ac6e535b3f9d03580ce446bee",
+      "date": "2026-04-21",
+      "summary": "feat: registration validation - block 999 mobile prefix + check email uniqueness"
+    },
+    {
+      "sha": "9fedd15a41d045a13dbac50c8bd654135a449a45",
+      "date": "2026-04-19",
+      "summary": "fix: per-type chart bars blank - pre-compute fill color in data like overall chart"
+    },
+    {
+      "sha": "8e47d90c83e01ea2eead2767b04e4801d2c691cf",
+      "date": "2026-04-19",
+      "summary": "fix: per-type chart bars now use pctColor for consistent color scheme"
+    },
+    {
+      "sha": "85abd9960f9b70843a325f5e5b5a5cdfde036085",
+      "date": "2026-04-18",
+      "summary": "fix: per-type charts now use unique index + custom tooltip like overall chart"
+    },
+    {
+      "sha": "4e92d0ec796b2287666e678560aeff9d6d57ce01",
+      "date": "2026-04-18",
+      "summary": "fix: record answer timestamp before async RPC calls for speed check"
+    },
+    {
+      "sha": "539ac60082d3c8bec50d3e9aec5f44f3a76bb05d",
+      "date": "2026-04-18",
+      "summary": "feat: speed reminder overlay when 3 answers submitted within 5 seconds"
+    },
+    {
+      "sha": "70be901966c83e4d0199eba8bd84517e8e119665",
+      "date": "2026-04-18",
+      "summary": "fix: update 戶口管理 description and reorder balance button to top"
+    },
+    {
+      "sha": "84b2ed01563b996f25759a49f1dc56b063b64567",
+      "date": "2026-04-18",
+      "summary": "feat: move question balance to dedicated page under 戶口管理"
+    },
+    {
+      "sha": "9fa0c4a535596fadbc8adfb97d133305089f2a9f",
+      "date": "2026-04-18",
+      "summary": "docs: add test plan for parent dashboard data display validation"
+    },
+    {
+      "sha": "428b03ca3af5c0f9e0b4437ac2ba25d3dd2bf3d1",
+      "date": "2026-04-18",
+      "summary": "fix: chart bars now unique per session - fixes tooltip and color issues"
+    },
+    {
+      "sha": "ccace509d158dc8365b2c0c1e45b4eb3297c1311",
+      "date": "2026-04-18",
+      "summary": "fix: chart bar colors, custom tooltip with date/time, add remark"
+    },
+    {
+      "sha": "73ec6798bcbb88121581e6e74c4b780fb2f8bea1",
+      "date": "2026-04-18",
+      "summary": "feat: combine mobile + PIN on single login page, remove all separate PIN screens"
+    },
+    {
+      "sha": "bf4b0885480c0aba09e0149763e174c58315f0a2",
+      "date": "2026-04-18",
+      "summary": "fix: move password field to top of profile edit page, shared across all students"
+    },
+    {
+      "sha": "87fda71ba79b6c7109fe2e22444455a068f4b97f",
+      "date": "2026-04-18",
+      "summary": "feat: group profile update and add student under '戶口管理' with single PIN entry"
+    },
+    {
+      "sha": "a2d53cf48d4737282ca2e50cb66652b201c75eb4",
+      "date": "2026-04-18",
+      "summary": "feat: color-code overall chart bars by correct rate (green/amber/red)"
+    },
+    {
+      "sha": "51be9464d09e7fd0033895efad2d72e2bead0138",
+      "date": "2026-04-18",
+      "summary": "fix: limit per-type charts to top 5 by most data points"
+    },
+    {
+      "sha": "b8c5161b1dd4a7edec131e7d0fa9e6de325d2bb6",
+      "date": "2026-04-18",
+      "summary": "feat: performance charts on parent dashboard with grade averages"
+    },
+    {
+      "sha": "1fc8185617abf2302b2e05f56b8a5c3af27e920c",
+      "date": "2026-04-17",
+      "summary": "fix: replace gen_random_bytes with gen_random_uuid for token generation"
+    },
+    {
+      "sha": "e8afd85879d1c498aefbc7e7a5c4187425c0ab8f",
+      "date": "2026-04-17",
+      "summary": "fix: add detailed error reporting to reset email API for debugging"
+    },
+    {
+      "sha": "0809797af34dea0227606447e7c65efd56d35bac",
+      "date": "2026-04-17",
+      "summary": "fix: password reset checks email against specific parent account by mobile"
+    },
+    {
+      "sha": "04532b8ef73fb3acc08e93c82ba4b3cd2d0bd45a",
+      "date": "2026-04-16",
+      "summary": "feat: password recovery via email reset link"
+    },
+    {
+      "sha": "859a298ad02659d9c6db91167bedccbac52310ff",
+      "date": "2026-04-16",
+      "summary": "fix: make all registration fields mandatory including email"
+    },
+    {
+      "sha": "898a0e9fa12e44a2889856c5dc7fa53b605a0715",
+      "date": "2026-04-16",
+      "summary": "fix: remove PIN field from add student page - shared PIN across students"
+    },
+    {
+      "sha": "5611b5024194cecf302f2c66bbac961028366ddb",
+      "date": "2026-04-16",
+      "summary": "feat: add student under same parent + student selector for multi-student parents"
+    },
+    {
+      "sha": "dc1ae3ed16e7d8a66747c0af226b888ec7ba7681",
+      "date": "2026-04-16",
+      "summary": "feat: increase new registration balance from 30 to 300 questions"
+    },
+    {
+      "sha": "88b7cb8ab93d231952df2b874ddc691f9c180920",
+      "date": "2026-04-16",
+      "summary": "feat: add parent profile update page"
+    },
+    {
+      "sha": "17c641f034918d4acf2b800732c04f2624a047ed",
+      "date": "2026-04-16",
+      "summary": "fix: remove old favicon.ico so only new icon.png is used"
+    },
+    {
+      "sha": "fc67c68309a324554c8e7ed2fece79642045009d",
+      "date": "2026-04-16",
+      "summary": "fix: replace favicon with banana student logo as app/icon.png"
+    },
+    {
+      "sha": "4ac2b1a5c9e3378530e5fa9e8687c8265256ceac",
+      "date": "2026-04-16",
+      "summary": "feat: update favicon to banana student logo from Supabase storage"
+    },
+    {
+      "sha": "6870e0041de44fa771e9708e7083527907860f2e",
+      "date": "2026-04-14",
+      "summary": "feat: admin console at /admin with quota, delete, email, question management"
+    },
+    {
+      "sha": "4c6bca95ebc77c56000eb89229bdc5f5295fae8c",
+      "date": "2026-04-13",
+      "summary": "fix: Turnstile not rendering - useState misused instead of useEffect for school fetch"
+    },
+    {
+      "sha": "0a660233a04deb4d3e3adce370e7bca39754cccb",
+      "date": "2026-04-13",
+      "summary": "feat: add '返回' (Go back) button to parent dashboard header"
+    },
+    {
+      "sha": "0a18be34413ab16b91d429f74bf983d7cc19de99",
+      "date": "2026-04-10",
+      "summary": "fix: PIN input showing number-only keyboard on mobile"
+    },
+    {
+      "sha": "fa81da406489632208cb9fcfe11791c14b5bfe2c",
+      "date": "2026-04-10",
+      "summary": "feat: add school selection to registration with 3-tier cascading dropdown"
+    },
+    {
+      "sha": "6717a9393f59e336d07a77988837ea5bc496de50",
+      "date": "2026-04-10",
+      "summary": "feat: allow student to choose question count (10, 20, or 30) per session"
+    },
+    {
+      "sha": "826dffeaa3beb3fbb8e408dd08e62beadf98c057",
+      "date": "2026-04-10",
+      "summary": "feat: question balance system with transaction history"
+    },
+    {
+      "sha": "3c9553bf408481a3050ca8ab0e5287753af10391",
+      "date": "2026-04-10",
+      "summary": "security: add RLS policies SQL to lock down all tables"
+    },
+    {
+      "sha": "e9607f580298f8baee5b966a949af7acaee3b6be",
+      "date": "2026-04-09",
+      "summary": "fix: background image broken by newline in env var URL"
+    },
+    {
+      "sha": "fa4b0aecc339013a0feea7844446c17e75a9e608",
+      "date": "2026-04-09",
+      "summary": "fix: background image not showing - CSS background shorthand was overriding inline backgroundImage"
+    },
+    {
+      "sha": "9164cba48b809f9b662b6b3806b61c02f819cf2c",
+      "date": "2026-04-09",
+      "summary": "fix: update registration form labels and add 8-digit mobile validation"
+    },
+    {
+      "sha": "3b2d51190570f51cccee779dde042a86e4c7378f",
+      "date": "2026-04-09",
+      "summary": "fix: make logo responsive to window width, update background image to bk.png"
+    },
+    {
+      "sha": "ee77189c94974a302140ccfe9adc023033c77958",
+      "date": "2026-04-09",
+      "summary": "feat: add logo to login page and background image to all pages"
+    },
+    {
+      "sha": "7a44e016d37c5d0fe778ba5bd7aafe7c5fc514a7",
+      "date": "2026-04-09",
+      "summary": "feat: add Cloudflare Turnstile CAPTCHA to registration form"
+    },
+    {
+      "sha": "47cd7e6a620ceacdc25ecd3b17b809d8e0f24264",
+      "date": "2026-04-09",
+      "summary": "feat: add parent dashboard with monthly session summaries and detail view"
+    },
+    {
+      "sha": "ad1914ca494392e7480f5d800e9faa1c0e3c6022",
+      "date": "2026-04-09",
+      "summary": "fix: update subject key from 'Math' to '數學' to match updated DB values"
+    },
+    {
+      "sha": "8676d04586d09b60fec4c16f2dc0c00f97892778",
+      "date": "2026-04-09",
+      "summary": "fix: use verified subdomain updates.hkedutech.com for email sender"
+    },
+    {
+      "sha": "aa9f878c82e83b2a9a8670438ea12c2f732b7c93",
+      "date": "2026-04-09",
+      "summary": "fix: update email sender to noreply@hkedutech.com (verified domain)"
+    },
+    {
+      "sha": "c2725d2335746abe54d6b359bf8d4e98abcd45f8",
+      "date": "2026-04-09",
+      "summary": "fix: return Resend error detail in email API response for debugging"
+    },
+    {
+      "sha": "1e8f91dcd73b2367279efdb1784e66e70a4e0add",
+      "date": "2026-04-09",
+      "summary": "feat: add email notification to parents after quiz completion"
+    },
+    {
+      "sha": "0cf7b7dc5f8a37a522164e457ea99aef0ee227c7",
+      "date": "2026-04-09",
+      "summary": "feat: collect parent email during registration"
+    },
+    {
+      "sha": "901ff598170bfb143f0fa6c57ecbb66cf3187e53",
+      "date": "2026-04-04",
+      "summary": "feat: add question report button on wrong answer cards"
+    },
+    {
+      "sha": "a2f7dea8c53acc34f64db1495f3d06725e4da0b3",
+      "date": "2026-04-04",
+      "summary": "feat: mobile-friendly results page with split layout"
+    },
+    {
+      "sha": "584af2fd52210c47a8d562adf4c60289d27c4731",
+      "date": "2026-04-04",
+      "summary": "fix: use RPC for login to bypass parents table RLS"
+    },
+    {
+      "sha": "299d93469d0e57116eb0d3b6262017a1ad0fdfd1",
+      "date": "2026-04-04",
+      "summary": "feat: use SECURITY DEFINER RPC functions for all database writes"
+    },
+    {
+      "sha": "fb339e54cb296894e4f871e5ee03d2e1e39823e2",
+      "date": "2026-04-04",
+      "summary": "fix: add editable mobile number field to registration page"
+    },
+    {
+      "sha": "67c12397822f7274632512a42be477c335bbbc2d",
+      "date": "2026-04-04",
+      "summary": "feat: add new user registration flow on login page"
+    },
+    {
+      "sha": "636b658d2062f2e7e51a0ffb39646123cd1705f6",
+      "date": "2026-04-04",
+      "summary": "feat: add student login flow, weighted question selection, and full session tracking"
+    },
+    {
+      "sha": "46c5c7a75ea99b1cf25b8fc139436e7d550e18e7",
+      "date": "2026-04-02",
+      "summary": "feat: use supabase.storage.getPublicUrl() for image URLs"
+    },
+    {
+      "sha": "1f930012d1d0ef06a375a5348df95005f8a34281",
+      "date": "2026-04-02",
+      "summary": "fix: handle broken image URLs gracefully with loading/error states"
+    },
+    {
+      "sha": "c4c9fbb37e87708a6ffe22ddf7796e3605152fc0",
+      "date": "2026-04-02",
+      "summary": "feat: limit short-answer to max 2, add image question support (max 1)"
+    },
+    {
+      "sha": "b430a24831b7f6d8108fc89d3a2b94ddaa772fc9",
+      "date": "2026-04-02",
+      "summary": "fix: remove student_id from quiz_sessions insert to match Supabase schema"
+    },
+    {
+      "sha": "145e9e7649961070dfec17e4a956732eaba12040",
+      "date": "2026-04-02",
+      "summary": "chore: add .vercel to gitignore"
+    },
+    {
+      "sha": "9e3145fdd9e5e737b3801fee0d554a47f4eff17b",
+      "date": "2026-04-02",
+      "summary": "feat: disable copy/right-click, fix random question selection, add short-answer input"
+    },
+    {
+      "sha": "51ebb18611988a8a7fbdcbbe429f3531822882cc",
+      "date": "2026-04-02",
+      "summary": "docs: add Vercel production deployment URL to README"
+    },
+    {
+      "sha": "5019de2f529cbba2539c2c3ec3ed7f1839d2235d",
+      "date": "2026-04-02",
+      "summary": "feat: add quiz page and results view with Supabase integration (#1)"
+    },
+    {
+      "sha": "d4cdc3591f881b1293b6fe77c9799426a900589e",
+      "date": "2026-04-02",
+      "summary": "Initial commit"
+    }
+  ],
+  "inventory_stats": {
+    "total_commits_since_start": 230,
+    "total_feature_rows": 46
+  }
+}
