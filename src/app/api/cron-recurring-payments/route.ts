@@ -37,6 +37,8 @@ type IntentCreatePayload = {
   };
 };
 
+const RECURRING_METHOD_TYPES = new Set(["card", "applepay", "googlepay"]);
+
 function getSupabaseAdmin() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -166,11 +168,25 @@ export async function GET(req: NextRequest) {
       processed += 1;
       if (
         !profile.airwallex_customer_id ||
+        !profile.airwallex_payment_consent_id ||
         !profile.airwallex_payment_method_id ||
         !profile.payment_method_type
       ) {
         failed += 1;
-        const reason = "Missing recurring payment credentials";
+        const reason = "Missing recurring payment credentials (customer/consent/method)";
+        failures.push({ mobile_number: profile.mobile_number, reason });
+        await markRecurringProfile(supabase, profile.id, {
+          status: "failed",
+          last_order_status: "failed",
+          last_error: reason,
+        });
+        continue;
+      }
+
+      const normalizedMethodType = profile.payment_method_type.trim().toLowerCase();
+      if (!RECURRING_METHOD_TYPES.has(normalizedMethodType)) {
+        failed += 1;
+        const reason = `Unsupported recurring payment method type: ${profile.payment_method_type}`;
         failures.push({ mobile_number: profile.mobile_number, reason });
         await markRecurringProfile(supabase, profile.id, {
           status: "failed",
@@ -292,9 +308,9 @@ export async function GET(req: NextRequest) {
             customer_id: profile.airwallex_customer_id,
             payment_method: {
               id: profile.airwallex_payment_method_id,
-              type: profile.payment_method_type,
+              type: normalizedMethodType,
             },
-            payment_consent_id: profile.airwallex_payment_consent_id || undefined,
+            payment_consent_id: profile.airwallex_payment_consent_id,
             external_recurring_data: {
               initial_payment: false,
               triggered_by: "merchant",
