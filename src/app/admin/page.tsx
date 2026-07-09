@@ -273,14 +273,27 @@ interface PaymentRecurringMonitorUserRow {
   this_month_payment_success: boolean;
   this_month_payment_status: "success" | "failed" | "no_attempt";
   this_month_last_attempt_at: string | null;
+  daily_due_for_mit: boolean;
+  daily_mit_requested: boolean;
+  daily_mit_status: "success" | "failed" | "pending" | "missing" | "not_required";
+  daily_mit_last_attempt_at: string | null;
+  daily_mit_last_attempt_status: string | null;
+  daily_mit_has_airwallex_intent: boolean;
 }
 
 interface PaymentRecurringMonitorResult {
   month: string;
+  day: string;
   totals: {
     currently_paid_users: number;
     this_month_success: number;
     this_month_failed: number;
+    daily_due_profiles: number;
+    daily_requested: number;
+    daily_success: number;
+    daily_failed: number;
+    daily_pending: number;
+    daily_missing: number;
   };
   users: PaymentRecurringMonitorUserRow[];
 }
@@ -973,6 +986,16 @@ function formatMonthPaymentStatusLabel(
   if (status === "success") return "成功";
   if (status === "failed") return "失敗";
   return "尚未嘗試";
+}
+
+function formatDailyMitStatusLabel(
+  status: PaymentRecurringMonitorUserRow["daily_mit_status"]
+): string {
+  if (status === "success") return "成功";
+  if (status === "failed") return "失敗";
+  if (status === "pending") return "處理中";
+  if (status === "missing") return "缺少請求";
+  return "今日不需發起";
 }
 
 function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
@@ -1714,7 +1737,7 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
           <div>
             <h3 className="text-sm font-bold text-gray-800">月費續費監察儀表板</h3>
             <p className="text-xs text-gray-500">
-              顯示目前有效月費家長總數、目前付款狀態、下次扣款日期，以及所選月份續費是否成功。
+              以「每日」追蹤 MIT 月費請求有否發起與處理結果，並保留所選月份續費成敗統計。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1738,10 +1761,30 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
 
         {recurringMonitor && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-sm">
               <div className="rounded-lg border border-gray-100 p-3">
                 <p className="text-xs text-gray-500 mb-1">目前有效月費家長</p>
                 <p className="font-semibold text-indigo-700">{recurringMonitor.totals.currently_paid_users}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日需發起 MIT</p>
+                <p className="font-semibold text-indigo-700">{recurringMonitor.totals.daily_due_profiles}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日已發起 MIT</p>
+                <p className="font-semibold text-indigo-700">{recurringMonitor.totals.daily_requested}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日 MIT 成功</p>
+                <p className="font-semibold text-emerald-700">{recurringMonitor.totals.daily_success}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日 MIT 失敗</p>
+                <p className="font-semibold text-red-700">{recurringMonitor.totals.daily_failed}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日缺少請求</p>
+                <p className="font-semibold text-amber-700">{recurringMonitor.totals.daily_missing}</p>
               </div>
               <div className="rounded-lg border border-gray-100 p-3">
                 <p className="text-xs text-gray-500 mb-1">所選月份續費成功</p>
@@ -1763,6 +1806,11 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     <th className="py-2 pr-3">自動續費設定</th>
                     <th className="py-2 pr-3">方式</th>
                     <th className="py-2 pr-3">下次付款日期</th>
+                    <th className="py-2 pr-3">今日需發起 MIT</th>
+                    <th className="py-2 pr-3">今日已發起 MIT</th>
+                    <th className="py-2 pr-3">今日 MIT 狀態</th>
+                    <th className="py-2 pr-3">今日最新 MIT 時間</th>
+                    <th className="py-2 pr-3">今日最新 MIT 回應</th>
                     <th className="py-2 pr-3">本月付款是否成功</th>
                     <th className="py-2 pr-3">本月付款狀態</th>
                     <th className="py-2 pr-3">本月最近嘗試時間</th>
@@ -1788,6 +1836,17 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                       </td>
                       <td className="py-2 pr-3">{row.recurring_method_type || "—"}</td>
                       <td className="py-2 pr-3">{formatDateTimeDisplay(row.next_payment_date)}</td>
+                      <td className="py-2 pr-3">{row.daily_due_for_mit ? "是" : "否"}</td>
+                      <td className="py-2 pr-3">{row.daily_mit_requested ? "是" : "否"}</td>
+                      <td className="py-2 pr-3">{formatDailyMitStatusLabel(row.daily_mit_status)}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.daily_mit_last_attempt_at)}</td>
+                      <td className="py-2 pr-3">
+                        {row.daily_mit_last_attempt_status
+                          ? `${row.daily_mit_last_attempt_status}${
+                              row.daily_mit_has_airwallex_intent ? "（已送 Airwallex）" : ""
+                            }`
+                          : "—"}
+                      </td>
                       <td className="py-2 pr-3">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -1806,7 +1865,7 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   ))}
                   {recurringMonitor.users.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="py-4 text-center text-gray-400">
+                      <td colSpan={15} className="py-4 text-center text-gray-400">
                         目前沒有有效月費家長資料
                       </td>
                     </tr>

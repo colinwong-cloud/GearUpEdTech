@@ -79,6 +79,24 @@ function normalizeIsoDateTime(raw: unknown): string | null {
   return date.toISOString();
 }
 
+function getHktDayRangeIso(reference = new Date()): {
+  dayKey: string;
+  startIso: string;
+  endIso: string;
+} {
+  const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const hktNowMs = reference.getTime() + HKT_OFFSET_MS;
+  const hktNow = new Date(hktNowMs);
+  const year = hktNow.getUTCFullYear();
+  const month = hktNow.getUTCMonth();
+  const day = hktNow.getUTCDate();
+  const dayKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const hktMidnightUtcMs = Date.UTC(year, month, day) - HKT_OFFSET_MS;
+  const startIso = new Date(hktMidnightUtcMs).toISOString();
+  const endIso = new Date(hktMidnightUtcMs + 24 * 60 * 60 * 1000).toISOString();
+  return { dayKey, startIso, endIso };
+}
+
 function buildLast12MonthsTemplate(now = new Date()): {
   month: string;
   amount_hkd: number;
@@ -1572,6 +1590,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
         }
         const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+        const { dayKey, startIso: dayStartIso, endIso: dayEndIso } = getHktDayRangeIso();
         const nowIso = new Date().toISOString();
 
         const { data: paidParents, error: paidParentsErr } = await admin
@@ -1599,6 +1618,7 @@ export async function POST(req: NextRequest) {
         const paidMobiles = normalizedParents.map((row) => row.mobile_number);
         const recurringByMobile = new Map<string, RecurringProfileRow>();
         const monthOrdersByMobile = new Map<string, RecurringMonitorOrderRow[]>();
+        const dayOrdersByMobile = new Map<string, RecurringMonitorOrderRow[]>();
 
         for (const chunk of chunkArray(paidMobiles, 500)) {
           const recurringRes = await admin
@@ -1662,9 +1682,59 @@ export async function POST(req: NextRequest) {
             rows.push(order);
             monthOrdersByMobile.set(mobile, rows);
           }
+
+          let dayOrders: RecurringMonitorOrderRow[] = [];
+          const richDayOrdersRes = await admin
+            .from("parent_payment_orders")
+            .select(
+              "id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,is_recurring_payment,payment_method,final_amount_hkd"
+            )
+            .in("mobile_number", chunk)
+            .gte("created_at", dayStartIso)
+            .lt("created_at", dayEndIso)
+            .order("created_at", { ascending: false })
+            .limit(20000);
+          if (richDayOrdersRes.error) {
+            const ordersErrMsg = richDayOrdersRes.error.message || "";
+            if (/is_recurring_payment/i.test(ordersErrMsg)) {
+              const fallbackDayOrdersRes = await admin
+                .from("parent_payment_orders")
+                .select("id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,payment_method,final_amount_hkd")
+                .in("mobile_number", chunk)
+                .gte("created_at", dayStartIso)
+                .lt("created_at", dayEndIso)
+                .eq("payment_method", "recurring_auto_charge")
+                .order("created_at", { ascending: false })
+                .limit(20000);
+              if (fallbackDayOrdersRes.error) throw fallbackDayOrdersRes.error;
+              dayOrders = (fallbackDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? [];
+            } else {
+              throw richDayOrdersRes.error;
+            }
+          } else {
+            dayOrders = ((richDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
+              if (row.is_recurring_payment === true) return true;
+              return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
+            });
+          }
+
+          for (const order of dayOrders) {
+            const mobile = String(order.mobile_number || "").trim();
+            if (!mobile) continue;
+            const rows = dayOrdersByMobile.get(mobile) ?? [];
+            rows.push(order);
+            dayOrdersByMobile.set(mobile, rows);
+          }
         }
 
         for (const orders of monthOrdersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime = normalizeIsoDateTime(a.created_at) || "";
+            const bTime = normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+        for (const orders of dayOrdersByMobile.values()) {
           orders.sort((a, b) => {
             const aTime = normalizeIsoDateTime(a.created_at) || "";
             const bTime = normalizeIsoDateTime(b.created_at) || "";
@@ -1722,6 +1792,12 @@ export async function POST(req: NextRequest) {
           currently_paid_users: normalizedParents.length,
           this_month_success: 0,
           this_month_failed: 0,
+          daily_due_profiles: 0,
+          daily_requested: 0,
+          daily_success: 0,
+          daily_failed: 0,
+          daily_pending: 0,
+          daily_missing: 0,
         };
 
         const users = normalizedParents.map((parent) => {
@@ -1748,6 +1824,36 @@ export async function POST(req: NextRequest) {
           if (monthPaymentStatus === "failed") totals.this_month_failed += 1;
 
           const latestMonthOrder = monthOrders[0] ?? null;
+          const dayOrders = dayOrdersByMobile.get(parent.mobile_number) ?? [];
+          const latestDayOrder = dayOrders[0] ?? null;
+          const nextPaymentDate = normalizeIsoDateTime(recurringProfile?.next_charge_at);
+          const dailyDueForMit = Boolean(nextPaymentDate && nextPaymentDate <= nowIso);
+          const dailyMitRequested = dayOrders.length > 0;
+          const hasDayPaid = dayOrders.some(
+            (row) => String(row.status || "").trim().toLowerCase() === "paid"
+          );
+          const hasDayFailed = dayOrders.some((row) =>
+            ["failed", "cancelled"].includes(String(row.status || "").trim().toLowerCase())
+          );
+          const hasDayPending = dayOrders.some((row) =>
+            ["created", "pending"].includes(String(row.status || "").trim().toLowerCase())
+          );
+          const dailyMitStatus = hasDayPaid
+            ? "success"
+            : hasDayFailed
+              ? "failed"
+              : hasDayPending
+                ? "pending"
+                : dailyDueForMit
+                  ? "missing"
+                  : "not_required";
+
+          if (dailyDueForMit) totals.daily_due_profiles += 1;
+          if (dailyMitRequested) totals.daily_requested += 1;
+          if (dailyMitStatus === "success") totals.daily_success += 1;
+          if (dailyMitStatus === "failed") totals.daily_failed += 1;
+          if (dailyMitStatus === "pending") totals.daily_pending += 1;
+          if (dailyMitStatus === "missing") totals.daily_missing += 1;
 
           return {
             parent_id: parent.parent_id,
@@ -1757,18 +1863,31 @@ export async function POST(req: NextRequest) {
             current_payment_status: recurringStatus,
             recurring_method_type: readString(recurringProfile?.payment_method_type),
             recurring_linkage_ready: recurringLinkageReady,
-            next_payment_date: normalizeIsoDateTime(recurringProfile?.next_charge_at),
+            next_payment_date: nextPaymentDate,
             this_month_payment_success: monthPaymentStatus === "success",
             this_month_payment_status: monthPaymentStatus,
             this_month_last_attempt_at: latestMonthOrder
               ? normalizeIsoDateTime(latestMonthOrder.created_at)
               : null,
+            daily_due_for_mit: dailyDueForMit,
+            daily_mit_requested: dailyMitRequested,
+            daily_mit_status: dailyMitStatus,
+            daily_mit_last_attempt_at: latestDayOrder
+              ? normalizeIsoDateTime(latestDayOrder.created_at)
+              : null,
+            daily_mit_last_attempt_status: latestDayOrder
+              ? readString(latestDayOrder.status)
+              : null,
+            daily_mit_has_airwallex_intent: dayOrders.some((row) =>
+              Boolean(readString(row.airwallex_payment_intent_id))
+            ),
           };
         });
 
         return NextResponse.json({
           data: {
             month: monthKey,
+            day: dayKey,
             totals,
             users: users.sort((a, b) => {
               const aNext = a.next_payment_date || "9999-12-31T23:59:59.000Z";
