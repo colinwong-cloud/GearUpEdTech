@@ -167,8 +167,26 @@ const liveInventory = getCommitInventorySince(contract.coverage_start_date);
 const liveShas = new Set(liveInventory.map((row) => row.sha));
 const contractShas = new Set(contract.commit_inventory.map((row) => row.sha));
 
+function isAllowedMissingCommit(sha) {
+  try {
+    const head = run("git rev-parse HEAD");
+    if (sha !== head) return false;
+    const filesRaw = run(`git show --name-only --pretty=format: ${sha}`);
+    const files = filesRaw
+      .split("\n")
+      .map((row) => row.trim())
+      .filter(Boolean);
+    return (
+      files.length > 0 &&
+      files.every((file) => file === "docs/feature-contract.json")
+    );
+  } catch {
+    return false;
+  }
+}
+
 for (const sha of liveShas) {
-  if (!contractShas.has(sha)) {
+  if (!contractShas.has(sha) && !isAllowedMissingCommit(sha)) {
     fail(`commit missing from contract inventory: ${sha}`);
   }
 }
