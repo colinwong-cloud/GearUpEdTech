@@ -99,13 +99,38 @@ function buildEmailHtml(data: QuizEmailData): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
+  <style>
+    :root {
+      color-scheme: light only;
+      supported-color-schemes: light;
+    }
+    body, table, td, p, h1, h2, h3 {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+    .force-bg { background: #eef2ff !important; }
+    .force-card { background: #ffffff !important; }
+    .force-text { color: #111827 !important; }
+    .force-muted { color: #374151 !important; }
+    .summary-text { font-size: 17px !important; line-height: 1.9 !important; color: #111827 !important; }
+    @media (prefers-color-scheme: dark) {
+      body, .force-bg { background: #eef2ff !important; }
+      .force-card { background: #ffffff !important; }
+      .force-text { color: #111827 !important; }
+      .force-muted { color: #374151 !important; }
+    }
+    [data-ogsc] .force-bg { background: #eef2ff !important; }
+    [data-ogsc] .force-card { background: #ffffff !important; }
+    [data-ogsc] .force-text { color: #111827 !important; }
+    [data-ogsc] .force-muted { color: #374151 !important; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#eef2ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
-<div style="max-width:560px;margin:0 auto;padding:24px 16px">
+<body class="force-bg" style="margin:0;padding:0;background:#eef2ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
+<div class="force-bg" style="max-width:560px;margin:0 auto;padding:24px 16px;background:#eef2ff">
 
-  <div style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+  <div class="force-card" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
 
     <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px 28px">
       <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700">GearUp Quiz</h1>
@@ -113,11 +138,11 @@ function buildEmailHtml(data: QuizEmailData): string {
     </div>
 
     <div style="padding:28px">
-      <p style="margin:0 0 16px;font-size:16px;color:#1f2937;line-height:1.75">
+      <p class="force-text" style="margin:0 0 16px;font-size:16px;color:#1f2937;line-height:1.75">
         ${greeting}<strong>${student_name}</strong> 剛完成了一次練習！
       </p>
 
-      <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.65">
+      <p class="force-muted" style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.65">
         這是本週第 <strong style="color:#4f46e5">${weekly_count}</strong> 次練習
       </p>
 
@@ -129,7 +154,7 @@ function buildEmailHtml(data: QuizEmailData): string {
       ${(session_practice_summary_parent || "").trim() ? `
       <div style="background:#fffbeb;border-radius:12px;padding:16px 18px;margin:0 0 20px;border:2px solid #f59e0b">
         <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#92400e">老師給家長的練習小結</p>
-        <p style="margin:0;font-size:16px;color:#111827;line-height:1.75;white-space:pre-wrap">${(session_practice_summary_parent || "")
+        <p class="summary-text" style="margin:0;font-size:17px;color:#111827;line-height:1.9;white-space:pre-wrap;font-weight:500">${(session_practice_summary_parent || "")
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;")
@@ -138,19 +163,19 @@ function buildEmailHtml(data: QuizEmailData): string {
 
       <table style="width:100%;border-collapse:collapse;margin:0 0 24px;background:#ffffff">
         <tr>
-          <td style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">科目</td>
+          <td class="force-muted" style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">科目</td>
           <td style="padding:8px 0;font-size:14px;color:#111827;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6">${session.subject}</td>
         </tr>
         <tr>
-          <td style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">用時</td>
+          <td class="force-muted" style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">用時</td>
           <td style="padding:8px 0;font-size:14px;color:#111827;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6">${formatTime(session.time_spent_seconds)}</td>
         </tr>
         <tr>
-          <td style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">答對</td>
+          <td class="force-muted" style="padding:8px 0;font-size:14px;color:#374151;border-bottom:1px solid #e5e7eb">答對</td>
           <td style="padding:8px 0;font-size:14px;color:#059669;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6">${session.score} 題</td>
         </tr>
         <tr>
-          <td style="padding:8px 0;font-size:14px;color:#374151">答錯</td>
+          <td class="force-muted" style="padding:8px 0;font-size:14px;color:#374151">答錯</td>
           <td style="padding:8px 0;font-size:14px;color:#dc2626;font-weight:600;text-align:right">${incorrect} 題</td>
         </tr>
       </table>
@@ -183,14 +208,14 @@ function buildEmailHtml(data: QuizEmailData): string {
     </div>
 
     <div style="background:#f9fafb;padding:20px 28px;border-top:1px solid #d1d5db">
-      <p style="margin:0;font-size:13px;color:#4b5563;text-align:center;line-height:1.6">
+      <p class="force-muted" style="margin:0;font-size:13px;color:#4b5563;text-align:center;line-height:1.6">
         Keep up the great work! 繼續加油！ 💪
       </p>
     </div>
 
   </div>
 
-  <p style="margin:16px 0 0;font-size:11px;color:#6b7280;text-align:center;line-height:1.55">
+  <p class="force-muted" style="margin:16px 0 0;font-size:11px;color:#6b7280;text-align:center;line-height:1.55">
     GearUp Quiz — 由系統自動發送
   </p>
 

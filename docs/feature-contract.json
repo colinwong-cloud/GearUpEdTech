@@ -230,12 +230,22 @@
         {
           "type": "file_contains",
           "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "meta name=\"x-apple-disable-message-reformatting\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
           "snippet": "meta name=\"color-scheme\" content=\"light\""
         },
         {
           "type": "file_contains",
           "path": "src/app/api/send-quiz-email/route.ts",
           "snippet": "老師給家長的練習小結"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "class=\"summary-text\""
         }
       ]
     },
@@ -1085,8 +1095,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-09T13:01:57.501Z",
+  "generated_at": "2026-07-09T14:34:10.792Z",
   "commit_inventory": [
+    {
+      "sha": "e322446dc6084807e4235146a8fd1b4ae10e1cbc",
+      "date": "2026-07-09",
+      "summary": "Allow self-refresh contract commit in gate check"
+    },
+    {
+      "sha": "0dd7a6e408b0abf72b15d5f8c04aee308aa75a24",
+      "date": "2026-07-09",
+      "summary": "Refresh feature contract inventory snapshot"
+    },
     {
       "sha": "501e4c489dc02390bbfc3fe06d2a138c111d2a39",
       "date": "2026-07-09",
@@ -2244,7 +2264,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 231,
+    "total_commits_since_start": 233,
     "total_feature_rows": 46
   }
 }

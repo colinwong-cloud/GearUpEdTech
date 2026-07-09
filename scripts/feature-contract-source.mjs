@@ -131,12 +131,22 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/api/send-quiz-email/route.ts",
+          snippet: 'meta name="x-apple-disable-message-reformatting"',
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
           snippet: 'meta name="color-scheme" content="light"',
         },
         {
           type: "file_contains",
           path: "src/app/api/send-quiz-email/route.ts",
           snippet: "老師給家長的練習小結",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
+          snippet: "class=\"summary-text\"",
         },
       ],
     },

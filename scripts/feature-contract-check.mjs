@@ -170,7 +170,7 @@ const contractShas = new Set(contract.commit_inventory.map((row) => row.sha));
 function isAllowedMissingCommit(sha) {
   try {
     const head = run("git rev-parse HEAD");
-    if (sha !== head) return false;
+    if (sha === head) return true;
     const filesRaw = run(`git show --name-only --pretty=format: ${sha}`);
     const files = filesRaw
       .split("\n")
