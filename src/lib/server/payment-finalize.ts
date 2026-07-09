@@ -86,6 +86,10 @@ type AirwallexAttemptResponse = {
   provider_original_response_message?: string;
 };
 
+type AirwallexPaymentAttemptListResponse = {
+  items?: AirwallexAttemptResponse[];
+};
+
 type AirwallexPaymentConsentResponse = {
   id?: string;
   customer_id?: string;
@@ -589,6 +593,39 @@ export async function getAirwallexPaymentAttempt({
   return payload;
 }
 
+export async function getLatestAirwallexPaymentAttemptByIntent({
+  baseUrl,
+  accessToken,
+  paymentIntentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentIntentId: string;
+}): Promise<AirwallexAttemptResponse | null> {
+  const params = new URLSearchParams({
+    page_num: "0",
+    page_size: "1",
+    payment_intent_id: paymentIntentId,
+  });
+  const resp = await fetch(
+    `${baseUrl}/api/v1/pa/payment_attempts?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const payload = (await resp.json()) as AirwallexPaymentAttemptListResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to list payment attempts from Airwallex");
+  }
+  const attempts = Array.isArray(payload.items) ? payload.items : [];
+  return attempts[0] ?? null;
+}
+
 async function getOrderByReference(
   supabaseAdmin: SupabaseClient,
   paymentIntentId: string | null,
@@ -701,6 +738,12 @@ export async function verifyAndFinalizeParentPayment({
         baseUrl,
         accessToken,
         paymentAttemptId,
+      });
+    } else {
+      attempt = await getLatestAirwallexPaymentAttemptByIntent({
+        baseUrl,
+        accessToken,
+        paymentIntentId: intentId,
       });
     }
     let snapshot = mergeSnapshotWithOrderFallback(
@@ -869,6 +912,12 @@ export async function finalizePaymentByIntent({
             accessToken: context.accessToken,
             paymentAttemptId: fallbackAttemptId,
           });
+        } else {
+          attempt = await getLatestAirwallexPaymentAttemptByIntent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentIntentId,
+          });
         }
       }
     }
@@ -893,6 +942,12 @@ export async function finalizePaymentByIntent({
               baseUrl: context.baseUrl,
               accessToken: context.accessToken,
               paymentAttemptId: fallbackAttemptId,
+            });
+          } else {
+            attempt = await getLatestAirwallexPaymentAttemptByIntent({
+              baseUrl: context.baseUrl,
+              accessToken: context.accessToken,
+              paymentIntentId,
             });
           }
           snapshot = mergeSnapshotWithOrderFallback(
