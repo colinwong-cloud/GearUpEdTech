@@ -970,16 +970,6 @@ function formatHkdAmount(value: number): string {
   return Number(value || 0).toFixed(2);
 }
 
-function formatRecurringStatusLabel(status: string | null | undefined): string {
-  const token = String(status || "").trim().toLowerCase();
-  if (token === "active") return "啟用中";
-  if (token === "paused") return "暫停";
-  if (token === "cancelled") return "已取消";
-  if (token === "failed") return "失敗";
-  if (token === "no_profile") return "未設定自動續費";
-  return token || "—";
-}
-
 function formatMonthPaymentStatusLabel(
   status: PaymentRecurringMonitorUserRow["this_month_payment_status"]
 ): string {
@@ -1802,10 +1792,6 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   <tr className="text-left text-gray-500 border-b">
                     <th className="py-2 pr-3">家長電話</th>
                     <th className="py-2 pr-3">家長姓名</th>
-                    <th className="py-2 pr-3">目前付款狀態</th>
-                    <th className="py-2 pr-3">自動續費設定</th>
-                    <th className="py-2 pr-3">方式</th>
-                    <th className="py-2 pr-3">下次付款日期</th>
                     <th className="py-2 pr-3">今日需發起 MIT</th>
                     <th className="py-2 pr-3">今日已發起 MIT</th>
                     <th className="py-2 pr-3">今日 MIT 狀態</th>
@@ -1822,20 +1808,6 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     <tr key={row.parent_id} className="border-b border-gray-100">
                       <td className="py-2 pr-3 font-mono">{row.mobile_number}</td>
                       <td className="py-2 pr-3">{row.parent_name || "—"}</td>
-                      <td className="py-2 pr-3">{formatRecurringStatusLabel(row.current_payment_status)}</td>
-                      <td className="py-2 pr-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            row.recurring_linkage_ready
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                        >
-                          {row.recurring_linkage_ready ? "已啟用" : "未完整"}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3">{row.recurring_method_type || "—"}</td>
-                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.next_payment_date)}</td>
                       <td className="py-2 pr-3">{row.daily_due_for_mit ? "是" : "否"}</td>
                       <td className="py-2 pr-3">{row.daily_mit_requested ? "是" : "否"}</td>
                       <td className="py-2 pr-3">{formatDailyMitStatusLabel(row.daily_mit_status)}</td>
@@ -1865,7 +1837,7 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   ))}
                   {recurringMonitor.users.length === 0 && (
                     <tr>
-                      <td colSpan={15} className="py-4 text-center text-gray-400">
+                      <td colSpan={11} className="py-4 text-center text-gray-400">
                         目前沒有有效月費家長資料
                       </td>
                     </tr>
