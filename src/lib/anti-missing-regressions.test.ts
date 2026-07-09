@@ -7,10 +7,14 @@ function readSource(relPath: string): string {
 }
 
 describe("anti-missing regression guards", () => {
-  it("keeps results page action buttons including 回到主畫面", () => {
+  it("keeps results page wrong-answer details and action buttons", () => {
     const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("錯題解析");
+    expect(pageSource).toContain("你的答案（值）");
+    expect(pageSource).toContain("正確答案（值）");
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
+    expect(pageSource).toContain("bg-orange-500 text-white");
     expect(pageSource).toContain("登出");
   });
 
