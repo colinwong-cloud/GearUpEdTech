@@ -14,6 +14,10 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("正確答案（值）");
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
+    expect(pageSource).toContain("px-8 py-3.5");
+    expect(pageSource).toContain("bg-indigo-600 text-white font-semibold rounded-xl");
+    expect(pageSource).toContain("bg-orange-500 text-white font-semibold rounded-xl");
+    expect(pageSource).toContain("bg-white text-gray-700 font-semibold rounded-xl border border-gray-300");
     expect(pageSource).toContain("bg-orange-500 text-white");
     expect(pageSource).toContain("登出");
   });
@@ -30,6 +34,25 @@ describe("anti-missing regression guards", () => {
     expect(emailSource).toContain("class=\"summary-text\"");
     expect(emailSource).toContain("font-size:17px;color:#111827;line-height:1.9");
     expect(emailSource).toContain("Keep up the great work! 繼續加油！ 💪");
+  });
+
+  it("keeps tutor portal and admin tutor+MIT modules", () => {
+    const tutorPageSource = readSource("src/app/tutor/page.tsx");
+    expect(tutorPageSource).toContain("導師入口");
+    expect(tutorPageSource).toContain("使用教師編號登入");
+    expect(tutorPageSource).toContain("首次登入請更新密碼");
+
+    const adminPageSource = readSource("src/app/admin/page.tsx");
+    expect(adminPageSource).toContain("教師編號維護");
+    expect(adminPageSource).toContain("重設導師登入密碼");
+    expect(adminPageSource).toContain("今日需發起 MIT");
+    expect(adminPageSource).toContain("今日已發起 MIT");
+
+    const adminApiSource = readSource("src/app/api/admin/console/route.ts");
+    expect(adminApiSource).toContain("tutor_referral_code_create");
+    expect(adminApiSource).toContain("tutor_referral_code_summary");
+    expect(adminApiSource).toContain("tutor_referral_password_reset");
+    expect(adminApiSource).toContain("payment_recurring_monitor_summary");
   });
 });
 
