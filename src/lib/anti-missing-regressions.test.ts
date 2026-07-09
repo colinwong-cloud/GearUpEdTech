@@ -18,12 +18,15 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("登出");
   });
 
-  it("keeps parent practice email readability markers", () => {
+  it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');
     expect(emailSource).toContain('meta name="color-scheme" content="light"');
     expect(emailSource).toContain("color-scheme: light only");
     expect(emailSource).toContain("老師給家長的練習小結");
+    expect(emailSource).toContain("錯題詳解（錯題逐題詳解）");
+    expect(emailSource).toContain("你的答案（值）");
+    expect(emailSource).toContain("正確答案（值）");
     expect(emailSource).toContain("class=\"summary-text\"");
     expect(emailSource).toContain("font-size:17px;color:#111827;line-height:1.9");
     expect(emailSource).toContain("Keep up the great work! 繼續加油！ 💪");

@@ -218,13 +218,14 @@
       ]
     },
     {
-      "id": "parent-email-practice-summary-readability",
+      "id": "parent-email-practice-summary-and-wrong-details",
       "month": "2026-07",
       "category": "communications",
       "priority": "critical",
-      "title": "Parent email practice summary readability and light mode",
+      "title": "Parent email includes readable summary and wrong-question detailed explanations",
       "evidence_commits": [
-        "4b4ad35"
+        "4b4ad35",
+        "c8285a6"
       ],
       "checks": [
         {
@@ -246,6 +247,26 @@
           "type": "file_contains",
           "path": "src/app/api/send-quiz-email/route.ts",
           "snippet": "class=\"summary-text\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "fetchWrongAnswerDetails"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "錯題詳解（錯題逐題詳解）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "你的答案（值）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "正確答案（值）"
         }
       ]
     },
@@ -1095,8 +1116,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-09T14:34:10.792Z",
+  "generated_at": "2026-07-09T14:42:49.026Z",
   "commit_inventory": [
+    {
+      "sha": "c8285a6c3aa01980e43423a50c284fe3c203cdf4",
+      "date": "2026-07-09",
+      "summary": "Harden parent email readability and enforce dark-mode guards"
+    },
     {
       "sha": "e322446dc6084807e4235146a8fd1b4ae10e1cbc",
       "date": "2026-07-09",
@@ -2264,7 +2290,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 233,
+    "total_commits_since_start": 234,
     "total_feature_rows": 46
   }
 }

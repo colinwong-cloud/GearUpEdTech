@@ -121,12 +121,12 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
-      id: "parent-email-practice-summary-readability",
+      id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",
       priority: "critical",
-      title: "Parent email practice summary readability and light mode",
-      evidence_commits: ["4b4ad35"],
+      title: "Parent email includes readable summary and wrong-question detailed explanations",
+      evidence_commits: ["4b4ad35", "c8285a6"],
       checks: [
         {
           type: "file_contains",
@@ -147,6 +147,26 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/api/send-quiz-email/route.ts",
           snippet: "class=\"summary-text\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
+          snippet: "fetchWrongAnswerDetails",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
+          snippet: "錯題詳解（錯題逐題詳解）",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
+          snippet: "你的答案（值）",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-quiz-email/route.ts",
+          snippet: "正確答案（值）",
         },
       ],
     },
