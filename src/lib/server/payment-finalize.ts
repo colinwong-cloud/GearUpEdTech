@@ -38,6 +38,9 @@ type PaymentOrderRow = {
   final_amount_hkd: number;
   finalized_at: string | null;
   airwallex_customer_id: string | null;
+  airwallex_payment_consent_id: string | null;
+  airwallex_payment_method_id: string | null;
+  payment_method_type: string | null;
   airwallex_payment_intent_id: string | null;
 };
 
@@ -247,6 +250,23 @@ function snapshotHasRecurringLinkage(snapshot: PaymentDetailSnapshot): boolean {
       snapshot.paymentMethodId &&
       snapshot.paymentMethodType
   );
+}
+
+function mergeSnapshotWithOrderFallback(
+  snapshot: PaymentDetailSnapshot,
+  order: PaymentOrderRow
+): PaymentDetailSnapshot {
+  return {
+    ...snapshot,
+    customerId: snapshot.customerId || order.airwallex_customer_id || null,
+    paymentConsentId: snapshot.paymentConsentId || order.airwallex_payment_consent_id || null,
+    paymentMethodId: snapshot.paymentMethodId || order.airwallex_payment_method_id || null,
+    paymentMethodType: snapshot.paymentMethodType || order.payment_method_type || null,
+  };
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function updateOrderPaymentDetails(
@@ -499,7 +519,7 @@ async function getOrderByReference(
     const { data, error } = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,airwallex_payment_intent_id"
       )
       .eq("airwallex_payment_intent_id", paymentIntentId)
       .order("created_at", { ascending: false })
@@ -512,7 +532,7 @@ async function getOrderByReference(
     const { data, error } = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,airwallex_payment_intent_id"
       )
       .eq("merchant_order_id", merchantOrderId)
       .order("created_at", { ascending: false })
@@ -604,11 +624,38 @@ export async function verifyAndFinalizeParentPayment({
         paymentAttemptId,
       });
     }
-    const snapshot = buildSnapshotFromAttempt(attempt, intent);
+    let snapshot = mergeSnapshotWithOrderFallback(
+      buildSnapshotFromAttempt(attempt, intent),
+      order
+    );
+    if (isPaid && !snapshotHasRecurringLinkage(snapshot)) {
+      for (let i = 0; i < 3; i += 1) {
+        const refreshedIntent = await getAirwallexPaymentIntent({
+          baseUrl,
+          accessToken,
+          paymentIntentId: intentId,
+        });
+        const refreshedAttemptId =
+          readString(refreshedIntent.latest_payment_attempt?.id) || paymentAttemptId;
+        if (refreshedAttemptId) {
+          attempt = await getAirwallexPaymentAttempt({
+            baseUrl,
+            accessToken,
+            paymentAttemptId: refreshedAttemptId,
+          });
+        }
+        snapshot = mergeSnapshotWithOrderFallback(
+          buildSnapshotFromAttempt(attempt, refreshedIntent),
+          order
+        );
+        if (snapshotHasRecurringLinkage(snapshot)) break;
+        if (i < 2) await sleep(800);
+      }
+    }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       order.id,
-      paymentAttemptId,
+      readString(attempt?.id) || paymentAttemptId,
       snapshot
     );
     if (isPaid) {
@@ -704,49 +751,76 @@ export async function finalizePaymentByIntent({
     const normalizedAttemptId =
       readString(paymentAttemptId) || readString(nestedAttempt?.id) || null;
     const canQueryAirwallex = hasAirwallexApiCredentials();
-    if (canQueryAirwallex && !intent) {
-      const baseUrl = getAirwallexBaseUrl();
-      const accessToken = await getAirwallexAccessToken(baseUrl);
-      intent = await getAirwallexPaymentIntent({
-        baseUrl,
-        accessToken,
-        paymentIntentId,
-      });
-      if (!attempt) {
+    let baseUrl: string | null = null;
+    let accessToken: string | null = null;
+    const ensureAirwallexContext = async (): Promise<{
+      baseUrl: string;
+      accessToken: string;
+    } | null> => {
+      if (!canQueryAirwallex) return null;
+      if (baseUrl && accessToken) return { baseUrl, accessToken };
+      baseUrl = getAirwallexBaseUrl();
+      accessToken = await getAirwallexAccessToken(baseUrl);
+      return { baseUrl, accessToken };
+    };
+
+    if (canQueryAirwallex) {
+      const context = await ensureAirwallexContext();
+      if (context && (!intent || paid)) {
+        intent = await getAirwallexPaymentIntent({
+          baseUrl: context.baseUrl,
+          accessToken: context.accessToken,
+          paymentIntentId,
+        });
+      }
+      if (context && !attempt) {
         const fallbackAttemptId =
-          normalizedAttemptId || readString(intent.latest_payment_attempt?.id);
+          normalizedAttemptId || readString(intent?.latest_payment_attempt?.id);
         if (fallbackAttemptId) {
           attempt = await getAirwallexPaymentAttempt({
-            baseUrl,
-            accessToken,
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
             paymentAttemptId: fallbackAttemptId,
           });
         }
       }
-    } else if (!attempt && normalizedAttemptId && canQueryAirwallex) {
-      const baseUrl = getAirwallexBaseUrl();
-      const accessToken = await getAirwallexAccessToken(baseUrl);
-      attempt = await getAirwallexPaymentAttempt({
-        baseUrl,
-        accessToken,
-        paymentAttemptId: normalizedAttemptId,
-      });
     }
-    let snapshot = buildSnapshotFromAttempt(attempt, intent);
-    if (paid && !snapshotHasRecurringLinkage(snapshot) && canQueryAirwallex && !intent) {
-      const baseUrl = getAirwallexBaseUrl();
-      const accessToken = await getAirwallexAccessToken(baseUrl);
-      intent = await getAirwallexPaymentIntent({
-        baseUrl,
-        accessToken,
-        paymentIntentId,
-      });
-      snapshot = buildSnapshotFromAttempt(attempt, intent);
+
+    let snapshot = mergeSnapshotWithOrderFallback(
+      buildSnapshotFromAttempt(attempt, intent),
+      order
+    );
+    if (paid && !snapshotHasRecurringLinkage(snapshot) && canQueryAirwallex) {
+      const context = await ensureAirwallexContext();
+      if (context) {
+        for (let i = 0; i < 3; i += 1) {
+          intent = await getAirwallexPaymentIntent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentIntentId,
+          });
+          const fallbackAttemptId =
+            normalizedAttemptId || readString(intent?.latest_payment_attempt?.id);
+          if (fallbackAttemptId) {
+            attempt = await getAirwallexPaymentAttempt({
+              baseUrl: context.baseUrl,
+              accessToken: context.accessToken,
+              paymentAttemptId: fallbackAttemptId,
+            });
+          }
+          snapshot = mergeSnapshotWithOrderFallback(
+            buildSnapshotFromAttempt(attempt, intent),
+            order
+          );
+          if (snapshotHasRecurringLinkage(snapshot)) break;
+          if (i < 2) await sleep(800);
+        }
+      }
     }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       orderId,
-      normalizedAttemptId,
+      readString(attempt?.id) || normalizedAttemptId,
       snapshot
     );
     if (paid) {

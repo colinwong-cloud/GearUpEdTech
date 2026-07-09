@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
 import {
+  finalizePaymentByIntent,
   getAirwallexAccessToken,
   getAirwallexBaseUrl,
 } from "@/lib/server/payment-finalize";
@@ -377,6 +378,8 @@ type RecurringMonitorOrderRow = {
   status: string;
   created_at: string;
   paid_at: string | null;
+  merchant_order_id?: string | null;
+  airwallex_payment_intent_id?: string | null;
   is_recurring_payment?: boolean | null;
   payment_method?: string | null;
   final_amount_hkd?: number | string | null;
@@ -1621,7 +1624,7 @@ export async function POST(req: NextRequest) {
           const richOrdersRes = await admin
             .from("parent_payment_orders")
             .select(
-              "id,mobile_number,status,created_at,paid_at,is_recurring_payment,payment_method,final_amount_hkd"
+              "id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,is_recurring_payment,payment_method,final_amount_hkd"
             )
             .in("mobile_number", chunk)
             .gte("created_at", startIso)
@@ -1633,7 +1636,7 @@ export async function POST(req: NextRequest) {
             if (/is_recurring_payment/i.test(ordersErrMsg)) {
               const fallbackOrdersRes = await admin
                 .from("parent_payment_orders")
-                .select("id,mobile_number,status,created_at,paid_at,payment_method,final_amount_hkd")
+                .select("id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,payment_method,final_amount_hkd")
                 .in("mobile_number", chunk)
                 .gte("created_at", startIso)
                 .lt("created_at", endIso)
@@ -1667,6 +1670,52 @@ export async function POST(req: NextRequest) {
             const bTime = normalizeIsoDateTime(b.created_at) || "";
             return bTime.localeCompare(aTime);
           });
+        }
+
+        const mobilesNeedingRepair = normalizedParents
+          .map((row) => row.mobile_number)
+          .filter((mobile) => !recurringByMobile.has(mobile));
+        const repairedMobiles = new Set<string>();
+        for (const mobile of mobilesNeedingRepair.slice(0, 50)) {
+          const monthOrders = monthOrdersByMobile.get(mobile) ?? [];
+          const latestPaidRecurringOrder = monthOrders.find(
+            (row) =>
+              String(row.status || "").trim().toLowerCase() === "paid" &&
+              Boolean(readString(row.airwallex_payment_intent_id))
+          );
+          if (!latestPaidRecurringOrder) continue;
+          const paymentIntentId = readString(latestPaidRecurringOrder.airwallex_payment_intent_id);
+          if (!paymentIntentId) continue;
+          const finalized = await finalizePaymentByIntent({
+            supabaseAdmin: admin,
+            paymentIntentId,
+            merchantOrderId: readString(latestPaidRecurringOrder.merchant_order_id),
+            paid: true,
+            paymentAttemptId: null,
+            rawPayload: {
+              source: "admin_monitor_repair",
+              mobile_number: mobile,
+            },
+          });
+          if (finalized.ok) {
+            repairedMobiles.add(mobile);
+          }
+        }
+        if (repairedMobiles.size > 0) {
+          for (const chunk of chunkArray(Array.from(repairedMobiles), 500)) {
+            const recurringRes = await admin
+              .from("parent_recurring_profiles")
+              .select(
+                "id,parent_id,mobile_number,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand,next_charge_at,last_charged_at,last_order_status,last_error"
+              )
+              .in("mobile_number", chunk);
+            if (recurringRes.error) continue;
+            for (const profile of (recurringRes.data as RecurringProfileRow[] | null) ?? []) {
+              const mobile = String(profile.mobile_number || "").trim();
+              if (!mobile) continue;
+              recurringByMobile.set(mobile, profile);
+            }
+          }
         }
 
         const totals = {

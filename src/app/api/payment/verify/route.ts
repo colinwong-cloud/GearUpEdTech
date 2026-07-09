@@ -25,7 +25,13 @@ const AIRWALLEX_SUCCESS_STATES = new Set([
   "SUCCEEDED",
   "SUCCESS",
   "PAID",
+  "CAPTURE_REQUESTED",
+  "SETTLED",
 ]);
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function getSupabaseAdmin() {
   const url =
@@ -65,6 +71,33 @@ async function getAirwallexAccessToken(baseUrl: string): Promise<string> {
   return data.token;
 }
 
+async function getAirwallexPaymentIntent({
+  baseUrl,
+  accessToken,
+  paymentIntentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentIntentId: string;
+}): Promise<AirwallexIntentResponse> {
+  const intentRes = await fetch(
+    `${baseUrl}/api/v1/pa/payment_intents/${encodeURIComponent(paymentIntentId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const intent = (await intentRes.json()) as AirwallexIntentResponse;
+  if (!intentRes.ok) {
+    throw new Error("Unable to retrieve payment intent from Airwallex");
+  }
+  return intent;
+}
+
 export async function POST(req: NextRequest) {
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin) {
@@ -92,33 +125,37 @@ export async function POST(req: NextRequest) {
   try {
     const baseUrl = getAirwallexBaseUrl();
     const accessToken = await getAirwallexAccessToken(baseUrl);
-    const intentRes = await fetch(
-      `${baseUrl}/api/v1/pa/payment_intents/${encodeURIComponent(paymentIntentId)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      }
-    );
-
-    const intent = (await intentRes.json()) as AirwallexIntentResponse;
-    if (!intentRes.ok) {
-      return NextResponse.json(
-        { error: "Unable to retrieve payment intent from Airwallex" },
-        { status: 502 }
-      );
-    }
-
-    const normalizedStatus = String(intent.status || "").toUpperCase();
-    const latestStatus = String(
+    let intent = await getAirwallexPaymentIntent({
+      baseUrl,
+      accessToken,
+      paymentIntentId,
+    });
+    let normalizedStatus = String(intent.status || "").toUpperCase();
+    let latestStatus = String(
       intent.latest_payment_attempt?.status || ""
     ).toUpperCase();
-    const isPaid =
+    let isPaid =
       AIRWALLEX_SUCCESS_STATES.has(normalizedStatus) ||
       AIRWALLEX_SUCCESS_STATES.has(latestStatus);
+    if (isPaid && !intent.latest_payment_attempt?.id) {
+      for (let i = 0; i < 3; i += 1) {
+        await sleep(800);
+        intent = await getAirwallexPaymentIntent({
+          baseUrl,
+          accessToken,
+          paymentIntentId,
+        });
+        normalizedStatus = String(intent.status || "").toUpperCase();
+        latestStatus = String(
+          intent.latest_payment_attempt?.status || ""
+        ).toUpperCase();
+        isPaid =
+          AIRWALLEX_SUCCESS_STATES.has(normalizedStatus) ||
+          AIRWALLEX_SUCCESS_STATES.has(latestStatus);
+        if (!isPaid || intent.latest_payment_attempt?.id) break;
+      }
+    }
+
     const finalized = await finalizePaymentByIntent({
       supabaseAdmin,
       paymentIntentId,

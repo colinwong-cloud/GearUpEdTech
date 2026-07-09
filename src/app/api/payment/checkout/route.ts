@@ -997,6 +997,10 @@ export async function POST(req: Request) {
     const createIntentPayload = (createIntentBody.json || {}) as {
       id?: string;
       client_secret?: string;
+      payment_consent_id?: string;
+      payment_consent?: {
+        id?: string;
+      };
     };
     if (!createIntentRes.ok || !createIntentPayload.id || !createIntentPayload.client_secret) {
       throw new Error(
@@ -1009,6 +1013,9 @@ export async function POST(req: Request) {
     }
 
     const resolvedIntentId = createIntentPayload.id;
+    const resolvedPaymentConsentId =
+      readString(createIntentPayload.payment_consent_id) ||
+      readString(createIntentPayload.payment_consent?.id);
     const checkoutPayload = {
       flow: "intent_recurring",
       mode: "recurring",
@@ -1041,9 +1048,11 @@ export async function POST(req: Request) {
         payment_started_at: new Date().toISOString(),
         is_recurring_payment: true,
         airwallex_customer_id: customerId,
+        airwallex_payment_consent_id: resolvedPaymentConsentId,
         airwallex_payment_intent_id: resolvedIntentId,
         raw_response: {
           checkout: checkoutPayload,
+          create_intent_response: createIntentBody.json || null,
         },
       });
     if (insertErr) {
