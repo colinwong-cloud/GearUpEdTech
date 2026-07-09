@@ -86,6 +86,15 @@ type AirwallexAttemptResponse = {
   provider_original_response_message?: string;
 };
 
+type AirwallexPaymentConsentResponse = {
+  id?: string;
+  customer_id?: string;
+  payment_method_id?: string;
+  payment_method_type?: string;
+  payment_method_brand?: string;
+  payment_method?: AirwallexPaymentMethod;
+};
+
 type PaymentDetailSnapshot = {
   customerId: string | null;
   paymentConsentId: string | null;
@@ -243,6 +252,48 @@ function buildSnapshotFromAttempt(
   };
 }
 
+function mergeSnapshotWithConsentFallback(
+  snapshot: PaymentDetailSnapshot,
+  consent: AirwallexPaymentConsentResponse | null
+): PaymentDetailSnapshot {
+  if (!consent) return snapshot;
+  const method = consent.payment_method;
+  const normalizedType = normalizeMethodType(
+    readString(consent.payment_method_type) || readString(method?.type)
+  );
+  const tokenizedBrand =
+    readString(method?.applepay?.tokenized_card?.brand) ||
+    readString(method?.googlepay?.tokenized_card?.brand) ||
+    null;
+  const cardBrand = normalizeCardBrand(
+    readString(consent.payment_method_brand) ||
+      readString(method?.card?.brand) ||
+      normalizeCardBrand(tokenizedBrand)
+  );
+  const cardLast4 =
+    readString(method?.card?.last4) ||
+    readString(method?.applepay?.tokenized_card?.last4) ||
+    readString(method?.googlepay?.tokenized_card?.last4) ||
+    null;
+  const methodType = snapshot.paymentMethodType || normalizedType;
+  const methodBrand = snapshot.paymentMethodBrand || cardBrand;
+  return {
+    ...snapshot,
+    customerId: snapshot.customerId || readString(consent.customer_id) || null,
+    paymentConsentId: snapshot.paymentConsentId || readString(consent.id) || null,
+    paymentMethodId:
+      snapshot.paymentMethodId ||
+      readString(consent.payment_method_id) ||
+      readString(method?.id) ||
+      null,
+    paymentMethodType: methodType,
+    paymentMethodBrand: methodBrand,
+    paymentMethodLast4: snapshot.paymentMethodLast4 || cardLast4,
+    paymentMethodLabel:
+      snapshot.paymentMethodLabel || toPaymentMethodLabel(methodType, methodBrand),
+  };
+}
+
 function snapshotHasRecurringLinkage(snapshot: PaymentDetailSnapshot): boolean {
   return Boolean(
     snapshot.customerId &&
@@ -389,6 +440,34 @@ async function getAirwallexPaymentIntent({
   const payload = (await resp.json()) as AirwallexIntentResponse;
   if (!resp.ok) {
     throw new Error("Unable to retrieve payment intent from Airwallex");
+  }
+  return payload;
+}
+
+async function getAirwallexPaymentConsent({
+  baseUrl,
+  accessToken,
+  paymentConsentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentConsentId: string;
+}): Promise<AirwallexPaymentConsentResponse> {
+  const resp = await fetch(
+    `${baseUrl}/api/v1/pa/payment_consents/${encodeURIComponent(paymentConsentId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+
+  const payload = (await resp.json()) as AirwallexPaymentConsentResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to retrieve payment consent from Airwallex");
   }
   return payload;
 }
@@ -652,6 +731,14 @@ export async function verifyAndFinalizeParentPayment({
         if (i < 2) await sleep(800);
       }
     }
+    if (isPaid && !snapshotHasRecurringLinkage(snapshot) && snapshot.paymentConsentId) {
+      const consent = await getAirwallexPaymentConsent({
+        baseUrl,
+        accessToken,
+        paymentConsentId: snapshot.paymentConsentId,
+      });
+      snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
+    }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       order.id,
@@ -814,6 +901,14 @@ export async function finalizePaymentByIntent({
           );
           if (snapshotHasRecurringLinkage(snapshot)) break;
           if (i < 2) await sleep(800);
+        }
+        if (!snapshotHasRecurringLinkage(snapshot) && snapshot.paymentConsentId) {
+          const consent = await getAirwallexPaymentConsent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentConsentId: snapshot.paymentConsentId,
+          });
+          snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
         }
       }
     }
