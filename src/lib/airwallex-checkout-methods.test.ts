@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   REQUIRED_AIRWALLEX_ALL_METHODS,
   applyAirwallexMethodSafeguards,
+  filterRecurringCapableMethods,
   getAirwallexMethodsForSelection,
 } from "./airwallex-checkout-methods";
 
@@ -34,10 +35,8 @@ describe("applyAirwallexMethodSafeguards", () => {
       "card",
       "applepay",
       "googlepay",
-      "alipayhk",
-      "wechatpay",
     ]);
-    expect(result.missingRequired).toEqual(["googlepay", "alipayhk", "wechatpay"]);
+    expect(result.missingRequired).toEqual(["googlepay"]);
   });
 
   it("does not inject unrelated methods for targeted selection", () => {
@@ -48,5 +47,25 @@ describe("applyAirwallexMethodSafeguards", () => {
 
     expect(result.methods).toEqual(["card"]);
     expect(result.missingRequired).toEqual([]);
+  });
+});
+
+describe("filterRecurringCapableMethods", () => {
+  it("keeps only recurring-capable methods available in Airwallex recurring mode", () => {
+    const result = filterRecurringCapableMethods({
+      methods: ["applepay", "googlepay", "card"],
+      availableMethods: ["card", "applepay"],
+    });
+    expect(result.methods).toEqual(["applepay", "card"]);
+    expect(result.missingFromAirwallex).toEqual(["googlepay"]);
+  });
+
+  it("returns requested recurring methods if diagnostics are unavailable", () => {
+    const result = filterRecurringCapableMethods({
+      methods: ["applepay", "googlepay", "card"],
+      availableMethods: [],
+    });
+    expect(result.methods).toEqual(["applepay", "googlepay", "card"]);
+    expect(result.missingFromAirwallex).toEqual([]);
   });
 });
