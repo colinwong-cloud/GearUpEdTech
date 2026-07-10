@@ -212,7 +212,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "auth",
       priority: "critical",
       title: "Registration flow with required fields and validation",
-      evidence_commits: ["67c1239", "859a298", "47d8acb", "9f5922e"],
+      evidence_commits: ["67c1239", "859a298", "47d8acb"],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "register_submit_attempt" },
         {

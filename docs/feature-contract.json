@@ -364,8 +364,7 @@
       "evidence_commits": [
         "67c1239",
         "859a298",
-        "47d8acb",
-        "9f5922e"
+        "47d8acb"
       ],
       "checks": [
         {
@@ -1329,8 +1328,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T03:27:08.053Z",
+  "generated_at": "2026-07-10T03:28:19.807Z",
   "commit_inventory": [
+    {
+      "sha": "67ec4dfdfaac2e34fa5e6b4280ba63993f056134",
+      "date": "2026-07-10",
+      "summary": "Refresh feature contract inventory after register typing fix"
+    },
     {
       "sha": "9f52543f8bfe1e7694957e8b4d49fd4986539c38",
       "date": "2026-07-10",
@@ -2528,7 +2532,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 239,
+    "total_commits_since_start": 240,
     "total_feature_rows": 50
   }
 }
