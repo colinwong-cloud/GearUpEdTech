@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -48,6 +52,14 @@ function buildResetEmailHtml(resetUrl: string, parentName: string | null): strin
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Supabase not configured", code: "supabase_not_configured" },
+        { status: 503 }
+      );
+    }
+
     const { email, mobile } = await req.json();
     const emailValue = String(email ?? "").trim();
     const mobileValue = String(mobile ?? "").trim();
