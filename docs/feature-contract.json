@@ -1396,8 +1396,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T08:23:14.158Z",
+  "generated_at": "2026-07-10T08:25:26.287Z",
   "commit_inventory": [
+    {
+      "sha": "7e9812774d9caa61df00ecba1a501db7b122901a",
+      "date": "2026-07-10",
+      "summary": "Capture anti-missing learning loop and login-email guard"
+    },
     {
       "sha": "0772122ff28ea3a40875387af5a5b932a2975744",
       "date": "2026-07-10",
@@ -2645,7 +2650,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 249,
+    "total_commits_since_start": 250,
     "total_feature_rows": 52
   }
 }
