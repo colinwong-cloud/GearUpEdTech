@@ -817,6 +817,7 @@ export default function QuizApp() {
       gradeLevel: string;
       email: string;
       schoolId: string | null;
+      referralCode: string;
     }) => {
       if (!mobileNumber.trim()) return;
       markAuthIntent();
@@ -826,19 +827,30 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+            referralCode: form.referralCode || null,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -1847,6 +1859,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1901,15 +1919,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -2091,6 +2100,7 @@ function RegisterScreen({
     gradeLevel: string;
     email: string;
     schoolId: string | null;
+    referralCode: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -2101,6 +2111,7 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileBypass, setTurnstileBypass] = useState(false);
   const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
@@ -2169,7 +2180,9 @@ function RegisterScreen({
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const REFERRAL_CODE_RE = /^\d{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const referralCodeValid = referralCode.length === 0 || REFERRAL_CODE_RE.test(referralCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const privacyStatementUrl = getPrivacyStatementTxtUrl();
@@ -2181,6 +2194,7 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    referralCodeValid &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
     (siteKey && !turnstileBypass ? turnstileToken !== null : true);
@@ -2394,6 +2408,30 @@ function RegisterScreen({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              負責教師編號（選填）
+            </label>
+            <input
+              type="text"
+              value={referralCode}
+              onChange={(e) => {
+                setReferralCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="6位數字"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                referralCode.length > 0 && !referralCodeValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {referralCode.length > 0 && !referralCodeValid && (
+              <p className="mt-1 text-xs text-red-500">錯誤編號</p>
+            )}
+          </div>
+
           {siteKey && (
             <div className="flex justify-center">
               <Turnstile
@@ -2460,7 +2498,15 @@ function RegisterScreen({
                 setError("輸入的電郵已經登記");
                 return;
               }
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+              onSubmit({
+                studentName: studentName.trim(),
+                pinCode,
+                avatarStyle,
+                gradeLevel,
+                email: email.trim(),
+                schoolId: selectedSchoolId,
+                referralCode: referralCode.trim(),
+              });
             }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${

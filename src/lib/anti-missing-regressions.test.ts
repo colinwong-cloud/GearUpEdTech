@@ -31,6 +31,20 @@ describe("anti-missing regression guards", () => {
     expect(reportApiSource).toContain("GearUp Quiz <noreply@updates.hkedutech.com>");
   });
 
+  it("keeps student registration CTA placement and tutor referral field", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain(
+      "mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700"
+    );
+    expect(pageSource).toContain("負責教師編號（選填）");
+    expect(pageSource).toContain("referralCode");
+    expect(pageSource).toContain("fetch(\"/api/auth/register\"");
+
+    const registerApiSource = readSource("src/app/api/auth/register/route.ts");
+    expect(registerApiSource).toContain("tutor_referral_usages");
+    expect(registerApiSource).toContain("REFERRAL_CODE_RE");
+  });
+
   it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');

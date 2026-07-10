@@ -364,13 +364,38 @@
       "evidence_commits": [
         "67c1239",
         "859a298",
-        "47d8acb"
+        "47d8acb",
+        "9f5922e"
       ],
       "checks": [
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "register_submit_attempt"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "負責教師編號（選填）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "fetch(\"/api/auth/register\""
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/auth/register/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/auth/register/route.ts",
+          "snippet": "tutor_referral_usages"
         },
         {
           "type": "file_exists",
@@ -1304,8 +1329,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T02:47:10.751Z",
+  "generated_at": "2026-07-10T03:23:32.791Z",
   "commit_inventory": [
+    {
+      "sha": "4877fcad5391637bfa133d7de6e44bf5b697e898",
+      "date": "2026-07-10",
+      "summary": "Fix student results flow and restore report notifications"
+    },
     {
       "sha": "4b3136fd59333689b1a9069181b3984fc2722283",
       "date": "2026-07-09",
@@ -2488,7 +2518,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 236,
+    "total_commits_since_start": 237,
     "total_feature_rows": 50
   }
 }
