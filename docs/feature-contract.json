@@ -1328,8 +1328,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T03:31:34.581Z",
+  "generated_at": "2026-07-10T03:32:02.038Z",
   "commit_inventory": [
+    {
+      "sha": "806f80f0fa4820d3277438bc286641c4baef0f50",
+      "date": "2026-07-10",
+      "summary": "Guard reset-email route when Supabase env is missing"
+    },
     {
       "sha": "792c2b5e1fd81ccd291825be7f769f49b6ffefa3",
       "date": "2026-07-10",
@@ -2542,7 +2547,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 242,
+    "total_commits_since_start": 243,
     "total_feature_rows": 50
   }
 }
