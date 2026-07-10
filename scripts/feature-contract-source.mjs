@@ -300,6 +300,22 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "paid-user-payment-history-view",
+      month: "2026-05",
+      category: "account",
+      priority: "high",
+      title: "Paid user payment history view in account menu",
+      evidence_commits: ["2887c29"],
+      checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "\"payment_history\"" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "onPaymentHistory" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "查看付款日期、金額及付款方式" },
+        { type: "file_exists", path: "src/app/api/payment/history/route.ts" },
+        { type: "file_contains", path: "src/app/api/payment/history/route.ts", snippet: "get_parent_tier_status" },
+        { type: "file_contains", path: "src/app/api/payment/history/route.ts", snippet: "parent_payment_orders" },
+      ],
+    },
+    {
       id: "question-balance-shared-family-pool",
       month: "2026-04",
       category: "balance",

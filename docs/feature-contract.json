@@ -529,6 +529,47 @@
       ]
     },
     {
+      "id": "paid-user-payment-history-view",
+      "month": "2026-05",
+      "category": "account",
+      "priority": "high",
+      "title": "Paid user payment history view in account menu",
+      "evidence_commits": [
+        "2887c29"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "\"payment_history\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "onPaymentHistory"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "查看付款日期、金額及付款方式"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/payment/history/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/history/route.ts",
+          "snippet": "get_parent_tier_status"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/history/route.ts",
+          "snippet": "parent_payment_orders"
+        }
+      ]
+    },
+    {
       "id": "question-balance-shared-family-pool",
       "month": "2026-04",
       "category": "balance",
@@ -1328,8 +1369,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T03:32:02.038Z",
+  "generated_at": "2026-07-10T06:33:56.586Z",
   "commit_inventory": [
+    {
+      "sha": "01ac664d64652beea9b8af92970527580068b50d",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after reset-email guard"
+    },
     {
       "sha": "806f80f0fa4820d3277438bc286641c4baef0f50",
       "date": "2026-07-10",
@@ -2547,7 +2593,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 243,
-    "total_feature_rows": 50
+    "total_commits_since_start": 244,
+    "total_feature_rows": 51
   }
 }

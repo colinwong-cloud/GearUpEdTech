@@ -45,6 +45,20 @@ describe("anti-missing regression guards", () => {
     expect(registerApiSource).toContain("REFERRAL_CODE_RE");
   });
 
+  it("keeps paid-user payment history entry and API", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("\"payment_history\"");
+    expect(pageSource).toContain("onPaymentHistory");
+    expect(pageSource).toContain("消費紀錄");
+    expect(pageSource).toContain("查看付款日期、金額及付款方式");
+    expect(pageSource).toContain("fetch(\"/api/payment/history\"");
+
+    const paymentHistoryApiSource = readSource("src/app/api/payment/history/route.ts");
+    expect(paymentHistoryApiSource).toContain("get_parent_tier_status");
+    expect(paymentHistoryApiSource).toContain("parent_payment_orders");
+    expect(paymentHistoryApiSource).toContain("目前僅限月費用戶查看消費紀錄");
+  });
+
   it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');
