@@ -72,7 +72,8 @@
       "title": "Results action buttons: replay, home, logout",
       "evidence_commits": [
         "4b4ad35",
-        "c38c510"
+        "c38c510",
+        "4b3136f"
       ],
       "checks": [
         {
@@ -93,22 +94,64 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "bg-indigo-600 text-white font-semibold rounded-xl"
+          "snippet": "bg-sky-500 text-white font-semibold rounded-xl"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "bg-orange-500 text-white font-semibold rounded-xl"
+          "snippet": "bg-white text-sky-700 font-semibold rounded-xl border border-sky-200"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "bg-white text-gray-700 font-semibold rounded-xl border border-gray-300"
+          "snippet": "bg-sky-50 text-sky-700 font-semibold rounded-xl border border-sky-200"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "const handleBackToHome = () => {"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "setScreen(\"login_role\")"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "登出"
+        }
+      ]
+    },
+    {
+      "id": "quiz-question-report-notification",
+      "month": "2026-07",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Question report action sends notification email",
+      "evidence_commits": [
+        "901ff59",
+        "4b3136f"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "反映這題目"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "fetch(\"/api/send-question-report\""
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/send-question-report/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-question-report/route.ts",
+          "snippet": "題目反映通知"
         }
       ]
     },
@@ -1261,8 +1304,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-09T15:10:25.733Z",
+  "generated_at": "2026-07-10T02:47:10.751Z",
   "commit_inventory": [
+    {
+      "sha": "4b3136fd59333689b1a9069181b3984fc2722283",
+      "date": "2026-07-09",
+      "summary": "Restore tutor and MIT admin modules with retention guards"
+    },
     {
       "sha": "e2b25f23f9383011513a15079609be0623693713",
       "date": "2026-07-09",
@@ -2440,7 +2488,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 235,
-    "total_feature_rows": 49
+    "total_commits_since_start": 236,
+    "total_feature_rows": 50
   }
 }

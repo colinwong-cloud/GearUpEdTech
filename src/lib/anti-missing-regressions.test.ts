@@ -15,11 +15,20 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
     expect(pageSource).toContain("px-8 py-3.5");
-    expect(pageSource).toContain("bg-indigo-600 text-white font-semibold rounded-xl");
-    expect(pageSource).toContain("bg-orange-500 text-white font-semibold rounded-xl");
-    expect(pageSource).toContain("bg-white text-gray-700 font-semibold rounded-xl border border-gray-300");
-    expect(pageSource).toContain("bg-orange-500 text-white");
+    expect(pageSource).toContain("bg-sky-500 text-white font-semibold rounded-xl");
+    expect(pageSource).toContain("bg-white text-sky-700 font-semibold rounded-xl border border-sky-200");
+    expect(pageSource).toContain("bg-sky-50 text-sky-700 font-semibold rounded-xl border border-sky-200");
+    expect(pageSource).toContain("const handleBackToHome = () => {");
+    expect(pageSource).toContain("setScreen(\"login_role\")");
     expect(pageSource).toContain("登出");
+    expect(pageSource).toContain("fetch(\"/api/send-question-report\"");
+  });
+
+  it("keeps question-report notification API route", () => {
+    const reportApiSource = readSource("src/app/api/send-question-report/route.ts");
+    expect(reportApiSource).toContain("題目反映通知");
+    expect(reportApiSource).toContain("QUESTION_REPORT_NOTIFY_EMAIL");
+    expect(reportApiSource).toContain("GearUp Quiz <noreply@updates.hkedutech.com>");
   });
 
   it("keeps parent practice email readability and wrong-question details", () => {

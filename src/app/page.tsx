@@ -1240,7 +1240,7 @@ export default function QuizApp() {
   };
 
   const handleBackToHome = () => {
-    setScreen("subject_select");
+    setScreen("login_role");
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
@@ -2803,6 +2803,21 @@ function ResultsView({
       });
       if (error) throw error;
       setReportedIds((prev) => new Set(prev).add(answer.question.id));
+      fetch("/api/send-question-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: studentId,
+          student_name: studentName,
+          session_id: sessionId,
+          question_id: answer.question.id,
+          question_subject: answer.question.subject,
+          question_content: answer.question.content,
+          question_explanation: answer.question.explanation,
+          student_answer: answer.studentAnswer,
+          correct_answer: answer.question.correct_answer,
+        }),
+      }).catch(() => {});
     } catch {
       // silent fail — non-critical
     } finally {
@@ -3015,7 +3030,7 @@ function ResultsView({
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={onRestart}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-500 text-white font-semibold rounded-xl hover:bg-sky-600 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
           >
             <svg
               className="w-5 h-5"
@@ -3034,13 +3049,13 @@ function ResultsView({
           </button>
           <button
             onClick={onBackToHome}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-50 transition-all duration-200"
           >
             回到主畫面
           </button>
           <button
             onClick={onLogout}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-50 text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-100 transition-all duration-200"
           >
             登出
           </button>
