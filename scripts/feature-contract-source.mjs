@@ -379,6 +379,19 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "login-enquiry-email-address",
+      month: "2026-07",
+      category: "growth",
+      priority: "high",
+      title: "Login enquiry email uses cs@gearupquiz.com",
+      evidence_commits: ["c1ee26f"],
+      checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "有問題或意見？歡迎電郵至" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "href=\"mailto:cs@gearupquiz.com\"" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "cs@gearupquiz.com" },
+      ],
+    },
+    {
       id: "social-share-whatsapp-wechat",
       month: "2026-05",
       category: "growth",

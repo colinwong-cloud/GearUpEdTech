@@ -59,6 +59,13 @@ describe("anti-missing regression guards", () => {
     expect(paymentHistoryApiSource).toContain("目前僅限月費用戶查看消費紀錄");
   });
 
+  it("keeps login enquiry email as cs@gearupquiz.com", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("有問題或意見？歡迎電郵至");
+    expect(pageSource).toContain('href="mailto:cs@gearupquiz.com"');
+    expect(pageSource).toContain("cs@gearupquiz.com");
+  });
+
   it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');

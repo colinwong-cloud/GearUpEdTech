@@ -692,6 +692,33 @@
       ]
     },
     {
+      "id": "login-enquiry-email-address",
+      "month": "2026-07",
+      "category": "growth",
+      "priority": "high",
+      "title": "Login enquiry email uses cs@gearupquiz.com",
+      "evidence_commits": [
+        "c1ee26f"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "有問題或意見？歡迎電郵至"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "href=\"mailto:cs@gearupquiz.com\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "cs@gearupquiz.com"
+        }
+      ]
+    },
+    {
       "id": "social-share-whatsapp-wechat",
       "month": "2026-05",
       "category": "growth",
@@ -1369,8 +1396,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T08:01:22.016Z",
+  "generated_at": "2026-07-10T08:23:14.158Z",
   "commit_inventory": [
+    {
+      "sha": "0772122ff28ea3a40875387af5a5b932a2975744",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after login email UI update"
+    },
     {
       "sha": "c1ee26f98e70b819fef685e6f05e112bb9f6f9a2",
       "date": "2026-07-10",
@@ -2613,7 +2645,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 248,
-    "total_feature_rows": 51
+    "total_commits_since_start": 249,
+    "total_feature_rows": 52
   }
 }

@@ -42,3 +42,37 @@ npm run release:gate
 - `lint`
 - `build`
 
+## Learning loop (regression -> permanent guard)
+
+When a regression is found in preview/production, we now treat it as a contract-learning event:
+
+1. Restore behavior in product code.
+2. Add/expand anti-missing tests in `src/lib/anti-missing-regressions.test.ts`.
+3. Add or tighten feature checks in `scripts/feature-contract-source.mjs`.
+4. Refresh `docs/feature-contract.json`.
+5. Re-run full release gate before deployment.
+
+### Current lessons captured
+
+- **Results page regression (buttons, redirect, wrong-answer details)**  
+  Guarded with UI string/style checks + redirect assertion (`setScreen("login_role")`).
+
+- **Question report notification regression**  
+  Guarded by route existence + key notification content checks.
+
+- **Parent email readability/details regression**  
+  Guarded with readability markers and wrong-question-detail content checks.
+
+- **Student registration CTA/referral regression**  
+  Guarded with standalone CTA placement check, referral field checks, and `/api/auth/register` linkage checks.
+
+- **Paid-user payment history regression**  
+  Guarded with account-menu entry check, `payment_history` screen checks, and `/api/payment/history` API checks.
+
+- **Login enquiry email drift (`cs@gearupquiz.com`)**  
+  Guarded with explicit login UI/mailto checks in both feature contract and regression tests.
+
+### Operating rule
+
+If any approved UX/business behavior is corrected without adding a matching guard, the change is incomplete and must not be deployed.
+
