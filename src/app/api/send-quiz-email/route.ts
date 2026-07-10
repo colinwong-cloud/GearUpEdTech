@@ -2,15 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseAnonClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
-const supabaseService = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    "";
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -157,7 +168,10 @@ function normalizeWrongAnswerRows(rows: unknown[]): WrongAnswerDetail[] {
   });
 }
 
-async function fetchWrongAnswerDetails(sessionId: string): Promise<WrongAnswerDetail[]> {
+async function fetchWrongAnswerDetails(
+  sessionId: string,
+  supabaseService: NonNullable<ReturnType<typeof getSupabaseServiceClient>>
+): Promise<WrongAnswerDetail[]> {
   try {
     const { data: rpcData, error: rpcErr } = await supabaseService.rpc(
       "get_session_detail",
@@ -444,6 +458,15 @@ function buildEmailHtml(data: QuizEmailData): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabaseAnonClient();
+    const supabaseService = getSupabaseServiceClient();
+    if (!supabase || !supabaseService) {
+      return NextResponse.json(
+        { error: "Supabase not configured" },
+        { status: 503 }
+      );
+    }
+
     const body = (await req.json()) as {
       student_id?: string;
       session_id?: string;
@@ -477,7 +500,10 @@ export async function POST(req: NextRequest) {
     ) {
       emailData.session_practice_summary_parent = session_summary_parent.trim();
     }
-    emailData.wrong_answer_details = await fetchWrongAnswerDetails(session_id);
+    emailData.wrong_answer_details = await fetchWrongAnswerDetails(
+      session_id,
+      supabaseService
+    );
 
     if (!emailData.parent_email) {
       return NextResponse.json({ skipped: true, reason: "no_parent_email" });

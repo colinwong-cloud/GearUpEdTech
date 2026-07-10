@@ -1396,8 +1396,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T08:25:26.287Z",
+  "generated_at": "2026-07-10T08:29:52.951Z",
   "commit_inventory": [
+    {
+      "sha": "e40b03a9f83c4dd2a1c29be6bcae3d06e6b779b4",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after learning-loop updates"
+    },
     {
       "sha": "7e9812774d9caa61df00ecba1a501db7b122901a",
       "date": "2026-07-10",
@@ -2650,7 +2655,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 250,
+    "total_commits_since_start": 251,
     "total_feature_rows": 52
   }
 }
