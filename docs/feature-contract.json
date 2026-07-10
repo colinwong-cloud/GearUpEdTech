@@ -1329,8 +1329,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T03:23:32.791Z",
+  "generated_at": "2026-07-10T03:27:08.053Z",
   "commit_inventory": [
+    {
+      "sha": "9f52543f8bfe1e7694957e8b4d49fd4986539c38",
+      "date": "2026-07-10",
+      "summary": "Fix register referral API typings for CI"
+    },
+    {
+      "sha": "66226acc6ff8c738def850d94d336e3338769239",
+      "date": "2026-07-10",
+      "summary": "Restore student registration CTA and tutor referral flow"
+    },
     {
       "sha": "4877fcad5391637bfa133d7de6e44bf5b697e898",
       "date": "2026-07-10",
@@ -2518,7 +2528,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 237,
+    "total_commits_since_start": 239,
     "total_feature_rows": 50
   }
 }
