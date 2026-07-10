@@ -305,7 +305,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "account",
       priority: "high",
       title: "Paid user payment history view in account menu",
-      evidence_commits: ["2887c29"],
+      evidence_commits: ["4a8d673"],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "\"payment_history\"" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "onPaymentHistory" },

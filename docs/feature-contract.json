@@ -535,7 +535,7 @@
       "priority": "high",
       "title": "Paid user payment history view in account menu",
       "evidence_commits": [
-        "2887c29"
+        "4a8d673"
       ],
       "checks": [
         {
@@ -1369,8 +1369,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-10T06:34:53.188Z",
+  "generated_at": "2026-07-10T06:35:57.359Z",
   "commit_inventory": [
+    {
+      "sha": "9845ee9c3c5156904bb0be35e7492514f92a48ed",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after payment history restore"
+    },
     {
       "sha": "4a8d673aec8f81d4f96fae6d0e672016c2002312",
       "date": "2026-07-10",
@@ -2598,7 +2603,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 245,
+    "total_commits_since_start": 246,
     "total_feature_rows": 51
   }
 }
