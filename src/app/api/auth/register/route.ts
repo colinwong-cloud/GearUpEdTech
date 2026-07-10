@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type RegisterBody = {
   mobile?: string;
@@ -36,6 +36,85 @@ type ConsumedReferralUsage = {
   mobile: string;
 };
 
+type Database = {
+  public: {
+    Tables: {
+      parents: {
+        Row: { id: string; mobile_number: string | null; email: string | null };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      students: {
+        Row: {
+          id: string;
+          parent_id: string;
+          student_name: string;
+          avatar_style: string;
+          grade_level: string;
+          created_at: string;
+          gender: string | null;
+        };
+        Insert: Record<string, unknown>;
+        Update: { gender?: "M" | "F" | null };
+        Relationships: [];
+      };
+      tutor_referral_codes: {
+        Row: {
+          id: string;
+          code: string;
+          tutor_name: string;
+          usage_limit: number;
+          current_uses: number;
+          is_active: boolean;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: {
+          current_uses?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tutor_referral_usages: {
+        Row: {
+          code_id: string;
+          mobile_number: string;
+          parent_id: string | null;
+        };
+        Insert: {
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          mobile_number: string;
+          used_at: string;
+        };
+        Update: { parent_id?: string | null };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      register_student: {
+        Args: {
+          p_mobile_number: string;
+          p_student_name: string;
+          p_pin_code: string;
+          p_avatar_style: string;
+          p_grade_level: string;
+          p_email: string;
+          p_school_id: string | null;
+        };
+        Returns: RegisteredStudent;
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+type AdminClient = SupabaseClient<Database>;
+
 const REFERRAL_CODE_RE = /^\d{6}$/;
 const REFERRAL_INVALID_ERROR = "錯誤編號";
 const REFERRAL_LIMIT_ERROR = "編號被限，請負責老師聯絡管理員更新編號。";
@@ -49,12 +128,12 @@ function genderFromAvatarStyle(avatarStyle: string): "M" | "F" | null {
   return null;
 }
 
-function getSupabaseAdmin() {
+function getSupabaseAdmin(): AdminClient | null {
   const url =
     process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   if (!url || !serviceRole) return null;
-  return createClient(url, serviceRole);
+  return createClient<Database>(url, serviceRole);
 }
 
 function isValidMobile(mobile: string): boolean {
@@ -94,7 +173,7 @@ async function syncReferralUsageCount({
   admin,
   codeId,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   codeId: string;
 }): Promise<void> {
   const usageCountRes = await admin
@@ -128,7 +207,7 @@ async function rollbackConsumedReferral({
   admin,
   consumed,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   consumed: ConsumedReferralUsage;
 }) {
   const { error: deleteUsageErr } = await admin
@@ -147,7 +226,7 @@ async function consumeReferralUsage({
   code,
   mobile,
 }: {
-  admin: ReturnType<typeof createClient>;
+  admin: AdminClient;
   code: string;
   mobile: string;
 }): Promise<{ consumed: ConsumedReferralUsage | null; error: string | null }> {
