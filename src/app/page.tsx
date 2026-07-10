@@ -1952,8 +1952,8 @@ function LoginMobileScreen({
           </div>
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
-              cs@hkedutech.com
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@gearupquiz.com
             </a>
           </div>
           <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
