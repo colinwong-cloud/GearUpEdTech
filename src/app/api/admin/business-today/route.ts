@@ -5,6 +5,11 @@ import { requireAdminSession } from "@/lib/server/admin-session";
 type TodayPayload = {
   free_tier_new_users_today?: number;
   paid_tier_new_users_today?: number;
+  today_new_parent_registrations?: Array<{
+    mobile_number: string;
+    email: string | null;
+    created_at: string | null;
+  }>;
   [key: string]: unknown;
 };
 
@@ -43,6 +48,34 @@ export async function POST(req: NextRequest) {
 
   const payload = (data as TodayPayload | null) ?? {};
   const { dayStartIso, dayEndIso } = getHkDayWindowUtcIso();
+
+  try {
+    const { data: todayParents, error: todayParentsErr } = await admin
+      .from("parents")
+      .select("mobile_number,email,created_at")
+      .not("mobile_number", "like", "9999%")
+      .gte("created_at", dayStartIso)
+      .lt("created_at", dayEndIso)
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (!todayParentsErr) {
+      payload.today_new_parent_registrations = (todayParents ?? []).map((row) => ({
+        mobile_number: String(row.mobile_number ?? ""),
+        email:
+          row.email === null || row.email === undefined
+            ? null
+            : String(row.email),
+        created_at:
+          row.created_at === null || row.created_at === undefined
+            ? null
+            : String(row.created_at),
+      }));
+    } else {
+      payload.today_new_parent_registrations = payload.today_new_parent_registrations ?? [];
+    }
+  } catch {
+    payload.today_new_parent_registrations = payload.today_new_parent_registrations ?? [];
+  }
 
   try {
     const { count, error: freeErr } = await admin

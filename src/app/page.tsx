@@ -334,6 +334,7 @@ type AppScreen =
   | "parent_session_detail"
   | "account_menu"
   | "balance_view"
+  | "payment_history"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
@@ -351,6 +352,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "parent_session_detail",
   "account_menu",
   "balance_view",
+  "payment_history",
   "profile_edit",
   "add_student_form",
   "parent_student_select",
@@ -438,6 +440,17 @@ interface ParentBalanceView {
   transactions: (BalanceTransaction & { student_name: string })[];
 }
 
+interface ParentPaymentHistoryRow {
+  id: string;
+  paid_at: string | null;
+  created_at: string | null;
+  final_amount_hkd: number | null;
+  payment_method: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
+}
+
 type ParentTier = "free" | "paid";
 
 interface ParentTierStatus {
@@ -456,6 +469,27 @@ interface DiscountValidationResult {
 
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
+}
+
+function getOptionValueByAnswer(question: Question, answer: string | null | undefined): string | null {
+  const key = String(answer || "").trim().toUpperCase();
+  if (key === "A") return question.opt_a;
+  if (key === "B") return question.opt_b;
+  if (key === "C") return question.opt_c;
+  if (key === "D") return question.opt_d;
+  return null;
+}
+
+function formatAnswerWithValue(question: Question, answer: string | null | undefined): string {
+  const raw = String(answer || "").trim();
+  if (!raw) return "—";
+  if (isShortAnswer(question)) return raw;
+  const key = raw.toUpperCase();
+  const optionValue = getOptionValueByAnswer(question, key);
+  if (optionValue && optionValue.trim()) {
+    return `${key} (${optionValue.trim()})`;
+  }
+  return key;
 }
 
 function hasImage(q: Question): boolean {
@@ -796,6 +830,7 @@ export default function QuizApp() {
       gradeLevel: string;
       email: string;
       schoolId: string | null;
+      referralCode: string;
     }) => {
       if (!mobileNumber.trim()) return;
       markAuthIntent();
@@ -805,19 +840,30 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+            referralCode: form.referralCode || null,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
         await refreshParentTierStatus();
         pushGtmEventOncePerSession("register_success", {
           screen_name: "register",
@@ -1210,7 +1256,16 @@ export default function QuizApp() {
   };
 
   const handleRestart = () => {
-    setScreen("subject_select");
+    setScreen(selectedSubject ? "question_count_select" : "subject_select");
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
+  const handleBackToHome = () => {
+    setScreen("login_role");
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
@@ -1298,6 +1353,7 @@ export default function QuizApp() {
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
@@ -1308,6 +1364,15 @@ export default function QuizApp() {
   if (screen === "balance_view") {
     return (
       <BalanceViewScreen
+        mobileNumber={mobileNumber}
+        onBack={() => setScreen("account_menu")}
+      />
+    );
+  }
+
+  if (screen === "payment_history") {
+    return (
+      <PaymentHistoryScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
       />
@@ -1484,6 +1549,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToHome={handleBackToHome}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -1816,6 +1882,12 @@ function LoginMobileScreen({
               請輸入電話號碼及密碼登入
             </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1870,15 +1942,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -1889,8 +1952,8 @@ function LoginMobileScreen({
           </div>
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@hkedutech.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
-              cs@hkedutech.com
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@gearupquiz.com
             </a>
           </div>
           <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
@@ -2060,6 +2123,7 @@ function RegisterScreen({
     gradeLevel: string;
     email: string;
     schoolId: string | null;
+    referralCode: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -2070,6 +2134,7 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileBypass, setTurnstileBypass] = useState(false);
   const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
@@ -2138,7 +2203,9 @@ function RegisterScreen({
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const REFERRAL_CODE_RE = /^\d{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const referralCodeValid = referralCode.length === 0 || REFERRAL_CODE_RE.test(referralCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const privacyStatementUrl = getPrivacyStatementTxtUrl();
@@ -2150,6 +2217,7 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    referralCodeValid &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
     (siteKey && !turnstileBypass ? turnstileToken !== null : true);
@@ -2363,6 +2431,30 @@ function RegisterScreen({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              負責教師編號（選填）
+            </label>
+            <input
+              type="text"
+              value={referralCode}
+              onChange={(e) => {
+                setReferralCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="6位數字"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                referralCode.length > 0 && !referralCodeValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {referralCode.length > 0 && !referralCodeValid && (
+              <p className="mt-1 text-xs text-red-500">錯誤編號</p>
+            )}
+          </div>
+
           {siteKey && (
             <div className="flex justify-center">
               <Turnstile
@@ -2429,7 +2521,15 @@ function RegisterScreen({
                 setError("輸入的電郵已經登記");
                 return;
               }
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+              onSubmit({
+                studentName: studentName.trim(),
+                pinCode,
+                avatarStyle,
+                gradeLevel,
+                email: email.trim(),
+                schoolId: selectedSchoolId,
+                referralCode: referralCode.trim(),
+              });
             }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
@@ -2733,6 +2833,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToHome,
   onLogout,
   balance,
 }: {
@@ -2742,6 +2843,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToHome: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -2770,6 +2872,21 @@ function ResultsView({
       });
       if (error) throw error;
       setReportedIds((prev) => new Set(prev).add(answer.question.id));
+      fetch("/api/send-question-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: studentId,
+          student_name: studentName,
+          session_id: sessionId,
+          question_id: answer.question.id,
+          question_subject: answer.question.subject,
+          question_content: answer.question.content,
+          question_explanation: answer.question.explanation,
+          student_answer: answer.studentAnswer,
+          correct_answer: answer.question.correct_answer,
+        }),
+      }).catch(() => {});
     } catch {
       // silent fail — non-critical
     } finally {
@@ -2899,38 +3016,59 @@ function ResultsView({
                   key={index}
                   className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
                 >
-                  <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-500">
-                        你的答案：{answer.studentAnswer}
-                      </span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-emerald-600">
-                        正確答案：{answer.question.correct_answer}
-                      </span>
-                    </p>
+                  <div className="bg-red-50 px-4 py-3 border-b border-red-100 text-sm font-semibold text-gray-800">
+                    <span className="text-red-500 mr-1">第 {index + 1} 題</span>
+                    <span className="text-gray-400 mx-1">|</span>
+                    <span className="text-xs text-gray-600">
+                      你的答案：{answer.studentAnswer}
+                    </span>
+                    <span className="text-gray-400 mx-1">|</span>
+                    <span className="text-xs text-emerald-700">
+                      正確答案：{answer.question.correct_answer}
+                    </span>
                   </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <QuestionContentParagraphs
-                      content={answer.question.content}
-                      className="text-sm text-gray-700"
-                      paragraphGapClass="mt-3"
-                    />
+                  <div className="px-4 py-4 space-y-3">
+                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">題目內容</p>
+                      <QuestionContentParagraphs
+                        content={answer.question.content}
+                        className="text-sm text-gray-800"
+                        paragraphGapClass="mt-2"
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                        <p className="text-xs font-semibold text-red-500 mb-1">你的答案（值）</p>
+                        <p className="text-sm font-semibold text-red-700">
+                          {formatAnswerWithValue(answer.question, answer.studentAnswer)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                        <p className="text-xs font-semibold text-emerald-600 mb-1">正確答案（值）</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {formatAnswerWithValue(
+                            answer.question,
+                            answer.question.correct_answer
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">解釋</p>
+                      {answer.question.explanation ? (
+                        <QuestionContentParagraphs
+                          content={answer.question.explanation}
+                          className="text-sm text-gray-700"
+                          paragraphGapClass="mt-2"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">沒有解釋</p>
+                      )}
+                    </div>
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
-                    )}
-                    {answer.question.explanation ? (
-                      <QuestionContentParagraphs
-                        content={answer.question.explanation}
-                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
-                        paragraphGapClass="mt-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
                     <div className="pt-1">
                       <button
@@ -2961,7 +3099,7 @@ function ResultsView({
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={onRestart}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-500 text-white font-semibold rounded-xl hover:bg-sky-600 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
           >
             <svg
               className="w-5 h-5"
@@ -2979,8 +3117,14 @@ function ResultsView({
             再做一次
           </button>
           <button
+            onClick={onBackToHome}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-50 transition-all duration-200"
+          >
+            回到主畫面
+          </button>
+          <button
             onClick={onLogout}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-50 text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-100 transition-all duration-200"
           >
             登出
           </button>
@@ -3247,6 +3391,7 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onPaymentHistory,
   onUpgrade,
   tierStatus,
   onBack,
@@ -3254,6 +3399,7 @@ function AccountMenuScreen({
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onPaymentHistory: () => void;
   onUpgrade: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
@@ -3284,6 +3430,20 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <button
+              onClick={onPaymentHistory}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+                💳
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">消費紀錄</p>
+                <p className="text-sm text-gray-500">查看付款日期、金額及付款方式</p>
+              </div>
+            </button>
+          )}
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -3987,6 +4147,156 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-400 text-sm">本月暫無交易記錄</p>
+          </div>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
+function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
+  const [records, setRecords] = useState<ParentPaymentHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/payment/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile_number: mobileNumber.trim(),
+            year: selectedYear,
+          }),
+        });
+        const payload = (await res.json()) as {
+          records?: ParentPaymentHistoryRow[];
+          available_years?: number[];
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "未能載入消費紀錄");
+        }
+        if (cancelled) return;
+        const years = (payload.available_years ?? [])
+          .filter((year) => Number.isInteger(year))
+          .sort((a, b) => b - a);
+        setYearOptions(years.length > 0 ? years : [currentYear]);
+        setRecords(payload.records ?? []);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "未能載入消費紀錄");
+        setRecords([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber, selectedYear, currentYear]);
+
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || Number.isNaN(amount)) return "—";
+    return `HKD ${Math.round(amount)}`;
+  };
+
+  const formatPaymentMethod = (record: ParentPaymentHistoryRow) => {
+    return (
+      record.payment_method_label ||
+      record.payment_method_brand ||
+      record.payment_method_type ||
+      record.payment_method ||
+      "—"
+    );
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("zh-HK", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">
+          返回
+        </button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
+            年份
+          </label>
+          <select
+            id="payment-history-year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year} 年
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <Spinner size="lg" />
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        ) : records.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">金額</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">付款方式</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      {formatDate(record.paid_at || record.created_at)}
+                    </td>
+                    <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
+                      {formatAmount(record.final_amount_hkd)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatPaymentMethod(record)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
           </div>
         )}
 
