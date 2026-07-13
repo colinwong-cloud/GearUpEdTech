@@ -1645,6 +1645,16 @@ export default function QuizApp() {
     setError(null);
   };
 
+  const handleBackToHome = () => {
+    setScreen("login_role");
+    setSelectedSubject(null);
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
   const handleLogout = () => {
     setScreen("login_mobile");
     setMobileNumber("");
@@ -1985,6 +1995,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToHome={handleBackToHome}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -3283,6 +3294,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToHome,
   onLogout,
   balance,
 }: {
@@ -3292,6 +3304,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToHome: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -3537,6 +3550,12 @@ function ResultsView({
               />
             </svg>
             再做一次
+          </button>
+          <button
+            onClick={onBackToHome}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-indigo-700 font-semibold rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-all duration-200"
+          >
+            回到主畫面
           </button>
           <button
             onClick={onLogout}

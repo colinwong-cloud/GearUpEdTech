@@ -24,7 +24,10 @@ Every release must re-check these critical features:
 
 1. Login page standalone **「新用戶註冊」** CTA.
 2. Registration/add-student **gender required**.
-3. Student result page action buttons remain correct.
+3. Student result page action buttons remain correct:
+   - `再做一次` works
+   - `回到主畫面` returns to role-selection page
+   - `登出` works
 4. Student result page wrong-answer analysis remains readable and includes:
    - question content
    - student answer (with value)
@@ -65,16 +68,18 @@ After production deploy, update:
 
 ## 6) Latest deployment record
 
-- Date (UTC): 2026-06-23
-- Deployment ID: `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+- Date (UTC): 2026-07-07
+- Deployment ID: `dpl_5ckCtihyieVWzg32bdEiF9z9yUxR`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/5ckCtihyieVWzg32bdEiF9z9yUxR
 - Scope:
-  - Admin `教師編號維護` Part 3 add tutor password reset by code
-  - reset sets password to `123456`, clears lockout state, and enforces first-login password change
-  - reset success message rendered in Part 3 section bottom
+  - results page bottom action row adds `回到主畫面`
+  - new action returns to role selection screen (`login_role`)
+  - keep existing `再做一次` and `登出` actions unchanged
+  - keep scope limited to `src/app/page.tsx`
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401
+  - `npm run smoke` (pass, 5/5)
+  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/reset-password` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401, `/api/auth/mobile-login` invalid payload 400
