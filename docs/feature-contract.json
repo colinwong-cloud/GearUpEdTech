@@ -1396,8 +1396,138 @@
       ]
     }
   ],
-  "generated_at": "2026-07-13T01:29:19.439Z",
+  "generated_at": "2026-07-13T03:21:52.829Z",
   "commit_inventory": [
+    {
+      "sha": "92689098833b61ce442c3350333398855eb9b153",
+      "date": "2026-07-13",
+      "summary": "Add anti-missing framework baseline to current branch"
+    },
+    {
+      "sha": "e9e241b3fe0b1cfaeb2a492aeae0e4a4bffcef15",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after send-quiz-email hardening"
+    },
+    {
+      "sha": "92a518f5999a0101880ee2046c6d19ac48daafac",
+      "date": "2026-07-10",
+      "summary": "Harden send-quiz-email route for CI env-less builds"
+    },
+    {
+      "sha": "e40b03a9f83c4dd2a1c29be6bcae3d06e6b779b4",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after learning-loop updates"
+    },
+    {
+      "sha": "7e9812774d9caa61df00ecba1a501db7b122901a",
+      "date": "2026-07-10",
+      "summary": "Capture anti-missing learning loop and login-email guard"
+    },
+    {
+      "sha": "0772122ff28ea3a40875387af5a5b932a2975744",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after login email UI update"
+    },
+    {
+      "sha": "c1ee26f98e70b819fef685e6f05e112bb9f6f9a2",
+      "date": "2026-07-10",
+      "summary": "Update login enquiry email to gearupquiz address"
+    },
+    {
+      "sha": "066998189c17220da463cf0916b0947185aa41a4",
+      "date": "2026-07-10",
+      "summary": "Fix payment-history feature contract evidence commit"
+    },
+    {
+      "sha": "9845ee9c3c5156904bb0be35e7492514f92a48ed",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after payment history restore"
+    },
+    {
+      "sha": "4a8d673aec8f81d4f96fae6d0e672016c2002312",
+      "date": "2026-07-10",
+      "summary": "Restore paid-user payment history in student account"
+    },
+    {
+      "sha": "01ac664d64652beea9b8af92970527580068b50d",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory after reset-email guard"
+    },
+    {
+      "sha": "806f80f0fa4820d3277438bc286641c4baef0f50",
+      "date": "2026-07-10",
+      "summary": "Guard reset-email route when Supabase env is missing"
+    },
+    {
+      "sha": "792c2b5e1fd81ccd291825be7f769f49b6ffefa3",
+      "date": "2026-07-10",
+      "summary": "Refresh contract inventory for evidence-fix commit"
+    },
+    {
+      "sha": "48a2afaca1b56531ff53514a951bd6c2fbb726e7",
+      "date": "2026-07-10",
+      "summary": "Fix feature contract evidence commit references"
+    },
+    {
+      "sha": "67ec4dfdfaac2e34fa5e6b4280ba63993f056134",
+      "date": "2026-07-10",
+      "summary": "Refresh feature contract inventory after register typing fix"
+    },
+    {
+      "sha": "9f52543f8bfe1e7694957e8b4d49fd4986539c38",
+      "date": "2026-07-10",
+      "summary": "Fix register referral API typings for CI"
+    },
+    {
+      "sha": "66226acc6ff8c738def850d94d336e3338769239",
+      "date": "2026-07-10",
+      "summary": "Restore student registration CTA and tutor referral flow"
+    },
+    {
+      "sha": "4877fcad5391637bfa133d7de6e44bf5b697e898",
+      "date": "2026-07-10",
+      "summary": "Fix student results flow and restore report notifications"
+    },
+    {
+      "sha": "4b3136fd59333689b1a9069181b3984fc2722283",
+      "date": "2026-07-09",
+      "summary": "Restore tutor and MIT admin modules with retention guards"
+    },
+    {
+      "sha": "e2b25f23f9383011513a15079609be0623693713",
+      "date": "2026-07-09",
+      "summary": "Add wrong-question detailed explanations to parent emails"
+    },
+    {
+      "sha": "c8285a6c3aa01980e43423a50c284fe3c203cdf4",
+      "date": "2026-07-09",
+      "summary": "Harden parent email readability and enforce dark-mode guards"
+    },
+    {
+      "sha": "e322446dc6084807e4235146a8fd1b4ae10e1cbc",
+      "date": "2026-07-09",
+      "summary": "Allow self-refresh contract commit in gate check"
+    },
+    {
+      "sha": "0dd7a6e408b0abf72b15d5f8c04aee308aa75a24",
+      "date": "2026-07-09",
+      "summary": "Refresh feature contract inventory snapshot"
+    },
+    {
+      "sha": "501e4c489dc02390bbfc3fe06d2a138c111d2a39",
+      "date": "2026-07-09",
+      "summary": "Implement enforceable anti-missing feature contract gates"
+    },
+    {
+      "sha": "c38c51023436472ef1cdae54be7603a30cb2e924",
+      "date": "2026-07-09",
+      "summary": "Restore wrong-answer value details and button color"
+    },
+    {
+      "sha": "4b4ad35a99e0259bfb1adedb23f5dd5806e5fe00",
+      "date": "2026-07-09",
+      "summary": "Restore results home button and parent email readability"
+    },
     {
       "sha": "da10ce943a72846f4cdd8279153681de3c37ae73",
       "date": "2026-06-23",
@@ -2755,7 +2885,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 271,
+    "total_commits_since_start": 297,
     "total_feature_rows": 52
   }
 }

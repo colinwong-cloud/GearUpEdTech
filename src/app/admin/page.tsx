@@ -29,6 +29,7 @@ type AdminConsoleAction =
   | "tutor_referral_code_usage_details"
   | "tutor_referral_password_reset"
   | "payment_status_enquiry"
+  | "payment_recurring_monitor_summary"
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
@@ -258,6 +259,43 @@ interface PaymentMonthlyPaidSummaryResult {
   };
   parents: PaymentMonthlyPaidParentRow[];
   records: PaidTransactionAuditRow[];
+}
+
+interface PaymentRecurringMonitorUserRow {
+  parent_id: string;
+  mobile_number: string;
+  parent_name: string | null;
+  paid_until: string | null;
+  current_payment_status: string;
+  recurring_method_type: string | null;
+  recurring_linkage_ready: boolean;
+  next_payment_date: string | null;
+  this_month_payment_success: boolean;
+  this_month_payment_status: "success" | "failed" | "no_attempt";
+  this_month_last_attempt_at: string | null;
+  daily_due_for_mit: boolean;
+  daily_mit_requested: boolean;
+  daily_mit_status: "success" | "failed" | "pending" | "missing" | "not_required";
+  daily_mit_last_attempt_at: string | null;
+  daily_mit_last_attempt_status: string | null;
+  daily_mit_has_airwallex_intent: boolean;
+}
+
+interface PaymentRecurringMonitorResult {
+  month: string;
+  day: string;
+  totals: {
+    currently_paid_users: number;
+    this_month_success: number;
+    this_month_failed: number;
+    daily_due_profiles: number;
+    daily_requested: number;
+    daily_success: number;
+    daily_failed: number;
+    daily_pending: number;
+    daily_missing: number;
+  };
+  users: PaymentRecurringMonitorUserRow[];
 }
 
 interface ParentStudentPracticeStudentRow {
@@ -932,6 +970,24 @@ function formatHkdAmount(value: number): string {
   return Number(value || 0).toFixed(2);
 }
 
+function formatMonthPaymentStatusLabel(
+  status: PaymentRecurringMonitorUserRow["this_month_payment_status"]
+): string {
+  if (status === "success") return "成功";
+  if (status === "failed") return "失敗";
+  return "尚未嘗試";
+}
+
+function formatDailyMitStatusLabel(
+  status: PaymentRecurringMonitorUserRow["daily_mit_status"]
+): string {
+  if (status === "success") return "成功";
+  if (status === "failed") return "失敗";
+  if (status === "pending") return "處理中";
+  if (status === "missing") return "缺少請求";
+  return "今日不需發起";
+}
+
 function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string }) {
   const [mobile, setMobile] = useState("");
   const [month, setMonth] = useState(() => getCurrentHktMonthKey());
@@ -1265,6 +1321,9 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryMsg, setSummaryMsg] = useState("");
   const [monthlySummary, setMonthlySummary] = useState<PaymentMonthlyPaidSummaryResult | null>(null);
+  const [monitorLoading, setMonitorLoading] = useState(false);
+  const [monitorMsg, setMonitorMsg] = useState("");
+  const [recurringMonitor, setRecurringMonitor] = useState<PaymentRecurringMonitorResult | null>(null);
 
   const loadMonthlyPaidSummary = useCallback(
     async (month: string) => {
@@ -1286,9 +1345,30 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
     [sessionToken]
   );
 
+  const loadRecurringMonitor = useCallback(
+    async (month: string) => {
+      setMonitorLoading(true);
+      setMonitorMsg("");
+      try {
+        const data = await adminConsoleRequest<PaymentRecurringMonitorResult>(
+          "payment_recurring_monitor_summary",
+          { month },
+          sessionToken
+        );
+        setRecurringMonitor(data);
+      } catch (err) {
+        setMonitorMsg(err instanceof Error ? err.message : "續費監察儀表板載入失敗");
+      } finally {
+        setMonitorLoading(false);
+      }
+    },
+    [sessionToken]
+  );
+
   useEffect(() => {
     void loadMonthlyPaidSummary(summaryMonth);
-  }, [loadMonthlyPaidSummary, summaryMonth]);
+    void loadRecurringMonitor(summaryMonth);
+  }, [loadMonthlyPaidSummary, loadRecurringMonitor, summaryMonth]);
 
   const handleSearch = async () => {
     if (!mobile.trim()) {
@@ -1641,6 +1721,133 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
           )}
         </div>
       )}
+
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-gray-800">月費續費監察儀表板</h3>
+            <p className="text-xs text-gray-500">
+              以「每日」追蹤 MIT 月費請求有否發起與處理結果，並保留所選月份續費成敗統計。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="month"
+              value={summaryMonth}
+              onChange={(e) => setSummaryMonth(e.target.value)}
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+            <button
+              onClick={() => void loadRecurringMonitor(summaryMonth)}
+              disabled={monitorLoading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {monitorLoading ? "載入中..." : "重新整理"}
+            </button>
+          </div>
+        </div>
+
+        {monitorMsg && <p className="text-sm text-red-500">{monitorMsg}</p>}
+
+        {recurringMonitor && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-sm">
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">目前有效月費家長</p>
+                <p className="font-semibold text-indigo-700">{recurringMonitor.totals.currently_paid_users}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日需發起 MIT</p>
+                <p className="font-semibold text-indigo-700">{recurringMonitor.totals.daily_due_profiles}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日已發起 MIT</p>
+                <p className="font-semibold text-indigo-700">{recurringMonitor.totals.daily_requested}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日 MIT 成功</p>
+                <p className="font-semibold text-emerald-700">{recurringMonitor.totals.daily_success}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日 MIT 失敗</p>
+                <p className="font-semibold text-red-700">{recurringMonitor.totals.daily_failed}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">今日缺少請求</p>
+                <p className="font-semibold text-amber-700">{recurringMonitor.totals.daily_missing}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">所選月份續費成功</p>
+                <p className="font-semibold text-emerald-700">{recurringMonitor.totals.this_month_success}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">所選月份續費失敗</p>
+                <p className="font-semibold text-red-700">{recurringMonitor.totals.this_month_failed}</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">家長電話</th>
+                    <th className="py-2 pr-3">家長姓名</th>
+                    <th className="py-2 pr-3">今日需發起 MIT</th>
+                    <th className="py-2 pr-3">今日已發起 MIT</th>
+                    <th className="py-2 pr-3">今日 MIT 狀態</th>
+                    <th className="py-2 pr-3">今日最新 MIT 時間</th>
+                    <th className="py-2 pr-3">今日最新 MIT 回應</th>
+                    <th className="py-2 pr-3">本月付款是否成功</th>
+                    <th className="py-2 pr-3">本月付款狀態</th>
+                    <th className="py-2 pr-3">本月最近嘗試時間</th>
+                    <th className="py-2 pr-3">月費有效至</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recurringMonitor.users.map((row) => (
+                    <tr key={row.parent_id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3 font-mono">{row.mobile_number}</td>
+                      <td className="py-2 pr-3">{row.parent_name || "—"}</td>
+                      <td className="py-2 pr-3">{row.daily_due_for_mit ? "是" : "否"}</td>
+                      <td className="py-2 pr-3">{row.daily_mit_requested ? "是" : "否"}</td>
+                      <td className="py-2 pr-3">{formatDailyMitStatusLabel(row.daily_mit_status)}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.daily_mit_last_attempt_at)}</td>
+                      <td className="py-2 pr-3">
+                        {row.daily_mit_last_attempt_status
+                          ? `${row.daily_mit_last_attempt_status}${
+                              row.daily_mit_has_airwallex_intent ? "（已送 Airwallex）" : ""
+                            }`
+                          : "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            row.this_month_payment_success
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {row.this_month_payment_success ? "是" : "否"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3">{formatMonthPaymentStatusLabel(row.this_month_payment_status)}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.this_month_last_attempt_at)}</td>
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.paid_until)}</td>
+                    </tr>
+                  ))}
+                  {recurringMonitor.users.length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="py-4 text-center text-gray-400">
+                        目前沒有有效月費家長資料
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
