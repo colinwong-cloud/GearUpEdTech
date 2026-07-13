@@ -51,7 +51,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 **PWA / icons:** `src/app/apple-icon.png` serves `/apple-touch-icon` (iOS “Add to Home Screen”); `src/app/icon.png` is the favicon. Both use the banana mascot artwork.
 
-**Latest production deploy:** **2026-06-23** — deployment `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z). **Release scope:** Admin「教師編號維護」新增 Part 3 密碼重設（重設為 `123456`、清除鎖定、強制下次登入改密碼），並把成功提示訊息顯示於 Part 3 區塊底部。
+**Latest production deploy:** **2026-06-23** — deployment `dpl_Hy1o6prAdHQtPN3ak8aR4frCzHfR`, alias **Ready** at https://q.hkedutech.com (inspect: https://vercel.com/colinwong-clouds-projects/quiz-deploy/Hy1o6prAdHQtPN3ak8aR4frCzHfR). **Release scope:** 導師入口 `/tutor` 採用 Modern Gradient / Glass 視覺重設（含登入與首次改密碼畫面）；僅 UI 變更，未改 public login page `/`。
 
 ## Release SOP / checklist (mandatory)
 
@@ -333,6 +333,7 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
 
 | Date (approx) | Change |
 |----------------|--------|
+| 2026-06 | **導師入口 `/tutor` 當代化 UI（Modern Gradient / Glass）上線**：重設登入與首次改密碼畫面的視覺樣式（玻璃感卡片、漸層背景、更明確層級與訊息樣式）；僅修改 `src/app/tutor/page.tsx`，未改 public login page `/`。 |
 | 2026-06 | **導師登入密碼重設（Admin 教師編號維護 Part 3）上線**：Admin 可輸入教師編號重設密碼為 `123456`；重設時同時清除 5 次錯誤鎖定（`failed_attempts=0`, `locked_until=null`）並設為首次登入需改密碼（`must_change_password=true`）。成功訊息顯示於 Part 3 區塊底部。 |
 | 2026-06 | **家長免費升級月費按鈕文案更新（UI only）**：將文案更新為「成為月費會員(每月$99)，即可以解鎖無限題目練習並可獲得學生排名資訊。」；無 API/SQL/邏輯變更。 |
 | 2026-06 | **註冊推薦碼 + Admin 教師編號維護上線**：註冊頁新增可選 `負責教師編號`（6 位數字）並強制錯碼/超限驗證；錯誤提示改為顯示在推薦碼欄位下方且保留已填內容。Admin 新增 `教師編號維護`（手動新增、摘要查詢、明細查詢、CSV/PDF 匯出），明細含家長付費狀態（free/paid）。同步新增 SQL：`supabase_tutor_referral_codes.sql`。 |
@@ -584,6 +585,31 @@ Link once: `vercel link` (scope `colinwong-clouds-projects`, project `quiz-deplo
     - `GET /tutor`=200
     - `POST /api/admin/console` (no auth)=401
     - `GET /api/tutor/session` (no auth)=401
+
+## Handover note — 2026-06-23 (tutor login contemporary UI rollout: Variant B)
+
+- 本日已完成並上線（owner 已在 chat 明確批准）：
+  1. 導師入口 `/tutor` 套用 **Modern Gradient / Glass** 視覺版本（Preview B）。
+  2. 重設範圍包含：登入畫面與首次登入改密碼畫面的排版、色彩、訊息樣式與按鈕樣式。
+  3. 僅 UI 調整，無 API / SQL / auth 邏輯變更。
+  4. 公開登入頁 `/`（`https://www.gearupquiz.com/`）不在本次改動範圍。
+
+- 本次部署資訊：
+  - deployment: `dpl_Hy1o6prAdHQtPN3ak8aR4frCzHfR`
+  - inspect: `https://vercel.com/colinwong-clouds-projects/quiz-deploy/Hy1o6prAdHQtPN3ak8aR4frCzHfR`
+  - live alias: `https://q.hkedutech.com`
+
+- 本次驗證：
+  - `npm test` ✅
+  - `npm run lint` ✅（1 個既有 non-blocking warning：`@next/next/no-img-element`）
+  - `npm run build` ✅
+  - `npm run release:gate` ⛔（此分支未提供該 script）
+  - post-deploy smoke：
+    - `GET /`=200
+    - `GET /tutor`=200
+
+- 範圍保證（防止誤改 public login）：
+  - branch diff (`cursor/security-auth-pin-hardening-2d42..cursor/tutor-login-modern-b-2d42`) 僅包含 `src/app/tutor/page.tsx` 程式碼變更。
 
 ## Setup
 

@@ -46,6 +46,9 @@ Every release must re-check these critical features:
 8. Parent free-tier invite CTA copy remains accurate and includes both:
    - unlimited-practice value (`解鎖無限題目練習`)
    - ranking value (`可獲得學生排名資訊`)
+9. Tutor entrance UI releases must be route-scoped:
+   - only `/tutor` related pages changed
+   - public login page `/` remains unchanged unless explicitly in release scope
 
 ## 4) Validation gate
 
@@ -66,15 +69,18 @@ After production deploy, update:
 ## 6) Latest deployment record
 
 - Date (UTC): 2026-06-23
-- Deployment ID: `dpl_79DmeNLXGwFv4qYCt7iSRPyyJU7Z`
+- Deployment ID: `dpl_Hy1o6prAdHQtPN3ak8aR4frCzHfR`
 - Production URL: https://q.hkedutech.com
-- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/79DmeNLXGwFv4qYCt7iSRPyyJU7Z
+- Inspector: https://vercel.com/colinwong-clouds-projects/quiz-deploy/Hy1o6prAdHQtPN3ak8aR4frCzHfR
 - Scope:
-  - Admin `教師編號維護` Part 3 add tutor password reset by code
-  - reset sets password to `123456`, clears lockout state, and enforces first-login password change
-  - reset success message rendered in Part 3 section bottom
+  - Tutor entrance `/tutor` modernized with Preview B (Modern Gradient / Glass visual style)
+  - updated login and first-login password-change presentation/UI hierarchy
+  - UI-only release; no API/SQL/auth behavior changes
+  - public login page `/` explicitly unchanged in this rollout
 - Validation:
   - `npm run lint` (pass with existing non-blocking `next/no-img-element` warning)
   - `npm test` (pass)
   - `npm run build` (pass)
-  - production smoke: `/` 200, `/admin` 200, `/tutor` 200, `/api/admin/console` unauthorized 401, `/api/tutor/session` unauthorized 401
+  - `npm run release:gate` unavailable on this branch (script missing)
+  - production smoke: `/` 200, `/tutor` 200
+  - scoped diff check: only `src/app/tutor/page.tsx` changed in app code
