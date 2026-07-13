@@ -919,7 +919,8 @@
       "priority": "critical",
       "title": "Tutor login portal, first-login password change, and student referral flow",
       "evidence_commits": [
-        "5fd1606"
+        "5fd1606",
+        "73e567e"
       ],
       "checks": [
         {
@@ -928,7 +929,7 @@
         },
         {
           "type": "file_exists",
-          "path": "src/app/tutor/student/[mobile]/page.tsx"
+          "path": "src/app/tutor/student/[hash]/page.tsx"
         },
         {
           "type": "file_exists",
@@ -939,19 +940,82 @@
           "path": "src/app/api/tutor/sessions/route.ts"
         },
         {
-          "type": "file_contains",
-          "path": "src/app/tutor/page.tsx",
-          "snippet": "導師入口"
+          "type": "file_exists",
+          "path": "src/lib/server/tutor-student-hash.ts"
         },
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
-          "snippet": "使用教師編號登入"
+          "snippet": "GearUp Tutor"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "導師登入"
         },
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
           "snippet": "首次登入請更新密碼"
+        }
+      ]
+    },
+    {
+      "id": "tutor-modern-ui-trending-and-wrong-answer-detail",
+      "month": "2026-07",
+      "category": "tutor",
+      "priority": "critical",
+      "title": "Tutor modern UI, light-blue actions, trending charts, and detailed wrong-answer explanation",
+      "evidence_commits": [
+        "88f36ec",
+        "28ab01d",
+        "9285534",
+        "8e9ac65"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "bg-slate-950"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "rounded-xl border border-sky-200 bg-sky-100"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/components/student-performance-charts.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "OverallChart"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "TypeCharts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "各題型正確率趨勢"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "錯題解析"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "你的答案（含值）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/sessions/route.ts",
+          "snippet": "get_student_chart_data"
         }
       ]
     },
@@ -1396,8 +1460,43 @@
       ]
     }
   ],
-  "generated_at": "2026-07-13T03:53:33.686Z",
+  "generated_at": "2026-07-13T06:47:16.572Z",
   "commit_inventory": [
+    {
+      "sha": "421fdf6b2d34f66c4abe9d66e4ce8d9483343ee3",
+      "date": "2026-07-13",
+      "summary": "Guard restored tutor modern UI and trending features"
+    },
+    {
+      "sha": "8e9ac65191eced5c487d2c3d37441dcd1d786a25",
+      "date": "2026-07-06",
+      "summary": "feat(tutor): show parent-dashboard trending charts on student summary"
+    },
+    {
+      "sha": "73e567ea9daf53cff04e6d0467029e9c7971fcfe",
+      "date": "2026-07-06",
+      "summary": "feat(tutor): use opaque hash instead of mobile in student summary URL"
+    },
+    {
+      "sha": "9285534b7e16a8c1e33ab3cc1a541c1849045166",
+      "date": "2026-07-03",
+      "summary": "style: move tutor dashboard logout button to page bottom"
+    },
+    {
+      "sha": "28ab01d2e60d0852b715ae2f6067b0a7eb82cd5f",
+      "date": "2026-07-03",
+      "summary": "style: unify tutor dashboard logout button to light blue"
+    },
+    {
+      "sha": "88f36ec35dd15de7adb893787ce8cb4c17d62bf8",
+      "date": "2026-06-23",
+      "summary": "feat: modernize tutor login ui variant B"
+    },
+    {
+      "sha": "b4b2d564a7e0a7ec4e96be3bf30e2327a3fa6731",
+      "date": "2026-07-13",
+      "summary": "Refresh feature contract inventory after gate-stability commit"
+    },
     {
       "sha": "760bfab10af570aee80172b5e33ddad62a7403b6",
       "date": "2026-07-13",
@@ -2910,7 +3009,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 302,
-    "total_feature_rows": 52
+    "total_commits_since_start": 309,
+    "total_feature_rows": 53
   }
 }

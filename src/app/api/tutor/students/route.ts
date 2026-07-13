@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireTutorSession } from "@/lib/server/tutor-session";
+import { computeTutorStudentHash, getTutorHashSecret } from "@/lib/server/tutor-student-hash";
 
 function getSupabaseAdmin() {
   const url =
@@ -138,8 +139,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const hashSecret = getTutorHashSecret();
   const rows = linkedMobiles.map((mobile) => ({
     registered_mobile: mobile,
+    hash: computeTutorStudentHash(mobile, hashSecret),
     linked_at: linkedAtByMobile.get(mobile) || "",
     last_practice_at: lastPracticeByMobile.get(mobile) || null,
   }));
