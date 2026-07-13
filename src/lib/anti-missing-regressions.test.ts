@@ -82,9 +82,26 @@ describe("anti-missing regression guards", () => {
 
   it("keeps tutor portal and admin tutor+MIT modules", () => {
     const tutorPageSource = readSource("src/app/tutor/page.tsx");
-    expect(tutorPageSource).toContain("導師入口");
-    expect(tutorPageSource).toContain("使用教師編號登入");
+    expect(tutorPageSource).toContain("GearUp Tutor");
+    expect(tutorPageSource).toContain("導師登入");
     expect(tutorPageSource).toContain("首次登入請更新密碼");
+    expect(tutorPageSource).toContain("bg-slate-950");
+    expect(tutorPageSource).toContain("rounded-xl border border-sky-200 bg-sky-100");
+
+    const tutorDetailSource = readSource("src/app/tutor/student/[hash]/page.tsx");
+    expect(tutorDetailSource).toContain("OverallChart");
+    expect(tutorDetailSource).toContain("TypeCharts");
+    expect(tutorDetailSource).toContain("各題型正確率趨勢");
+    expect(tutorDetailSource).toContain("錯題解析");
+    expect(tutorDetailSource).toContain("你的答案（含值）");
+
+    const tutorSessionsApiSource = readSource("src/app/api/tutor/sessions/route.ts");
+    expect(tutorSessionsApiSource).toContain("get_student_chart_data");
+
+    const tutorHashSource = readSource("src/lib/server/tutor-student-hash.ts");
+    expect(tutorHashSource).toContain("computeTutorStudentHash");
+    expect(tutorHashSource).toContain("getTutorHashSecret");
+    expect(tutorHashSource).toContain("TUTOR_SESSION_SECRET");
 
     const adminPageSource = readSource("src/app/admin/page.tsx");
     expect(adminPageSource).toContain("教師編號維護");
