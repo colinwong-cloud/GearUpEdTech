@@ -1396,8 +1396,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-13T03:21:52.829Z",
+  "generated_at": "2026-07-13T03:23:12.604Z",
   "commit_inventory": [
+    {
+      "sha": "f149c866bbb0fc2aed488e23845349331202bf66",
+      "date": "2026-07-13",
+      "summary": "Restore missing student/admin features from anti-missing contract"
+    },
     {
       "sha": "92689098833b61ce442c3350333398855eb9b153",
       "date": "2026-07-13",
@@ -2885,7 +2890,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 297,
+    "total_commits_since_start": 298,
     "total_feature_rows": 52
   }
 }
