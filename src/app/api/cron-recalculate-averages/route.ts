@@ -3,17 +3,26 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseAnonClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
-const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  serviceKey
-);
+function getSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    "";
+  if (!supabaseUrl || !serviceKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, serviceKey);
+}
 
 function missingRpcError(e: { message: string } | null | undefined): boolean {
   if (!e) return false;
@@ -132,8 +141,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const useService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const client: Rpc = useService ? supabaseAdmin : supabase;
+  const supabaseAnon = getSupabaseAnonClient();
+  const supabaseAdmin = getSupabaseAdminClient();
+  const useService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  const client: Rpc | null = useService ? supabaseAdmin : supabaseAnon;
+  if (!client) {
+    return NextResponse.json(
+      {
+        error: "Supabase not configured",
+        hint: "Set NEXT_PUBLIC_SUPABASE_URL and key env vars in this environment.",
+      },
+      { status: 503 }
+    );
+  }
   if (!useService) {
     console.warn(
       "cron: SUPABASE_SERVICE_ROLE_KEY not set; using anon key. Add service role in Vercel for more reliable long RPCs."
