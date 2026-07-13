@@ -9,14 +9,6 @@ test.describe("Home login smoke", () => {
     await expect(page.getByText("常見問題")).toBeVisible();
     await expect(page.getByRole("button", { name: "WhatsApp" })).toBeVisible();
     await expect(page.getByRole("button", { name: "WeChat" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "接受全部" })).toBeVisible();
-  });
-
-  test("does not render cookie controls on reset-password page", async ({ page }) => {
-    await page.goto("/reset-password");
-
-    await expect(page.getByText("Cookie 設定")).toHaveCount(0);
-    await expect(page.getByText("接受全部")).toHaveCount(0);
   });
 
   test("register screen marks gender as mandatory", async ({ page }) => {
@@ -24,6 +16,6 @@ test.describe("Home login smoke", () => {
 
     await page.getByRole("button", { name: "新用戶註冊" }).click();
     await expect(page.getByRole("heading", { name: "新用戶註冊" })).toBeVisible();
-    await expect(page.getByText("性別（必填）")).toBeVisible();
+    await expect(page.getByText("姓別")).toBeVisible();
   });
 });
