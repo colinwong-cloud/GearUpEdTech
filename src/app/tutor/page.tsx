@@ -12,6 +12,7 @@ type TutorSessionPayload = {
 
 type TutorStudentRow = {
   registered_mobile: string;
+  hash: string;
   linked_at: string;
   last_practice_at: string | null;
 };
@@ -352,7 +353,7 @@ export default function TutorPortalPage() {
                   <td className="py-2 pr-3">{formatDateTime(row.last_practice_at)}</td>
                   <td className="py-2 pr-3">
                     <Link
-                      href={`/tutor/student/${encodeURIComponent(row.registered_mobile)}`}
+                      href={`/tutor/student/${encodeURIComponent(row.hash)}`}
                       className="inline-flex rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                     >
                       View
