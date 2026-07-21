@@ -1,9 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
+import {
+  finalizePaymentByIntent,
+  getAirwallexAccessToken,
+  getAirwallexBaseUrl,
+} from "@/lib/server/payment-finalize";
+import {
+  getCurrentHktMonthKey,
+  getHktMonthRangeIso,
+  isValidMonthKey,
+} from "@/lib/admin-paid-summary";
+import {
+  buildGradeLevelPracticeFrequencyRows,
+  buildStudentPracticeSummaryRows,
+  type RawGradePracticeSessionRow,
+  type RawPracticeSessionRow,
+} from "@/lib/admin-student-practice-summary";
+import {
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
+  PRIMARY_QUIZ_SUBJECT,
+} from "@/lib/quiz-subjects";
+import { resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
 
 type AdminAction =
   | "search_parent"
+  | "parent_students_practice_summary"
+  | "grade_level_practice_frequency_summary"
+  | "today_practice_details_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -11,12 +37,603 @@ type AdminAction =
   | "set_email_notification"
   | "search_questions"
   | "update_question"
-  | "mtd_parent_questions_summary";
+  | "discount_code_list"
+  | "discount_code_create"
+  | "discount_code_update"
+  | "discount_code_delete"
+  | "discount_code_usage_summary"
+  | "tutor_referral_code_create"
+  | "tutor_referral_code_summary"
+  | "tutor_referral_code_usage_details"
+  | "tutor_referral_password_reset"
+  | "payment_status_enquiry"
+  | "payment_recurring_monitor_summary"
+  | "payment_monthly_paid_summary"
+  | "payment_cancel_future_payment"
+  | "payment_refund_last_preview"
+  | "payment_refund_last_confirm";
 
 type RequestBody = {
   action?: AdminAction;
   payload?: Record<string, unknown>;
 };
+
+type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+type TodayPracticeDetailSessionRow = {
+  student_id: string;
+  subject: string | null;
+  questions_attempted: number | null;
+  created_at: string | null;
+  hkt_practice_date?: string | null;
+};
+
+const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
+const TUTOR_REFERRAL_CODE_RE = /^\d{6}$/;
+const TUTOR_REFERRAL_MOBILE_RE = /^\d{8}$/;
+const TUTOR_REFERRAL_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const RECURRING_ACTIVE_STATUSES = new Set(["active", "paused"]);
+const REFUND_SUCCESS_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED"]);
+const PAYMENT_OPS_TABLE_HINT =
+  "缺少付款管理資料表，請先在 Supabase 執行 supabase_admin_payment_ops.sql。";
+const TUTOR_REFERRAL_TABLE_HINT =
+  "缺少教師編號資料欄位，請先在 Supabase 執行 supabase_tutor_referral_contact_fields.sql（或最新版 supabase_tutor_referral_codes.sql）。";
+const TUTOR_PORTAL_TABLE_HINT =
+  "缺少導師入口資料表，請先在 Supabase 執行 supabase_tutor_portal_auth.sql。";
+
+function normalizeIsoDateTime(raw: unknown): string | null {
+  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+  const date = new Date(String(raw));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function getHktDayRangeIso(reference = new Date()): {
+  dayKey: string;
+  startIso: string;
+  endIso: string;
+} {
+  const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const hktNowMs = reference.getTime() + HKT_OFFSET_MS;
+  const hktNow = new Date(hktNowMs);
+  const year = hktNow.getUTCFullYear();
+  const month = hktNow.getUTCMonth();
+  const day = hktNow.getUTCDate();
+  const dayKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const hktMidnightUtcMs = Date.UTC(year, month, day) - HKT_OFFSET_MS;
+  const startIso = new Date(hktMidnightUtcMs).toISOString();
+  const endIso = new Date(hktMidnightUtcMs + 24 * 60 * 60 * 1000).toISOString();
+  return { dayKey, startIso, endIso };
+}
+
+function buildLast12MonthsTemplate(now = new Date()): {
+  month: string;
+  amount_hkd: number;
+  paid_count: number;
+}[] {
+  const result: { month: string; amount_hkd: number; paid_count: number }[] = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const month = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
+    result.push({ month, amount_hkd: 0, paid_count: 0 });
+  }
+  return result;
+}
+
+function toMonthKey(rawIso: string | null): string | null {
+  if (!rawIso) return null;
+  const date = new Date(rawIso);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function toSafeNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
+}
+
+function normalizeMethodToken(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
+function formatPaymentMethodDisplay({
+  methodLabel,
+  methodType,
+  methodBrand,
+  fallback,
+}: {
+  methodLabel: string | null;
+  methodType: string | null;
+  methodBrand: string | null;
+  fallback: string | null;
+}): string | null {
+  const token =
+    normalizeMethodToken(methodLabel) ||
+    normalizeMethodToken(methodType) ||
+    normalizeMethodToken(fallback);
+  const brand = normalizeMethodToken(methodBrand);
+
+  if (!token) return null;
+
+  if (token === "applepay" || token === "apple pay") return "Apple Pay";
+  if (token === "googlepay" || token === "google pay") return "Google Pay";
+  if (token === "alipayhk" || token === "alipay_hk" || token === "alipay hk") return "Alipay HK";
+  if (token === "wechatpay" || token === "wechat_pay" || token === "wechat pay hk") return "WeChat Pay HK";
+  if (token === "visa") return "Card (Visa)";
+  if (token === "mastercard" || token === "master card") return "Card (Mastercard)";
+  if (token === "card") {
+    if (brand === "visa") return "Card (Visa)";
+    if (brand === "mastercard" || brand === "master card") return "Card (Mastercard)";
+    return "Card";
+  }
+  if (token === "fps") return "FPS";
+  return token;
+}
+
+function readString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function normalizeGradeSummarySubject(value: unknown): GradeSummarySubject | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "all";
+  const lowered = raw.toLowerCase();
+  if (lowered === "all" || lowered === "all subject" || lowered === "all_subject") return "all";
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return null;
+}
+
+function normalizePracticeSessionSubject(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Unknown";
+  const lowered = raw.toLowerCase();
+  if (lowered === "math" || raw === LEGACY_PRIMARY_QUIZ_SUBJECT_KEY) return PRIMARY_QUIZ_SUBJECT;
+  if (lowered === "chinese") return CHINESE_QUIZ_SUBJECT;
+  if (lowered === "english") return ENGLISH_QUIZ_SUBJECT;
+  return raw;
+}
+
+type AirwallexApiBody = {
+  json: Record<string, unknown> | null;
+  text: string;
+};
+
+async function readAirwallexApiBody(res: Response): Promise<AirwallexApiBody> {
+  const text = await res.text();
+  if (!text) return { json: null, text: "" };
+  try {
+    return {
+      json: JSON.parse(text) as Record<string, unknown>,
+      text,
+    };
+  } catch {
+    return { json: null, text };
+  }
+}
+
+function formatAirwallexError({
+  action,
+  status,
+  body,
+}: {
+  action: string;
+  status: number;
+  body: AirwallexApiBody;
+}): string {
+  const json = body.json || {};
+  const code = typeof json.code === "string" ? json.code : "";
+  const message = typeof json.message === "string" ? json.message : "";
+  if (code || message) {
+    return `Airwallex ${action} failed (${status})${code ? ` [${code}]` : ""}: ${message || "Unknown error"}`;
+  }
+  const snippet = body.text.replace(/\s+/g, " ").slice(0, 220);
+  return `Airwallex ${action} failed (${status})${snippet ? `: ${snippet}` : ""}`;
+}
+
+function normalizeRefundStatus(status: string | null): string {
+  const normalized = (status || "").trim().toUpperCase();
+  if (!normalized) return "initiated";
+  return normalized.toLowerCase();
+}
+
+function isMissingPaymentOpsTableError(message: string): boolean {
+  return /parent_payment_refunds|admin_payment_actions|42P01|does not exist/i.test(message);
+}
+
+function isMissingTutorReferralTableError(message: string): boolean {
+  return /tutor_referral_codes|tutor_referral_usages|tutor_mobile|tutor_email|42P01|42703|does not exist/i.test(message);
+}
+
+function isMissingTutorPortalTableError(message: string): boolean {
+  return /tutor_portal_accounts|42P01|42703|does not exist/i.test(message);
+}
+type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
+
+type ReferralDb = {
+  public: {
+    Tables: {
+      tutor_referral_codes: {
+        Row: {
+          id: string;
+          code: string;
+          tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
+          usage_limit: number;
+          current_uses: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
+          usage_limit?: number;
+          current_uses?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tutor_referral_usages: {
+        Row: {
+          id: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          tutor_mobile: string | null;
+          tutor_email: string | null;
+          mobile_number: string;
+          parent_id: string | null;
+          used_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code_id: string;
+          code: string;
+          tutor_name: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
+          mobile_number: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          code_id?: string;
+          code?: string;
+          tutor_name?: string;
+          tutor_mobile?: string | null;
+          tutor_email?: string | null;
+          mobile_number?: string;
+          parent_id?: string | null;
+          used_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+type ReferralAdminClient = ReturnType<typeof createClient<ReferralDb>>;
+
+function asReferralAdminClient(admin: AdminClient): ReferralAdminClient {
+  return admin as unknown as ReferralAdminClient;
+}
+
+type ParentRow = {
+  id: string;
+  mobile_number: string;
+  parent_name: string | null;
+  subscription_tier: string | null;
+  paid_started_at: string | null;
+  paid_until: string | null;
+};
+
+type RecurringProfileRow = {
+  id: string;
+  parent_id: string | null;
+  mobile_number?: string | null;
+  status: string | null;
+  airwallex_payment_consent_id: string | null;
+  airwallex_payment_method_id?: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
+  next_charge_at?: string | null;
+  last_charged_at?: string | null;
+  last_order_status?: string | null;
+  last_error?: string | null;
+};
+
+type PaidOrderRow = {
+  id: string;
+  parent_id: string | null;
+  mobile_number: string;
+  merchant_order_id?: string | null;
+  status: string;
+  paid_at: string | null;
+  created_at: string;
+  final_amount_hkd: number | string | null;
+  payment_method: string | null;
+  payment_method_label?: string | null;
+  payment_method_type?: string | null;
+  payment_method_brand?: string | null;
+  is_recurring_payment?: boolean | null;
+  airwallex_payment_intent_id?: string | null;
+  airwallex_payment_attempt_id?: string | null;
+};
+
+type RecurringMonitorOrderRow = {
+  id: string;
+  mobile_number: string;
+  status: string;
+  created_at: string;
+  paid_at: string | null;
+  merchant_order_id?: string | null;
+  airwallex_payment_intent_id?: string | null;
+  is_recurring_payment?: boolean | null;
+  payment_method?: string | null;
+  final_amount_hkd?: number | string | null;
+};
+
+async function ensurePaymentOpsTables(admin: AdminClient) {
+  const { error: refundProbeErr } = await admin
+    .from("parent_payment_refunds")
+    .select("id")
+    .limit(1);
+  if (refundProbeErr && isMissingPaymentOpsTableError(refundProbeErr.message)) {
+    throw new Error(PAYMENT_OPS_TABLE_HINT);
+  }
+  if (refundProbeErr) throw refundProbeErr;
+
+  const { error: actionProbeErr } = await admin
+    .from("admin_payment_actions")
+    .select("id")
+    .limit(1);
+  if (actionProbeErr && isMissingPaymentOpsTableError(actionProbeErr.message)) {
+    throw new Error(PAYMENT_OPS_TABLE_HINT);
+  }
+  if (actionProbeErr) throw actionProbeErr;
+}
+
+async function ensureTutorReferralTables(admin: AdminClient) {
+  const referralAdmin = asReferralAdminClient(admin);
+  const codeProbe = await referralAdmin.from("tutor_referral_codes").select("id").limit(1);
+  if (codeProbe.error && isMissingTutorReferralTableError(codeProbe.error.message || "")) {
+    throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+  }
+  if (codeProbe.error) throw codeProbe.error;
+
+  const usageProbe = await referralAdmin.from("tutor_referral_usages").select("id").limit(1);
+  if (usageProbe.error && isMissingTutorReferralTableError(usageProbe.error.message || "")) {
+    throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+  }
+  if (usageProbe.error) throw usageProbe.error;
+}
+
+async function getParentByMobile(admin: AdminClient, mobile: string): Promise<ParentRow | null> {
+  const { data, error } = await admin
+    .from("parents")
+    .select("id,mobile_number,parent_name,subscription_tier,paid_started_at,paid_until")
+    .eq("mobile_number", mobile)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ParentRow | null) ?? null;
+}
+
+async function getRecurringProfileByMobile(
+  admin: AdminClient,
+  mobile: string
+): Promise<RecurringProfileRow | null> {
+  const { data, error } = await admin
+    .from("parent_recurring_profiles")
+    .select(
+      "id,parent_id,status,airwallex_payment_consent_id,payment_method_label,payment_method_type,payment_method_brand"
+    )
+    .eq("mobile_number", mobile)
+    .maybeSingle();
+  if (error) {
+    if (isMissingPaymentOpsTableError(error.message)) return null;
+    const recurringErrMsg = error.message || "";
+    if (/parent_recurring_profiles|42P01|does not exist/i.test(recurringErrMsg)) {
+      return null;
+    }
+    throw error;
+  }
+  return (data as RecurringProfileRow | null) ?? null;
+}
+
+async function getLatestPaidOrder(admin: AdminClient, mobile: string): Promise<PaidOrderRow | null> {
+  const rich = await admin
+    .from("parent_payment_orders")
+    .select(
+      "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
+    )
+    .eq("mobile_number", mobile)
+    .eq("status", "paid")
+    .order("paid_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (rich.error) {
+    const msg = rich.error.message || "";
+    if (
+      /payment_method_label|payment_method_type|payment_method_brand|is_recurring_payment|airwallex_payment_attempt_id/i.test(
+        msg
+      )
+    ) {
+      const fallback = await admin
+        .from("parent_payment_orders")
+        .select(
+          "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+        )
+        .eq("mobile_number", mobile)
+        .eq("status", "paid")
+        .order("paid_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (fallback.error) throw fallback.error;
+      return (fallback.data as PaidOrderRow | null) ?? null;
+    }
+    throw rich.error;
+  }
+  return (rich.data as PaidOrderRow | null) ?? null;
+}
+
+async function logAdminPaymentAction({
+  admin,
+  actionType,
+  status,
+  adminUser,
+  mobile,
+  parentId,
+  paymentOrderId,
+  recurringProfileId,
+  message,
+  payload,
+}: {
+  admin: AdminClient;
+  actionType: "cancel_future_payment" | "refund_last_payment";
+  status: "success" | "failed";
+  adminUser: string;
+  mobile: string;
+  parentId: string | null;
+  paymentOrderId: string | null;
+  recurringProfileId: string | null;
+  message: string | null;
+  payload: Record<string, unknown> | null;
+}) {
+  const { error } = await admin.from("admin_payment_actions").insert({
+    action_type: actionType,
+    status,
+    admin_user: adminUser,
+    mobile_number: mobile,
+    parent_id: parentId,
+    payment_order_id: paymentOrderId,
+    recurring_profile_id: recurringProfileId,
+    message,
+    payload,
+  });
+  if (error) throw error;
+}
+
+async function disablePaymentConsent({
+  consentId,
+}: {
+  consentId: string;
+}): Promise<{ disabled: boolean; status: string | null }> {
+  const baseUrl = getAirwallexBaseUrl();
+  const accessToken = await getAirwallexAccessToken(baseUrl);
+  const res = await fetch(
+    `${baseUrl}/api/v1/pa/payment_consents/${encodeURIComponent(consentId)}/disable`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ request_id: crypto.randomUUID() }),
+      cache: "no-store",
+    }
+  );
+  const body = await readAirwallexApiBody(res);
+  if (!res.ok) {
+    const code = readString(body.json?.code)?.toLowerCase() || "";
+    const message = readString(body.json?.message)?.toLowerCase() || "";
+    if (
+      code === "invalid_status_for_operation" ||
+      message.includes("disabled") ||
+      message.includes("cannot be used")
+    ) {
+      return { disabled: true, status: "DISABLED" };
+    }
+    throw new Error(
+      formatAirwallexError({
+        action: "payment_consents/disable",
+        status: res.status,
+        body,
+      })
+    );
+  }
+  return {
+    disabled: true,
+    status: readString(body.json?.status),
+  };
+}
+
+async function cancelRecurringLocally({
+  admin,
+  profileId,
+}: {
+  admin: AdminClient;
+  profileId: string;
+}) {
+  const { error } = await admin
+    .from("parent_recurring_profiles")
+    .update({
+      status: "cancelled",
+      last_order_status: "cancelled",
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profileId);
+  if (error) throw error;
+}
+
+async function downgradeParentToFree({
+  admin,
+  parentId,
+}: {
+  admin: AdminClient;
+  parentId: string;
+}) {
+  const downgradeAt = new Date(Date.now() - 1000).toISOString();
+  const { error } = await admin
+    .from("parents")
+    .update({
+      subscription_tier: "free",
+      paid_until: downgradeAt,
+    })
+    .eq("id", parentId);
+  if (error) throw error;
+}
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -25,45 +642,12 @@ function getAdminClient() {
   return createClient(url, key);
 }
 
-function getHktMonthToDateRangeIso(now = new Date()) {
-  const hktOffsetMs = 8 * 60 * 60 * 1000;
-  const hktNowMs = now.getTime() + hktOffsetMs;
-  const hktNow = new Date(hktNowMs);
-  const y = hktNow.getUTCFullYear();
-  const m = hktNow.getUTCMonth();
-  const month = `${y}-${String(m + 1).padStart(2, "0")}`;
-  const startUtcMs = Date.UTC(y, m, 1, 0, 0, 0, 0) - hktOffsetMs;
-  return {
-    month,
-    startIso: new Date(startUtcMs).toISOString(),
-    endIso: now.toISOString(),
-  };
-}
-
-function readString(v: unknown): string {
-  return typeof v === "string" ? v.trim() : "";
-}
-
-function toSafePositiveInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  const normalized = Math.trunc(n);
-  return normalized > 0 ? normalized : 0;
-}
-
-function chunkArray<T>(items: T[], chunkSize: number): T[][] {
-  if (items.length <= chunkSize) return [items];
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += chunkSize) {
-    chunks.push(items.slice(i, i + chunkSize));
-  }
-  return chunks;
-}
-
 export async function POST(req: NextRequest) {
-  if (!requireAdminSession(req)) {
+  const adminSession = requireAdminSession(req);
+  if (!adminSession) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const adminUser = adminSession.sub || "admin";
 
   const admin = getAdminClient();
   if (!admin) {
@@ -95,6 +679,330 @@ export async function POST(req: NextRequest) {
         });
         if (error) throw error;
         return NextResponse.json({ data: data ?? null });
+      }
+      case "parent_students_practice_summary": {
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        const { data: parentRow, error: parentErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,email")
+          .eq("mobile_number", mobile)
+          .maybeSingle();
+        if (parentErr) throw parentErr;
+        if (!parentRow) {
+          return NextResponse.json({
+            data: {
+              found: false,
+              month: monthKey,
+              students: [],
+              summary_rows: [],
+            },
+          });
+        }
+
+        const { data: studentRows, error: studentErr } = await admin
+          .from("students")
+          .select("id,student_name,grade_level,gender,school_id")
+          .eq("parent_id", parentRow.id)
+          .order("created_at", { ascending: true })
+          .limit(2000);
+        if (studentErr) throw studentErr;
+
+        const schoolIdSet = new Set<string>();
+        for (const row of studentRows ?? []) {
+          const schoolId = readString(row.school_id);
+          if (schoolId) schoolIdSet.add(schoolId);
+        }
+
+        const schoolMap = new Map<
+          string,
+          { name_zh: string | null; name_en: string | null; district: string | null }
+        >();
+        const schoolIds = Array.from(schoolIdSet);
+        for (const chunk of chunkArray(schoolIds, 500)) {
+          const { data: schoolRows, error: schoolErr } = await admin
+            .from("schools")
+            .select("id,name_zh,name_en,district")
+            .in("id", chunk);
+          if (schoolErr) throw schoolErr;
+          for (const school of schoolRows ?? []) {
+            schoolMap.set(String(school.id), {
+              name_zh: readString(school.name_zh),
+              name_en: readString(school.name_en),
+              district: readString(school.district),
+            });
+          }
+        }
+
+        const students = (studentRows ?? []).map((row) => {
+          const schoolId = readString(row.school_id);
+          const school = schoolId ? schoolMap.get(schoolId) : null;
+          const genderRaw = readString(row.gender)?.toUpperCase() ?? null;
+          const genderLabel =
+            genderRaw === "M" ? "Boy" : genderRaw === "F" ? "Girl" : null;
+          const schoolName = school
+            ? school.name_zh || school.name_en || null
+            : null;
+          return {
+            id: String(row.id),
+            student_name: readString(row.student_name) || "",
+            grade_level: readString(row.grade_level) || "",
+            gender: genderRaw,
+            gender_label: genderLabel,
+            school_id: schoolId,
+            school_name: schoolName,
+            school_district: school?.district ?? null,
+          };
+        });
+
+        const studentIds = students.map((row) => row.id).filter(Boolean);
+        const sessions: RawPracticeSessionRow[] = [];
+        for (const chunk of chunkArray(studentIds, 400)) {
+          const richRes = await admin
+            .from("quiz_sessions")
+            .select("student_id,subject,score,questions_attempted,created_at,hkt_practice_date")
+            .in("student_id", chunk)
+            .gt("questions_attempted", 0)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso)
+            .order("created_at", { ascending: false })
+            .limit(50000);
+          if (richRes.error) {
+            const richErrMsg = richRes.error.message || "";
+            if (/hkt_practice_date|column .* does not exist|42703/i.test(richErrMsg)) {
+              const fallbackRes = await admin
+                .from("quiz_sessions")
+                .select("student_id,subject,score,questions_attempted,created_at")
+                .in("student_id", chunk)
+                .gt("questions_attempted", 0)
+                .gte("created_at", startIso)
+                .lt("created_at", endIso)
+                .order("created_at", { ascending: false })
+                .limit(50000);
+              if (fallbackRes.error) throw fallbackRes.error;
+              sessions.push(
+                ...((fallbackRes.data as RawPracticeSessionRow[] | null) ?? [])
+              );
+            } else {
+              throw richRes.error;
+            }
+          } else {
+            sessions.push(...((richRes.data as RawPracticeSessionRow[] | null) ?? []));
+          }
+        }
+        const summaryRows = buildStudentPracticeSummaryRows(sessions);
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            month: monthKey,
+            parent: {
+              id: String(parentRow.id),
+              mobile_number: String(parentRow.mobile_number || ""),
+              parent_name: readString(parentRow.parent_name),
+              email: readString(parentRow.email),
+            },
+            students,
+            summary_rows: summaryRows,
+          },
+        });
+      }
+      case "grade_level_practice_frequency_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        const subjectKey = normalizeGradeSummarySubject(payload.subject);
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        if (!subjectKey) {
+          return NextResponse.json(
+            { error: "科目必須為 all/Chinese/English/Math" },
+            { status: 400 }
+          );
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let sessions: RawGradePracticeSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,subject,questions_attempted,time_spent_seconds")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: false })
+          .limit(50000);
+        if (richRes.error) {
+          const errMsg = richRes.error.message || "";
+          if (/time_spent_seconds|column .* does not exist|42703/i.test(errMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,subject,questions_attempted")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: false })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = ((fallbackRes.data as RawGradePracticeSessionRow[] | null) ?? []).map(
+              (row) => ({
+                student_id: row.student_id,
+                subject: row.subject,
+                questions_attempted: row.questions_attempted,
+                time_spent_seconds: null,
+              })
+            );
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as RawGradePracticeSessionRow[] | null) ?? [];
+        }
+
+        const filteredSessions =
+          subjectKey === "all"
+            ? sessions
+            : sessions.filter(
+                (row) => normalizePracticeSessionSubject(row.subject) === subjectKey
+              );
+
+        const studentIdSet = new Set<string>();
+        for (const row of filteredSessions) {
+          const studentId = String(row.student_id || "").trim();
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentGradeMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,grade_level")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const id = readString(student.id);
+            if (!id) continue;
+            studentGradeMap.set(id, readString(student.grade_level) || "未設定年級");
+          }
+        }
+
+        const rows = buildGradeLevelPracticeFrequencyRows(filteredSessions, studentGradeMap);
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            subject: subjectKey,
+            rows,
+          },
+        });
+      }
+      case "today_practice_details_summary": {
+        const { dayKey, startIso, endIso } = getHktDayRangeIso();
+
+        let sessions: TodayPracticeDetailSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,subject,questions_attempted,created_at,hkt_practice_date")
+          .gt("questions_attempted", 0)
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: true })
+          .limit(50000);
+        if (richRes.error) {
+          const richErrMsg = richRes.error.message || "";
+          if (/hkt_practice_date|column .* does not exist|42703/i.test(richErrMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,subject,questions_attempted,created_at")
+              .gt("questions_attempted", 0)
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: true })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = (fallbackRes.data as TodayPracticeDetailSessionRow[] | null) ?? [];
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as TodayPracticeDetailSessionRow[] | null) ?? [];
+        }
+
+        const studentIdSet = new Set<string>();
+        for (const row of sessions) {
+          const studentId = readString(row.student_id);
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentMap = new Map<string, { student_name: string; parent_id: string | null }>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,student_name,parent_id")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const studentId = readString(student.id);
+            if (!studentId) continue;
+            studentMap.set(studentId, {
+              student_name: readString(student.student_name) || "未命名學生",
+              parent_id: readString(student.parent_id),
+            });
+          }
+        }
+
+        const parentIdSet = new Set<string>();
+        for (const student of studentMap.values()) {
+          if (student.parent_id) parentIdSet.add(student.parent_id);
+        }
+
+        const parentMobileById = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(parentIdSet), 400)) {
+          const { data: parents, error: parentsErr } = await admin
+            .from("parents")
+            .select("id,mobile_number")
+            .in("id", chunk);
+          if (parentsErr) throw parentsErr;
+          for (const parent of parents ?? []) {
+            const parentId = readString(parent.id);
+            if (!parentId) continue;
+            parentMobileById.set(parentId, readString(parent.mobile_number) || "—");
+          }
+        }
+
+        const rows = sessions
+          .map((session) => {
+            const studentId = readString(session.student_id);
+            if (!studentId) return null;
+            const student = studentMap.get(studentId);
+            if (!student) return null;
+            const practiceTime = normalizeIsoDateTime(session.created_at);
+            if (!practiceTime) return null;
+            const questionsAttempted = Math.max(0, toSafeNumber(session.questions_attempted));
+            if (questionsAttempted <= 0) return null;
+            return {
+              practice_time: practiceTime,
+              parent_mobile:
+                (student.parent_id ? parentMobileById.get(student.parent_id) : null) || "—",
+              student_name: student.student_name,
+              subject: normalizePracticeSessionSubject(session.subject),
+              questions_attempted: questionsAttempted,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => Boolean(row))
+          .sort((a, b) => a.practice_time.localeCompare(b.practice_time));
+
+        return NextResponse.json({
+          data: {
+            day: dayKey,
+            rows,
+          },
+        });
       }
       case "add_quota": {
         const studentId = String(payload.p_student_id ?? "");
@@ -163,105 +1071,1551 @@ export async function POST(req: NextRequest) {
         if (error) throw error;
         return NextResponse.json({ data: { ok: true } });
       }
-      case "mtd_parent_questions_summary": {
-        type SessionRow = {
-          student_id: string | null;
-          questions_attempted: number | null;
-        };
-        type StudentRow = {
-          id: string;
-          parent_id: string | null;
-        };
-        type ParentRow = {
-          id: string;
-          mobile_number: string | null;
-        };
+      case "discount_code_list": {
+        const q = String(payload.q ?? "").trim();
+        let query = admin
+          .from("discount_codes")
+          .select("id,code,discount_percent,salesperson,is_active,created_at")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (q) {
+          const safeQ = q.replace(/,/g, " ");
+          query = query.or(`code.ilike.%${safeQ}%,salesperson.ilike.%${safeQ}%`);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return NextResponse.json({ data: data ?? [] });
+      }
+      case "discount_code_create": {
+        const code = String(payload.code ?? "").trim().toUpperCase();
+        const discountPercent = Number(payload.discount_percent ?? 0);
+        const salesperson = String(payload.salesperson ?? "").trim();
+        const isActive = payload.is_active === undefined ? true : Boolean(payload.is_active);
+        const createdAt = normalizeIsoDateTime(payload.created_at);
 
-        const { month, startIso, endIso } = getHktMonthToDateRangeIso();
-        const { data: sessionData, error: sessionErr } = await admin
-          .from("quiz_sessions")
-          .select("student_id,questions_attempted,created_at")
-          .gt("questions_attempted", 0)
-          .gte("created_at", startIso)
-          .lte("created_at", endIso)
-          .limit(50000);
-        if (sessionErr) throw sessionErr;
+        if (!DISCOUNT_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "折扣碼必須為 6 位英數字" }, { status: 400 });
+        }
+        if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+          return NextResponse.json({ error: "折扣百分比必須介乎 0 至 100" }, { status: 400 });
+        }
+        if (!salesperson) {
+          return NextResponse.json({ error: "請輸入業務員名稱" }, { status: 400 });
+        }
+        if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
+          return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
+        }
 
-        const sessions = (sessionData as SessionRow[] | null) ?? [];
-        const studentIds = Array.from(
-          new Set(
-            sessions
-              .map((row) => readString(row.student_id))
-              .filter((studentId) => studentId.length > 0)
+        const insertPayload: Record<string, unknown> = {
+          code,
+          discount_percent: discountPercent,
+          salesperson,
+          is_active: isActive,
+        };
+        if (createdAt) insertPayload.created_at = createdAt;
+
+        const { data, error } = await admin
+          .from("discount_codes")
+          .insert(insertPayload)
+          .select("id,code,discount_percent,salesperson,is_active,created_at")
+          .single();
+        if (error) throw error;
+        return NextResponse.json({ data });
+      }
+      case "discount_code_update": {
+        const id = String(payload.id ?? "").trim();
+        const code = String(payload.code ?? "").trim().toUpperCase();
+        const discountPercent = Number(payload.discount_percent ?? 0);
+        const salesperson = String(payload.salesperson ?? "").trim();
+        const isActive = payload.is_active === undefined ? true : Boolean(payload.is_active);
+        const createdAt = normalizeIsoDateTime(payload.created_at);
+
+        if (!id) {
+          return NextResponse.json({ error: "缺少折扣碼 ID" }, { status: 400 });
+        }
+        if (!DISCOUNT_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "折扣碼必須為 6 位英數字" }, { status: 400 });
+        }
+        if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+          return NextResponse.json({ error: "折扣百分比必須介乎 0 至 100" }, { status: 400 });
+        }
+        if (!salesperson) {
+          return NextResponse.json({ error: "請輸入業務員名稱" }, { status: 400 });
+        }
+        if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
+          return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
+        }
+
+        const updatePayload: Record<string, unknown> = {
+          code,
+          discount_percent: discountPercent,
+          salesperson,
+          is_active: isActive,
+        };
+        if (createdAt) updatePayload.created_at = createdAt;
+
+        const { data, error } = await admin
+          .from("discount_codes")
+          .update(updatePayload)
+          .eq("id", id)
+          .select("id,code,discount_percent,salesperson,is_active,created_at")
+          .single();
+        if (error) throw error;
+        return NextResponse.json({ data });
+      }
+      case "discount_code_delete": {
+        const id = String(payload.id ?? "").trim();
+        if (!id) {
+          return NextResponse.json({ error: "缺少折扣碼 ID" }, { status: 400 });
+        }
+        const { error } = await admin.from("discount_codes").delete().eq("id", id);
+        if (error) throw error;
+        return NextResponse.json({ data: { ok: true } });
+      }
+      case "discount_code_usage_summary": {
+        const month = String(payload.month ?? "").trim();
+        const salespersonFilter = String(payload.salesperson ?? "").trim().toLowerCase();
+        if (month && !/^\d{4}-\d{2}$/.test(month)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+
+        let usageQuery = admin
+          .from("parent_payment_orders")
+          .select(
+            "id,created_at,paid_at,mobile_number,merchant_order_id,status,payment_method,discount_code,discount_percent,amount_hkd,final_amount_hkd"
           )
-        );
+          .not("discount_code", "is", null)
+          .neq("discount_code", "")
+          .order("created_at", { ascending: false })
+          .limit(10000);
 
-        const parentIdByStudentId = new Map<string, string>();
-        if (studentIds.length > 0) {
-          for (const chunk of chunkArray(studentIds, 400)) {
-            const { data: students, error: studentsErr } = await admin
-              .from("students")
-              .select("id,parent_id")
-              .in("id", chunk);
-            if (studentsErr) throw studentsErr;
-            for (const student of (students as StudentRow[] | null) ?? []) {
-              const studentId = readString(student.id);
-              const parentId = readString(student.parent_id);
-              if (!studentId || !parentId) continue;
-              parentIdByStudentId.set(studentId, parentId);
-            }
+        if (month) {
+          const [y, m] = month.split("-").map((v) => Number(v));
+          const start = new Date(Date.UTC(y, m - 1, 1));
+          const end = new Date(Date.UTC(y, m, 1));
+          usageQuery = usageQuery.gte("created_at", start.toISOString()).lt("created_at", end.toISOString());
+        }
+
+        const { data: usageRows, error: usageError } = await usageQuery;
+        if (usageError) throw usageError;
+
+        const { data: discountRows, error: discountError } = await admin
+          .from("discount_codes")
+          .select("code,salesperson");
+        if (discountError) throw discountError;
+
+        const salespersonByCode = new Map<string, string>();
+        for (const row of discountRows ?? []) {
+          salespersonByCode.set(String(row.code ?? "").toUpperCase(), String(row.salesperson ?? "").trim());
+        }
+
+        type UsageRecord = {
+          id: string;
+          usage_date: string;
+          usage_month: string;
+          created_at: string;
+          paid_at: string | null;
+          discount_code: string;
+          salesperson: string | null;
+          discount_percent: number;
+          amount_hkd: number;
+          final_amount_hkd: number;
+          discount_amount_hkd: number;
+          status: string;
+          mobile_number: string;
+          merchant_order_id: string;
+          payment_method: string | null;
+        };
+
+        const records: UsageRecord[] = [];
+        for (const row of usageRows ?? []) {
+          const discountCode = String(row.discount_code ?? "").trim().toUpperCase();
+          if (!discountCode) continue;
+          const createdAtRaw = String(row.created_at ?? "");
+          const createdAt = normalizeIsoDateTime(createdAtRaw);
+          if (!createdAt) continue;
+          const salesperson = salespersonByCode.get(discountCode) ?? null;
+          if (salespersonFilter && (salesperson || "").toLowerCase() !== salespersonFilter) {
+            continue;
           }
+          const amount = Number(row.amount_hkd ?? 0);
+          const finalAmount = Number(row.final_amount_hkd ?? 0);
+          records.push({
+            id: String(row.id ?? ""),
+            usage_date: createdAt.slice(0, 10),
+            usage_month: createdAt.slice(0, 7),
+            created_at: createdAt,
+            paid_at: normalizeIsoDateTime(row.paid_at),
+            discount_code: discountCode,
+            salesperson,
+            discount_percent: Number(row.discount_percent ?? 0),
+            amount_hkd: amount,
+            final_amount_hkd: finalAmount,
+            discount_amount_hkd: Math.max(amount - finalAmount, 0),
+            status: String(row.status ?? ""),
+            mobile_number: String(row.mobile_number ?? ""),
+            merchant_order_id: String(row.merchant_order_id ?? ""),
+            payment_method:
+              row.payment_method === null || row.payment_method === undefined
+                ? null
+                : String(row.payment_method),
+          });
         }
 
-        const parentIds = Array.from(new Set(parentIdByStudentId.values()));
-        const parentMobileById = new Map<string, string>();
-        if (parentIds.length > 0) {
-          for (const chunk of chunkArray(parentIds, 400)) {
-            const { data: parents, error: parentsErr } = await admin
-              .from("parents")
-              .select("id,mobile_number")
-              .in("id", chunk);
-            if (parentsErr) throw parentsErr;
-            for (const parent of (parents as ParentRow[] | null) ?? []) {
-              const parentId = readString(parent.id);
-              if (!parentId) continue;
-              parentMobileById.set(parentId, readString(parent.mobile_number) || "—");
-            }
+        const summaryMap = new Map<
+          string,
+          {
+            usage_month: string;
+            salesperson: string;
+            usage_count: number;
+            paid_count: number;
+            gross_amount_hkd: number;
+            final_amount_hkd: number;
+            discount_amount_hkd: number;
           }
+        >();
+        for (const rec of records) {
+          const salesperson = rec.salesperson || "未分配";
+          const key = `${rec.usage_month}__${salesperson}`;
+          const prev = summaryMap.get(key) ?? {
+            usage_month: rec.usage_month,
+            salesperson,
+            usage_count: 0,
+            paid_count: 0,
+            gross_amount_hkd: 0,
+            final_amount_hkd: 0,
+            discount_amount_hkd: 0,
+          };
+          prev.usage_count += 1;
+          const isPaid = rec.status.trim().toLowerCase() === "paid";
+          if (isPaid) {
+            prev.paid_count += 1;
+            // Monetary totals should reflect successful payments only.
+            prev.gross_amount_hkd += rec.amount_hkd;
+            prev.final_amount_hkd += rec.final_amount_hkd;
+            prev.discount_amount_hkd += rec.discount_amount_hkd;
+          }
+          summaryMap.set(key, prev);
         }
 
-        const totalQuestionsByMobile = new Map<string, number>();
-        for (const session of sessions) {
-          const studentId = readString(session.student_id);
-          if (!studentId) continue;
-          const parentId = parentIdByStudentId.get(studentId);
-          if (!parentId) continue;
-          const totalQuestions = toSafePositiveInt(session.questions_attempted);
-          if (totalQuestions <= 0) continue;
-          const parentMobile = parentMobileById.get(parentId) || "—";
-          totalQuestionsByMobile.set(
-            parentMobile,
-            (totalQuestionsByMobile.get(parentMobile) ?? 0) + totalQuestions
-          );
-        }
+        const summary = Array.from(summaryMap.values()).sort((a, b) => {
+          if (a.usage_month === b.usage_month) return a.salesperson.localeCompare(b.salesperson);
+          return a.usage_month < b.usage_month ? 1 : -1;
+        });
 
-        const rows = Array.from(totalQuestionsByMobile.entries())
-          .map(([parent_mobile, total_questions]) => ({
-            parent_mobile,
-            total_questions,
-          }))
-          .sort(
-            (a, b) =>
-              b.total_questions - a.total_questions ||
-              a.parent_mobile.localeCompare(b.parent_mobile)
-          );
+        const salespersons = Array.from(
+          new Set(records.map((r) => r.salesperson).filter((v): v is string => Boolean(v && v.trim())))
+        ).sort((a, b) => a.localeCompare(b));
 
         return NextResponse.json({
           data: {
-            month,
-            rows,
+            summary,
+            records,
+            salespersons,
           },
         });
+      }
+      case "tutor_referral_code_create": {
+        await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
+        const code = String(payload.code ?? "").trim();
+        const tutorName = String(payload.tutor_name ?? "").trim();
+        const tutorMobile = String(payload.tutor_mobile ?? "").trim();
+        const tutorEmailRaw = String(payload.tutor_email ?? "").trim();
+        const tutorEmail = tutorEmailRaw ? tutorEmailRaw.toLowerCase() : null;
+        const createdAt = normalizeIsoDateTime(payload.created_at);
+
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+        if (!tutorName) {
+          return NextResponse.json({ error: "請輸入教師名稱" }, { status: 400 });
+        }
+        if (!TUTOR_REFERRAL_MOBILE_RE.test(tutorMobile)) {
+          return NextResponse.json({ error: "請輸入 8 位數字教師手機" }, { status: 400 });
+        }
+        if (tutorEmail && !TUTOR_REFERRAL_EMAIL_RE.test(tutorEmail)) {
+          return NextResponse.json({ error: "教師電郵格式不正確" }, { status: 400 });
+        }
+        if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
+          return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
+        }
+
+        const insertPayload: ReferralDb["public"]["Tables"]["tutor_referral_codes"]["Insert"] = {
+          code,
+          tutor_name: tutorName,
+          tutor_mobile: tutorMobile,
+          tutor_email: tutorEmail,
+          usage_limit: 50,
+          current_uses: 0,
+          is_active: true,
+        };
+        if (createdAt) insertPayload.created_at = createdAt;
+
+        const { data, error } = await referralAdmin
+          .from("tutor_referral_codes")
+          .insert(insertPayload)
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
+          .single();
+        if (error) {
+          if (isMissingTutorReferralTableError(error.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          if (/uq_tutor_referral_codes_active_mobile|tutor_mobile/i.test(error.message || "")) {
+            return NextResponse.json({ error: "此教師手機已有啟用中的教師編號" }, { status: 409 });
+          }
+          if (/duplicate key|unique/i.test(error.message || "")) {
+            return NextResponse.json({ error: "教師編號已存在" }, { status: 409 });
+          }
+          throw error;
+        }
+        return NextResponse.json({ data });
+      }
+      case "tutor_referral_code_summary": {
+        await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
+        const q = String(payload.q ?? "").trim();
+
+        let query = referralAdmin
+          .from("tutor_referral_codes")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        if (q) {
+          const safeQ = q.replace(/,/g, " ");
+          query = query.or(
+            `code.ilike.%${safeQ}%,tutor_name.ilike.%${safeQ}%,tutor_mobile.ilike.%${safeQ}%,tutor_email.ilike.%${safeQ}%`
+          );
+        }
+        const { data: codes, error: codesErr } = await query;
+        if (codesErr) {
+          if (isMissingTutorReferralTableError(codesErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw codesErr;
+        }
+
+        return NextResponse.json({
+          data:
+            (codes ?? []).map((row) => ({
+              id: String(row.id ?? ""),
+              code: String(row.code ?? ""),
+              tutor_name: String(row.tutor_name ?? ""),
+              tutor_mobile: readString(row.tutor_mobile),
+              tutor_email: readString(row.tutor_email),
+              usage_limit: Number(row.usage_limit ?? 50),
+              current_uses: Number(row.current_uses ?? 0),
+              is_active: Boolean(row.is_active),
+              created_at: normalizeIsoDateTime(row.created_at) || "",
+            })) ?? [],
+        });
+      }
+      case "tutor_referral_code_usage_details": {
+        await ensureTutorReferralTables(admin);
+        const referralAdmin = asReferralAdminClient(admin);
+        const code = String(payload.code ?? "").trim();
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+
+        const { data: codeRow, error: codeErr } = await referralAdmin
+          .from("tutor_referral_codes")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
+          .eq("code", code)
+          .maybeSingle();
+        if (codeErr) {
+          if (isMissingTutorReferralTableError(codeErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw codeErr;
+        }
+        if (!codeRow) {
+          return NextResponse.json({
+            data: {
+              found: false,
+              code: null,
+              rows: [],
+            },
+          });
+        }
+
+        const { data: usageRows, error: usageErr } = await referralAdmin
+          .from("tutor_referral_usages")
+          .select("id,used_at,mobile_number,parent_id")
+          .eq("code_id", String(codeRow.id))
+          .order("used_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(10000);
+        if (usageErr) {
+          if (isMissingTutorReferralTableError(usageErr.message || "")) {
+            throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          throw usageErr;
+        }
+
+        const usedMobiles = Array.from(
+          new Set((usageRows ?? []).map((row) => String(row.mobile_number ?? "").trim()).filter(Boolean))
+        );
+        const parentStatusByMobile = new Map<string, "free" | "paid">();
+        const nowMs = Date.now();
+        for (const chunk of chunkArray(usedMobiles, 500)) {
+          const { data: parentRows, error: parentErr } = await admin
+            .from("parents")
+            .select("mobile_number,subscription_tier,paid_until")
+            .in("mobile_number", chunk)
+            .limit(10000);
+          if (parentErr) throw parentErr;
+          for (const parentRow of parentRows ?? []) {
+            const mobileNumber = String(parentRow.mobile_number ?? "").trim();
+            if (!mobileNumber) continue;
+            const tier = String(parentRow.subscription_tier ?? "").trim().toLowerCase();
+            const paidUntilIso = normalizeIsoDateTime(parentRow.paid_until);
+            const isPaid =
+              paidUntilIso !== null
+                ? new Date(paidUntilIso).getTime() >= nowMs
+                : tier === "paid";
+            parentStatusByMobile.set(mobileNumber, isPaid ? "paid" : "free");
+          }
+        }
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            code: {
+              id: String(codeRow.id),
+              code: String(codeRow.code ?? ""),
+              tutor_name: String(codeRow.tutor_name ?? ""),
+              tutor_mobile: readString(codeRow.tutor_mobile),
+              tutor_email: readString(codeRow.tutor_email),
+              usage_limit: Number(codeRow.usage_limit ?? 50),
+              current_uses: Number(codeRow.current_uses ?? 0),
+              is_active: Boolean(codeRow.is_active),
+              created_at: normalizeIsoDateTime(codeRow.created_at) || "",
+            },
+            rows: (usageRows ?? []).map((row) => ({
+              id: String(row.id ?? ""),
+              used_at: normalizeIsoDateTime(row.used_at) || "",
+              mobile_number: String(row.mobile_number ?? ""),
+              parent_id: readString(row.parent_id),
+              parent_status:
+                parentStatusByMobile.get(String(row.mobile_number ?? "").trim()) ?? "free",
+            })),
+          },
+        });
+      }
+      case "tutor_referral_password_reset": {
+        await ensureTutorReferralTables(admin);
+        const code = String(payload.code ?? "").trim();
+        if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
+          return NextResponse.json({ error: "教師編號必須為 6 位數字" }, { status: 400 });
+        }
+        try {
+          const result = await resetTutorPasswordByCodeForAdmin({ code });
+          if (!result.ok) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
+          }
+          return NextResponse.json({
+            data: {
+              code: result.code,
+              tutor_name: result.tutorName,
+              is_active: result.isActiveCode,
+              reset_password: "123456",
+              must_change_password: true,
+              message: "已重設此教師編號密碼為 123456，下次登入需先更新密碼。",
+            },
+          });
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : "";
+          if (isMissingTutorPortalTableError(errMsg)) {
+            throw new Error(TUTOR_PORTAL_TABLE_HINT);
+          }
+          throw error;
+        }
+      }
+      case "payment_status_enquiry": {
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+
+        const parent = await getParentByMobile(admin, mobile);
+
+        if (!parent) {
+          return NextResponse.json({ data: { found: false } });
+        }
+
+        const paidUntilIso = normalizeIsoDateTime(parent.paid_until);
+        const isPaidNow =
+          paidUntilIso !== null && new Date(paidUntilIso).getTime() >= Date.now();
+
+        const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+
+        const now = new Date();
+        const historyStartIso = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)
+        ).toISOString();
+
+        let paidOrders: PaidOrderRow[] = [];
+        const richOrdersRes = await admin
+          .from("parent_payment_orders")
+          .select(
+            "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
+          )
+          .eq("mobile_number", mobile)
+          .eq("status", "paid")
+          .gte("created_at", historyStartIso)
+          .order("paid_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (richOrdersRes.error) {
+          const ordersErrMsg = richOrdersRes.error.message || "";
+          if (
+            /payment_method_label|payment_method_type|payment_method_brand|is_recurring_payment/i.test(
+              ordersErrMsg
+            )
+          ) {
+            const fallbackOrdersRes = await admin
+              .from("parent_payment_orders")
+              .select(
+                "id,parent_id,mobile_number,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+              )
+              .eq("mobile_number", mobile)
+              .eq("status", "paid")
+              .gte("created_at", historyStartIso)
+              .order("paid_at", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(500);
+            if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
+            paidOrders = (fallbackOrdersRes.data as PaidOrderRow[] | null) ?? [];
+          } else {
+            throw richOrdersRes.error;
+          }
+        } else {
+          paidOrders = (richOrdersRes.data as PaidOrderRow[] | null) ?? [];
+        }
+
+        const latestPaidOrder = paidOrders[0] ?? null;
+        const recurringStatus = recurringProfile?.status
+          ? String(recurringProfile.status).toLowerCase()
+          : null;
+        const isRecurringFromProfile =
+          recurringStatus !== null && RECURRING_ACTIVE_STATUSES.has(recurringStatus);
+        const isRecurringFromLatestOrder = Boolean(latestPaidOrder?.is_recurring_payment);
+        const isRecurring = isRecurringFromProfile || isRecurringFromLatestOrder;
+
+        const billedByMonth = buildLast12MonthsTemplate(now);
+        const monthLookup = new Map(billedByMonth.map((row) => [row.month, row]));
+        for (const row of paidOrders) {
+          const timeIso =
+            normalizeIsoDateTime(row.paid_at) || normalizeIsoDateTime(row.created_at);
+          const monthKey = toMonthKey(timeIso);
+          if (!monthKey) continue;
+          const bucket = monthLookup.get(monthKey);
+          if (!bucket) continue;
+          bucket.amount_hkd = Math.round((bucket.amount_hkd + toSafeNumber(row.final_amount_hkd)) * 100) / 100;
+          bucket.paid_count += 1;
+        }
+
+        const billedTotal = Math.round(
+          billedByMonth.reduce((sum, row) => sum + row.amount_hkd, 0) * 100
+        ) / 100;
+        const paymentMethod = formatPaymentMethodDisplay({
+          methodLabel:
+            recurringProfile?.payment_method_label ?? latestPaidOrder?.payment_method_label ?? null,
+          methodType:
+            recurringProfile?.payment_method_type ?? latestPaidOrder?.payment_method_type ?? null,
+          methodBrand:
+            recurringProfile?.payment_method_brand ?? latestPaidOrder?.payment_method_brand ?? null,
+          fallback: latestPaidOrder?.payment_method ?? null,
+        });
+
+        let latestRefund: {
+          status: string | null;
+          amount_hkd: number;
+          created_at: string | null;
+          airwallex_refund_id: string | null;
+        } | null = null;
+        if (latestPaidOrder?.id) {
+          const { data: refundData, error: refundErr } = await admin
+            .from("parent_payment_refunds")
+            .select("status,amount_hkd,created_at,airwallex_refund_id")
+            .eq("payment_order_id", latestPaidOrder.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (refundErr) {
+            if (!isMissingPaymentOpsTableError(refundErr.message)) {
+              throw refundErr;
+            }
+          } else if (refundData) {
+            latestRefund = {
+              status: readString(refundData.status),
+              amount_hkd: toSafeNumber(refundData.amount_hkd),
+              created_at: normalizeIsoDateTime(refundData.created_at),
+              airwallex_refund_id: readString(refundData.airwallex_refund_id),
+            };
+          }
+        }
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            parent: {
+              id: parent.id,
+              mobile_number: parent.mobile_number,
+              parent_name: parent.parent_name,
+              tier: isPaidNow ? "paid" : "free",
+              is_paid: isPaidNow,
+              paid_started_at: normalizeIsoDateTime(parent.paid_started_at),
+              paid_until: paidUntilIso,
+            },
+            payment: isPaidNow
+              ? {
+                  current_payment_start_date: normalizeIsoDateTime(parent.paid_started_at),
+                  current_payment_end_date: paidUntilIso,
+                  payment_method: paymentMethod,
+                  is_recurring: isRecurring,
+                  recurring_status: recurringStatus,
+                  billed_last_12_months_total_hkd: billedTotal,
+                  billed_last_12_months_by_month: billedByMonth,
+                  latest_paid_order: latestPaidOrder
+                    ? {
+                        id: latestPaidOrder.id,
+                        paid_at:
+                          normalizeIsoDateTime(latestPaidOrder.paid_at) ||
+                          normalizeIsoDateTime(latestPaidOrder.created_at),
+                        amount_hkd: toSafeNumber(latestPaidOrder.final_amount_hkd),
+                        payment_method: paymentMethod,
+                      }
+                    : null,
+                  latest_refund: latestRefund,
+                }
+              : null,
+          },
+        });
+      }
+      case "payment_recurring_monitor_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+        const { dayKey, startIso: dayStartIso, endIso: dayEndIso } = getHktDayRangeIso();
+        const nowIso = new Date().toISOString();
+
+        const { data: paidParents, error: paidParentsErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,paid_until")
+          .not("paid_until", "is", null)
+          .gte("paid_until", nowIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_until", { ascending: true })
+          .limit(20000);
+        if (paidParentsErr) throw paidParentsErr;
+
+        const normalizedParents = (paidParents ?? [])
+          .map((row) => ({
+            parent_id: String(row.id),
+            mobile_number: String(row.mobile_number || "").trim(),
+            parent_name:
+              row.parent_name === null || row.parent_name === undefined
+                ? null
+                : String(row.parent_name),
+            paid_until: normalizeIsoDateTime(row.paid_until),
+          }))
+          .filter((row) => Boolean(row.mobile_number && row.paid_until));
+
+        const paidMobiles = normalizedParents.map((row) => row.mobile_number);
+        const recurringByMobile = new Map<string, RecurringProfileRow>();
+        const monthOrdersByMobile = new Map<string, RecurringMonitorOrderRow[]>();
+        const dayOrdersByMobile = new Map<string, RecurringMonitorOrderRow[]>();
+
+        for (const chunk of chunkArray(paidMobiles, 500)) {
+          const recurringRes = await admin
+            .from("parent_recurring_profiles")
+            .select(
+              "id,parent_id,mobile_number,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand,next_charge_at,last_charged_at,last_order_status,last_error"
+            )
+            .in("mobile_number", chunk);
+          if (recurringRes.error) {
+            const recurringErrMsg = recurringRes.error.message || "";
+            if (!/parent_recurring_profiles|42P01|does not exist/i.test(recurringErrMsg)) {
+              throw recurringRes.error;
+            }
+          } else {
+            for (const profile of (recurringRes.data as RecurringProfileRow[] | null) ?? []) {
+              const mobile = String(profile.mobile_number || "").trim();
+              if (!mobile) continue;
+              recurringByMobile.set(mobile, profile);
+            }
+          }
+
+          let monthOrders: RecurringMonitorOrderRow[] = [];
+          const richOrdersRes = await admin
+            .from("parent_payment_orders")
+            .select(
+              "id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,is_recurring_payment,payment_method,final_amount_hkd"
+            )
+            .in("mobile_number", chunk)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso)
+            .order("created_at", { ascending: false })
+            .limit(20000);
+          if (richOrdersRes.error) {
+            const ordersErrMsg = richOrdersRes.error.message || "";
+            if (/is_recurring_payment/i.test(ordersErrMsg)) {
+              const fallbackOrdersRes = await admin
+                .from("parent_payment_orders")
+                .select("id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,payment_method,final_amount_hkd")
+                .in("mobile_number", chunk)
+                .gte("created_at", startIso)
+                .lt("created_at", endIso)
+                .eq("payment_method", "recurring_auto_charge")
+                .order("created_at", { ascending: false })
+                .limit(20000);
+              if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
+              monthOrders = (fallbackOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? [];
+            } else {
+              throw richOrdersRes.error;
+            }
+          } else {
+            monthOrders = ((richOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
+              if (row.is_recurring_payment === true) return true;
+              return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
+            });
+          }
+
+          for (const order of monthOrders) {
+            const mobile = String(order.mobile_number || "").trim();
+            if (!mobile) continue;
+            const rows = monthOrdersByMobile.get(mobile) ?? [];
+            rows.push(order);
+            monthOrdersByMobile.set(mobile, rows);
+          }
+
+          let dayOrders: RecurringMonitorOrderRow[] = [];
+          const richDayOrdersRes = await admin
+            .from("parent_payment_orders")
+            .select(
+              "id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,is_recurring_payment,payment_method,final_amount_hkd"
+            )
+            .in("mobile_number", chunk)
+            .gte("created_at", dayStartIso)
+            .lt("created_at", dayEndIso)
+            .order("created_at", { ascending: false })
+            .limit(20000);
+          if (richDayOrdersRes.error) {
+            const ordersErrMsg = richDayOrdersRes.error.message || "";
+            if (/is_recurring_payment/i.test(ordersErrMsg)) {
+              const fallbackDayOrdersRes = await admin
+                .from("parent_payment_orders")
+                .select("id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,payment_method,final_amount_hkd")
+                .in("mobile_number", chunk)
+                .gte("created_at", dayStartIso)
+                .lt("created_at", dayEndIso)
+                .eq("payment_method", "recurring_auto_charge")
+                .order("created_at", { ascending: false })
+                .limit(20000);
+              if (fallbackDayOrdersRes.error) throw fallbackDayOrdersRes.error;
+              dayOrders = (fallbackDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? [];
+            } else {
+              throw richDayOrdersRes.error;
+            }
+          } else {
+            dayOrders = ((richDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
+              if (row.is_recurring_payment === true) return true;
+              return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
+            });
+          }
+
+          for (const order of dayOrders) {
+            const mobile = String(order.mobile_number || "").trim();
+            if (!mobile) continue;
+            const rows = dayOrdersByMobile.get(mobile) ?? [];
+            rows.push(order);
+            dayOrdersByMobile.set(mobile, rows);
+          }
+        }
+
+        for (const orders of monthOrdersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime = normalizeIsoDateTime(a.created_at) || "";
+            const bTime = normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+        for (const orders of dayOrdersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime = normalizeIsoDateTime(a.created_at) || "";
+            const bTime = normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+
+        const mobilesNeedingRepair = normalizedParents
+          .map((row) => row.mobile_number)
+          .filter((mobile) => !recurringByMobile.has(mobile));
+        const repairedMobiles = new Set<string>();
+        for (const mobile of mobilesNeedingRepair.slice(0, 50)) {
+          const monthOrders = monthOrdersByMobile.get(mobile) ?? [];
+          const latestPaidRecurringOrder = monthOrders.find(
+            (row) =>
+              String(row.status || "").trim().toLowerCase() === "paid" &&
+              Boolean(readString(row.airwallex_payment_intent_id))
+          );
+          if (!latestPaidRecurringOrder) continue;
+          const paymentIntentId = readString(latestPaidRecurringOrder.airwallex_payment_intent_id);
+          if (!paymentIntentId) continue;
+          const finalized = await finalizePaymentByIntent({
+            supabaseAdmin: admin,
+            paymentIntentId,
+            merchantOrderId: readString(latestPaidRecurringOrder.merchant_order_id),
+            paid: true,
+            paymentAttemptId: null,
+            rawPayload: {
+              source: "admin_monitor_repair",
+              mobile_number: mobile,
+            },
+          });
+          if (finalized.ok) {
+            repairedMobiles.add(mobile);
+          }
+        }
+        if (repairedMobiles.size > 0) {
+          for (const chunk of chunkArray(Array.from(repairedMobiles), 500)) {
+            const recurringRes = await admin
+              .from("parent_recurring_profiles")
+              .select(
+                "id,parent_id,mobile_number,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand,next_charge_at,last_charged_at,last_order_status,last_error"
+              )
+              .in("mobile_number", chunk);
+            if (recurringRes.error) continue;
+            for (const profile of (recurringRes.data as RecurringProfileRow[] | null) ?? []) {
+              const mobile = String(profile.mobile_number || "").trim();
+              if (!mobile) continue;
+              recurringByMobile.set(mobile, profile);
+            }
+          }
+        }
+
+        const totals = {
+          currently_paid_users: normalizedParents.length,
+          this_month_success: 0,
+          this_month_failed: 0,
+          daily_due_profiles: 0,
+          daily_requested: 0,
+          daily_success: 0,
+          daily_failed: 0,
+          daily_pending: 0,
+          daily_missing: 0,
+        };
+
+        const users = normalizedParents.map((parent) => {
+          const recurringProfile = recurringByMobile.get(parent.mobile_number) ?? null;
+          const recurringStatus = recurringProfile?.status
+            ? String(recurringProfile.status).trim().toLowerCase()
+            : "no_profile";
+          const recurringLinkageReady = Boolean(
+            recurringProfile?.airwallex_payment_consent_id &&
+              recurringProfile?.airwallex_payment_method_id &&
+              recurringProfile?.payment_method_type
+          );
+
+          const monthOrders = monthOrdersByMobile.get(parent.mobile_number) ?? [];
+          const hasMonthPaid = monthOrders.some(
+            (row) => String(row.status || "").trim().toLowerCase() === "paid"
+          );
+          const hasMonthFailed = monthOrders.some((row) =>
+            ["failed", "cancelled"].includes(String(row.status || "").trim().toLowerCase())
+          );
+          const monthPaymentStatus = hasMonthPaid ? "success" : hasMonthFailed ? "failed" : "no_attempt";
+
+          if (monthPaymentStatus === "success") totals.this_month_success += 1;
+          if (monthPaymentStatus === "failed") totals.this_month_failed += 1;
+
+          const latestMonthOrder = monthOrders[0] ?? null;
+          const dayOrders = dayOrdersByMobile.get(parent.mobile_number) ?? [];
+          const latestDayOrder = dayOrders[0] ?? null;
+          const nextPaymentDate = normalizeIsoDateTime(recurringProfile?.next_charge_at);
+          const dailyDueForMit = Boolean(nextPaymentDate && nextPaymentDate <= nowIso);
+          const dailyMitRequested = dayOrders.length > 0;
+          const hasDayPaid = dayOrders.some(
+            (row) => String(row.status || "").trim().toLowerCase() === "paid"
+          );
+          const hasDayFailed = dayOrders.some((row) =>
+            ["failed", "cancelled"].includes(String(row.status || "").trim().toLowerCase())
+          );
+          const hasDayPending = dayOrders.some((row) =>
+            ["created", "pending"].includes(String(row.status || "").trim().toLowerCase())
+          );
+          const dailyMitStatus = hasDayPaid
+            ? "success"
+            : hasDayFailed
+              ? "failed"
+              : hasDayPending
+                ? "pending"
+                : dailyDueForMit
+                  ? "missing"
+                  : "not_required";
+
+          if (dailyDueForMit) totals.daily_due_profiles += 1;
+          if (dailyMitRequested) totals.daily_requested += 1;
+          if (dailyMitStatus === "success") totals.daily_success += 1;
+          if (dailyMitStatus === "failed") totals.daily_failed += 1;
+          if (dailyMitStatus === "pending") totals.daily_pending += 1;
+          if (dailyMitStatus === "missing") totals.daily_missing += 1;
+
+          return {
+            parent_id: parent.parent_id,
+            mobile_number: parent.mobile_number,
+            parent_name: parent.parent_name,
+            paid_until: parent.paid_until,
+            current_payment_status: recurringStatus,
+            recurring_method_type: readString(recurringProfile?.payment_method_type),
+            recurring_linkage_ready: recurringLinkageReady,
+            next_payment_date: nextPaymentDate,
+            this_month_payment_success: monthPaymentStatus === "success",
+            this_month_payment_status: monthPaymentStatus,
+            this_month_last_attempt_at: latestMonthOrder
+              ? normalizeIsoDateTime(latestMonthOrder.created_at)
+              : null,
+            daily_due_for_mit: dailyDueForMit,
+            daily_mit_requested: dailyMitRequested,
+            daily_mit_status: dailyMitStatus,
+            daily_mit_last_attempt_at: latestDayOrder
+              ? normalizeIsoDateTime(latestDayOrder.created_at)
+              : null,
+            daily_mit_last_attempt_status: latestDayOrder
+              ? readString(latestDayOrder.status)
+              : null,
+            daily_mit_has_airwallex_intent: dayOrders.some((row) =>
+              Boolean(readString(row.airwallex_payment_intent_id))
+            ),
+          };
+        });
+
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            day: dayKey,
+            totals,
+            users: users.sort((a, b) => {
+              const aNext = a.next_payment_date || "9999-12-31T23:59:59.000Z";
+              const bNext = b.next_payment_date || "9999-12-31T23:59:59.000Z";
+              if (aNext !== bNext) return aNext.localeCompare(bNext);
+              return a.mobile_number.localeCompare(b.mobile_number);
+            }),
+          },
+        });
+      }
+      case "payment_monthly_paid_summary": {
+        const requestedMonth = String(payload.month ?? "").trim();
+        const monthKey = requestedMonth || getCurrentHktMonthKey();
+        if (!isValidMonthKey(monthKey)) {
+          return NextResponse.json({ error: "月份格式必須為 YYYY-MM" }, { status: 400 });
+        }
+        const { startIso, endIso } = getHktMonthRangeIso(monthKey);
+
+        let paidOrders: PaidOrderRow[] = [];
+        const richOrdersRes = await admin
+          .from("parent_payment_orders")
+          .select(
+            "id,parent_id,mobile_number,merchant_order_id,status,paid_at,created_at,final_amount_hkd,payment_method,payment_method_label,payment_method_type,payment_method_brand,is_recurring_payment,airwallex_payment_intent_id,airwallex_payment_attempt_id"
+          )
+          .eq("status", "paid")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(20000);
+        if (richOrdersRes.error) {
+          const ordersErrMsg = richOrdersRes.error.message || "";
+          if (
+            /payment_method_label|payment_method_type|payment_method_brand|is_recurring_payment|airwallex_payment_attempt_id|merchant_order_id/i.test(
+              ordersErrMsg
+            )
+          ) {
+            const fallbackOrdersRes = await admin
+              .from("parent_payment_orders")
+              .select(
+                "id,parent_id,mobile_number,merchant_order_id,status,paid_at,created_at,final_amount_hkd,payment_method,airwallex_payment_intent_id"
+              )
+              .eq("status", "paid")
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .not("mobile_number", "like", "9999%")
+              .order("paid_at", { ascending: false, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(20000);
+            if (fallbackOrdersRes.error) throw fallbackOrdersRes.error;
+            paidOrders = (fallbackOrdersRes.data as PaidOrderRow[] | null) ?? [];
+          } else {
+            throw richOrdersRes.error;
+          }
+        } else {
+          paidOrders = (richOrdersRes.data as PaidOrderRow[] | null) ?? [];
+        }
+
+        const paidMobiles = Array.from(
+          new Set(paidOrders.map((row) => String(row.mobile_number || "").trim()).filter(Boolean))
+        );
+        const parentByMobile = new Map<
+          string,
+          { id: string; mobile_number: string; parent_name: string | null; paid_started_at: string | null }
+        >();
+        for (const chunk of chunkArray(paidMobiles, 500)) {
+          const { data: parentRows, error: parentErr } = await admin
+            .from("parents")
+            .select("id,mobile_number,parent_name,paid_started_at")
+            .in("mobile_number", chunk)
+            .not("mobile_number", "like", "9999%");
+          if (parentErr) throw parentErr;
+          for (const row of parentRows ?? []) {
+            parentByMobile.set(String(row.mobile_number), {
+              id: String(row.id),
+              mobile_number: String(row.mobile_number),
+              parent_name:
+                row.parent_name === null || row.parent_name === undefined
+                  ? null
+                  : String(row.parent_name),
+              paid_started_at: normalizeIsoDateTime(row.paid_started_at),
+            });
+          }
+        }
+
+        const { data: paidStartedRows, error: paidStartedErr } = await admin
+          .from("parents")
+          .select("id,mobile_number,parent_name,paid_started_at")
+          .not("paid_started_at", "is", null)
+          .gte("paid_started_at", startIso)
+          .lt("paid_started_at", endIso)
+          .not("mobile_number", "like", "9999%")
+          .order("paid_started_at", { ascending: false })
+          .limit(10000);
+        if (paidStartedErr) throw paidStartedErr;
+
+        const ordersByMobile = new Map<string, PaidOrderRow[]>();
+        for (const order of paidOrders) {
+          const mobile = String(order.mobile_number || "").trim();
+          if (!mobile) continue;
+          const group = ordersByMobile.get(mobile) ?? [];
+          group.push(order);
+          ordersByMobile.set(mobile, group);
+        }
+        for (const orders of ordersByMobile.values()) {
+          orders.sort((a, b) => {
+            const aTime =
+              normalizeIsoDateTime(a.paid_at) || normalizeIsoDateTime(a.created_at) || "";
+            const bTime =
+              normalizeIsoDateTime(b.paid_at) || normalizeIsoDateTime(b.created_at) || "";
+            return bTime.localeCompare(aTime);
+          });
+        }
+
+        const parentRows = (paidStartedRows ?? []).map((row) => {
+          const mobile = String(row.mobile_number || "").trim();
+          const orders = ordersByMobile.get(mobile) ?? [];
+          const monthlyAmount = Math.round(
+            orders.reduce((sum, item) => sum + toSafeNumber(item.final_amount_hkd), 0) * 100
+          ) / 100;
+          const latestOrder = orders[0] ?? null;
+          const latestPaymentMethod = latestOrder
+            ? formatPaymentMethodDisplay({
+                methodLabel: latestOrder.payment_method_label ?? null,
+                methodType: latestOrder.payment_method_type ?? null,
+                methodBrand: latestOrder.payment_method_brand ?? null,
+                fallback: latestOrder.payment_method ?? null,
+              })
+            : null;
+
+          return {
+            parent_id: String(row.id),
+            mobile_number: mobile,
+            parent_name:
+              row.parent_name === null || row.parent_name === undefined
+                ? null
+                : String(row.parent_name),
+            paid_started_at: normalizeIsoDateTime(row.paid_started_at),
+            monthly_paid_count: orders.length,
+            monthly_paid_amount_hkd: monthlyAmount,
+            latest_paid_at: latestOrder
+              ? normalizeIsoDateTime(latestOrder.paid_at) ||
+                normalizeIsoDateTime(latestOrder.created_at)
+              : null,
+            latest_payment_method: latestPaymentMethod,
+          };
+        });
+
+        const records = paidOrders.map((order) => {
+          const mobile = String(order.mobile_number || "").trim();
+          const parentMeta = parentByMobile.get(mobile);
+          const paymentMethod = formatPaymentMethodDisplay({
+            methodLabel: order.payment_method_label ?? null,
+            methodType: order.payment_method_type ?? null,
+            methodBrand: order.payment_method_brand ?? null,
+            fallback: order.payment_method ?? null,
+          });
+
+          return {
+            id: String(order.id),
+            mobile_number: mobile,
+            parent_name: parentMeta?.parent_name ?? null,
+            merchant_order_id: String(order.merchant_order_id ?? ""),
+            status: String(order.status ?? ""),
+            paid_at:
+              normalizeIsoDateTime(order.paid_at) || normalizeIsoDateTime(order.created_at),
+            created_at: normalizeIsoDateTime(order.created_at) || "",
+            final_amount_hkd: toSafeNumber(order.final_amount_hkd),
+            payment_method: paymentMethod,
+            is_recurring_payment: Boolean(order.is_recurring_payment),
+            airwallex_payment_intent_id: readString(order.airwallex_payment_intent_id),
+            airwallex_payment_attempt_id: readString(order.airwallex_payment_attempt_id),
+          };
+        });
+
+        const totalPaidAmountHkd = Math.round(
+          records.reduce((sum, row) => sum + toSafeNumber(row.final_amount_hkd), 0) * 100
+        ) / 100;
+        const totalNewPaidAmountHkd = Math.round(
+          parentRows.reduce((sum, row) => sum + toSafeNumber(row.monthly_paid_amount_hkd), 0) * 100
+        ) / 100;
+
+        return NextResponse.json({
+          data: {
+            month: monthKey,
+            totals: {
+              new_paid_parents: parentRows.length,
+              new_paid_parents_amount_hkd: totalNewPaidAmountHkd,
+              paid_transactions: records.length,
+              paid_amount_hkd: totalPaidAmountHkd,
+            },
+            parents: parentRows,
+            records,
+          },
+        });
+      }
+      case "payment_cancel_future_payment": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+        }
+        const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+        if (!recurringProfile) {
+          return NextResponse.json({ error: "此家長沒有可取消的續費設定" }, { status: 400 });
+        }
+
+        let consentDisabled = false;
+        let consentStatus: string | null = null;
+        try {
+          if (
+            recurringProfile.airwallex_payment_consent_id &&
+            String(recurringProfile.status || "").toLowerCase() !== "cancelled"
+          ) {
+            const disabledResult = await disablePaymentConsent({
+              consentId: recurringProfile.airwallex_payment_consent_id,
+            });
+            consentDisabled = disabledResult.disabled;
+            consentStatus = disabledResult.status;
+          }
+
+          if (String(recurringProfile.status || "").toLowerCase() !== "cancelled") {
+            await cancelRecurringLocally({
+              admin,
+              profileId: recurringProfile.id,
+            });
+          }
+
+          await logAdminPaymentAction({
+            admin,
+            actionType: "cancel_future_payment",
+            status: "success",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: null,
+            recurringProfileId: recurringProfile.id,
+            message: "Recurring payment cancelled by admin",
+            payload: {
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              previous_status: recurringProfile.status,
+            },
+          });
+
+          return NextResponse.json({
+            data: {
+              ok: true,
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              recurring_status: "cancelled",
+              message: "已取消未來續費",
+            },
+          });
+        } catch (actionErr) {
+          await logAdminPaymentAction({
+            admin,
+            actionType: "cancel_future_payment",
+            status: "failed",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: null,
+            recurringProfileId: recurringProfile.id,
+            message: actionErr instanceof Error ? actionErr.message : "Unknown error",
+            payload: {
+              previous_status: recurringProfile.status,
+            },
+          });
+          throw actionErr;
+        }
+      }
+      case "payment_refund_last_preview": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ data: { found: false } });
+        }
+
+        const latestOrder = await getLatestPaidOrder(admin, mobile);
+        if (!latestOrder) {
+          return NextResponse.json({
+            data: {
+              found: true,
+              eligible: false,
+              reason: "找不到可退款的最近付款記錄",
+            },
+          });
+        }
+
+        const { data: existingRefund, error: existingRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .select("id,status,amount_hkd,created_at,airwallex_refund_id")
+          .eq("payment_order_id", latestOrder.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existingRefundErr) {
+          if (isMissingPaymentOpsTableError(existingRefundErr.message)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw existingRefundErr;
+        }
+
+        const paymentMethod = formatPaymentMethodDisplay({
+          methodLabel: latestOrder.payment_method_label ?? null,
+          methodType: latestOrder.payment_method_type ?? null,
+          methodBrand: latestOrder.payment_method_brand ?? null,
+          fallback: latestOrder.payment_method ?? null,
+        });
+
+        const existingStatus = readString(existingRefund?.status);
+        const canRetryFailed = existingStatus === "failed";
+        const eligible = !existingRefund || canRetryFailed;
+
+        return NextResponse.json({
+          data: {
+            found: true,
+            eligible,
+            reason: eligible ? null : "最近一筆付款已提交退款，不能重複退款",
+            parent: {
+              id: parent.id,
+              mobile_number: parent.mobile_number,
+              parent_name: parent.parent_name,
+            },
+            order: {
+              id: latestOrder.id,
+              paid_at:
+                normalizeIsoDateTime(latestOrder.paid_at) ||
+                normalizeIsoDateTime(latestOrder.created_at),
+              amount_hkd: toSafeNumber(latestOrder.final_amount_hkd),
+              currency: "HKD",
+              payment_method: paymentMethod,
+            },
+            existing_refund: existingRefund
+              ? {
+                  id: existingRefund.id,
+                  status: existingStatus,
+                  amount_hkd: toSafeNumber(existingRefund.amount_hkd),
+                  created_at: normalizeIsoDateTime(existingRefund.created_at),
+                  airwallex_refund_id: readString(existingRefund.airwallex_refund_id),
+                }
+              : null,
+          },
+        });
+      }
+      case "payment_refund_last_confirm": {
+        await ensurePaymentOpsTables(admin);
+        const mobile = String(payload.mobile_number ?? payload.p_mobile ?? "").trim();
+        const orderId = String(payload.order_id ?? "").trim();
+        const reason = String(payload.reason ?? "").trim();
+
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!orderId) {
+          return NextResponse.json({ error: "缺少付款記錄 ID" }, { status: 400 });
+        }
+        if (!reason) {
+          return NextResponse.json({ error: "請輸入退款原因" }, { status: 400 });
+        }
+        if (reason.length > 128) {
+          return NextResponse.json({ error: "退款原因不可超過 128 字" }, { status: 400 });
+        }
+
+        const parent = await getParentByMobile(admin, mobile);
+        if (!parent) {
+          return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+        }
+
+        const latestOrder = await getLatestPaidOrder(admin, mobile);
+        if (!latestOrder) {
+          return NextResponse.json({ error: "找不到可退款的付款記錄" }, { status: 409 });
+        }
+        if (latestOrder.id !== orderId) {
+          return NextResponse.json(
+            { error: "只可退款最近一筆付款，請重新載入後再確認。" },
+            { status: 409 }
+          );
+        }
+
+        const refundAmount = toSafeNumber(latestOrder.final_amount_hkd);
+        if (!(refundAmount > 0)) {
+          return NextResponse.json({ error: "退款金額無效" }, { status: 409 });
+        }
+
+        const paymentAttemptId = readString(latestOrder.airwallex_payment_attempt_id);
+        const paymentIntentId = readString(latestOrder.airwallex_payment_intent_id);
+        if (!paymentAttemptId && !paymentIntentId) {
+          return NextResponse.json(
+            { error: "找不到 Airwallex 付款參考，不能退款。" },
+            { status: 409 }
+          );
+        }
+
+        const { data: existingRefund, error: existingRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .select("id,status,airwallex_refund_id")
+          .eq("payment_order_id", latestOrder.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (existingRefundErr) {
+          if (isMissingPaymentOpsTableError(existingRefundErr.message)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw existingRefundErr;
+        }
+        if (
+          existingRefund &&
+          String(existingRefund.status || "").toLowerCase() !== "failed"
+        ) {
+          return NextResponse.json(
+            { error: "此付款已提交退款，請勿重複操作。" },
+            { status: 409 }
+          );
+        }
+
+        const refundRequestId = crypto.randomUUID();
+        const { data: insertedRefundRows, error: insertRefundErr } = await admin
+          .from("parent_payment_refunds")
+          .insert({
+            payment_order_id: latestOrder.id,
+            parent_id: parent.id,
+            mobile_number: mobile,
+            admin_user: adminUser,
+            reason,
+            amount_hkd: refundAmount,
+            currency: "HKD",
+            airwallex_request_id: refundRequestId,
+            airwallex_payment_intent_id: paymentIntentId,
+            airwallex_payment_attempt_id: paymentAttemptId,
+            status: "initiated",
+          })
+          .select("id")
+          .limit(1);
+        if (insertRefundErr) {
+          const errMsg = insertRefundErr.message || "";
+          if (/duplicate key|unique/i.test(errMsg)) {
+            return NextResponse.json(
+              { error: "此付款已提交退款，請勿重複操作。" },
+              { status: 409 }
+            );
+          }
+          if (isMissingPaymentOpsTableError(errMsg)) {
+            throw new Error(PAYMENT_OPS_TABLE_HINT);
+          }
+          throw insertRefundErr;
+        }
+        const refundRowId = readString(insertedRefundRows?.[0]?.id);
+        if (!refundRowId) {
+          throw new Error("建立退款記錄失敗");
+        }
+
+        try {
+          const baseUrl = getAirwallexBaseUrl();
+          const accessToken = await getAirwallexAccessToken(baseUrl);
+          const refundCreateRes = await fetch(`${baseUrl}/api/v1/pa/refunds/create`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              request_id: refundRequestId,
+              reason,
+              amount: refundAmount,
+              payment_attempt_id: paymentAttemptId || undefined,
+              payment_intent_id: paymentAttemptId ? undefined : paymentIntentId,
+            }),
+            cache: "no-store",
+          });
+          const refundCreateBody = await readAirwallexApiBody(refundCreateRes);
+          if (!refundCreateRes.ok) {
+            const failureMessage = formatAirwallexError({
+              action: "refunds/create",
+              status: refundCreateRes.status,
+              body: refundCreateBody,
+            });
+            await admin
+              .from("parent_payment_refunds")
+              .update({
+                status: "failed",
+                failure_code: readString(refundCreateBody.json?.code),
+                failure_message: failureMessage,
+                raw_response: refundCreateBody.json || { raw: refundCreateBody.text },
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", refundRowId);
+            await logAdminPaymentAction({
+              admin,
+              actionType: "refund_last_payment",
+              status: "failed",
+              adminUser,
+              mobile,
+              parentId: parent.id,
+              paymentOrderId: latestOrder.id,
+              recurringProfileId: null,
+              message: failureMessage,
+              payload: {
+                refund_row_id: refundRowId,
+                refund_request_id: refundRequestId,
+              },
+            });
+            throw new Error(failureMessage);
+          }
+
+          const refundId = readString(refundCreateBody.json?.id);
+          const refundStatusUpper =
+            readString(refundCreateBody.json?.status)?.toUpperCase() || "RECEIVED";
+          const normalizedStatus = normalizeRefundStatus(refundStatusUpper);
+          await admin
+            .from("parent_payment_refunds")
+            .update({
+              airwallex_refund_id: refundId,
+              status: normalizedStatus,
+              failure_code: null,
+              failure_message: null,
+              raw_response: refundCreateBody.json || { raw: refundCreateBody.text },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", refundRowId);
+
+          if (!REFUND_SUCCESS_STATUSES.has(refundStatusUpper)) {
+            await logAdminPaymentAction({
+              admin,
+              actionType: "refund_last_payment",
+              status: "failed",
+              adminUser,
+              mobile,
+              parentId: parent.id,
+              paymentOrderId: latestOrder.id,
+              recurringProfileId: null,
+              message: `退款狀態異常：${refundStatusUpper}`,
+              payload: {
+                refund_row_id: refundRowId,
+                refund_id: refundId,
+                refund_status: refundStatusUpper,
+              },
+            });
+            return NextResponse.json(
+              { error: `退款未成功（狀態：${refundStatusUpper}）` },
+              { status: 409 }
+            );
+          }
+
+          const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+          let consentDisabled = false;
+          let consentStatus: string | null = null;
+          if (
+            recurringProfile &&
+            String(recurringProfile.status || "").toLowerCase() !== "cancelled"
+          ) {
+            if (recurringProfile.airwallex_payment_consent_id) {
+              const disableResult = await disablePaymentConsent({
+                consentId: recurringProfile.airwallex_payment_consent_id,
+              });
+              consentDisabled = disableResult.disabled;
+              consentStatus = disableResult.status;
+            }
+            await cancelRecurringLocally({
+              admin,
+              profileId: recurringProfile.id,
+            });
+          }
+
+          await downgradeParentToFree({
+            admin,
+            parentId: parent.id,
+          });
+
+          await logAdminPaymentAction({
+            admin,
+            actionType: "refund_last_payment",
+            status: "success",
+            adminUser,
+            mobile,
+            parentId: parent.id,
+            paymentOrderId: latestOrder.id,
+            recurringProfileId: recurringProfile?.id ?? null,
+            message: "Refunded last payment and downgraded parent to free",
+            payload: {
+              refund_row_id: refundRowId,
+              refund_id: refundId,
+              refund_status: refundStatusUpper,
+              consent_disabled: consentDisabled,
+              consent_status: consentStatus,
+              downgraded_to_free: true,
+            },
+          });
+
+          return NextResponse.json({
+            data: {
+              ok: true,
+              refund_id: refundId,
+              refund_status: refundStatusUpper,
+              refund_amount_hkd: refundAmount,
+              parent_tier: "free",
+              recurring_status: "cancelled",
+            },
+          });
+        } catch (refundErr) {
+          if (refundErr instanceof Error && refundErr.message === PAYMENT_OPS_TABLE_HINT) {
+            throw refundErr;
+          }
+          throw refundErr;
+        }
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });

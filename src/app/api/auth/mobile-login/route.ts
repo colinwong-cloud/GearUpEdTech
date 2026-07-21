@@ -15,6 +15,10 @@ type LoginByMobileRpc = {
   parent_found: boolean;
   parent_id?: string | null;
   students: StudentLite[];
+  tier?: "free" | "paid";
+  is_paid?: boolean;
+  paid_until?: string | null;
+  tier_label?: string;
 };
 
 function getSupabaseClient() {
@@ -75,5 +79,9 @@ export async function POST(req: NextRequest) {
     parent_found: true,
     parent_id: result.parent_id ?? null,
     students: result.students,
+    tier: result.tier ?? "free",
+    is_paid: Boolean(result.is_paid),
+    paid_until: result.paid_until ?? null,
+    tier_label: result.tier_label ?? (result.is_paid ? "月費用戶" : "免費用戶"),
   });
 }

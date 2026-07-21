@@ -3,22 +3,25 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-function getSupabaseClients() {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    process.env.SUPABASE_URL?.trim() ||
-    "";
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    process.env.SUPABASE_ANON_KEY?.trim() ||
-    "";
-  if (!url || !anonKey) return null;
+function getSupabaseAnonClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
-  return {
-    supabase: createClient(url, anonKey),
-    supabaseAdmin: createClient(url, serviceKey),
-  };
+function getSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    "";
+  if (!supabaseUrl || !serviceKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, serviceKey);
 }
 
 function missingRpcError(e: { message: string } | null | undefined): boolean {
@@ -123,15 +126,6 @@ async function recomputeOneGrade(client: Rpc, gl: string): Promise<RecomputeResu
  * - part=all → both (can hit DB limits; prefer two crons: rank + grade)
  */
 export async function GET(req: NextRequest) {
-  const clients = getSupabaseClients();
-  if (!clients) {
-    return NextResponse.json(
-      { error: "Supabase env not configured" },
-      { status: 503 }
-    );
-  }
-  const { supabase, supabaseAdmin } = clients;
-
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -147,8 +141,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const useService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const client: Rpc = useService ? supabaseAdmin : supabase;
+  const supabaseAnon = getSupabaseAnonClient();
+  const supabaseAdmin = getSupabaseAdminClient();
+  const useService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  const client: Rpc | null = useService ? supabaseAdmin : supabaseAnon;
+  if (!client) {
+    return NextResponse.json(
+      {
+        error: "Supabase not configured",
+        hint: "Set NEXT_PUBLIC_SUPABASE_URL and key env vars in this environment.",
+      },
+      { status: 503 }
+    );
+  }
   if (!useService) {
     console.warn(
       "cron: SUPABASE_SERVICE_ROLE_KEY not set; using anon key. Add service role in Vercel for more reliable long RPCs."

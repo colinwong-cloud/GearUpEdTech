@@ -1,19 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
-
-const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), { ssr: false });
-const Bar = dynamic(() => import("recharts").then((m) => m.Bar), { ssr: false });
-const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false });
-const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false });
-const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), { ssr: false });
-const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
-const ReferenceLine = dynamic(() => import("recharts").then((m) => m.ReferenceLine), { ssr: false });
-const ResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false });
-const Cell = dynamic(() => import("recharts").then((m) => m.Cell), { ssr: false });
+import { OverallChart, TypeCharts, type ChartDataPayload } from "@/components/student-performance-charts";
 import type {
   Student,
   Question,
@@ -27,6 +18,18 @@ import {
   quizSubjectDbPatterns,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
+import {
+  AI_QUESTION_SOURCE,
+  buildStrictAiQuestionPoolErrorMessage,
+  isAiQuestionSource,
+} from "@/lib/question-source";
+import {
+  pushGtmEventOncePerSession,
+} from "@/lib/gtm-events";
+import {
+  groupBalanceTransactions,
+  type GroupedBalanceTransactionRow,
+} from "@/lib/balance-transactions";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
@@ -44,6 +47,269 @@ const MAX_IMAGE = 1;
 const SUPABASE_PAGE_SIZE = 1000;
 const STORAGE_BUCKET = "question-images";
 const STORAGE_PATH_RE = /\/storage\/v1\/object\/public\/question-images\/(.+)$/;
+const MONTHLY_PAID_PRICE_HKD = 99;
+const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
+const WECHAT_SDK_SRC = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
+const DEFAULT_SHARE_BASE_URL = "https://www.gearupquiz.com";
+const DEFAULT_SHARE_TITLE = "增分寶 GearUp Quiz";
+const DEFAULT_SHARE_DESCRIPTION =
+  "免費中英數練習平台，AI 精準補漏，貼合香港課程。";
+const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
+const DEFAULT_SHARE_CAMPAIGN = "parent_share";
+const WHATSAPP_ICON_PATH = "/social/whatsapp.svg";
+const WECHAT_ICON_PATH = "/social/wechat.svg";
+
+type AirwallexPaymentsApi = {
+  redirectToCheckout: (props: Record<string, unknown>) => void;
+};
+
+type AirwallexSdkLike = {
+  init?: (opts: {
+    env: "demo" | "prod";
+    enabledElements: string[];
+  }) => Promise<{ payments?: AirwallexPaymentsApi } | void> | { payments?: AirwallexPaymentsApi } | void;
+  payments?: AirwallexPaymentsApi;
+  createElement?: (name: string) => unknown;
+  redirectToCheckout?: (props: Record<string, unknown>) => void;
+};
+
+type WechatSdkConfigResponse = {
+  appId: string;
+  timestamp: number;
+  nonceStr: string;
+  signature: string;
+};
+
+type WechatSdkLike = {
+  config: (options: {
+    debug?: boolean;
+    appId: string;
+    timestamp: number;
+    nonceStr: string;
+    signature: string;
+    jsApiList: string[];
+  }) => void;
+  ready: (callback: () => void) => void;
+  error: (callback: (error: unknown) => void) => void;
+  updateAppMessageShareData?: (payload: Record<string, unknown>) => void;
+  updateTimelineShareData?: (payload: Record<string, unknown>) => void;
+};
+
+declare global {
+  interface Window {
+    Airwallex?: AirwallexSdkLike;
+    AirwallexComponentsSDK?: AirwallexSdkLike;
+    _AirwallexSDKs?: {
+      payment?: AirwallexSdkLike;
+    };
+    wx?: WechatSdkLike;
+  }
+}
+
+function getPublicShareBaseUrl(): string {
+  const explicit = (process.env.NEXT_PUBLIC_SHARE_BASE_URL || "").trim();
+  if (!explicit) return DEFAULT_SHARE_BASE_URL;
+  try {
+    return new URL(explicit).origin;
+  } catch {
+    return DEFAULT_SHARE_BASE_URL;
+  }
+}
+
+function getShareTitle(): string {
+  return (process.env.NEXT_PUBLIC_SHARE_TITLE || "").trim() || DEFAULT_SHARE_TITLE;
+}
+
+function getShareDescription(): string {
+  return (process.env.NEXT_PUBLIC_SHARE_DESCRIPTION || "").trim() || DEFAULT_SHARE_DESCRIPTION;
+}
+
+function getShareImageAbsoluteUrl(): string {
+  const explicit = (process.env.NEXT_PUBLIC_SHARE_BANNER_URL || "").trim();
+  if (explicit) return explicit;
+  return `${getPublicShareBaseUrl()}${DEFAULT_SHARE_BANNER}`;
+}
+
+function buildTrackedShareUrl(channel: "whatsapp" | "wechat"): string {
+  const url = new URL(getPublicShareBaseUrl());
+  url.searchParams.set("utm_source", channel);
+  url.searchParams.set("utm_medium", "social");
+  url.searchParams.set(
+    "utm_campaign",
+    (process.env.NEXT_PUBLIC_SHARE_CAMPAIGN || "").trim() || DEFAULT_SHARE_CAMPAIGN
+  );
+  return url.toString();
+}
+
+function isWeChatUserAgent(ua: string): boolean {
+  return /MicroMessenger/i.test(ua);
+}
+
+async function copyTextToClipboard(value: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+  try {
+    if (typeof document === "undefined") return false;
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "true");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(input);
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
+async function captureShareEvent(payload: {
+  channel: "whatsapp" | "wechat";
+  action: string;
+  status: string;
+  shareUrl: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/share-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channel: payload.channel,
+        action: payload.action,
+        status: payload.status,
+        share_url: payload.shareUrl,
+        page_path: window.location.pathname || "/",
+        is_wechat_ua: isWeChatUserAgent(navigator.userAgent || ""),
+        metadata: payload.metadata || {},
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // Share logging should never block user flow.
+  }
+}
+
+function getRankSampleImageUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_RANK_SAMPLE_IMAGE_URL?.trim();
+  if (explicit) return explicit;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return base
+    ? `${base}/storage/v1/object/public/Webpage_images/logo/rank_sample.png`
+    : "/rank_sample.png";
+}
+
+function getPaymentTermsUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_PAYMENT_TERMS_URL?.trim();
+  if (explicit) return explicit;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  return base
+    ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
+    : "/payment_terms_condition.txt";
+}
+
+function getAirwallexEnv(): "demo" | "prod" {
+  const env = (process.env.NEXT_PUBLIC_AIRWALLEX_ENV || "").trim().toLowerCase();
+  if (env === "demo" || env === "sandbox" || env === "test") return "demo";
+  return "prod";
+}
+
+async function resolveAirwallexPaymentsApi(
+  env: "demo" | "prod"
+): Promise<AirwallexPaymentsApi> {
+  const sdk =
+    typeof window !== "undefined"
+      ? window.AirwallexComponentsSDK ||
+        window._AirwallexSDKs?.payment ||
+        window.Airwallex
+      : undefined;
+  if (!sdk) {
+    throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+  }
+
+  if (typeof sdk.redirectToCheckout === "function") {
+    return {
+      redirectToCheckout: (props) => sdk.redirectToCheckout!(props),
+    };
+  }
+
+  let payments: AirwallexPaymentsApi | undefined;
+  if (typeof sdk.init === "function") {
+    const initResult = await sdk.init({
+      env,
+      enabledElements: ["payments"],
+    });
+    const maybeResult =
+      initResult && typeof initResult === "object"
+        ? (initResult as { payments?: AirwallexPaymentsApi })
+        : null;
+    payments = maybeResult?.payments;
+  }
+
+  if (!payments && sdk.payments) {
+    payments = sdk.payments;
+  }
+
+  if (!payments && typeof sdk.createElement === "function") {
+    const maybePayments = sdk.createElement("payments") as AirwallexPaymentsApi | undefined;
+    if (maybePayments && typeof maybePayments.redirectToCheckout === "function") {
+      payments = maybePayments;
+    }
+  }
+
+  if (!payments || typeof payments.redirectToCheckout !== "function") {
+    throw new Error("付款 SDK 初始化失敗，請重新整理後再試。");
+  }
+  return payments;
+}
+
+function hasAirwallexSdk(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    window.AirwallexComponentsSDK ||
+      window._AirwallexSDKs?.payment ||
+      window.Airwallex
+  );
+}
+
+function ensureAirwallexScript(): void {
+  if (typeof document === "undefined") return;
+  const existing = document.querySelector<HTMLScriptElement>(
+    `script[src="${AIRWALLEX_SDK_SRC}"]`
+  );
+  if (existing) return;
+  const script = document.createElement("script");
+  script.src = AIRWALLEX_SDK_SRC;
+  script.async = true;
+  script.setAttribute("data-airwallex-sdk", "true");
+  document.head.appendChild(script);
+}
+
+async function waitForAirwallexSdkReady(timeoutMs = 10000): Promise<boolean> {
+  if (hasAirwallexSdk()) return true;
+  ensureAirwallexScript();
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (hasAirwallexSdk()) return true;
+  }
+  return hasAirwallexSdk();
+}
+
+function normalizeTurnstileErrorCode(code: unknown): string | null {
+  if (typeof code !== "string") return null;
+  const trimmed = code.trim();
+  return trimmed || null;
+}
 
 type AppScreen =
   | "login_mobile"
@@ -58,10 +324,30 @@ type AppScreen =
   | "parent_session_detail"
   | "account_menu"
   | "balance_view"
+  | "payment_history"
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
-  | "forgot_password";
+  | "forgot_password"
+  | "payment";
+
+const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
+  "login_role",
+  "login_student",
+  "subject_select",
+  "question_count_select",
+  "quiz",
+  "results",
+  "parent_dashboard",
+  "parent_session_detail",
+  "account_menu",
+  "balance_view",
+  "payment_history",
+  "profile_edit",
+  "add_student_form",
+  "parent_student_select",
+  "payment",
+]);
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30] as const;
 
@@ -79,36 +365,6 @@ interface SessionDetailAnswer {
   is_correct: boolean;
   question_order: number | null;
   question: Question;
-}
-
-interface ChartSession {
-  id: string;
-  created_at: string;
-  questions_attempted: number;
-  score: number;
-  correct_pct: number;
-}
-
-interface ChartTypeSession {
-  question_type: string;
-  session_id: string;
-  created_at: string;
-  total: number;
-  correct: number;
-  correct_pct: number;
-}
-
-interface GradeAverage {
-  question_type: string;
-  avg_correct_pct: number;
-  total_sessions: number;
-}
-
-interface ChartDataPayload {
-  grade_level: string;
-  sessions: ChartSession[];
-  type_sessions: ChartTypeSession[];
-  grade_averages: GradeAverage[];
 }
 
 /** Nightly cache from student_grade_rankings; see get_parent_student_grade_rank RPC */
@@ -132,9 +388,8 @@ interface ParentGradeRankPayload {
 interface BalanceTransaction {
   id: string;
   change_amount: number;
-  balance_after: number;
+  balance_after: number | null;
   description: string;
-  subject: string;
   session_id: string | null;
   created_at: string;
 }
@@ -142,11 +397,59 @@ interface BalanceTransaction {
 interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
-  transactions: BalanceTransaction[];
+  transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+interface ParentPaymentHistoryRow {
+  id: string;
+  paid_at: string | null;
+  created_at: string | null;
+  final_amount_hkd: number | null;
+  payment_method: string | null;
+  payment_method_label: string | null;
+  payment_method_type: string | null;
+  payment_method_brand: string | null;
+}
+
+type ParentTier = "free" | "paid";
+
+interface ParentTierStatus {
+  tier: ParentTier;
+  is_paid: boolean;
+  paid_until?: string | null;
+  tier_label: string;
+}
+
+interface DiscountValidationResult {
+  valid: boolean;
+  code: string | null;
+  discount_percent: number;
+  salesperson: string | null;
 }
 
 function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
+}
+
+function getOptionValueByAnswer(question: Question, answer: string | null | undefined): string | null {
+  const key = String(answer || "").trim().toUpperCase();
+  if (key === "A") return question.opt_a;
+  if (key === "B") return question.opt_b;
+  if (key === "C") return question.opt_c;
+  if (key === "D") return question.opt_d;
+  return null;
+}
+
+function formatAnswerWithValue(question: Question, answer: string | null | undefined): string {
+  const raw = String(answer || "").trim();
+  if (!raw) return "—";
+  if (isShortAnswer(question)) return raw;
+  const key = raw.toUpperCase();
+  const optionValue = getOptionValueByAnswer(question, key);
+  if (optionValue && optionValue.trim()) {
+    return `${key} (${optionValue.trim()})`;
+  }
+  return key;
 }
 
 function hasImage(q: Question): boolean {
@@ -175,10 +478,11 @@ async function fetchAllQuestions(
       .select("*")
       .ilikeAnyOf("subject", subjectPatterns)
       .eq("grade_level", gradeLevel)
+      .eq("source", AI_QUESTION_SOURCE)
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
-    all.push(...(data as Question[]));
+    all.push(...(data as Question[]).filter((q) => isAiQuestionSource(q.source)));
     if (data.length < SUPABASE_PAGE_SIZE) break;
     from += SUPABASE_PAGE_SIZE;
   }
@@ -344,9 +648,91 @@ export default function QuizApp() {
   
   const [chartData, setChartData] = useState<ChartDataPayload | null>(null);
   const [gradeRank, setGradeRank] = useState<ParentGradeRankPayload | null>(null);
+  const [parentTierStatus, setParentTierStatus] = useState<ParentTierStatus>({
+    tier: "free",
+    is_paid: false,
+    paid_until: null,
+    tier_label: "免費用戶",
+  });
+  const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
+  const authIntentRef = useRef(false);
+
+  const markAuthIntent = useCallback(() => {
+    authIntentRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (hasLoginContext) return;
+    if (screen !== "login_mobile") return;
+    pushGtmEventOncePerSession("anon_visit", {
+      screen_name: "login_mobile",
+    });
+  }, [hasLoginContext, screen]);
+
+  useEffect(() => {
+    if (hasLoginContext) return;
+    if (screen !== "login_mobile") return;
+    const timer = window.setTimeout(() => {
+      if (authIntentRef.current) return;
+      pushGtmEventOncePerSession("anon_engaged_30s_no_auth", {
+        screen_name: "login_mobile",
+        engaged_seconds: 30,
+      });
+    }, 30000);
+    return () => window.clearTimeout(timer);
+  }, [hasLoginContext, screen]);
+
+  useEffect(() => {
+    if (!AUTH_REQUIRED_SCREENS.has(screen)) return;
+    if (hasLoginContext) return;
+    setSelectedStudent(null);
+    setSelectedSubject(null);
+    setBalance(null);
+    setScreen("login_mobile");
+  }, [hasLoginContext, screen]);
+
+  const refreshParentTierStatus = useCallback(async () => {
+    const mobile = mobileNumber.trim();
+    if (!mobile) {
+      setParentTierStatus({
+        tier: "free",
+        is_paid: false,
+        paid_until: null,
+        tier_label: "免費用戶",
+      });
+      return;
+    }
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("get_parent_tier_status", {
+        p_mobile: mobile,
+      });
+      if (rpcErr) throw rpcErr;
+      const result = data as ParentTierStatus | null;
+      if (result) {
+        setParentTierStatus({
+          tier: result.tier === "paid" ? "paid" : "free",
+          is_paid: Boolean(result.is_paid),
+          paid_until: result.paid_until ?? null,
+          tier_label: result.tier_label || (result.is_paid ? "月費用戶" : "免費用戶"),
+        });
+      }
+    } catch {
+      setParentTierStatus({
+        tier: "free",
+        is_paid: false,
+        paid_until: null,
+        tier_label: "免費用戶",
+      });
+    }
+  }, [mobileNumber]);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
+    markAuthIntent();
+    pushGtmEventOncePerSession("login_attempt", {
+      auth_method: "mobile_pin",
+      screen_name: "login_mobile",
+    });
     setLoading(true);
     setError(null);
     try {
@@ -361,6 +747,10 @@ export default function QuizApp() {
       const result = (await res.json()) as {
         parent_found?: boolean;
         students?: Student[];
+        tier?: ParentTier;
+        is_paid?: boolean;
+        paid_until?: string | null;
+        tier_label?: string;
         error?: string;
       };
       if (!res.ok) {
@@ -372,13 +762,25 @@ export default function QuizApp() {
         throw new Error("密碼不正確，請重試。");
 
       setStudents(result.students);
+      setParentTierStatus({
+        tier: result.tier === "paid" ? "paid" : "free",
+        is_paid: Boolean(result.is_paid),
+        paid_until: result.paid_until ?? null,
+        tier_label:
+          result.tier_label ||
+          (result.tier === "paid" || result.is_paid ? "月費用戶" : "免費用戶"),
+      });
+      pushGtmEventOncePerSession("login_success", {
+        auth_method: "mobile_pin",
+        screen_name: "login_mobile",
+      });
       setScreen("login_role");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登入失敗，請重試。");
     } finally {
       setLoading(false);
     }
-  }, [mobileNumber, pinInput]);
+  }, [markAuthIntent, mobileNumber, pinInput]);
 
   const handleRegister = useCallback(
     async (form: {
@@ -388,24 +790,45 @@ export default function QuizApp() {
       gradeLevel: string;
       email: string;
       schoolId: string | null;
+      referralCode: string;
     }) => {
       if (!mobileNumber.trim()) return;
+      markAuthIntent();
+      pushGtmEventOncePerSession("register_submit_attempt", {
+        screen_name: "register",
+      });
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcErr } = await supabase.rpc("register_student", {
-          p_mobile_number: mobileNumber.trim(),
-          p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
-          p_avatar_style: form.avatarStyle,
-          p_grade_level: form.gradeLevel,
-          p_email: form.email || null,
-          p_school_id: form.schoolId,
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile: mobileNumber.trim(),
+            studentName: form.studentName,
+            pinCode: form.pinCode,
+            avatarStyle: form.avatarStyle,
+            gradeLevel: form.gradeLevel,
+            email: form.email || null,
+            schoolId: form.schoolId,
+            referralCode: form.referralCode || null,
+          }),
         });
-        if (rpcErr) throw rpcErr;
+        const payload = (await res.json().catch(() => null)) as {
+          student?: Student;
+          error?: string;
+        } | null;
+        if (!res.ok || !payload?.student) {
+          throw new Error(payload?.error || "註冊失敗，請重試。");
+        }
 
-        setSelectedStudent(data as Student);
-        setStudents([data as Student]);
+        setSelectedStudent(payload.student);
+        setStudents([payload.student]);
+        await refreshParentTierStatus();
+        pushGtmEventOncePerSession("register_success", {
+          screen_name: "register",
+          grade_level: form.gradeLevel,
+        });
         setScreen("subject_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "註冊失敗，請重試。");
@@ -413,7 +836,7 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [mobileNumber]
+    [markAuthIntent, mobileNumber, refreshParentTierStatus]
   );
 
   const handleStudentSelect = useCallback((student: Student) => {
@@ -422,15 +845,19 @@ export default function QuizApp() {
   }, []);
 
   const handleAddStudentSubmit = useCallback(
-    async (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
+    async (form: { studentName: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => {
       if (!mobileNumber.trim()) return;
+      if (!pinInput.trim()) {
+        setError("登入狀態已失效，請重新登入後再試。");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
         const { data, error: rpcErr } = await supabase.rpc("add_student_to_parent", {
           p_mobile_number: mobileNumber.trim(),
           p_student_name: form.studentName,
-          p_pin_code: form.pinCode,
+          p_pin_code: pinInput.trim(),
           p_avatar_style: form.avatarStyle,
           p_grade_level: form.gradeLevel,
           p_school_id: form.schoolId,
@@ -439,14 +866,22 @@ export default function QuizApp() {
         if (data && (data as { error?: string }).error) throw new Error((data as { error: string }).error);
         const newStudent = data as Student;
         setStudents((prev) => [...prev, newStudent]);
+        await refreshParentTierStatus();
         setScreen("account_menu");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "新增學生失敗，請重試。");
+        const fallbackError = "新增學生失敗，請重試。";
+        const rawMessage = err instanceof Error ? err.message : fallbackError;
+        const isDuplicateGradeError = /每個年級只可新增一位學生|同年級|same grade/i.test(rawMessage);
+        setError(
+          isDuplicateGradeError
+            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com"
+            : rawMessage
+        );
       } finally {
         setLoading(false);
       }
     },
-    [mobileNumber]
+    [mobileNumber, pinInput, refreshParentTierStatus]
   );
 
   const loadParentSessions = async (
@@ -574,8 +1009,16 @@ export default function QuizApp() {
 
     try {
       const allQuestions = await fetchAllQuestions(subject, student.grade_level);
-      if (allQuestions.length === 0)
-        throw new Error("題庫中沒有找到適合的題目。");
+      if (allQuestions.length < count) {
+        throw new Error(
+          buildStrictAiQuestionPoolErrorMessage({
+            subjectKey: subject,
+            gradeLevel: student.grade_level,
+            requestedCount: count,
+            availableCount: allQuestions.length,
+          })
+        );
+      }
 
       const { data: weights } = await supabase
         .from("parent_weights")
@@ -588,6 +1031,16 @@ export default function QuizApp() {
         (weights as ParentWeight[]) || [],
         count
       );
+      if (selected.length < count) {
+        throw new Error(
+          buildStrictAiQuestionPoolErrorMessage({
+            subjectKey: subject,
+            gradeLevel: student.grade_level,
+            requestedCount: count,
+            availableCount: selected.length,
+          })
+        );
+      }
 
       const { data: session, error: sessErr } = await supabase.rpc(
         "create_quiz_session",
@@ -763,7 +1216,16 @@ export default function QuizApp() {
   };
 
   const handleRestart = () => {
-    setScreen("subject_select");
+    setScreen(selectedSubject ? "question_count_select" : "subject_select");
+    setQuestions([]);
+    setSessionId(null);
+    setAnswers([]);
+    setSessionPracticeSummary(null);
+    setError(null);
+  };
+
+  const handleBackToHome = () => {
+    setScreen("login_role");
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
@@ -783,6 +1245,12 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    setParentTierStatus({
+      tier: "free",
+      is_paid: false,
+      paid_until: null,
+      tier_label: "免費用戶",
+    });
     setError(null);
   };
 
@@ -797,6 +1265,11 @@ export default function QuizApp() {
         setPin={setPinInput}
         onSubmit={handleMobileSubmit}
         onRegister={() => {
+          markAuthIntent();
+          pushGtmEventOncePerSession("register_start", {
+            screen_name: "login_mobile",
+            entry_point: "register_button",
+          });
           setError(null);
           setScreen("register");
         }}
@@ -813,6 +1286,12 @@ export default function QuizApp() {
         onStudent={() => setScreen("login_student")}
         onParent={() => {
           const firstStudent = students[0];
+          if (firstStudent?.parent_id && firstStudent?.id) {
+            void supabase.rpc("log_parent_dashboard_view", {
+              p_parent_id: firstStudent.parent_id,
+              p_student_id: firstStudent.id,
+            });
+          }
           if (students.length > 1) {
             setScreen("parent_student_select");
           } else if (firstStudent) {
@@ -821,6 +1300,8 @@ export default function QuizApp() {
           }
         }}
         onAccount={() => setScreen("account_menu")}
+        tierStatus={parentTierStatus}
+        onUpgrade={() => setScreen("payment")}
         onBack={handleLogout}
       />
     );
@@ -832,6 +1313,9 @@ export default function QuizApp() {
         onProfile={() => setScreen("profile_edit")}
         onAddStudent={() => setScreen("add_student_form")}
         onBalance={() => setScreen("balance_view")}
+        onPaymentHistory={() => setScreen("payment_history")}
+        onUpgrade={() => setScreen("payment")}
+        tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
       />
     );
@@ -840,6 +1324,15 @@ export default function QuizApp() {
   if (screen === "balance_view") {
     return (
       <BalanceViewScreen
+        mobileNumber={mobileNumber}
+        onBack={() => setScreen("account_menu")}
+      />
+    );
+  }
+
+  if (screen === "payment_history") {
+    return (
+      <PaymentHistoryScreen
         mobileNumber={mobileNumber}
         onBack={() => setScreen("account_menu")}
       />
@@ -874,6 +1367,12 @@ export default function QuizApp() {
         students={students}
         onSelect={(student) => {
           setSelectedStudent(student);
+          if (student.parent_id && student.id) {
+            void supabase.rpc("log_parent_dashboard_view", {
+              p_parent_id: student.parent_id,
+              p_student_id: student.id,
+            });
+          }
           loadParentSessions(student.id, parentSubject, parentMonth.year, parentMonth.month);
         }}
         onBack={() => setScreen("login_role")}
@@ -887,7 +1386,7 @@ export default function QuizApp() {
     return (
       <ForgotPasswordScreen
         mobileNumber={mobileNumber}
-        onBack={() => setScreen("login_role")}
+        onBack={() => setScreen("login_mobile")}
       />
     );
   }
@@ -908,8 +1407,33 @@ export default function QuizApp() {
           if (selectedStudent) loadParentSessions(selectedStudent.id, s, parentMonth.year, parentMonth.month);
         }}
         onViewDetail={handleViewSessionDetail}
+        tierStatus={parentTierStatus}
+        onUpgrade={() => setScreen("payment")}
         onBack={() => setScreen("login_role")}
         onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (screen === "payment") {
+    return (
+      <PaymentScreen
+        mobileNumber={mobileNumber}
+        tierStatus={parentTierStatus}
+        onBack={() => setScreen("login_role")}
+        onPaid={async () => {
+          await refreshParentTierStatus();
+          if (selectedStudent) {
+            await loadParentSessions(
+              selectedStudent.id,
+              parentSubject,
+              parentMonth.year,
+              parentMonth.month
+            );
+          } else {
+            setScreen("login_role");
+          }
+        }}
       />
     );
   }
@@ -947,7 +1471,7 @@ export default function QuizApp() {
       <StudentSelectScreen
         students={students}
         onSelect={handleStudentSelect}
-        onBack={handleLogout}
+        onBack={() => setScreen("login_role")}
       />
     );
   }
@@ -985,6 +1509,7 @@ export default function QuizApp() {
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
         onRestart={handleRestart}
+        onBackToHome={handleBackToHome}
         onLogout={handleLogout}
         balance={balance}
       />
@@ -1109,11 +1634,197 @@ function LoginMobileScreen({
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
   const pinValid = PIN_RE.test(pin.trim());
   const canLogin = mobileNumber.trim().length > 0 && pinValid;
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [showWechatOverlay, setShowWechatOverlay] = useState(false);
+  const [wechatSdkLoaded, setWechatSdkLoaded] = useState(() =>
+    typeof window !== "undefined" ? Boolean(window.wx) : false
+  );
+  const isWeChatUa = useMemo(
+    () => (typeof navigator !== "undefined" ? isWeChatUserAgent(navigator.userAgent || "") : false),
+    []
+  );
+  const shareTitle = useMemo(() => getShareTitle(), []);
+  const shareDescription = useMemo(() => getShareDescription(), []);
+  const shareImageUrl = useMemo(() => getShareImageAbsoluteUrl(), []);
+  const whatsappShareUrl = useMemo(() => buildTrackedShareUrl("whatsapp"), []);
+  const wechatShareUrl = useMemo(() => buildTrackedShareUrl("wechat"), []);
+  const shareMetadata = useMemo(
+    () => ({
+      share_title: shareTitle,
+      share_description: shareDescription,
+      share_image: shareImageUrl,
+      share_base_url: getPublicShareBaseUrl(),
+      whatsapp_share_url: whatsappShareUrl,
+      wechat_share_url: wechatShareUrl,
+      source_screen: "login_mobile",
+    }),
+    [shareTitle, shareDescription, shareImageUrl, whatsappShareUrl, wechatShareUrl]
+  );
+
+  useEffect(() => {
+    if (!isWeChatUa || !wechatSdkLoaded || typeof window === "undefined") return;
+    const wx = window.wx;
+    if (!wx) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const currentUrl = window.location.href.split("#")[0];
+        const response = await fetch("/api/wechat/share-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: currentUrl }),
+        });
+        if (!response.ok) {
+          throw new Error("WeChat share config unavailable");
+        }
+        const config = (await response.json()) as WechatSdkConfigResponse;
+        wx.config({
+          debug: false,
+          appId: config.appId,
+          timestamp: config.timestamp,
+          nonceStr: config.nonceStr,
+          signature: config.signature,
+          jsApiList: ["updateAppMessageShareData", "updateTimelineShareData"],
+        });
+        wx.ready(() => {
+          if (cancelled) return;
+          const sharePayload = {
+            title: shareTitle,
+            desc: shareDescription,
+            link: wechatShareUrl,
+            imgUrl: shareImageUrl,
+          };
+          if (typeof wx.updateAppMessageShareData === "function") {
+            wx.updateAppMessageShareData(sharePayload);
+          }
+          if (typeof wx.updateTimelineShareData === "function") {
+            wx.updateTimelineShareData({
+              title: shareTitle,
+              link: wechatShareUrl,
+              imgUrl: shareImageUrl,
+            });
+          }
+          void captureShareEvent({
+            channel: "wechat",
+            action: "sdk_config",
+            status: "ready",
+            shareUrl: wechatShareUrl,
+            metadata: shareMetadata,
+          });
+        });
+        wx.error((error) => {
+          if (cancelled) return;
+          void captureShareEvent({
+            channel: "wechat",
+            action: "sdk_config",
+            status: "error",
+            shareUrl: wechatShareUrl,
+            metadata: { ...shareMetadata, error: String(error) },
+          });
+        });
+      } catch (error) {
+        if (cancelled) return;
+        void captureShareEvent({
+          channel: "wechat",
+          action: "sdk_config",
+          status: "unavailable",
+          shareUrl: wechatShareUrl,
+          metadata: { ...shareMetadata, error: String(error) },
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isWeChatUa,
+    wechatSdkLoaded,
+    shareTitle,
+    shareDescription,
+    wechatShareUrl,
+    shareImageUrl,
+    shareMetadata,
+  ]);
+
+  const handleShareWhatsApp = useCallback(() => {
+    const shareText = whatsappShareUrl;
+    const encoded = encodeURIComponent(shareText);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(
+      typeof navigator !== "undefined" ? navigator.userAgent : ""
+    );
+    void captureShareEvent({
+      channel: "whatsapp",
+      action: "button_click",
+      status: isMobile ? "native_attempt" : "web_open",
+      shareUrl: whatsappShareUrl,
+      metadata: shareMetadata,
+    });
+
+    if (!isMobile) {
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setShareNotice("正在打開 WhatsApp 分享...");
+    window.location.href = `whatsapp://send?text=${encoded}`;
+  }, [whatsappShareUrl, shareMetadata]);
+
+  const handleShareWeChat = useCallback(async () => {
+    if (isWeChatUa) {
+      setShareNotice("請按右上角「…」再選擇「分享給朋友」或「分享到朋友圈」。");
+      void captureShareEvent({
+        channel: "wechat",
+        action: "button_click",
+        status: "in_wechat_hint",
+        shareUrl: wechatShareUrl,
+        metadata: shareMetadata,
+      });
+      return;
+    }
+
+    setShareNotice(null);
+    setShowWechatOverlay(true);
+    void captureShareEvent({
+      channel: "wechat",
+      action: "button_click",
+      status: "overlay_shown",
+      shareUrl: wechatShareUrl,
+      metadata: shareMetadata,
+    });
+  }, [isWeChatUa, wechatShareUrl, shareMetadata]);
+
+  const handleProceedWechatShare = useCallback(async () => {
+    setShowWechatOverlay(false);
+    const copied = await copyTextToClipboard(wechatShareUrl);
+    setShareNotice(
+      copied
+        ? "已複製分享連結，正在嘗試打開 WeChat。若未自動打開，請到 WeChat 貼上分享。"
+        : "正在嘗試打開 WeChat；若未自動打開，請複製網址到 WeChat 分享。"
+    );
+    void captureShareEvent({
+      channel: "wechat",
+      action: "button_click",
+      status: copied ? "native_attempt_with_copy" : "native_attempt",
+      shareUrl: wechatShareUrl,
+      metadata: { ...shareMetadata, copied_to_clipboard: copied },
+    });
+    window.location.href = "weixin://dl/chat";
+  }, [wechatShareUrl, shareMetadata]);
+
   return (
     <div
       className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
+      {isWeChatUa && (
+        <Script
+          src={WECHAT_SDK_SRC}
+          strategy="afterInteractive"
+          onLoad={() => setWechatSdkLoaded(typeof window !== "undefined" && Boolean(window.wx))}
+          onReady={() => setWechatSdkLoaded(typeof window !== "undefined" && Boolean(window.wx))}
+          onError={() => setWechatSdkLoaded(false)}
+        />
+      )}
       <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-28">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
@@ -1124,8 +1835,19 @@ function LoginMobileScreen({
               className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
               draggable={false}
             />
-            <p className="mt-2 text-gray-500">請輸入電話號碼及密碼登入</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+              GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
+            </p>
+            <p className="mt-2 text-[15px] text-gray-600 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+              請輸入電話號碼及密碼登入
+            </p>
           </div>
+          <button
+            onClick={onRegister}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新用戶註冊
+          </button>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1180,15 +1902,6 @@ function LoginMobileScreen({
               登入
             </button>
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
-              <p className="text-sm text-gray-500">
-                還沒有帳戶？{" "}
-                <button
-                  onClick={onRegister}
-                  className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-                >
-                  新用戶註冊
-                </button>
-              </p>
               <button
                 onClick={onForgotPassword}
                 className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -1196,6 +1909,140 @@ function LoginMobileScreen({
                 忘記密碼？
               </button>
             </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
+            有問題或意見？歡迎電郵至{" "}
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+              cs@gearupquiz.com
+            </a>
+          </div>
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-sm">
+            <p className="text-sm font-semibold text-gray-800">分享增分寶給其他家長</p>
+            <p className="mt-1 text-xs text-gray-500">
+              一鍵分享到 WhatsApp 或 WeChat，讓朋友輕鬆開始使用。
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={WHATSAPP_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
+                WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={handleShareWeChat}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={WECHAT_ICON_PATH} alt="" aria-hidden className="h-4 w-4 invert" />
+                WeChat
+              </button>
+            </div>
+            {shareNotice && (
+              <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+                {shareNotice}
+              </p>
+            )}
+          </div>
+          {showWechatOverlay && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/45 px-4 pt-16">
+              <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-200 text-center">
+                <p className="text-base font-semibold text-gray-900">準備前往 WeChat</p>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  我們會帶你前往 WeChat，請在對話框貼上連結分享。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleProceedWechatShare}
+                  className="mt-4 w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+                >
+                  關閉並前往 WeChat
+                </button>
+              </div>
+            </div>
+          )}
+          <div
+            className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
+            style={{ fontFamily: "var(--font-baloo2), var(--font-noto-sans-tc), system-ui, sans-serif" }}
+          >
+            <section className="space-y-3">
+              <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
+                平台簡介
+              </div>
+              <p className="text-sm leading-7 text-gray-700">
+                增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI
+                個人化學習與香港本地課程掛鉤的平台。
+              </p>
+              <ul className="space-y-3 text-sm leading-7 text-gray-700">
+                <li className="rounded-2xl border border-amber-100 bg-white/80 px-3 py-2">
+                  <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
+                  不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
+                </li>
+                <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
+                  <span className="font-semibold text-gray-900">AI 智能精準補漏，提升學習效率：</span>
+                  利用 AI
+                  演算法追蹤學生的薄弱環節，並提供即時自動批改與詳細解說，幫助孩子從錯誤中學習，確保每分鐘的練習都能發揮最大效用。
+                </li>
+                <li className="rounded-2xl border border-violet-100 bg-white/80 px-3 py-2">
+                  <span className="font-semibold text-gray-900">100% 貼合香港教育局課程：</span>
+                  內容完全根據香港教育局（EDB）課程指引編寫，涵蓋中、英、數三科核心學科，確保學習內容與學校進度同步，直接有效提升校內成績。
+                </li>
+              </ul>
+            </section>
+
+            <hr className="border-amber-200" />
+
+            <section className="space-y-4">
+              <div className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">
+                常見問題（FAQ）
+              </div>
+
+              <div className="space-y-1 rounded-2xl border border-sky-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">1. 平台涵蓋哪些年級和科目？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  平台專為香港小學 P1 至 P6 學生設計。核心科目包括中文、英文及數學，全方位照顧小學階段的學術需求。
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-violet-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">2. 相比其他平台，你們的優勢在哪裡？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  目前的競爭對手主要集中於線上練習，家長未能掌握學生學習強弱，以致與同級其他同學的成績差異。
+                </p>
+                <p className="text-sm leading-7 text-gray-700">我們的優勢在於：</p>
+                <ol className="list-decimal space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                  <li>既有 AI 驅動的每日練習，且在中文、英文及數學三科捆綁訂閱上的價格更具競爭力。</li>
+                  <li>平台有詳細的家長報告，讓您充分掌握學生與其他同級學生的練習成績差異，讓您知己知彼。</li>
+                  <li>每月免費 200 題不同科目練習。</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1 rounded-2xl border border-amber-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">3. 家長如何了解孩子的學習進度？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  平台設有專為家長設計的進度報告與數據儀表板。您可以即時查看孩子的正確率、完成進度以及 AI
+                  分析出的強項與弱項，隨時隨地掌握學習情況。
+                </p>
+              </div>
+
+              <div className="space-y-1 rounded-2xl border border-emerald-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">4. 平台的收費模式是怎樣的？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  我們提供超靈活的月費計劃，無需長期綁約，讓您可以根據孩子的學習進度隨時開始或暫停，給予家長最輕鬆、無壓力的學習彈性。每月
+                  $99 港幣即可享用中、英、數三科全開的專業版無限題練習。月費會員更可將學生成績與全港或按各區學生成績作比較，得知與其他學生的練習成績差異。
+                </p>
+              </div>
+
+              <div className="space-y-1 rounded-2xl border border-rose-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">5. 練習內容是否設有自動批改功能？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  是的。平台提供即時自動批改系統，學生提交答案後會立即獲得回饋與解釋。這不僅能減輕家長對稿的時間負擔，也能讓學生在記憶最清晰時糾正錯誤概念。
+                </p>
+              </div>
+            </section>
           </div>
         </div>
       </div>
@@ -1236,6 +2083,7 @@ function RegisterScreen({
     gradeLevel: string;
     email: string;
     schoolId: string | null;
+    referralCode: string;
   }) => void;
   onBack: () => void;
   error: string | null;
@@ -1246,7 +2094,10 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [privacyStatementText, setPrivacyStatementText] = useState<string | null>(null);
@@ -1312,7 +2163,9 @@ function RegisterScreen({
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
   const PIN_RE = /^[A-Za-z0-9]{6}$/;
+  const REFERRAL_CODE_RE = /^\d{6}$/;
   const pinValid = PIN_RE.test(pinCode);
+  const referralCodeValid = referralCode.length === 0 || REFERRAL_CODE_RE.test(referralCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const mobileValid = /^\d{8}$/.test(mobileNumber.trim()) && !mobileNumber.trim().startsWith("999");
   const privacyStatementUrl = getPrivacyStatementTxtUrl();
@@ -1324,9 +2177,10 @@ function RegisterScreen({
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
     email.trim().length > 0 &&
+    referralCodeValid &&
     privacyAgreed &&
     privacyStatementUrl.length > 0 &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -1537,16 +2391,59 @@ function RegisterScreen({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              負責教師編號（選填）
+            </label>
+            <input
+              type="text"
+              value={referralCode}
+              onChange={(e) => {
+                setReferralCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                if (error) setError(null);
+              }}
+              maxLength={6}
+              placeholder="6位數字"
+              className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
+                referralCode.length > 0 && !referralCodeValid
+                  ? "border-red-300 focus:border-red-400"
+                  : "border-gray-200 focus:border-indigo-400"
+              }`}
+            />
+            {referralCode.length > 0 && !referralCodeValid && (
+              <p className="mt-1 text-xs text-red-500">錯誤編號</p>
+            )}
+          </div>
+
           {siteKey && (
             <div className="flex justify-center">
               <Turnstile
                 siteKey={siteKey}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onError={() => setTurnstileToken(null)}
-                onExpire={() => setTurnstileToken(null)}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
                 options={{ theme: "light", size: "normal" }}
               />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續註冊
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           {error && (
@@ -1584,7 +2481,15 @@ function RegisterScreen({
                 setError("輸入的電郵已經登記");
                 return;
               }
-              onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, email: email.trim(), schoolId: selectedSchoolId });
+              onSubmit({
+                studentName: studentName.trim(),
+                pinCode,
+                avatarStyle,
+                gradeLevel,
+                email: email.trim(),
+                schoolId: selectedSchoolId,
+                referralCode: referralCode.trim(),
+              });
             }}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
@@ -1871,11 +2776,14 @@ function QuestionCountScreen({
   );
 }
 
-function getPracticeMascotImageSrc(): string {
-  const o = process.env.NEXT_PUBLIC_MASCOT_IMAGE_URL?.trim();
-  if (o) return o;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/Webpage_images/logo/logo_banana_student.png`;
+function getPracticeResultBannerSrc(): string {
+  const override = process.env.NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL?.trim();
+  if (override) return override;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+  if (base) {
+    return `${base}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png`;
+  }
+  return "/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png";
 }
 
 function ResultsView({
@@ -1885,6 +2793,7 @@ function ResultsView({
   sessionId,
   sessionSummary,
   onRestart,
+  onBackToHome,
   onLogout,
   balance,
 }: {
@@ -1894,6 +2803,7 @@ function ResultsView({
   sessionId: string | null;
   sessionSummary: string | null;
   onRestart: () => void;
+  onBackToHome: () => void;
   onLogout: () => void;
   balance: StudentBalance | null;
 }) {
@@ -1922,6 +2832,21 @@ function ResultsView({
       });
       if (error) throw error;
       setReportedIds((prev) => new Set(prev).add(answer.question.id));
+      fetch("/api/send-question-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: studentId,
+          student_name: studentName,
+          session_id: sessionId,
+          question_id: answer.question.id,
+          question_subject: answer.question.subject,
+          question_content: answer.question.content,
+          question_explanation: answer.question.explanation,
+          student_answer: answer.studentAnswer,
+          correct_answer: answer.question.correct_answer,
+        }),
+      }).catch(() => {});
     } catch {
       // silent fail — non-critical
     } finally {
@@ -1965,11 +2890,11 @@ function ResultsView({
           <div className="shrink-0 self-center sm:self-end">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={getPracticeMascotImageSrc()}
-              alt=""
-              className="h-16 w-16 sm:h-20 sm:w-20"
-              width={80}
-              height={80}
+              src={getPracticeResultBannerSrc()}
+              alt="GearUp 增分寶 Banner"
+              className="h-auto w-44 max-w-[70vw] sm:w-56"
+              width={560}
+              height={140}
               draggable={false}
             />
           </div>
@@ -2051,38 +2976,59 @@ function ResultsView({
                   key={index}
                   className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
                 >
-                  <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-500">
-                        你的答案：{answer.studentAnswer}
-                      </span>
-                      <span className="text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-emerald-600">
-                        正確答案：{answer.question.correct_answer}
-                      </span>
-                    </p>
+                  <div className="bg-red-50 px-4 py-3 border-b border-red-100 text-sm font-semibold text-gray-800">
+                    <span className="text-red-500 mr-1">第 {index + 1} 題</span>
+                    <span className="text-gray-400 mx-1">|</span>
+                    <span className="text-xs text-gray-600">
+                      你的答案：{answer.studentAnswer}
+                    </span>
+                    <span className="text-gray-400 mx-1">|</span>
+                    <span className="text-xs text-emerald-700">
+                      正確答案：{answer.question.correct_answer}
+                    </span>
                   </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <QuestionContentParagraphs
-                      content={answer.question.content}
-                      className="text-sm text-gray-700"
-                      paragraphGapClass="mt-3"
-                    />
+                  <div className="px-4 py-4 space-y-3">
+                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">題目內容</p>
+                      <QuestionContentParagraphs
+                        content={answer.question.content}
+                        className="text-sm text-gray-800"
+                        paragraphGapClass="mt-2"
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                        <p className="text-xs font-semibold text-red-500 mb-1">你的答案（值）</p>
+                        <p className="text-sm font-semibold text-red-700">
+                          {formatAnswerWithValue(answer.question, answer.studentAnswer)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                        <p className="text-xs font-semibold text-emerald-600 mb-1">正確答案（值）</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {formatAnswerWithValue(
+                            answer.question,
+                            answer.question.correct_answer
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">解釋</p>
+                      {answer.question.explanation ? (
+                        <QuestionContentParagraphs
+                          content={answer.question.explanation}
+                          className="text-sm text-gray-700"
+                          paragraphGapClass="mt-2"
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">沒有解釋</p>
+                      )}
+                    </div>
                     {hasImage(answer.question) && (
                       <QuestionImage
                         src={getImagePublicUrl(answer.question)!}
                       />
-                    )}
-                    {answer.question.explanation ? (
-                      <QuestionContentParagraphs
-                        content={answer.question.explanation}
-                        className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3"
-                        paragraphGapClass="mt-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">沒有解釋</p>
                     )}
                     <div className="pt-1">
                       <button
@@ -2113,7 +3059,7 @@ function ResultsView({
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={onRestart}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-500 text-white font-semibold rounded-xl hover:bg-sky-600 transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
           >
             <svg
               className="w-5 h-5"
@@ -2131,8 +3077,14 @@ function ResultsView({
             再做一次
           </button>
           <button
+            onClick={onBackToHome}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-50 transition-all duration-200"
+          >
+            回到主畫面
+          </button>
+          <button
             onClick={onLogout}
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-sky-50 text-sky-700 font-semibold rounded-xl border border-sky-200 hover:bg-sky-100 transition-all duration-200"
           >
             登出
           </button>
@@ -2240,16 +3192,17 @@ function AddStudentScreen({
   setError,
 }: {
   mobileNumber: string;
-  onSubmit: (form: { studentName: string; pinCode: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
+  onSubmit: (form: { studentName: string; avatarStyle: string; gradeLevel: string; schoolId: string | null }) => void;
   onBack: () => void;
   error: string | null;
   setError: (v: string | null) => void;
 }) {
   const [studentName, setStudentName] = useState("");
-  const [pinCode, setPinCode] = useState("");
   const [avatarStyle, setAvatarStyle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileBypass, setTurnstileBypass] = useState(false);
+  const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -2268,16 +3221,13 @@ function AddStudentScreen({
   const districts = [...new Set(schools.filter((s) => s.area === selectedArea).map((s) => s.district))];
   const filteredSchools = schools.filter((s) => s.area === selectedArea && s.district === selectedDistrict);
 
-  const PIN_RE = /^[A-Za-z0-9]{6}$/;
-  const pinValid = PIN_RE.test(pinCode);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const canSubmit =
     studentName.trim().length > 0 &&
-    pinValid &&
     avatarStyle !== "" &&
     gradeLevel !== "" &&
     selectedSchoolId !== null &&
-    (siteKey ? turnstileToken !== null : true);
+    (siteKey && !turnstileBypass ? turnstileToken !== null : true);
 
   const grades = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const avatars: { value: string; label: string; gradient: string }[] = [
@@ -2298,23 +3248,6 @@ function AddStudentScreen({
             <input value={studentName} onChange={(e) => { setStudentName(e.target.value); if (error) setError(null); }}
               placeholder="輸入學生姓名"
               className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">密碼（6 位英文或數字）</label>
-            <input
-              type="password"
-              value={pinCode}
-              onChange={(e) => {
-                setPinCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6));
-                if (error) setError(null);
-              }}
-              maxLength={6}
-              placeholder="輸入6位密碼"
-              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
-            />
-            {pinCode.length > 0 && !pinValid && (
-              <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
-            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">姓別</label>
@@ -2367,8 +3300,33 @@ function AddStudentScreen({
 
           {siteKey && (
             <div className="flex justify-center">
-              <Turnstile siteKey={siteKey} onSuccess={(token) => setTurnstileToken(token)} onError={() => setTurnstileToken(null)} onExpire={() => setTurnstileToken(null)} options={{ theme: "light", size: "normal" }} />
+              <Turnstile
+                siteKey={siteKey}
+                onSuccess={(token) => {
+                  setTurnstileToken(token);
+                  setTurnstileBypass(false);
+                  setTurnstileErrorCode(null);
+                }}
+                onError={(code) => {
+                  setTurnstileToken(null);
+                  setTurnstileBypass(true);
+                  setTurnstileErrorCode(normalizeTurnstileErrorCode(code));
+                }}
+                onExpire={() => {
+                  setTurnstileToken(null);
+                  if (!turnstileBypass) {
+                    setTurnstileErrorCode(null);
+                  }
+                }}
+                options={{ theme: "light", size: "normal" }}
+              />
             </div>
+          )}
+          {turnstileBypass && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+              驗證服務暫時不可用，系統已切換為備援模式可繼續操作
+              {turnstileErrorCode ? `（錯誤碼：${turnstileErrorCode}）` : ""}。
+            </p>
           )}
 
           <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
@@ -2377,7 +3335,7 @@ function AddStudentScreen({
 
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
-          <button onClick={() => onSubmit({ studentName: studentName.trim(), pinCode, avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
+          <button onClick={() => onSubmit({ studentName: studentName.trim(), avatarStyle, gradeLevel, schoolId: selectedSchoolId })}
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             新增學生
@@ -2393,11 +3351,17 @@ function AccountMenuScreen({
   onProfile,
   onAddStudent,
   onBalance,
+  onPaymentHistory,
+  onUpgrade,
+  tierStatus,
   onBack,
 }: {
   onProfile: () => void;
   onAddStudent: () => void;
   onBalance: () => void;
+  onPaymentHistory: () => void;
+  onUpgrade: () => void;
+  tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
   return (
@@ -2408,6 +3372,16 @@ function AccountMenuScreen({
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
+          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
+            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-gray-700"}`}>
+              會員狀態：{tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+            </p>
+            {tierStatus.is_paid && tierStatus.paid_until && (
+              <p className="mt-1 text-xs text-emerald-700/80">
+                有效至：{new Date(tierStatus.paid_until).toLocaleDateString("zh-HK")}
+              </p>
+            )}
+          </div>
           <button onClick={onBalance}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
@@ -2416,6 +3390,20 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <button
+              onClick={onPaymentHistory}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
+                💳
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">消費紀錄</p>
+                <p className="text-sm text-gray-500">查看付款日期、金額及付款方式</p>
+              </div>
+            </button>
+          )}
           <button onClick={onProfile}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
@@ -2432,6 +3420,13 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
             </div>
           </button>
+          {!tierStatus.is_paid && (
+            <button onClick={onUpgrade}
+              className="w-full bg-indigo-50 rounded-2xl shadow-sm border border-indigo-200 p-4 text-left hover:bg-indigo-100 transition-all duration-200">
+              <p className="text-sm font-semibold text-indigo-700">成為月費會員(每月$99)</p>
+              <p className="text-xs text-indigo-600 mt-1">即可以獲得學生排名資訊。</p>
+            </button>
+          )}
         </div>
         <button onClick={onBack} className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
       </div>
@@ -2550,7 +3545,9 @@ function ProfileEditScreen({
       }
 
       setMsg("資料已更新");
-      setTimeout(onSaved, 1000);
+      setTimeout(() => {
+        onSaved();
+      }, 1000);
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "儲存失敗，請重試");
     } finally {
@@ -2729,26 +3726,40 @@ function ProfileEditScreen({
 }
 
 function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [mobile, setMobile] = useState(mobileNumber.trim());
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [sent, setSent] = useState(false);
+  const mobileValid = /^\d{8}$/.test(mobile.trim());
+  const emailValid = email.trim().length > 0;
+  const canSubmit = mobileValid && emailValid && !loading;
 
   const handleSubmit = async () => {
-    if (!email.trim()) return;
+    if (!mobileValid) {
+      setMsg("請先輸入 8 位電話號碼。");
+      return;
+    }
+    if (!emailValid) return;
     setLoading(true);
     setMsg("");
     try {
       const res = await fetch("/api/send-reset-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), mobile: mobileNumber.trim() }),
+        body: JSON.stringify({ email: email.trim(), mobile: mobile.trim() }),
       });
       const data = await res.json();
       if (data.found === false) {
         setMsg("此電郵地址與你的帳戶記錄不符，請重新輸入。");
       } else if (data.sent) {
         setSent(true);
+      } else if (!res.ok && data.code === "missing_mobile") {
+        setMsg("請先輸入電話號碼。");
+      } else if (!res.ok && data.code === "missing_email") {
+        setMsg("請輸入註冊電郵地址。");
+      } else if (!res.ok && data.code === "email_service_not_configured") {
+        setMsg("系統暫時未啟用電郵服務，請稍後再試或聯絡客服。");
       } else {
         setMsg(data.detail ? `發送失敗：${data.detail}` : "發送失敗，請重試。");
       }
@@ -2786,9 +3797,24 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">忘記密碼</h1>
-          <p className="mt-2 text-gray-500">請輸入你註冊時使用的電郵地址</p>
+          <p className="mt-2 text-gray-500">請輸入你註冊時使用的電話號碼及電郵地址</p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
+          <input
+            type="tel"
+            value={mobile}
+            onChange={(e) => {
+              setMobile(e.target.value.replace(/\D/g, "").slice(0, 8));
+              setMsg("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="輸入電話號碼（8位）"
+            className={`w-full p-4 rounded-xl border-2 text-base outline-none transition-colors ${
+              mobile.length > 0 && !mobileValid
+                ? "border-red-300"
+                : "border-gray-200 focus:border-indigo-400"
+            }`}
+          />
           <input
             type="email"
             value={email}
@@ -2800,9 +3826,11 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
           {msg && <p className="text-sm text-red-500">{msg}</p>}
           <button
             onClick={handleSubmit}
-            disabled={!email.trim() || loading}
+            disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
-              email.trim() && !loading ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              canSubmit
+                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             {loading ? "發送中..." : "發送重設連結"}
@@ -2810,117 +3838,6 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
           <button onClick={onBack} className="w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function pctColor(pct: number): string {
-  if (pct >= 80) return "#059669";
-  if (pct >= 60) return "#d97706";
-  return "#dc2626";
-}
-
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { datetime: string; pct: number } }> }) {
-  if (!active || !payload || !payload[0]) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 text-xs">
-      <p className="text-gray-500">{d.datetime}</p>
-      <p className="font-bold" style={{ color: pctColor(d.pct) }}>{d.pct}%</p>
-    </div>
-  );
-}
-
-function OverallChart({ chartData }: { chartData: ChartDataPayload }) {
-  const overallAvg = chartData.grade_averages.find((g) => g.question_type === "_overall");
-  const data = [...chartData.sessions].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((s, i) => {
-    const d = new Date(s.created_at);
-    return {
-      idx: i,
-      date: `${d.getMonth() + 1}/${d.getDate()}`,
-      datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-      pct: s.correct_pct,
-      fill: pctColor(s.correct_pct),
-    };
-  });
-
-  return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 mb-4">
-      <h3 className="text-sm font-bold text-gray-800 mb-3">整體正確率趨勢（最近30次）</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="idx" tick={{ fontSize: 10 }} interval="preserveStartEnd"
-            tickFormatter={(idx: number) => data[idx]?.date || ""} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip content={<ChartTooltip />} />
-          {overallAvg && (
-            <ReferenceLine y={Number(overallAvg.avg_correct_pct)} stroke="#f59e0b" strokeDasharray="5 5"
-              label={{ value: `同級平均 ${overallAvg.avg_correct_pct}%`, position: "insideTopRight", fontSize: 10, fill: "#f59e0b" }} />
-          )}
-          <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
-            {data.map((entry, i) => (
-              <Cell key={i} fill={entry.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      <p className="text-xs text-gray-400 mt-2">如同一天多於一次練習，則會有多個棒型以同一日標示。</p>
-    </div>
-  );
-}
-
-function TypeCharts({ chartData }: { chartData: ChartDataPayload }) {
-  const typeCounts = new Map<string, number>();
-  chartData.type_sessions.forEach((t) => typeCounts.set(t.question_type, (typeCounts.get(t.question_type) || 0) + 1));
-  const types = [...typeCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([t]) => t);
-  const avgMap = new Map(chartData.grade_averages.map((g) => [g.question_type, Number(g.avg_correct_pct)]));
-
-  return (
-    <div className="mt-3 space-y-4">
-      {types.map((type) => {
-        const sessions = chartData.type_sessions
-          .filter((t) => t.question_type === type)
-          .sort((a, b) => a.created_at.localeCompare(b.created_at));
-        const data = sessions.map((s, i) => {
-          const d = new Date(s.created_at);
-          return {
-            idx: i,
-            date: `${d.getMonth() + 1}/${d.getDate()}`,
-            datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-            pct: s.correct_pct,
-            fill: pctColor(s.correct_pct),
-          };
-        });
-        const avg = avgMap.get(type);
-
-        return (
-          <div key={type} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <h4 className="text-xs font-bold text-gray-700 mb-2">{type}</h4>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="idx" tick={{ fontSize: 9 }} interval="preserveStartEnd"
-                  tickFormatter={(i: number) => data[i]?.date || ""} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip content={<ChartTooltip />} />
-                {avg !== undefined && (
-                  <ReferenceLine y={avg} stroke="#f59e0b" strokeDasharray="5 5"
-                    label={{ value: `平均${avg}%`, position: "insideTopRight", fontSize: 9, fill: "#f59e0b" }} />
-                )}
-                <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
-                  {data.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -2977,51 +3894,12 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   };
 
   const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
-  const groupedTransactions = (() => {
-    if (!data) return [];
-
-    const buckets = new Map<
-      string,
-      {
-        id: string;
-        date: Date;
-        subject: string;
-        change_amount: number;
-      }
-    >();
-
-    for (const tx of data.transactions) {
-      const d = new Date(tx.created_at);
-      const y = d.getFullYear();
-      const m = d.getMonth() + 1;
-      const day = d.getDate();
-      const dateKey = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const subject = subjectDisplayLabel(balanceSubject);
-      const key = `${dateKey}|${subject}`;
-      const existing = buckets.get(key);
-      if (existing) {
-        existing.change_amount += tx.change_amount;
-      } else {
-        buckets.set(key, {
-          id: key,
-          date: new Date(y, m - 1, day),
-          subject,
-          change_amount: tx.change_amount,
-        });
-      }
-    }
-
-    let runningBalance = data.opening_balance;
-    return [...buckets.values()]
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .map((row) => {
-        runningBalance += row.change_amount;
-        return {
-          ...row,
-          balance_after: runningBalance,
-        };
-      });
-  })();
+  const groupedTransactions = useMemo<GroupedBalanceTransactionRow[]>(() => {
+    return groupBalanceTransactions(data?.transactions ?? []);
+  }, [data]);
+  const isUnlimited = Boolean(data && data.total_balance < 0);
+  const totalBalanceLabel = isUnlimited ? "Unlimited" : String(data?.total_balance ?? 0);
+  const openingBalanceLabel = isUnlimited ? "Unlimited" : String(data?.opening_balance ?? 0);
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
@@ -3053,7 +3931,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
             <p className="text-indigo-100 text-xs font-medium">題目餘額（{subjectDisplayLabel(balanceSubject)}）</p>
-            <p className="text-white text-4xl font-extrabold mt-1">{data.total_balance}</p>
+            <p className="text-white text-4xl font-extrabold mt-1">{totalBalanceLabel}</p>
             <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
           </div>
         )}
@@ -3076,7 +3954,8 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">科目</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">學生</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
                 </tr>
@@ -3085,21 +3964,29 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
                 <tr className="bg-gray-50/50">
                   <td className="px-3 py-2 text-xs text-gray-400">{viewMonth.month}/1</td>
                   <td className="px-3 py-2 text-xs text-gray-400">—</td>
+                  <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
                   <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
-                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{data.opening_balance}</td>
+                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{openingBalanceLabel}</td>
                 </tr>
                 {groupedTransactions.map((tx) => {
-                  const d = tx.date;
-                  const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                  const [, mm, dd] = tx.date.split("-");
+                  const dateStr = `${Number(mm)}/${Number(dd)}`;
                   const isPositive = tx.change_amount > 0;
                   return (
                     <tr key={tx.id}>
                       <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{tx.subject}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{tx.student_name}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
                       <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
                         {isPositive ? "+" : ""}{tx.change_amount}
                       </td>
-                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">{tx.balance_after}</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
+                        {tx.balance_after === null
+                          ? "—"
+                          : tx.balance_after < 0
+                            ? "Unlimited"
+                            : tx.balance_after}
+                      </td>
                     </tr>
                   );
                 })}
@@ -3118,13 +4005,163 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   );
 }
 
+function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearOptions, setYearOptions] = useState<number[]>([currentYear]);
+  const [records, setRecords] = useState<ParentPaymentHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/payment/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mobile_number: mobileNumber.trim(),
+            year: selectedYear,
+          }),
+        });
+        const payload = (await res.json()) as {
+          records?: ParentPaymentHistoryRow[];
+          available_years?: number[];
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(payload.error || "未能載入消費紀錄");
+        }
+        if (cancelled) return;
+        const years = (payload.available_years ?? [])
+          .filter((year) => Number.isInteger(year))
+          .sort((a, b) => b - a);
+        setYearOptions(years.length > 0 ? years : [currentYear]);
+        setRecords(payload.records ?? []);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "未能載入消費紀錄");
+        setRecords([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mobileNumber, selectedYear, currentYear]);
+
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || Number.isNaN(amount)) return "—";
+    return `HKD ${Math.round(amount)}`;
+  };
+
+  const formatPaymentMethod = (record: ParentPaymentHistoryRow) => {
+    return (
+      record.payment_method_label ||
+      record.payment_method_brand ||
+      record.payment_method_type ||
+      record.payment_method ||
+      "—"
+    );
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("zh-HK", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">消費紀錄</span>
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">
+          返回
+        </button>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <label htmlFor="payment-history-year" className="block text-xs font-semibold text-gray-500 mb-2">
+            年份
+          </label>
+          <select
+            id="payment-history-year"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year} 年
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <Spinner size="lg" />
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        ) : records.length > 0 ? (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">金額</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">付款方式</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {records.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      {formatDate(record.paid_at || record.created_at)}
+                    </td>
+                    <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
+                      {formatAmount(record.final_amount_hkd)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{formatPaymentMethod(record)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">{selectedYear} 年暫無付款紀錄</p>
+          </div>
+        )}
+
+        <ContactFooter />
+      </div>
+    </div>
+  );
+}
+
 function ContactFooter() {
   return (
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
       <p className="text-xs text-gray-400">
         有問題或意見？請聯絡{" "}
-        <a href="mailto:colin.wong@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
-          colin.wong@hkedutech.com
+        <a href="mailto:cs@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
+          cs@hkedutech.com
         </a>
       </p>
     </div>
@@ -3135,13 +4172,19 @@ function RoleSelectScreen({
   onStudent,
   onParent,
   onAccount,
+  onUpgrade,
+  tierStatus,
   onBack,
 }: {
   onStudent: () => void;
   onParent: () => void;
   onAccount: () => void;
+  onUpgrade: () => void;
+  tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
+  const whatsappHref = `https://wa.me/85252861715?text=${encodeURIComponent("客戶服務查詢")}`;
+
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -3151,7 +4194,20 @@ function RoleSelectScreen({
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">選擇身份</h1>
           <p className="mt-2 text-gray-500">請選擇登入身份</p>
+          <div className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+            tierStatus.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+          }`}>
+            {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+          </div>
         </div>
+        {!tierStatus.is_paid && (
+          <button
+            onClick={onUpgrade}
+            className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
+          >
+            成為月費會員(每月$99)，即可以獲得學生排名資訊。
+          </button>
+        )}
         <div className="space-y-3">
           <button
             onClick={onStudent}
@@ -3189,7 +4245,45 @@ function RoleSelectScreen({
               <p className="text-sm text-gray-500">題目餘額及管理戶口資料</p>
             </div>
           </button>
+          {tierStatus.is_paid && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M20.52 3.48A11.82 11.82 0 0 0 12.12 0C5.54 0 .18 5.36.18 11.94c0 2.1.55 4.15 1.6 5.97L0 24l6.28-1.65a11.9 11.9 0 0 0 5.84 1.5h.01c6.58 0 11.94-5.36 11.94-11.94 0-3.2-1.25-6.2-3.55-8.43ZM12.13 21.8h-.01a9.86 9.86 0 0 1-5.03-1.38l-.36-.22-3.72.98 1-3.62-.24-.37a9.82 9.82 0 0 1-1.5-5.25c0-5.44 4.42-9.86 9.87-9.86 2.64 0 5.12 1.03 6.98 2.9a9.8 9.8 0 0 1 2.9 6.97c0 5.44-4.43 9.85-9.88 9.85Zm5.4-7.35c-.3-.15-1.8-.89-2.08-.99-.28-.1-.49-.15-.69.15-.2.3-.79.99-.96 1.2-.18.2-.36.23-.67.08-.3-.15-1.29-.47-2.46-1.5-.91-.8-1.52-1.8-1.7-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.34.45-.5.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.69-1.67-.95-2.29-.25-.6-.5-.52-.69-.53h-.59c-.2 0-.53.08-.8.38-.28.3-1.06 1.03-1.06 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.13 4.54.72.31 1.28.5 1.72.64.72.23 1.37.2 1.89.12.58-.09 1.8-.74 2.05-1.45.26-.72.26-1.33.18-1.45-.07-.13-.28-.2-.58-.35Z"
+                  />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">客戶服務</p>
+                <p className="text-sm text-gray-500">WhatsApp 即時查詢</p>
+              </div>
+            </a>
+          )}
         </div>
+        {!tierStatus.is_paid && (
+          <p className="mt-4 text-center text-sm text-gray-500">
+            有問題或意見? 歡迎電郵至{" "}
+            <a
+              href="mailto:cs@hkedutech.com"
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              cs@hkedutech.com
+            </a>
+          </p>
+        )}
         <button
           onClick={onBack}
           className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
@@ -3328,6 +4422,8 @@ function ParentDashboard({
   onMonthChange,
   onSubjectChange,
   onViewDetail,
+  tierStatus,
+  onUpgrade,
   onBack,
   onLogout,
 }: {
@@ -3341,6 +4437,8 @@ function ParentDashboard({
   onMonthChange: (y: number, m: number) => void;
   onSubjectChange: (s: string) => void;
   onViewDetail: (s: SessionSummary) => void;
+  tierStatus: ParentTierStatus;
+  onUpgrade: () => void;
   onBack: () => void;
   onLogout: () => void;
 }) {
@@ -3392,11 +4490,28 @@ function ParentDashboard({
           ))}
         </div>
 
-        <ParentGradeRankPanel
-          studentName={studentName}
-          rank={gradeRank}
-          subjectUiLabel={subjectDisplayLabel(subject)}
-        />
+        {tierStatus.is_paid ? (
+          <ParentGradeRankPanel
+            studentName={studentName}
+            rank={gradeRank}
+            subjectUiLabel={subjectDisplayLabel(subject)}
+          />
+        ) : (
+          <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-700">升級月費會員 ($99)，解鎖全港同級排名！助您精準掌握子女中英數實力水平。附設無限題庫，隨時按弱項強化，讓孩子在同儕中脫穎而出！</p>
+            <img
+              src={getRankSampleImageUrl()}
+              alt="排名範例"
+              className="mt-3 w-full rounded-xl border border-gray-200"
+            />
+            <button
+              onClick={onUpgrade}
+              className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得排名資訊
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600 hover:text-indigo-600">
@@ -3481,7 +4596,7 @@ function ParentDashboard({
           </>
         )}
 
-        {chartData && chartData.type_sessions.length > 0 && (
+        {tierStatus.is_paid && chartData && chartData.type_sessions.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setChartsExpanded(!chartsExpanded)}
@@ -3496,6 +4611,17 @@ function ParentDashboard({
             {chartsExpanded && (
               <TypeCharts chartData={chartData} />
             )}
+          </div>
+        )}
+        {!tierStatus.is_paid && (
+          <div className="mt-6 rounded-2xl border border-indigo-100 bg-white p-4">
+            <p className="text-sm text-gray-700">成為月費會員(每月$99)，即可獲得學生於各題型的正確率資訊。</p>
+            <button
+              onClick={onUpgrade}
+              className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得資訊
+            </button>
           </div>
         )}
 
@@ -3671,5 +4797,398 @@ function Spinner({ size = "sm" }: { size?: "sm" | "lg" }) {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
       />
     </svg>
+  );
+}
+
+function PaymentScreen({
+  mobileNumber,
+  tierStatus,
+  onBack,
+  onPaid,
+}: {
+  mobileNumber: string;
+  tierStatus: ParentTierStatus;
+  onBack: () => void;
+  onPaid: () => void;
+}) {
+  const [discountCode, setDiscountCode] = useState("");
+  const [discount, setDiscount] = useState<DiscountValidationResult | null>(null);
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsText, setTermsText] = useState("");
+  const [loadingTerms, setLoadingTerms] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(() => hasAirwallexSdk());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (hasAirwallexSdk()) {
+      setSdkReady(true);
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      if (hasAirwallexSdk()) {
+        setSdkReady(true);
+        window.clearInterval(intervalId);
+      }
+    }, 500);
+    const timeoutId = window.setTimeout(() => {
+      window.clearInterval(intervalId);
+    }, 15000);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  const originalPrice = MONTHLY_PAID_PRICE_HKD;
+  const discountPercent = discount?.valid ? discount.discount_percent : 0;
+  const finalAmount = Math.max(originalPrice * (1 - discountPercent / 100), 0);
+
+  const validateDiscount = useCallback(async () => {
+    const code = discountCode.trim().toUpperCase();
+    if (!code) {
+      setDiscount(null);
+      return;
+    }
+    setValidatingCode(true);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc("validate_discount_code", {
+        p_code: code,
+      });
+      if (rpcErr) throw rpcErr;
+      setDiscount((data as DiscountValidationResult) ?? null);
+    } catch {
+      setDiscount({
+        valid: false,
+        code,
+        discount_percent: 0,
+        salesperson: null,
+      });
+    } finally {
+      setValidatingCode(false);
+    }
+  }, [discountCode]);
+
+  const openTerms = useCallback(async () => {
+    setShowTerms(true);
+    if (termsText || loadingTerms) return;
+    setLoadingTerms(true);
+    try {
+      const resp = await fetch(
+        getPaymentTermsUrl(),
+        { cache: "no-store" }
+      );
+      const text = await resp.text();
+      setTermsText(text);
+    } catch {
+      setTermsText("未能載入付款條款，請稍後再試。");
+    } finally {
+      setLoadingTerms(false);
+    }
+  }, [termsText, loadingTerms]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!agreed) {
+      setMsg("請先同意付款條款。");
+      return;
+    }
+    setProcessing(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/payment/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mobile_number: mobileNumber.trim(),
+          discount_code: discount?.valid ? discount.code : null,
+        }),
+      });
+      const payload = (await res.json()) as {
+        checkout_url?: string;
+        intent_id?: string;
+        client_secret?: string;
+        currency?: string;
+        country_code?: string;
+        final_amount_hkd?: number;
+        airwallex_customer_id?: string;
+        airwallex_env?: "demo" | "prod";
+        airwallex_locale?: string;
+        airwallex_available_methods?: string[];
+        applepay_available?: boolean | null;
+        payment_method?: string;
+        methods?: string[];
+        applepay_setup_warning?: string | null;
+        message?: string;
+        paid?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(payload.error || "未能建立付款訂單");
+      if (payload.paid) {
+        setMsg(payload.message || "付款成功，已升級月費用戶。");
+        await onPaid();
+        return;
+      }
+      let resolvedIntentId = payload.intent_id || null;
+      let resolvedClientSecret = payload.client_secret || null;
+      let resolvedCurrency = payload.currency || "HKD";
+      let resolvedCountryCode = payload.country_code || "HK";
+      const resolvedAirwallexEnv = payload.airwallex_env || getAirwallexEnv();
+      let resolvedPaymentMethod = payload.payment_method || "all";
+      if ((!resolvedIntentId || !resolvedClientSecret) && payload.checkout_url) {
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          resolvedIntentId = resolvedIntentId || parsed.searchParams.get("intent_id");
+          resolvedClientSecret = resolvedClientSecret || parsed.searchParams.get("client_secret");
+          resolvedCurrency = parsed.searchParams.get("currency") || resolvedCurrency;
+          resolvedCountryCode = parsed.searchParams.get("country_code") || resolvedCountryCode;
+          resolvedPaymentMethod =
+            parsed.searchParams.get("payment_method") || resolvedPaymentMethod;
+        } catch {
+          // Ignore legacy URL parsing errors and fallback to redirect below.
+        }
+      }
+      if (resolvedIntentId && resolvedClientSecret) {
+        const sdkReadyNow = await waitForAirwallexSdkReady();
+        if (!sdkReadyNow) {
+          throw new Error("付款 SDK 尚未準備好，請稍候再試。");
+        }
+        const appBaseUrl =
+          (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
+          window.location.origin;
+        const resolvedLocale =
+          (payload.airwallex_locale || "").trim() || "zh-HK";
+        const resolvedFinalAmount =
+          typeof payload.final_amount_hkd === "number" && Number.isFinite(payload.final_amount_hkd)
+            ? Math.max(payload.final_amount_hkd, 0)
+            : Math.max(finalAmount, 0);
+        const methods =
+          payload.methods && payload.methods.length > 0
+            ? payload.methods
+            : (() => {
+                switch (resolvedPaymentMethod || "all") {
+                  case "cards":
+                    return ["card"];
+                  case "apple_pay":
+                    return ["applepay"];
+                  case "google_pay":
+                    return ["googlepay"];
+                  case "alipay":
+                    return ["alipayhk"];
+                  case "wechat_pay":
+                    return ["wechatpay"];
+                  default:
+                    return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+                }
+              })();
+        if (payload.applepay_setup_warning && methods.includes("applepay")) {
+          console.warn("[Airwallex Apple Pay setup warning]", payload.applepay_setup_warning);
+        }
+        if (methods.includes("applepay")) {
+          const availableMethods = Array.isArray(payload.airwallex_available_methods)
+            ? payload.airwallex_available_methods
+            : [];
+          if (payload.applepay_available === false) {
+            console.warn(
+              "[Airwallex Apple Pay diagnostics] applepay is not active for HKD/HK one-off checkout. Available methods:",
+              availableMethods
+            );
+          }
+          const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+          const isSafari = /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
+          if (!isSafari) {
+            console.warn(
+              "[Airwallex Apple Pay diagnostics] Apple Pay on web is only available on Safari browsers."
+            );
+          }
+        }
+        const applePayRequestOptions = methods.includes("applepay")
+          ? {
+              buttonType: "subscribe",
+              existingPaymentMethodRequired: false,
+              countryCode: resolvedCountryCode,
+              totalPriceLabel: "GearUp 增分寶",
+              lineItems: [
+                {
+                  label: "GearUp 增分寶月費會員",
+                  amount: resolvedFinalAmount.toFixed(2),
+                  type: "final",
+                  paymentTiming: "recurring",
+                  recurringPaymentStartDate: new Date(),
+                  recurringPaymentIntervalUnit: "month",
+                  recurringPaymentIntervalCount: 1,
+                },
+              ],
+            }
+          : undefined;
+        const payments = await resolveAirwallexPaymentsApi(resolvedAirwallexEnv);
+        payments.redirectToCheckout({
+          intent_id: resolvedIntentId,
+          client_secret: resolvedClientSecret,
+          currency: resolvedCurrency,
+          country_code: resolvedCountryCode,
+          locale: resolvedLocale,
+          submitType: "subscribe",
+          methods,
+          applePayRequestOptions,
+          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+            mobileNumber.trim()
+          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+        });
+        return;
+      }
+      if (payload.checkout_url) {
+        let isLegacyInternalBridge = false;
+        try {
+          const parsed = new URL(payload.checkout_url, window.location.origin);
+          isLegacyInternalBridge = parsed.pathname === "/payment-airwallex";
+        } catch {
+          isLegacyInternalBridge = false;
+        }
+        if (isLegacyInternalBridge) {
+          setMsg("系統正在同步付款資料，請再按一次「確認並前往 Airwallex 付款」。");
+          return;
+        }
+        window.location.href = payload.checkout_url;
+        return;
+      }
+      setMsg(payload.message || "已建立付款訂單，請稍後再試。");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "付款流程發生錯誤");
+    } finally {
+      setProcessing(false);
+    }
+  }, [agreed, discount, finalAmount, mobileNumber, onPaid]);
+
+  const canPay = agreed && !processing && !validatingCode;
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm py-8 px-4" onContextMenu={preventContextMenu}>
+      <Script
+        src={AIRWALLEX_SDK_SRC}
+        strategy="afterInteractive"
+        onLoad={() => setSdkReady(hasAirwallexSdk())}
+        onReady={() => setSdkReady(hasAirwallexSdk())}
+        onError={() => setSdkReady(false)}
+      />
+      <div className="mx-auto max-w-lg space-y-4">
+        <div className="flex items-center justify-between">
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            tierStatus.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"
+          }`}>
+            {tierStatus.is_paid ? "月費用戶" : "免費用戶"}
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h1 className="text-xl font-bold text-gray-900">月費會員付款</h1>
+          <p className="mt-1 text-sm text-gray-500">電話號碼：{mobileNumber}</p>
+
+          <div className="mt-4 rounded-xl border border-gray-200 p-4">
+            <p className="text-sm font-semibold text-gray-800">月費會員（每月）</p>
+            <p className="mt-1 text-2xl font-bold text-indigo-700">HKD $99</p>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">折扣碼</label>
+            <div className="flex gap-2">
+              <input
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+                placeholder="輸入6位折扣碼"
+                className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+              />
+              <button
+                type="button"
+                onClick={validateDiscount}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                套用
+              </button>
+            </div>
+            {validatingCode && <p className="mt-1 text-xs text-gray-500">驗證中...</p>}
+            {discount && (
+              <p className={`mt-1 text-xs ${discount.valid ? "text-emerald-600" : "text-red-500"}`}>
+                {discount.valid
+                  ? `折扣碼有效：${discount.discount_percent}%（負責銷售：${discount.salesperson || "—"}）`
+                  : "折扣碼無效"}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+            <p>原價：HKD $99</p>
+            <p>折扣：{discountPercent}%</p>
+            <p className="mt-1 font-semibold text-gray-900">應付：HKD ${finalAmount.toFixed(2)}</p>
+          </div>
+
+          <p className="mt-4 text-xs text-gray-500">
+            付款方式將於 Airwallex 付款頁面中選擇。
+          </p>
+
+          <div className="mt-4 rounded-xl border border-gray-200 p-3">
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                本人確認已閱讀並同意本平台的
+                <button
+                  type="button"
+                  onClick={openTerms}
+                  className="ml-1 text-indigo-600 underline hover:text-indigo-700"
+                >
+                  付款條款及細則
+                </button>
+              </span>
+            </label>
+          </div>
+
+          {msg && <p className="mt-3 text-sm text-gray-700">{msg}</p>}
+          {!sdkReady && (
+            <p className="mt-2 text-xs text-amber-600">
+              付款元件載入中，如按鈕後未有反應請稍候 1-2 秒再試。
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!canPay}
+            className={`mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold ${
+              canPay ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-gray-200 text-gray-400"
+            }`}
+          >
+            {processing ? "處理中..." : "確認並前往 Airwallex 付款"}
+          </button>
+        </div>
+      </div>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-800">付款條款及細則</h2>
+              <button onClick={() => setShowTerms(false)} className="text-sm text-gray-500 hover:text-gray-700">關閉</button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto px-4 py-3">
+              {loadingTerms ? (
+                <p className="text-sm text-gray-500">載入中...</p>
+              ) : (
+                <pre className="whitespace-pre-wrap text-sm text-gray-700">{termsText}</pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

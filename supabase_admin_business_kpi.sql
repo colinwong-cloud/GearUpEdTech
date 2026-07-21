@@ -79,25 +79,37 @@ DECLARE
 BEGIN
   SELECT count(DISTINCT qs.student_id)::int INTO st
   FROM public.quiz_sessions qs
+  JOIN public.students st2 ON st2.id = qs.student_id
+  JOIN public.parents p ON p.id = st2.parent_id
   WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
-    AND qs.hkt_practice_date = d;
+    AND qs.hkt_practice_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
 
   SELECT coalesce(jsonb_object_agg(su.subject, su.cnt), '{}') INTO s FROM (
     SELECT qs.subject, count(*)::int AS cnt
     FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
       AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
     GROUP BY qs.subject) su;
 
   SELECT coalesce(jsonb_object_agg(qu.subject, qu.tq), '{}') INTO q FROM (
     SELECT qs.subject, coalesce(sum(qs.questions_attempted),0)::int AS tq
     FROM public.quiz_sessions qs
+    JOIN public.students st2 ON st2.id = qs.student_id
+    JOIN public.parents p ON p.id = st2.parent_id
     WHERE qs.student_id IS NOT NULL AND qs.questions_attempted > 0
       AND qs.hkt_practice_date = d
+      AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%')
     GROUP BY qs.subject) qu;
 
-  SELECT count(*)::int INTO n FROM public.students s
-  WHERE s.hkt_reg_date = d;
+  SELECT count(*)::int INTO n
+  FROM public.students s
+  JOIN public.parents p ON p.id = s.parent_id
+  WHERE s.hkt_reg_date = d
+    AND (p.mobile_number IS NULL OR p.mobile_number NOT LIKE '9999%');
 
   RETURN jsonb_build_object(
     'hkt_date', d,
@@ -123,6 +135,7 @@ DECLARE
   ms date := (date_trunc('month', (yst::timestamp))::date);
   m0 date; m1 date; i int;
   reg_mtd int; pstu_mtd int; pvi_mtd int;
+  sess_mtd int; ans_mtd int;
   t jsonb; arr jsonb := '[]'::jsonb;
   yy int; mm int;
   reg_tot int; par_tot int; sess_tot int; ans_tot int;
@@ -148,6 +161,23 @@ BEGIN
   WHERE p.hkt_date IS NOT NULL
     AND p.hkt_date >= ms
     AND p.hkt_date <= yst;
+
+  SELECT coalesce(count(*), 0) INTO sess_mtd
+  FROM public.quiz_sessions q
+  WHERE q.student_id IS NOT NULL
+    AND q.questions_attempted > 0
+    AND q.hkt_practice_date IS NOT NULL
+    AND q.hkt_practice_date >= ms
+    AND q.hkt_practice_date <= yst;
+
+  SELECT coalesce(count(sa.id), 0) INTO ans_mtd
+  FROM public.session_answers sa
+  JOIN public.quiz_sessions q ON q.id = sa.session_id
+  WHERE q.student_id IS NOT NULL
+    AND q.questions_attempted > 0
+    AND q.hkt_practice_date IS NOT NULL
+    AND q.hkt_practice_date >= ms
+    AND q.hkt_practice_date <= yst;
 
   FOR i IN 0..11 LOOP
     m0 := (date_trunc('month', (yst::timestamp - (i || ' months')::interval)))::date;
@@ -240,6 +270,8 @@ BEGIN
     'mt_new_students', reg_mtd,
     'mt_practice_students', pstu_mtd,
     'mt_parent_views', pvi_mtd,
+    'mt_practice_sessions', sess_mtd,
+    'mt_session_answers', ans_mtd,
     'alltime_students', reg_tot, 'alltime_parents', par_tot,
     'alltime_practice_sessions', sess_tot, 'alltime_session_answers', ans_tot,
     'trend_12m', arr,
