@@ -19,6 +19,7 @@ type AdminConsoleAction =
   | "update_question"
   | "parent_students_practice_summary"
   | "grade_level_practice_frequency_summary"
+  | "today_practice_details_summary"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
@@ -344,6 +345,19 @@ interface GradeLevelPracticeFrequencyResult {
   month: string;
   subject: "all" | "Math" | "Chinese" | "English";
   rows: GradeLevelPracticeFrequencyRow[];
+}
+
+interface TodayPracticeDetailRow {
+  practice_time: string;
+  parent_mobile: string;
+  student_name: string;
+  subject: string;
+  questions_attempted: number;
+}
+
+interface TodayPracticeDetailsResult {
+  day: string;
+  rows: TodayPracticeDetailRow[];
 }
 
 type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
@@ -995,12 +1009,16 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
   const [gradeSummaryMonth, setGradeSummaryMonth] = useState(() => getCurrentHktMonthKey());
   const [loading, setLoading] = useState(false);
   const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
+  const [todayDetailsLoading, setTodayDetailsLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [gradeSummaryMsg, setGradeSummaryMsg] = useState("");
+  const [todayDetailsMsg, setTodayDetailsMsg] = useState("");
   const [result, setResult] = useState<ParentStudentsPracticeSummaryResult | null>(null);
   const [gradeSummaryResult, setGradeSummaryResult] = useState<GradeLevelPracticeFrequencyResult | null>(
     null
   );
+  const [todayDetailsResult, setTodayDetailsResult] = useState<TodayPracticeDetailsResult | null>(null);
+  const [todayDetailsExpanded, setTodayDetailsExpanded] = useState(true);
 
   const summaryRowsByStudent = useMemo(() => {
     if (!result) return new Map<string, ParentStudentPracticeSummaryRow[]>();
@@ -1073,9 +1091,28 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     }
   }, [gradeSummaryMonth, gradeSummarySubject, sessionToken]);
 
+  const loadTodayPracticeDetails = useCallback(async () => {
+    setTodayDetailsLoading(true);
+    setTodayDetailsMsg("");
+    try {
+      const data = await adminConsoleRequest<TodayPracticeDetailsResult>(
+        "today_practice_details_summary",
+        undefined,
+        sessionToken
+      );
+      setTodayDetailsResult(data);
+    } catch (err) {
+      setTodayDetailsMsg(err instanceof Error ? err.message : "載入今日練習明細失敗");
+      setTodayDetailsResult(null);
+    } finally {
+      setTodayDetailsLoading(false);
+    }
+  }, [sessionToken]);
+
   useEffect(() => {
     void loadGradeSummary();
-  }, [loadGradeSummary]);
+    void loadTodayPracticeDetails();
+  }, [loadGradeSummary, loadTodayPracticeDetails]);
 
   const formatAvgMinutes = useCallback((seconds: number) => {
     const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -1168,6 +1205,72 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setTodayDetailsExpanded((prev) => !prev)}
+            className="flex items-center gap-2 text-left"
+          >
+            <span className="text-sm font-bold text-gray-800">今日練習明細</span>
+            <span className="text-xs text-gray-500">（預設展開）</span>
+            <span className="text-gray-500 text-sm">{todayDetailsExpanded ? "−" : "+"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void loadTodayPracticeDetails()}
+            disabled={todayDetailsLoading}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {todayDetailsLoading ? "載入中..." : "重新整理"}
+          </button>
+        </div>
+        {todayDetailsExpanded && (
+          <div className="p-4 space-y-3">
+            <p className="text-xs text-gray-500">
+              日期（HKT）：{todayDetailsResult?.day || "—"}；按練習時間由早到晚排列。
+            </p>
+            {todayDetailsMsg && (
+              <p className="text-sm text-red-500">{todayDetailsMsg}</p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">今日練習時間</th>
+                    <th className="py-2 pr-3">家長電話</th>
+                    <th className="py-2 pr-3">學生姓名</th>
+                    <th className="py-2 pr-3">練習科目</th>
+                    <th className="py-2 pr-3">練習題數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(todayDetailsResult?.rows ?? []).map((row, idx) => (
+                    <tr
+                      key={`${row.practice_time}-${row.parent_mobile}-${row.student_name}-${idx}`}
+                      className="border-b border-gray-100"
+                    >
+                      <td className="py-2 pr-3">{formatDateTimeDisplay(row.practice_time)}</td>
+                      <td className="py-2 pr-3">{row.parent_mobile || "—"}</td>
+                      <td className="py-2 pr-3">{row.student_name || "—"}</td>
+                      <td className="py-2 pr-3">{row.subject || "Unknown"}</td>
+                      <td className="py-2 pr-3">{row.questions_attempted}</td>
+                    </tr>
+                  ))}
+                  {(todayDetailsResult?.rows?.length ?? 0) === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center text-gray-400">
+                        {todayDetailsLoading ? "載入中..." : "今日暫無練習紀錄"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -443,6 +443,28 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "admin-student-practice-today-details-section",
+      month: "2026-07",
+      category: "admin",
+      priority: "critical",
+      title: "Student practice summary includes expandable today-practice details table",
+      evidence_commits: ["5654d57"],
+      checks: [
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "今日練習明細" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "const [todayDetailsExpanded, setTodayDetailsExpanded] = useState(true)" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "今日練習時間" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "家長電話" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "練習科目" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "練習題數" },
+        { type: "file_contains", path: "src/app/api/admin/console/route.ts", snippet: "today_practice_details_summary" },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: ".order(\"created_at\", { ascending: true })",
+        },
+      ],
+    },
+    {
       id: "admin-kpi-exclude-test-mobiles",
       month: "2026-05",
       category: "admin",

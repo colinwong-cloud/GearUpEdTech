@@ -29,6 +29,7 @@ type AdminAction =
   | "search_parent"
   | "parent_students_practice_summary"
   | "grade_level_practice_frequency_summary"
+  | "today_practice_details_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -58,6 +59,13 @@ type RequestBody = {
 };
 
 type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
+type TodayPracticeDetailSessionRow = {
+  student_id: string;
+  subject: string | null;
+  questions_attempted: number | null;
+  created_at: string | null;
+  hkt_practice_date?: string | null;
+};
 
 const DISCOUNT_CODE_RE = /^[A-Za-z0-9]{6}$/;
 const TUTOR_REFERRAL_CODE_RE = /^\d{6}$/;
@@ -889,6 +897,109 @@ export async function POST(req: NextRequest) {
           data: {
             month: monthKey,
             subject: subjectKey,
+            rows,
+          },
+        });
+      }
+      case "today_practice_details_summary": {
+        const { dayKey, startIso, endIso } = getHktDayRangeIso();
+
+        let sessions: TodayPracticeDetailSessionRow[] = [];
+        const richRes = await admin
+          .from("quiz_sessions")
+          .select("student_id,subject,questions_attempted,created_at,hkt_practice_date")
+          .gt("questions_attempted", 0)
+          .gte("created_at", startIso)
+          .lt("created_at", endIso)
+          .order("created_at", { ascending: true })
+          .limit(50000);
+        if (richRes.error) {
+          const richErrMsg = richRes.error.message || "";
+          if (/hkt_practice_date|column .* does not exist|42703/i.test(richErrMsg)) {
+            const fallbackRes = await admin
+              .from("quiz_sessions")
+              .select("student_id,subject,questions_attempted,created_at")
+              .gt("questions_attempted", 0)
+              .gte("created_at", startIso)
+              .lt("created_at", endIso)
+              .order("created_at", { ascending: true })
+              .limit(50000);
+            if (fallbackRes.error) throw fallbackRes.error;
+            sessions = (fallbackRes.data as TodayPracticeDetailSessionRow[] | null) ?? [];
+          } else {
+            throw richRes.error;
+          }
+        } else {
+          sessions = (richRes.data as TodayPracticeDetailSessionRow[] | null) ?? [];
+        }
+
+        const studentIdSet = new Set<string>();
+        for (const row of sessions) {
+          const studentId = readString(row.student_id);
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentMap = new Map<string, { student_name: string; parent_id: string | null }>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,student_name,parent_id")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const studentId = readString(student.id);
+            if (!studentId) continue;
+            studentMap.set(studentId, {
+              student_name: readString(student.student_name) || "未命名學生",
+              parent_id: readString(student.parent_id),
+            });
+          }
+        }
+
+        const parentIdSet = new Set<string>();
+        for (const student of studentMap.values()) {
+          if (student.parent_id) parentIdSet.add(student.parent_id);
+        }
+
+        const parentMobileById = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(parentIdSet), 400)) {
+          const { data: parents, error: parentsErr } = await admin
+            .from("parents")
+            .select("id,mobile_number")
+            .in("id", chunk);
+          if (parentsErr) throw parentsErr;
+          for (const parent of parents ?? []) {
+            const parentId = readString(parent.id);
+            if (!parentId) continue;
+            parentMobileById.set(parentId, readString(parent.mobile_number) || "—");
+          }
+        }
+
+        const rows = sessions
+          .map((session) => {
+            const studentId = readString(session.student_id);
+            if (!studentId) return null;
+            const student = studentMap.get(studentId);
+            if (!student) return null;
+            const practiceTime = normalizeIsoDateTime(session.created_at);
+            if (!practiceTime) return null;
+            const questionsAttempted = Math.max(0, toSafeNumber(session.questions_attempted));
+            if (questionsAttempted <= 0) return null;
+            return {
+              practice_time: practiceTime,
+              parent_mobile:
+                (student.parent_id ? parentMobileById.get(student.parent_id) : null) || "—",
+              student_name: student.student_name,
+              subject: normalizePracticeSessionSubject(session.subject),
+              questions_attempted: questionsAttempted,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => Boolean(row))
+          .sort((a, b) => a.practice_time.localeCompare(b.practice_time));
+
+        return NextResponse.json({
+          data: {
+            day: dayKey,
             rows,
           },
         });
