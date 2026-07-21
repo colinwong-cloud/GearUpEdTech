@@ -1554,8 +1554,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-21T07:52:05.897Z",
+  "generated_at": "2026-07-21T07:54:22.787Z",
   "commit_inventory": [
+    {
+      "sha": "c37ac8f7342d22a23066b45460e8f4895aaffaa6",
+      "date": "2026-07-21",
+      "summary": "Add admin MTD parent question summary with anti-missing guards"
+    },
     {
       "sha": "d16bfef36259fa700efe15086af36c858cb4e5e6",
       "date": "2026-07-21",
@@ -3138,7 +3143,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 316,
+    "total_commits_since_start": 317,
     "total_feature_rows": 55
   }
 }
