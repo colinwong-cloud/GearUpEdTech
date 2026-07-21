@@ -30,6 +30,16 @@ type TodayPayload = {
   new_students_today: number;
 };
 
+type MtdParentQuestionsRow = {
+  parent_mobile: string;
+  total_questions: number;
+};
+
+type MtdParentQuestionsPayload = {
+  month: string;
+  rows: MtdParentQuestionsRow[];
+};
+
 type TrendPoint = {
   y: number;
   m: number;
@@ -76,15 +86,20 @@ function subjectEntries(obj: Record<string, number> | null | undefined) {
 export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
   const [today, setToday] = useState<TodayPayload | null>(null);
   const [monthly, setMonthly] = useState<MonthlyPayload | null>(null);
+  const [mtdParentQuestions, setMtdParentQuestions] =
+    useState<MtdParentQuestionsPayload | null>(null);
   const [tLoading, setTLoading] = useState(true);
   const [mLoading, setMLoading] = useState(true);
+  const [mtdQuestionsLoading, setMtdQuestionsLoading] = useState(true);
   const [tErr, setTErr] = useState("");
   const [mErr, setMErr] = useState("");
+  const [mtdQuestionsErr, setMtdQuestionsErr] = useState("");
 
   const [schoolRegDistrict, setSchoolRegDistrict] = useState<string>("__all__");
   const [schoolRegOpen, setSchoolRegOpen] = useState(false);
   const [rateDistrict, setRateDistrict] = useState<string>("__all__");
   const [rateOpen, setRateOpen] = useState(false);
+  const [mtdParentQuestionsExpanded, setMtdParentQuestionsExpanded] = useState(true);
 
   const loadToday = useCallback(async () => {
     setTLoading(true);
@@ -128,10 +143,34 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
     }
   }, [sessionToken]);
 
+  const loadMtdParentQuestions = useCallback(async () => {
+    setMtdQuestionsLoading(true);
+    setMtdQuestionsErr("");
+    try {
+      const res = await fetch("/api/admin/console", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+        body: JSON.stringify({ action: "mtd_parent_questions_summary" }),
+      });
+      const j = (await res.json()) as { data?: MtdParentQuestionsPayload; error?: string };
+      if (!res.ok) throw new Error(j.error || "無法載入");
+      setMtdParentQuestions((j.data as MtdParentQuestionsPayload) ?? null);
+    } catch (e) {
+      setMtdQuestionsErr(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setMtdQuestionsLoading(false);
+    }
+  }, [sessionToken]);
+
   useEffect(() => {
     void loadToday();
     void loadMonthly();
-  }, [loadToday, loadMonthly]);
+    void loadMtdParentQuestions();
+  }, [loadToday, loadMonthly, loadMtdParentQuestions]);
 
   const districts = useMemo(() => {
     const s = monthly?.schools_students_by_grade;
@@ -273,6 +312,66 @@ export function BusinessKpiSection({ sessionToken }: { sessionToken: string }) {
         {!today && tLoading && (
           <p className="text-sm text-gray-500">載入中…</p>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold text-gray-800">學生練習摘要</h2>
+        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => setMtdParentQuestionsExpanded((prev) => !prev)}
+              className="flex items-center gap-2 text-left"
+            >
+              <span className="text-sm font-semibold text-gray-800">本月練習題數分佈（按家長）</span>
+              <span className="text-xs text-gray-500">（預設展開）</span>
+              <span className="text-gray-500 text-sm">{mtdParentQuestionsExpanded ? "−" : "+"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadMtdParentQuestions()}
+              disabled={mtdQuestionsLoading}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {mtdQuestionsLoading ? "載入中..." : "重新整理"}
+            </button>
+          </div>
+          {mtdParentQuestionsExpanded && (
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-gray-500">
+                月份（HKT）：{mtdParentQuestions?.month || "—"}；按 MTD 練習題數由高至低排列。
+              </p>
+              {mtdQuestionsErr && <p className="text-sm text-red-500">{mtdQuestionsErr}</p>}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse min-w-[360px]">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 pr-3">序號</th>
+                      <th className="py-2 pr-3">家長電話</th>
+                      <th className="py-2 pr-3">MTD 練習題數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(mtdParentQuestions?.rows ?? []).map((row, idx) => (
+                      <tr key={`${row.parent_mobile}-${idx}`} className="border-b border-gray-100">
+                        <td className="py-2 pr-3">{idx + 1}</td>
+                        <td className="py-2 pr-3">{row.parent_mobile || "—"}</td>
+                        <td className="py-2 pr-3 font-mono text-indigo-700">{row.total_questions}</td>
+                      </tr>
+                    ))}
+                    {(mtdParentQuestions?.rows?.length ?? 0) === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-4 text-center text-gray-400">
+                          {mtdQuestionsLoading ? "載入中..." : "本月暫無練習紀錄"}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="space-y-3">

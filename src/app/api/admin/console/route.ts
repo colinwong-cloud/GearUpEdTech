@@ -10,7 +10,8 @@ type AdminAction =
   | "set_setting"
   | "set_email_notification"
   | "search_questions"
-  | "update_question";
+  | "update_question"
+  | "mtd_parent_questions_summary";
 
 type RequestBody = {
   action?: AdminAction;
@@ -22,6 +23,41 @@ function getAdminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return null;
   return createClient(url, key);
+}
+
+function getHktMonthToDateRangeIso(now = new Date()) {
+  const hktOffsetMs = 8 * 60 * 60 * 1000;
+  const hktNowMs = now.getTime() + hktOffsetMs;
+  const hktNow = new Date(hktNowMs);
+  const y = hktNow.getUTCFullYear();
+  const m = hktNow.getUTCMonth();
+  const month = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const startUtcMs = Date.UTC(y, m, 1, 0, 0, 0, 0) - hktOffsetMs;
+  return {
+    month,
+    startIso: new Date(startUtcMs).toISOString(),
+    endIso: now.toISOString(),
+  };
+}
+
+function readString(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function toSafePositiveInt(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  const normalized = Math.trunc(n);
+  return normalized > 0 ? normalized : 0;
+}
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  if (items.length <= chunkSize) return [items];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
 }
 
 export async function POST(req: NextRequest) {
@@ -126,6 +162,106 @@ export async function POST(req: NextRequest) {
         });
         if (error) throw error;
         return NextResponse.json({ data: { ok: true } });
+      }
+      case "mtd_parent_questions_summary": {
+        type SessionRow = {
+          student_id: string | null;
+          questions_attempted: number | null;
+        };
+        type StudentRow = {
+          id: string;
+          parent_id: string | null;
+        };
+        type ParentRow = {
+          id: string;
+          mobile_number: string | null;
+        };
+
+        const { month, startIso, endIso } = getHktMonthToDateRangeIso();
+        const { data: sessionData, error: sessionErr } = await admin
+          .from("quiz_sessions")
+          .select("student_id,questions_attempted,created_at")
+          .gt("questions_attempted", 0)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+          .limit(50000);
+        if (sessionErr) throw sessionErr;
+
+        const sessions = (sessionData as SessionRow[] | null) ?? [];
+        const studentIds = Array.from(
+          new Set(
+            sessions
+              .map((row) => readString(row.student_id))
+              .filter((studentId) => studentId.length > 0)
+          )
+        );
+
+        const parentIdByStudentId = new Map<string, string>();
+        if (studentIds.length > 0) {
+          for (const chunk of chunkArray(studentIds, 400)) {
+            const { data: students, error: studentsErr } = await admin
+              .from("students")
+              .select("id,parent_id")
+              .in("id", chunk);
+            if (studentsErr) throw studentsErr;
+            for (const student of (students as StudentRow[] | null) ?? []) {
+              const studentId = readString(student.id);
+              const parentId = readString(student.parent_id);
+              if (!studentId || !parentId) continue;
+              parentIdByStudentId.set(studentId, parentId);
+            }
+          }
+        }
+
+        const parentIds = Array.from(new Set(parentIdByStudentId.values()));
+        const parentMobileById = new Map<string, string>();
+        if (parentIds.length > 0) {
+          for (const chunk of chunkArray(parentIds, 400)) {
+            const { data: parents, error: parentsErr } = await admin
+              .from("parents")
+              .select("id,mobile_number")
+              .in("id", chunk);
+            if (parentsErr) throw parentsErr;
+            for (const parent of (parents as ParentRow[] | null) ?? []) {
+              const parentId = readString(parent.id);
+              if (!parentId) continue;
+              parentMobileById.set(parentId, readString(parent.mobile_number) || "—");
+            }
+          }
+        }
+
+        const totalQuestionsByMobile = new Map<string, number>();
+        for (const session of sessions) {
+          const studentId = readString(session.student_id);
+          if (!studentId) continue;
+          const parentId = parentIdByStudentId.get(studentId);
+          if (!parentId) continue;
+          const totalQuestions = toSafePositiveInt(session.questions_attempted);
+          if (totalQuestions <= 0) continue;
+          const parentMobile = parentMobileById.get(parentId) || "—";
+          totalQuestionsByMobile.set(
+            parentMobile,
+            (totalQuestionsByMobile.get(parentMobile) ?? 0) + totalQuestions
+          );
+        }
+
+        const rows = Array.from(totalQuestionsByMobile.entries())
+          .map(([parent_mobile, total_questions]) => ({
+            parent_mobile,
+            total_questions,
+          }))
+          .sort(
+            (a, b) =>
+              b.total_questions - a.total_questions ||
+              a.parent_mobile.localeCompare(b.parent_mobile)
+          );
+
+        return NextResponse.json({
+          data: {
+            month,
+            rows,
+          },
+        });
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
