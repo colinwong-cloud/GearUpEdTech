@@ -30,6 +30,7 @@ type AdminAction =
   | "parent_students_practice_summary"
   | "grade_level_practice_frequency_summary"
   | "today_practice_details_summary"
+  | "mtd_parent_questions_summary"
   | "add_quota"
   | "delete_parent"
   | "get_settings"
@@ -1000,6 +1001,99 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           data: {
             day: dayKey,
+            rows,
+          },
+        });
+      }
+      case "mtd_parent_questions_summary": {
+        const monthKey = getCurrentHktMonthKey();
+        const { startIso } = getHktMonthRangeIso(monthKey);
+        const nowIso = new Date().toISOString();
+
+        type MtdSessionRow = {
+          student_id: string;
+          questions_attempted: number | null;
+        };
+
+        const { data: sessionRows, error: sessionsErr } = await admin
+          .from("quiz_sessions")
+          .select("student_id,questions_attempted")
+          .gt("questions_attempted", 0)
+          .gte("created_at", startIso)
+          .lt("created_at", nowIso)
+          .limit(50000);
+        if (sessionsErr) throw sessionsErr;
+
+        const sessions = (sessionRows as MtdSessionRow[] | null) ?? [];
+        const studentIdSet = new Set<string>();
+        for (const row of sessions) {
+          const studentId = readString(row.student_id);
+          if (studentId) studentIdSet.add(studentId);
+        }
+
+        const studentParentMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(studentIdSet), 400)) {
+          const { data: students, error: studentsErr } = await admin
+            .from("students")
+            .select("id,parent_id")
+            .in("id", chunk);
+          if (studentsErr) throw studentsErr;
+          for (const student of students ?? []) {
+            const studentId = readString(student.id);
+            const parentId = readString(student.parent_id);
+            if (!studentId || !parentId) continue;
+            studentParentMap.set(studentId, parentId);
+          }
+        }
+
+        const parentIdSet = new Set<string>();
+        for (const parentId of studentParentMap.values()) {
+          if (parentId) parentIdSet.add(parentId);
+        }
+
+        const parentMobileMap = new Map<string, string>();
+        for (const chunk of chunkArray(Array.from(parentIdSet), 400)) {
+          const { data: parents, error: parentsErr } = await admin
+            .from("parents")
+            .select("id,mobile_number")
+            .in("id", chunk);
+          if (parentsErr) throw parentsErr;
+          for (const parent of parents ?? []) {
+            const parentId = readString(parent.id);
+            if (!parentId) continue;
+            parentMobileMap.set(parentId, readString(parent.mobile_number) || "—");
+          }
+        }
+
+        const totalsByParentMobile = new Map<string, number>();
+        for (const row of sessions) {
+          const studentId = readString(row.student_id);
+          if (!studentId) continue;
+          const parentId = studentParentMap.get(studentId);
+          if (!parentId) continue;
+          const parentMobile = parentMobileMap.get(parentId) || "—";
+          const questions = Math.max(0, toSafeNumber(row.questions_attempted));
+          if (!questions) continue;
+          totalsByParentMobile.set(
+            parentMobile,
+            (totalsByParentMobile.get(parentMobile) ?? 0) + questions
+          );
+        }
+
+        const rows = Array.from(totalsByParentMobile.entries())
+          .map(([parent_mobile, total_questions]) => ({
+            parent_mobile,
+            total_questions,
+          }))
+          .sort(
+            (a, b) =>
+              b.total_questions - a.total_questions ||
+              a.parent_mobile.localeCompare(b.parent_mobile)
+          );
+
+        return NextResponse.json({
+          data: {
+            month: monthKey,
             rows,
           },
         });

@@ -465,6 +465,26 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "admin-student-practice-mtd-parent-question-summary",
+      month: "2026-07",
+      category: "admin",
+      priority: "critical",
+      title: "Student practice summary includes MTD parent question distribution table",
+      evidence_commits: ["d16bfef"],
+      checks: [
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "本月練習題數分佈（按家長）" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "const [mtdQuestionsExpanded, setMtdQuestionsExpanded] = useState(true)" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "序號" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "MTD 練習題數" },
+        { type: "file_contains", path: "src/app/api/admin/console/route.ts", snippet: "mtd_parent_questions_summary" },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "b.total_questions - a.total_questions",
+        },
+      ],
+    },
+    {
       id: "admin-kpi-exclude-test-mobiles",
       month: "2026-05",
       category: "admin",
