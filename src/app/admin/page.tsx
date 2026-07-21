@@ -20,6 +20,7 @@ type AdminConsoleAction =
   | "parent_students_practice_summary"
   | "grade_level_practice_frequency_summary"
   | "today_practice_details_summary"
+  | "mtd_parent_questions_summary"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
@@ -358,6 +359,16 @@ interface TodayPracticeDetailRow {
 interface TodayPracticeDetailsResult {
   day: string;
   rows: TodayPracticeDetailRow[];
+}
+
+interface MtdParentQuestionsRow {
+  parent_mobile: string;
+  total_questions: number;
+}
+
+interface MtdParentQuestionsSummaryResult {
+  month: string;
+  rows: MtdParentQuestionsRow[];
 }
 
 type GradeSummarySubject = "all" | "Math" | "Chinese" | "English";
@@ -1010,15 +1021,21 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
   const [loading, setLoading] = useState(false);
   const [gradeSummaryLoading, setGradeSummaryLoading] = useState(false);
   const [todayDetailsLoading, setTodayDetailsLoading] = useState(false);
+  const [mtdQuestionsLoading, setMtdQuestionsLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [gradeSummaryMsg, setGradeSummaryMsg] = useState("");
   const [todayDetailsMsg, setTodayDetailsMsg] = useState("");
+  const [mtdQuestionsMsg, setMtdQuestionsMsg] = useState("");
   const [result, setResult] = useState<ParentStudentsPracticeSummaryResult | null>(null);
   const [gradeSummaryResult, setGradeSummaryResult] = useState<GradeLevelPracticeFrequencyResult | null>(
     null
   );
   const [todayDetailsResult, setTodayDetailsResult] = useState<TodayPracticeDetailsResult | null>(null);
   const [todayDetailsExpanded, setTodayDetailsExpanded] = useState(true);
+  const [mtdQuestionsResult, setMtdQuestionsResult] = useState<MtdParentQuestionsSummaryResult | null>(
+    null
+  );
+  const [mtdQuestionsExpanded, setMtdQuestionsExpanded] = useState(true);
 
   const summaryRowsByStudent = useMemo(() => {
     if (!result) return new Map<string, ParentStudentPracticeSummaryRow[]>();
@@ -1109,10 +1126,29 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
     }
   }, [sessionToken]);
 
+  const loadMtdParentQuestions = useCallback(async () => {
+    setMtdQuestionsLoading(true);
+    setMtdQuestionsMsg("");
+    try {
+      const data = await adminConsoleRequest<MtdParentQuestionsSummaryResult>(
+        "mtd_parent_questions_summary",
+        undefined,
+        sessionToken
+      );
+      setMtdQuestionsResult(data);
+    } catch (err) {
+      setMtdQuestionsMsg(err instanceof Error ? err.message : "載入本月練習題數分佈失敗");
+      setMtdQuestionsResult(null);
+    } finally {
+      setMtdQuestionsLoading(false);
+    }
+  }, [sessionToken]);
+
   useEffect(() => {
     void loadGradeSummary();
     void loadTodayPracticeDetails();
-  }, [loadGradeSummary, loadTodayPracticeDetails]);
+    void loadMtdParentQuestions();
+  }, [loadGradeSummary, loadTodayPracticeDetails, loadMtdParentQuestions]);
 
   const formatAvgMinutes = useCallback((seconds: number) => {
     const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -1205,6 +1241,63 @@ function StudentPracticeSummarySection({ sessionToken }: { sessionToken: string 
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setMtdQuestionsExpanded((prev) => !prev)}
+            className="flex items-center gap-2 text-left"
+          >
+            <span className="text-sm font-bold text-gray-800">本月練習題數分佈（按家長）</span>
+            <span className="text-xs text-gray-500">（預設展開）</span>
+            <span className="text-gray-500 text-sm">{mtdQuestionsExpanded ? "−" : "+"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void loadMtdParentQuestions()}
+            disabled={mtdQuestionsLoading}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {mtdQuestionsLoading ? "載入中..." : "重新整理"}
+          </button>
+        </div>
+        {mtdQuestionsExpanded && (
+          <div className="p-4 space-y-3">
+            <p className="text-xs text-gray-500">
+              月份（HKT）：{mtdQuestionsResult?.month || "—"}；按 MTD 練習題數由高至低排列。
+            </p>
+            {mtdQuestionsMsg && <p className="text-sm text-red-500">{mtdQuestionsMsg}</p>}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="py-2 pr-3">序號</th>
+                    <th className="py-2 pr-3">家長電話</th>
+                    <th className="py-2 pr-3">MTD 練習題數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(mtdQuestionsResult?.rows ?? []).map((row, idx) => (
+                    <tr key={`${row.parent_mobile}-${idx}`} className="border-b border-gray-100">
+                      <td className="py-2 pr-3">{idx + 1}</td>
+                      <td className="py-2 pr-3">{row.parent_mobile || "—"}</td>
+                      <td className="py-2 pr-3 font-semibold text-indigo-700">{row.total_questions}</td>
+                    </tr>
+                  ))}
+                  {(mtdQuestionsResult?.rows?.length ?? 0) === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-4 text-center text-gray-400">
+                        {mtdQuestionsLoading ? "載入中..." : "本月暫無練習紀錄"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">

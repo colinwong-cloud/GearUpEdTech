@@ -113,6 +113,10 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("家長電話");
     expect(adminPageSource).toContain("練習科目");
     expect(adminPageSource).toContain("練習題數");
+    expect(adminPageSource).toContain("本月練習題數分佈（按家長）");
+    expect(adminPageSource).toContain("const [mtdQuestionsExpanded, setMtdQuestionsExpanded] = useState(true)");
+    expect(adminPageSource).toContain("序號");
+    expect(adminPageSource).toContain("MTD 練習題數");
 
     const adminApiSource = readSource("src/app/api/admin/console/route.ts");
     expect(adminApiSource).toContain("tutor_referral_code_create");
@@ -120,6 +124,7 @@ describe("anti-missing regression guards", () => {
     expect(adminApiSource).toContain("tutor_referral_password_reset");
     expect(adminApiSource).toContain("payment_recurring_monitor_summary");
     expect(adminApiSource).toContain("today_practice_details_summary");
+    expect(adminApiSource).toContain("mtd_parent_questions_summary");
   });
 });
 
