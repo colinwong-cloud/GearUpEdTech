@@ -108,12 +108,18 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("重設導師登入密碼");
     expect(adminPageSource).toContain("今日需發起 MIT");
     expect(adminPageSource).toContain("今日已發起 MIT");
+    expect(adminPageSource).toContain("今日練習明細");
+    expect(adminPageSource).toContain("今日練習時間");
+    expect(adminPageSource).toContain("家長電話");
+    expect(adminPageSource).toContain("練習科目");
+    expect(adminPageSource).toContain("練習題數");
 
     const adminApiSource = readSource("src/app/api/admin/console/route.ts");
     expect(adminApiSource).toContain("tutor_referral_code_create");
     expect(adminApiSource).toContain("tutor_referral_code_summary");
     expect(adminApiSource).toContain("tutor_referral_password_reset");
     expect(adminApiSource).toContain("payment_recurring_monitor_summary");
+    expect(adminApiSource).toContain("today_practice_details_summary");
   });
 });
 
