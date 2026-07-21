@@ -470,7 +470,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "critical",
       title: "Student practice summary includes MTD parent question distribution table",
-      evidence_commits: ["d16bfef"],
+      evidence_commits: ["9c61fab"],
       checks: [
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "本月練習題數分佈（按家長）" },
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "const [mtdQuestionsExpanded, setMtdQuestionsExpanded] = useState(true)" },

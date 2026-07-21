@@ -867,6 +867,48 @@
       ]
     },
     {
+      "id": "admin-student-practice-mtd-parent-question-summary",
+      "month": "2026-07",
+      "category": "admin",
+      "priority": "critical",
+      "title": "Student practice summary includes MTD parent question distribution table",
+      "evidence_commits": [
+        "9c61fab"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "本月練習題數分佈（按家長）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "const [mtdQuestionsExpanded, setMtdQuestionsExpanded] = useState(true)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "序號"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "MTD 練習題數"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "mtd_parent_questions_summary"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "b.total_questions - a.total_questions"
+        }
+      ]
+    },
+    {
       "id": "admin-kpi-exclude-test-mobiles",
       "month": "2026-05",
       "category": "admin",
@@ -1512,8 +1554,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-21T06:32:03.115Z",
+  "generated_at": "2026-07-21T08:24:16.214Z",
   "commit_inventory": [
+    {
+      "sha": "9c61fabd90cbb5bc824fdcbbf8b381e9bb64a22a",
+      "date": "2026-07-21",
+      "summary": "Add admin MTD parent question summary section"
+    },
+    {
+      "sha": "43101b1ee2c6b733adb34695c64f9fc309029514",
+      "date": "2026-07-21",
+      "summary": "Refresh feature contract after today details guard commit"
+    },
     {
       "sha": "8f459cbf2f8a0a68e45440af03ea6b740ab75d20",
       "date": "2026-07-21",
@@ -3076,7 +3128,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 312,
-    "total_feature_rows": 54
+    "total_commits_since_start": 314,
+    "total_feature_rows": 55
   }
 }
