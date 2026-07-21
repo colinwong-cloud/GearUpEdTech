@@ -815,6 +815,58 @@
       ]
     },
     {
+      "id": "admin-student-practice-today-details-section",
+      "month": "2026-07",
+      "category": "admin",
+      "priority": "critical",
+      "title": "Student practice summary includes expandable today-practice details table",
+      "evidence_commits": [
+        "5654d57"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "今日練習明細"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "const [todayDetailsExpanded, setTodayDetailsExpanded] = useState(true)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "今日練習時間"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "家長電話"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "練習科目"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "練習題數"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "today_practice_details_summary"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": ".order(\"created_at\", { ascending: true })"
+        }
+      ]
+    },
+    {
       "id": "admin-kpi-exclude-test-mobiles",
       "month": "2026-05",
       "category": "admin",
@@ -1460,8 +1512,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-13T06:47:16.572Z",
+  "generated_at": "2026-07-21T06:30:30.502Z",
   "commit_inventory": [
+    {
+      "sha": "5654d57a428c3105ddc3f5c7f99594c2198e40c4",
+      "date": "2026-07-21",
+      "summary": "Add expandable today practice details in admin summary"
+    },
+    {
+      "sha": "216b657646ce028dbdc0d7519c1be56a1b114945",
+      "date": "2026-07-13",
+      "summary": "Refresh feature contract after tutor anti-missing guards"
+    },
     {
       "sha": "421fdf6b2d34f66c4abe9d66e4ce8d9483343ee3",
       "date": "2026-07-13",
@@ -3009,7 +3071,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 309,
-    "total_feature_rows": 53
+    "total_commits_since_start": 311,
+    "total_feature_rows": 54
   }
 }

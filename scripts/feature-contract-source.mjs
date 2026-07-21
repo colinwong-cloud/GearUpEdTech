@@ -448,7 +448,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "critical",
       title: "Student practice summary includes expandable today-practice details table",
-      evidence_commits: ["da6a109"],
+      evidence_commits: ["5654d57"],
       checks: [
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "今日練習明細" },
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "const [todayDetailsExpanded, setTodayDetailsExpanded] = useState(true)" },
