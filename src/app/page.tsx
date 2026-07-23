@@ -1813,7 +1813,7 @@ function LoginMobileScreen({
 
   return (
     <div
-      className="gu-screen-shell relative min-h-[100dvh]"
+      className="relative min-h-[100dvh] gu-screen bg-white/50 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
       {isWeChatUa && (
@@ -1835,10 +1835,10 @@ function LoginMobileScreen({
               className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
               draggable={false}
             />
-            <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+            <p className="mt-3 text-[15px] leading-relaxed text-sky-800 font-[family-name:var(--font-noto-sans-tc)]">
               GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
             </p>
-            <p className="mt-2 text-[15px] text-gray-600 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+            <p className="mt-2 text-[15px] text-slate-600 font-[family-name:var(--font-noto-sans-tc)]">
               請輸入電話號碼及密碼登入
             </p>
           </div>
@@ -1848,7 +1848,7 @@ function LoginMobileScreen({
           >
             新用戶註冊
           </button>
-          <div className="bg-white rounded-2xl shadow-lg border-2 border-sky-100 p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-lg border border-sky-100 gu-card p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 電話號碼
@@ -1863,7 +1863,7 @@ function LoginMobileScreen({
                 }}
                 onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
                 placeholder="例如：91234567"
-                className="gu-input-focus w-full p-4 rounded-xl border-2 border-gray-200 text-base transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
               />
             </div>
             <div>
@@ -1881,7 +1881,7 @@ function LoginMobileScreen({
                 }}
                 onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
                 placeholder="6 位英文或數字密碼"
-                className="gu-input-focus w-full p-4 rounded-xl border-2 border-gray-200 text-base transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
               />
               {pin.length > 0 && !pinValid && (
                 <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
@@ -2190,7 +2190,7 @@ function RegisterScreen({
 
   return (
     <div
-      className="gu-screen-shell min-h-screen flex items-center justify-center px-4 py-8"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4 py-8"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -2286,7 +2286,7 @@ function RegisterScreen({
                   }}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                     avatarStyle === a.value
-                      ? `ring-4 ring-sky-300 scale-105 border-sky-500 bg-gradient-to-br ${a.gradient} text-white shadow-md`
+                      ? `ring-4 ring-sky-300 border-sky-500 bg-gradient-to-br ${a.gradient} text-white shadow-md`
                       : "border-gray-200 text-gray-600 hover:border-sky-300 hover:bg-sky-50/50"
                   }`}
                 >
@@ -2598,12 +2598,12 @@ function StudentSelectScreen({
   ];
   return (
     <div
-      className="gu-screen-shell min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">🎯 {title || "選擇學生"}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">🎯 {title || "選擇學生"}</h1>
           <p className="mt-2 text-gray-500">{subtitle || "請選擇你的名字"}</p>
         </div>
         <div className="space-y-3">
@@ -2652,12 +2652,12 @@ function SubjectSelectScreen({
   const subjects = [...STUDENT_SUBJECT_OPTIONS];
   return (
     <div
-      className="gu-screen-shell min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">
             {studentName}，準備好了嗎？
           </h1>
           <p className="mt-2 text-gray-500">請選擇科目開始練習</p>
@@ -2710,12 +2710,12 @@ function QuestionCountScreen({
   const subjectLine = subjectKey ? subjectDisplayLabel(subjectKey) : "";
   return (
     <div
-      className="gu-screen-shell min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">
             {studentName}，選擇題數
           </h1>
           <p className="mt-2 text-gray-500">
@@ -2750,7 +2750,7 @@ function QuestionCountScreen({
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
                     disabled
                       ? "bg-gray-100 text-gray-400"
-                      : "bg-gradient-to-br from-sky-400 to-cyan-500 text-white"
+                      : "bg-gradient-to-br from-sky-400 to-emerald-500 text-white"
                   }`}>
                     {count}
                   </div>
@@ -2866,15 +2866,20 @@ function ResultsView({
 
   return (
     <div
-      className="min-h-screen bg-white/70 backdrop-blur-md"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
       <Header studentName={studentName} onLogout={onLogout} />
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className={`text-center p-6 sm:p-8 rounded-2xl border-2 ${scoreBg} mb-8`}>
-          <span className="gu-animate-pop block text-4xl sm:text-5xl mb-1" aria-hidden="true">
-            {percentage >= 80 ? "🏆" : percentage >= 60 ? "⭐" : "🎯"}
-          </span>
+          {percentage >= 60 && (
+            <span
+              className="gu-motion-safe gu-animate-pop mb-2 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900"
+              aria-hidden="true"
+            >
+              {percentage >= 80 ? "⭐ 超棒！" : "⭐ 完成！"}
+            </span>
+          )}
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             測驗完成！
           </h1>
@@ -3258,7 +3263,7 @@ function AddStudentScreen({
               {avatars.map((a) => (
                 <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                    avatarStyle === a.value ? `border-indigo-500 bg-gradient-to-br ${a.gradient} text-white shadow-md` : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                    avatarStyle === a.value ? `relative border-sky-500 ring-4 ring-sky-300 bg-gradient-to-br ${a.gradient} text-white shadow-md` : "border-gray-200 text-gray-600 hover:border-sky-300"
                   }`}>{a.label}</button>
               ))}
             </div>
@@ -3368,15 +3373,15 @@ function AccountMenuScreen({
   onBack: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
+    <div className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">戶口管理</h1>
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
-          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
-            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-gray-700"}`}>
+          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-sky-100 bg-sky-50"}`}>
+            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-slate-700"}`}>
               會員狀態：{tierStatus.is_paid ? "月費用戶" : "免費用戶"}
             </p>
             {tierStatus.is_paid && tierStatus.paid_until && (
@@ -3386,7 +3391,7 @@ function AccountMenuScreen({
             )}
           </div>
           <button onClick={onBalance}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">題目餘額</p>
@@ -3396,7 +3401,7 @@ function AccountMenuScreen({
           {tierStatus.is_paid && (
             <button
               onClick={onPaymentHistory}
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
                 💳
@@ -3408,7 +3413,7 @@ function AccountMenuScreen({
             </button>
           )}
           <button onClick={onProfile}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">更新資料</p>
@@ -3416,7 +3421,7 @@ function AccountMenuScreen({
             </div>
           </button>
           <button onClick={onAddStudent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xl">👦</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">新增學生</p>
@@ -4190,7 +4195,7 @@ function RoleSelectScreen({
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -4206,7 +4211,7 @@ function RoleSelectScreen({
         {!tierStatus.is_paid && (
           <button
             onClick={onUpgrade}
-            className="mb-3 w-full rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800 hover:bg-sky-100 transition-colors"
+            className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
           >
             成為月費會員(每月$99)，即可以獲得學生排名資訊。
           </button>
@@ -4216,7 +4221,7 @@ function RoleSelectScreen({
             onClick={onStudent}
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500 flex items-center justify-center text-white text-xl">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-emerald-500 flex items-center justify-center text-white text-xl">
               📝
             </div>
             <div className="text-left">

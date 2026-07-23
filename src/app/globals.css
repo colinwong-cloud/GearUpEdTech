@@ -4,12 +4,18 @@
   --background: #ffffff;
   --foreground: #171717;
   --gu-primary: #0ea5e9;
-  --gu-primary-soft: #e0f2fe;
+  --gu-primary-strong: #0284c7;
   --gu-secondary: #34d399;
-  --gu-warning: #fbbf24;
-  --gu-reward: #facc15;
-  --gu-text-primary: #1e293b;
-  --gu-text-secondary: #64748b;
+  --gu-success: #059669;
+  --gu-warning: #f59e0b;
+  --gu-reward: #fbbf24;
+  --gu-text: #0f172a;
+  --gu-text-muted: #475569;
+  --gu-bg: #f0f9ff;
+  --gu-border: #bae6fd;
+  --gu-border-strong: #7dd3fc;
+  --gu-surface: #ffffff;
+  --gu-bg-wash: linear-gradient(160deg, #e0f2fe 0%, #ecfdf5 45%, #fef9c3 100%);
 }
 
 @theme inline {
@@ -37,24 +43,22 @@
   animation: gu-pop 0.4s ease-out both;
 }
 
-.gu-screen-shell {
-  min-height: 100vh;
-  background-color: rgb(255 255 255 / 0.7);
-  backdrop-filter: blur(12px);
+.gu-screen {
+  background-image: var(--gu-bg-wash);
+  background-color: color-mix(in srgb, var(--gu-bg) 55%, transparent);
 }
 
-.gu-input-focus {
-  outline: none;
-}
-
-.gu-input-focus:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 2px #e0f2fe;
+.gu-card {
+  border-color: var(--gu-border);
+  box-shadow: 0 8px 20px -8px rgb(14 165 233 / 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gu-animate-pop {
+  .gu-animate-pop,
+  .gu-motion-safe,
+  .gu-motion-safe * {
     animation: none;
+    transition: none !important;
   }
 }
 
