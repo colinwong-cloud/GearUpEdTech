@@ -3,6 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --gu-primary: #0ea5e9;
+  --gu-primary-soft: #e0f2fe;
+  --gu-secondary: #34d399;
+  --gu-warning: #fbbf24;
+  --gu-reward: #facc15;
+  --gu-text-primary: #1e293b;
+  --gu-text-secondary: #64748b;
 }
 
 @theme inline {
@@ -10,6 +17,45 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+@keyframes gu-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.gu-animate-pop {
+  animation: gu-pop 0.4s ease-out both;
+}
+
+.gu-screen-shell {
+  min-height: 100vh;
+  background-color: rgb(255 255 255 / 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.gu-input-focus {
+  outline: none;
+}
+
+.gu-input-focus:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px #e0f2fe;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gu-animate-pop {
+    animation: none;
+  }
 }
 
 body {

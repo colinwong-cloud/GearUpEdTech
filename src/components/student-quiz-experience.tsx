@@ -45,21 +45,35 @@ function playClickSound() {
 function StarProgress({ onQuestion, total }: { onQuestion: number; total: number }) {
   const n = Math.min(onQuestion, total);
   return (
-    <div
-      className="flex flex-wrap items-center justify-center gap-1.5"
-      role="img"
-      aria-label={`第 ${n} 題，共 ${total} 題`}
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
-            i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
-          }`}
-        >
-          {i < n ? "⭐" : "○"}
-        </span>
-      ))}
+    <div className="space-y-2">
+      <div
+        className={`flex items-center justify-center gap-1.5 ${total > 20 ? "overflow-x-auto pb-1" : "flex-wrap"}`}
+        role="img"
+        aria-label={`第 ${n} 題，共 ${total} 題`}
+      >
+        {Array.from({ length: total }, (_, i) => (
+          <span
+            key={i}
+            className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
+              i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
+            }`}
+          >
+            {i < n ? "⭐" : "○"}
+          </span>
+        ))}
+      </div>
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-sky-100"
+        role="progressbar"
+        aria-valuenow={n}
+        aria-valuemin={0}
+        aria-valuemax={total}
+      >
+        <div
+          className="h-full rounded-full bg-sky-400 transition-[width] duration-300 ease-out"
+          style={{ width: `${total > 0 ? (n / total) * 100 : 0}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -155,22 +169,22 @@ export function StudentQuizExperience({
       className="flex min-h-[calc(100dvh-3.5rem)] flex-1 flex-col"
       style={{
         background:
-          "linear-gradient(150deg, #ffecf2 0%, #fef3c7 18%, #dbeafe 40%, #f3e8ff 62%, #d1fae5 100%)",
+          "linear-gradient(150deg, #E0F2FE 0%, #FEF3C7 20%, #DBEAFE 45%, #D1FAE5 70%, #FEF9C3 100%)",
       }}
     >
 
       <div className="mb-1 flex items-start justify-between gap-2 px-3 pt-2 sm:px-4">
         <p
-          className="text-base font-medium text-rose-600/90 sm:text-lg"
+          className="text-base font-medium text-sky-700/90 sm:text-lg"
           style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
         >
-          <span className="text-violet-800">{e.sub} </span>
+          <span className="text-emerald-700">{e.sub} </span>
           <span className="font-semibold">{e.text}</span>
         </p>
         <button
           type="button"
           onClick={onToggleSound}
-          className="shrink-0 rounded-full border-2 border-white/70 bg-white/55 px-3 py-1.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur sm:text-base"
+          className="shrink-0 rounded-full border-2 border-sky-200/80 bg-white/70 px-3 py-1.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur hover:bg-sky-50/80 sm:text-base"
         >
           音效 {soundEnabled ? "ON" : "OFF"}
         </button>
@@ -192,7 +206,7 @@ export function StudentQuizExperience({
           >
             <div className="min-w-0 flex-1">
               <div
-                className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
+                className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#BAE6FD] sm:px-5 sm:py-6"
                 style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
               >
                 <div
