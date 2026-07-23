@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { Question } from "@/lib/types";
 import { OPTION_KEYS, OPTION_LABELS } from "@/lib/student-quiz-constants";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
@@ -45,21 +45,35 @@ function playClickSound() {
 function StarProgress({ onQuestion, total }: { onQuestion: number; total: number }) {
   const n = Math.min(onQuestion, total);
   return (
-    <div
-      className="flex flex-wrap items-center justify-center gap-1.5"
-      role="img"
-      aria-label={`第 ${n} 題，共 ${total} 題`}
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
-            i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
-          }`}
-        >
-          {i < n ? "⭐" : "○"}
-        </span>
-      ))}
+    <div className="space-y-2">
+      <div
+        className={`flex items-center justify-center gap-1.5 ${total > 20 ? "overflow-x-auto pb-1" : "flex-wrap"}`}
+        role="img"
+        aria-label={`第 ${n} 題，共 ${total} 題`}
+      >
+        {Array.from({ length: total }, (_, i) => (
+          <span
+            key={i}
+            className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
+              i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
+            }`}
+          >
+            {i < n ? "⭐" : "○"}
+          </span>
+        ))}
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-white/50"
+        role="progressbar"
+        aria-valuenow={n}
+        aria-valuemin={0}
+        aria-valuemax={total}
+      >
+        <div
+          className="h-full rounded-full bg-sky-500 transition-[width] duration-200 ease-out"
+          style={{ width: `${total > 0 ? (n / total) * 100 : 0}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -69,6 +83,7 @@ function OptionButton({
   text,
   optionStyle,
   disabled,
+  disableMotion,
   onPress,
   title,
 }: {
@@ -76,6 +91,7 @@ function OptionButton({
   text: string;
   optionStyle: { bg: string; ring: string };
   disabled: boolean;
+  disableMotion: boolean;
   onPress: () => void;
   title?: string;
 }) {
@@ -85,8 +101,12 @@ function OptionButton({
       title={title}
       disabled={disabled}
       onClick={onPress}
-      whileHover={disabled ? undefined : { scale: 1.04, y: -2, boxShadow: "0 12px 24px -8px rgb(0 0 0 / 0.2)" }}
-      whileTap={disabled ? undefined : { scale: 0.95 }}
+      whileHover={
+        disabled || disableMotion
+          ? undefined
+          : { scale: 1.04, y: -2, boxShadow: "0 12px 24px -8px rgb(0 0 0 / 0.2)" }
+      }
+      whileTap={disabled || disableMotion ? undefined : { scale: 0.95 }}
       className={`
         group relative flex w-full min-w-0 items-start justify-start gap-3
         rounded-2xl border-2 border-white/50 bg-gradient-to-br ${optionStyle.bg}
@@ -149,28 +169,29 @@ export function StudentQuizExperience({
 }) {
   const img = hasImage(currentQuestion) ? getImageUrl(currentQuestion) : null;
   const e = ENCOURAGE[encouragementIndex % ENCOURAGE.length]!;
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div
       className="flex min-h-[calc(100dvh-3.5rem)] flex-1 flex-col"
       style={{
         background:
-          "linear-gradient(150deg, #ffecf2 0%, #fef3c7 18%, #dbeafe 40%, #f3e8ff 62%, #d1fae5 100%)",
+          "linear-gradient(150deg, #E0F2FE 0%, #FEF3C7 28%, #D1FAE5 62%, #E0F2FE 100%)",
       }}
     >
 
       <div className="mb-1 flex items-start justify-between gap-2 px-3 pt-2 sm:px-4">
         <p
-          className="text-base font-medium text-rose-600/90 sm:text-lg"
+          className="text-base font-medium text-sky-700/90 sm:text-lg"
           style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
         >
-          <span className="text-violet-800">{e.sub} </span>
+          <span className="text-emerald-800">{e.sub} </span>
           <span className="font-semibold">{e.text}</span>
         </p>
         <button
           type="button"
           onClick={onToggleSound}
-          className="shrink-0 rounded-full border-2 border-white/70 bg-white/55 px-3 py-1.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur sm:text-base"
+          className="shrink-0 rounded-full border-2 border-sky-200/80 bg-white/70 px-3 py-1.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur hover:bg-sky-50/80 sm:text-base"
         >
           音效 {soundEnabled ? "ON" : "OFF"}
         </button>
@@ -184,15 +205,15 @@ export function StudentQuizExperience({
         <AnimatePresence mode="wait">
           <motion.div
             key={transitionKey}
-            initial={{ opacity: 0, x: 28 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -28 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 28 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -28 }}
             transition={{ duration: 0.32, ease: "easeInOut" }}
-            className="w-full"
+            className="gu-motion-safe w-full"
           >
             <div className="min-w-0 flex-1">
               <div
-                className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-fuchsia-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#e9d5ff] sm:px-5 sm:py-6"
+                className="relative rounded-[1.6rem] border-4 border-white/95 bg-gradient-to-br from-sky-50/98 via-white to-amber-50/95 px-4 py-5 text-center shadow-[0_10px_0_#7DD3FC] sm:px-5 sm:py-6"
                 style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
               >
                 <div
@@ -234,7 +255,7 @@ export function StudentQuizExperience({
                     disabled={submitting}
                     className={`w-full rounded-2xl border-4 p-4 text-lg font-semibold shadow-inner outline-none transition-all sm:text-xl ${
                       textAnswer.trim()
-                        ? "border-fuchsia-300 bg-white/80"
+                        ? "border-sky-300 bg-white/80"
                         : "border-white/80 bg-white/50"
                     } ${submitting ? "opacity-60" : ""}`}
                   />
@@ -253,6 +274,7 @@ export function StudentQuizExperience({
                         text={t}
                         optionStyle={st}
                         disabled={submitting}
+                        disableMotion={Boolean(prefersReducedMotion)}
                         onPress={() => onSelectOption(label)}
                         title={t}
                       />
@@ -266,17 +288,17 @@ export function StudentQuizExperience({
       </div>
 
       {showSubmitButton && (
-        <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-rose-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
+        <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-sky-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
           <button
             type="button"
             onClick={onSubmit}
             disabled={!canSubmit || submitting}
             className={`
-            relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-4 text-center text-xl font-extrabold sm:text-2xl
-            text-white shadow-[0_4px_0_#7c3aed] transition-all
+            relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-sky-700/30 py-4 text-center text-xl font-extrabold sm:text-2xl
+            text-white shadow-[0_4px_0_#0284C7] transition-all
             ${
               canSubmit && !submitting
-                ? "bg-gradient-to-b from-fuchsia-400 via-violet-500 to-indigo-600 active:translate-y-1 active:border-b-2 active:shadow-sm"
+                ? "bg-gradient-to-b from-sky-400 via-sky-500 to-emerald-600 active:translate-y-1 active:border-b-2 active:shadow-sm"
                 : "cursor-not-allowed border-b-0 bg-slate-300/90 text-slate-500 shadow-none"
             }
           `}
