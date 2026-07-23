@@ -806,7 +806,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "release-gate",
       priority: "critical",
       title: "Every new task starts from latest main on a fresh branch",
-      evidence_commits: ["3ac2348"],
+      evidence_commits: ["9cddfc0"],
       checks: [
         {
           type: "file_contains",

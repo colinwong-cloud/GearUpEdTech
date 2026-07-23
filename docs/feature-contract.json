@@ -1552,10 +1552,42 @@
           "path": "src/lib/anti-missing-regressions.test.ts"
         }
       ]
+    },
+    {
+      "id": "release-fresh-branch-from-main-policy",
+      "month": "2026-07",
+      "category": "release-gate",
+      "priority": "critical",
+      "title": "Every new task starts from latest main on a fresh branch",
+      "evidence_commits": [
+        "9cddfc0"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "docs/release-sop.md",
+          "snippet": "create a fresh branch **for every new task**"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/release-sop.md",
+          "snippet": "git checkout -b cursor/<task-name>-2d42 origin/main"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-07-21T08:25:57.018Z",
+  "generated_at": "2026-07-23T02:22:29.008Z",
   "commit_inventory": [
+    {
+      "sha": "9cddfc013250368e327dd0b2019a1a7a8d8f0732",
+      "date": "2026-07-23",
+      "summary": "Enforce fresh-branch-from-main release policy"
+    },
+    {
+      "sha": "c97a3f866a96352a6b30fb75a05ac728051fb610",
+      "date": "2026-07-21",
+      "summary": "Refresh feature contract inventory after MTD contract update"
+    },
     {
       "sha": "5d5d9764b4352c2d746760173d07972c899a2fb4",
       "date": "2026-07-21",
@@ -3133,7 +3165,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 315,
-    "total_feature_rows": 55
+    "total_commits_since_start": 317,
+    "total_feature_rows": 56
   }
 }
