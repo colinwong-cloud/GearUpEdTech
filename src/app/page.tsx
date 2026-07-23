@@ -1531,7 +1531,7 @@ export default function QuizApp() {
 
   return (
     <div
-      className="student-quiz-root min-h-dvh flex flex-col bg-amber-50/30"
+      className="student-quiz-root min-h-dvh flex flex-col bg-sky-50/20"
       onContextMenu={preventContextMenu}
       onCopy={preventQuizClipboard}
       onCut={preventQuizClipboard}
@@ -1596,7 +1596,7 @@ function Header({
   onLogout: () => void;
 }) {
   return (
-    <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+    <div className="bg-white/85 backdrop-blur-md border-b border-sky-100 px-4 py-3 flex items-center justify-between">
       <span className="text-sm font-medium text-gray-700">
         {studentName ? `${studentName}` : "GearUp Quiz"}
       </span>
@@ -1813,7 +1813,7 @@ function LoginMobileScreen({
 
   return (
     <div
-      className="relative min-h-[100dvh] bg-white/60 backdrop-blur-sm"
+      className="relative min-h-[100dvh] gu-screen bg-white/50 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
       {isWeChatUa && (
@@ -1835,10 +1835,10 @@ function LoginMobileScreen({
               className="mx-auto w-full max-w-xs sm:max-w-sm h-auto mb-4"
               draggable={false}
             />
-            <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+            <p className="mt-3 text-[15px] leading-relaxed text-sky-800 font-[family-name:var(--font-noto-sans-tc)]">
               GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
             </p>
-            <p className="mt-2 text-[15px] text-gray-600 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
+            <p className="mt-2 text-[15px] text-slate-600 font-[family-name:var(--font-noto-sans-tc)]">
               請輸入電話號碼及密碼登入
             </p>
           </div>
@@ -1848,7 +1848,7 @@ function LoginMobileScreen({
           >
             新用戶註冊
           </button>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-lg border border-sky-100 gu-card p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 電話號碼
@@ -1863,7 +1863,7 @@ function LoginMobileScreen({
                 }}
                 onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
                 placeholder="例如：91234567"
-                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
               />
             </div>
             <div>
@@ -1881,7 +1881,7 @@ function LoginMobileScreen({
                 }}
                 onKeyDown={(e) => e.key === "Enter" && canLogin && onSubmit()}
                 placeholder="6 位英文或數字密碼"
-                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-gray-200 text-base outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
               />
               {pin.length > 0 && !pinValid && (
                 <p className="mt-1 text-xs text-red-500">請輸入6位英文字母或數字</p>
@@ -1895,7 +1895,7 @@ function LoginMobileScreen({
               disabled={!canLogin}
               className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
                 canLogin
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                  ? "bg-sky-500 text-white hover:bg-sky-600 shadow-md"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
@@ -1904,15 +1904,15 @@ function LoginMobileScreen({
             <div className="text-center pt-2 border-t border-gray-100 space-y-2">
               <button
                 onClick={onForgotPassword}
-                className="text-xs text-indigo-500 hover:text-indigo-700"
+                className="text-xs text-sky-600 hover:text-sky-800"
               >
                 忘記密碼？
               </button>
             </div>
           </div>
-          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
+          <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-center text-sm text-sky-800">
             有問題或意見？歡迎電郵至{" "}
-            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900">
+            <a href="mailto:cs@gearupquiz.com" className="font-semibold underline decoration-sky-300 underline-offset-2 hover:text-sky-900">
               cs@gearupquiz.com
             </a>
           </div>
@@ -2190,7 +2190,7 @@ function RegisterScreen({
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4 py-8"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4 py-8"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -2218,7 +2218,7 @@ function RegisterScreen({
               className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
                 (mobileNumber.length > 0 && mobileNumber.length !== 8) || (mobileNumber.length === 8 && mobileNumber.startsWith("999"))
                   ? "border-red-300 focus:border-red-400"
-                  : "border-gray-200 focus:border-indigo-400"
+                  : "border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               }`}
             />
             {mobileNumber.length > 0 && mobileNumber.length !== 8 && (
@@ -2241,7 +2241,7 @@ function RegisterScreen({
                 if (error) setError(null);
               }}
               placeholder="輸入學生姓名"
-              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-colors"
             />
           </div>
 
@@ -2262,7 +2262,7 @@ function RegisterScreen({
               className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
                 pinCode.length > 0 && !pinValid
                   ? "border-red-300 focus:border-red-400"
-                  : "border-gray-200 focus:border-indigo-400"
+                  : "border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               }`}
             />
             {pinCode.length > 0 && !pinValid && (
@@ -2286,8 +2286,8 @@ function RegisterScreen({
                   }}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                     avatarStyle === a.value
-                      ? `border-indigo-500 bg-gradient-to-br ${a.gradient} text-white shadow-md`
-                      : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-gray-50"
+                      ? `ring-4 ring-sky-300 border-sky-500 bg-gradient-to-br ${a.gradient} text-white shadow-md`
+                      : "border-gray-200 text-gray-600 hover:border-sky-300 hover:bg-sky-50/50"
                   }`}
                 >
                   {a.label}
@@ -2310,8 +2310,8 @@ function RegisterScreen({
                   }}
                   className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-200 ${
                     gradeLevel === g
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm"
-                      : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-gray-50"
+                      ? "border-sky-500 bg-sky-50 text-sky-800 shadow-sm"
+                      : "border-gray-200 text-gray-600 hover:border-sky-300 hover:bg-gray-50"
                   }`}
                 >
                   {g}
@@ -2335,7 +2335,7 @@ function RegisterScreen({
                     setSelectedDistrict("");
                     setSelectedSchoolId(null);
                   }}
-                  className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                  className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-colors bg-white"
                 >
                   <option value="">選擇區域</option>
                   {areas.map((a) => (
@@ -2349,7 +2349,7 @@ function RegisterScreen({
                       setSelectedDistrict(e.target.value);
                       setSelectedSchoolId(null);
                     }}
-                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-colors bg-white"
                   >
                     <option value="">選擇地區</option>
                     {districts.map((d) => (
@@ -2361,7 +2361,7 @@ function RegisterScreen({
                   <select
                     value={selectedSchoolId || ""}
                     onChange={(e) => setSelectedSchoolId(e.target.value || null)}
-                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-indigo-400 transition-colors bg-white"
+                    className="w-full p-3 rounded-xl border-2 border-gray-200 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-colors bg-white"
                   >
                     <option value="">選擇學校</option>
                     {filteredSchools.map((s) => (
@@ -2387,7 +2387,7 @@ function RegisterScreen({
                 if (error) setError(null);
               }}
               placeholder="例如：parent@example.com"
-              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-indigo-400 transition-colors"
+              className="w-full p-3.5 rounded-xl border-2 border-gray-200 text-base outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition-colors"
             />
           </div>
 
@@ -2407,7 +2407,7 @@ function RegisterScreen({
               className={`w-full p-3.5 rounded-xl border-2 text-base outline-none transition-colors ${
                 referralCode.length > 0 && !referralCodeValid
                   ? "border-red-300 focus:border-red-400"
-                  : "border-gray-200 focus:border-indigo-400"
+                  : "border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               }`}
             />
             {referralCode.length > 0 && !referralCodeValid && (
@@ -2494,7 +2494,7 @@ function RegisterScreen({
             disabled={!canSubmit}
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
               canSubmit
-                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                ? "bg-sky-500 text-white hover:bg-sky-600 shadow-md"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
@@ -2598,12 +2598,12 @@ function StudentSelectScreen({
   ];
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">{title || "選擇學生"}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">🎯 {title || "選擇學生"}</h1>
           <p className="mt-2 text-gray-500">{subtitle || "請選擇你的名字"}</p>
         </div>
         <div className="space-y-3">
@@ -2611,10 +2611,10 @@ function StudentSelectScreen({
             <button
               key={s.id}
               onClick={() => onSelect(s)}
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
               <div
-                className={`w-12 h-12 rounded-full bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white text-lg font-bold`}
+                className={`w-12 h-12 rounded-full bg-gradient-to-br ${avatarColors[i % avatarColors.length]} ring-2 ring-white shadow-md flex items-center justify-center text-white text-lg font-bold`}
               >
                 {s.student_name.charAt(0)}
               </div>
@@ -2652,12 +2652,12 @@ function SubjectSelectScreen({
   const subjects = [...STUDENT_SUBJECT_OPTIONS];
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">
             {studentName}，準備好了嗎？
           </h1>
           <p className="mt-2 text-gray-500">請選擇科目開始練習</p>
@@ -2672,9 +2672,9 @@ function SubjectSelectScreen({
             <button
               key={s.key}
               onClick={() => onSelect(s.key)}
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 border-l-4 border-l-sky-400 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
-              <span className="text-3xl">{s.icon}</span>
+              <span className="text-4xl drop-shadow-sm">{s.icon}</span>
               <span className="text-lg font-semibold text-gray-900">
                 {s.label}
               </span>
@@ -2710,19 +2710,19 @@ function QuestionCountScreen({
   const subjectLine = subjectKey ? subjectDisplayLabel(subjectKey) : "";
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-noto-sans-tc)]">
             {studentName}，選擇題數
           </h1>
           <p className="mt-2 text-gray-500">
             {subjectLine} — 請選擇本次練習的題目數量
           </p>
           {balance !== null && (
-            <p className="mt-1 text-sm text-indigo-600 font-medium">
+            <p className="mt-1 text-sm text-sky-700 font-semibold">
               目前餘額：{balance} 題
             </p>
           )}
@@ -2743,14 +2743,14 @@ function QuestionCountScreen({
                 className={`w-full bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center justify-between transition-all duration-200 ${
                   disabled
                     ? "opacity-50 cursor-not-allowed"
-                    : "hover:border-indigo-300 hover:shadow-lg active:scale-[0.98]"
+                    : "hover:border-sky-300 hover:shadow-lg active:scale-[0.98]"
                 }`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
                     disabled
                       ? "bg-gray-100 text-gray-400"
-                      : "bg-gradient-to-br from-indigo-400 to-purple-500 text-white"
+                      : "bg-gradient-to-br from-sky-400 to-emerald-500 text-white"
                   }`}>
                     {count}
                   </div>
@@ -2866,12 +2866,20 @@ function ResultsView({
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm"
       onContextMenu={preventContextMenu}
     >
       <Header studentName={studentName} onLogout={onLogout} />
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className={`text-center p-6 sm:p-8 rounded-2xl border-2 ${scoreBg} mb-8`}>
+          {percentage >= 60 && (
+            <span
+              className="gu-motion-safe gu-animate-pop mb-2 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900"
+              aria-hidden="true"
+            >
+              {percentage >= 80 ? "⭐ 超棒！" : "⭐ 完成！"}
+            </span>
+          )}
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             測驗完成！
           </h1>
@@ -2899,7 +2907,7 @@ function ResultsView({
             />
           </div>
           <div className="relative min-w-0 flex-1 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
-            <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
+            <p className="text-xs font-bold text-amber-800/90 sm:text-sm">📘 小香蕉的練習小結</p>
             <p className="mt-2 text-pretty" style={{ fontFamily: "var(--font-baloo2), system-ui" }}>
               {summaryText}
             </p>
@@ -2913,7 +2921,7 @@ function ResultsView({
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr className="bg-sky-50 border-b border-sky-100">
                 <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-12">
                   #
                 </th>
@@ -2938,7 +2946,7 @@ function ResultsView({
                     </td>
                     <td className="px-3 py-3 text-center">
                       {shortAns ? (
-                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[160px] sm:max-w-none truncate">
                           {answer.studentAnswer}
                         </span>
                       ) : (
@@ -2967,7 +2975,7 @@ function ResultsView({
 
         {wrongAnswers.length > 0 && (
           <div className="mt-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-3">
+            <h2 className="text-lg font-bold text-gray-800 mb-3 border-l-4 border-red-400 pl-3">
               錯題解析
             </h2>
             <div className="space-y-4">
@@ -3152,7 +3160,7 @@ function ErrorScreen({
 }) {
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen bg-white/70 backdrop-blur-md flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="text-center max-w-md">
@@ -3255,7 +3263,7 @@ function AddStudentScreen({
               {avatars.map((a) => (
                 <button key={a.value} onClick={() => { setAvatarStyle(a.value); if (error) setError(null); }}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                    avatarStyle === a.value ? `border-indigo-500 bg-gradient-to-br ${a.gradient} text-white shadow-md` : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                    avatarStyle === a.value ? `relative border-sky-500 ring-4 ring-sky-300 bg-gradient-to-br ${a.gradient} text-white shadow-md` : "border-gray-200 text-gray-600 hover:border-sky-300"
                   }`}>{a.label}</button>
               ))}
             </div>
@@ -3365,15 +3373,15 @@ function AccountMenuScreen({
   onBack: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
+    <div className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">戶口管理</h1>
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
-          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
-            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-gray-700"}`}>
+          <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-sky-100 bg-sky-50"}`}>
+            <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-slate-700"}`}>
               會員狀態：{tierStatus.is_paid ? "月費用戶" : "免費用戶"}
             </p>
             {tierStatus.is_paid && tierStatus.paid_until && (
@@ -3383,7 +3391,7 @@ function AccountMenuScreen({
             )}
           </div>
           <button onClick={onBalance}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-xl">📊</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">題目餘額</p>
@@ -3393,7 +3401,7 @@ function AccountMenuScreen({
           {tierStatus.is_paid && (
             <button
               onClick={onPaymentHistory}
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
                 💳
@@ -3405,7 +3413,7 @@ function AccountMenuScreen({
             </button>
           )}
           <button onClick={onProfile}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">⚙️</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">更新資料</p>
@@ -3413,7 +3421,7 @@ function AccountMenuScreen({
             </div>
           </button>
           <button onClick={onAddStudent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xl">👦</div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">新增學生</p>
@@ -4187,7 +4195,7 @@ function RoleSelectScreen({
 
   return (
     <div
-      className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
+      className="min-h-screen gu-screen bg-white/50 backdrop-blur-sm flex items-center justify-center px-4"
       onContextMenu={preventContextMenu}
     >
       <div className="w-full max-w-sm">
@@ -4211,9 +4219,9 @@ function RoleSelectScreen({
         <div className="space-y-3">
           <button
             onClick={onStudent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xl">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-emerald-500 flex items-center justify-center text-white text-xl">
               📝
             </div>
             <div className="text-left">
@@ -4223,7 +4231,7 @@ function RoleSelectScreen({
           </button>
           <button
             onClick={onParent}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl">
               📊
@@ -4235,7 +4243,7 @@ function RoleSelectScreen({
           </button>
           <button
             onClick={onAccount}
-            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
               ⚙️
@@ -4250,7 +4258,7 @@ function RoleSelectScreen({
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-sky-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
               <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white">
                 <svg
