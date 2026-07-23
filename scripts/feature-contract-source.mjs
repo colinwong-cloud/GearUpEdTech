@@ -800,6 +800,26 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/lib/anti-missing-regressions.test.ts" },
       ],
     },
+    {
+      id: "release-fresh-branch-from-main-policy",
+      month: "2026-07",
+      category: "release-gate",
+      priority: "critical",
+      title: "Every new task starts from latest main on a fresh branch",
+      evidence_commits: ["3ac2348"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "docs/release-sop.md",
+          snippet: "create a fresh branch **for every new task**",
+        },
+        {
+          type: "file_contains",
+          path: "docs/release-sop.md",
+          snippet: "git checkout -b cursor/<task-name>-2d42 origin/main",
+        },
+      ],
+    },
   ],
 };
 

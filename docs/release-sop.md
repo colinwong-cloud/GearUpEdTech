@@ -10,7 +10,10 @@ This SOP defines the mandatory release flow and regression controls.
 
 ## 2) Mandatory flow
 
-1. Implement change on branch.
+0. Start from latest `main` and create a fresh branch **for every new task** (never reuse an old branch):
+   - `git fetch origin main`
+   - `git checkout -b cursor/<task-name>-2d42 origin/main`
+1. Implement change on the fresh branch.
 2. Run validation gate (`npm test`, `npm run lint`, `npm run build`, smoke checks).
 3. Deploy Preview and share URL.
 4. Wait for explicit owner approval.

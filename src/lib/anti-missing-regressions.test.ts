@@ -126,5 +126,11 @@ describe("anti-missing regression guards", () => {
     expect(adminApiSource).toContain("today_practice_details_summary");
     expect(adminApiSource).toContain("mtd_parent_questions_summary");
   });
+
+  it("keeps release SOP fresh-branch safety rule", () => {
+    const releaseSopSource = readSource("docs/release-sop.md");
+    expect(releaseSopSource).toContain("create a fresh branch **for every new task**");
+    expect(releaseSopSource).toContain("git checkout -b cursor/<task-name>-2d42 origin/main");
+  });
 });
 
