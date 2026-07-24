@@ -1630,8 +1630,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T09:49:53.648Z",
+  "generated_at": "2026-07-24T10:11:54.117Z",
   "commit_inventory": [
+    {
+      "sha": "fcb4ce98f6af1cf9e0114846b6bb1efe1caed41d",
+      "date": "2026-07-24",
+      "summary": "feat: refresh free-user role-selection upsell and support email"
+    },
+    {
+      "sha": "8728e492ee400c692f1fefc6285b2999362f1b75",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory for MIT priority commit"
+    },
     {
       "sha": "41663b9cd3258ddb5b93fbb7331ca6a8fe6e7609",
       "date": "2026-07-24",
@@ -3289,7 +3299,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 331,
+    "total_commits_since_start": 333,
     "total_feature_rows": 56
   }
 }
