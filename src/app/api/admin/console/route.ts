@@ -644,6 +644,11 @@ function getAdminClient() {
 }
 
 const QUOTA_SUBJECTS = ["Math", "Chinese", "English"] as const;
+const QUOTA_SUBJECT_VARIANTS: Record<(typeof QUOTA_SUBJECTS)[number], string[]> = {
+  Math: ["Math", "數學"],
+  Chinese: ["Chinese", "中文"],
+  English: ["English", "英文"],
+};
 type QuotaMode =
   | "mobile_all_subjects"
   | "student_all_subjects"
@@ -660,6 +665,10 @@ function normalizeQuotaSubject(raw: string): (typeof QUOTA_SUBJECTS)[number] {
   if (value === "english" || value === "eng" || value === "英文") return "English";
   if (value === "chinese" || value === "chi" || value === "中文") return "Chinese";
   return "Math";
+}
+
+function normalizeSubjectKey(raw: string): string {
+  return raw.trim().toLowerCase();
 }
 
 export async function POST(req: NextRequest) {
@@ -1180,14 +1189,52 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const targetSubjects =
+        const logicalSubjects =
           mode === "student_single_subject" ? [subject] : [...QUOTA_SUBJECTS];
 
+        const { data: existingRows, error: existingErr } = await admin
+          .from("student_balances")
+          .select("student_id,subject,remaining_questions")
+          .in("student_id", targetStudentIds);
+        if (existingErr) throw existingErr;
+
+        const existingByStudent = new Map<
+          string,
+          { subject: string; remaining_questions: number }[]
+        >();
+        for (const row of existingRows ?? []) {
+          const sid = String(row.student_id ?? "").trim();
+          const subjectName = String(row.subject ?? "").trim();
+          if (!sid || !subjectName) continue;
+          const bucket = existingByStudent.get(sid) ?? [];
+          bucket.push({
+            subject: subjectName,
+            remaining_questions: Number(row.remaining_questions ?? 0),
+          });
+          existingByStudent.set(sid, bucket);
+        }
+
         for (const targetStudentId of targetStudentIds) {
-          for (const targetSubject of targetSubjects) {
+          for (const logicalSubject of logicalSubjects) {
+            const variants = QUOTA_SUBJECT_VARIANTS[logicalSubject] ?? [logicalSubject];
+            const variantKeys = new Set(variants.map((variant) => normalizeSubjectKey(variant)));
+            const existingVariantRows = (existingByStudent.get(targetStudentId) ?? [])
+              .filter((item) => variantKeys.has(normalizeSubjectKey(item.subject)))
+              .sort((a, b) => {
+                if (b.remaining_questions !== a.remaining_questions) {
+                  return b.remaining_questions - a.remaining_questions;
+                }
+                const aIsCanonical =
+                  normalizeSubjectKey(a.subject) === normalizeSubjectKey(logicalSubject);
+                const bIsCanonical =
+                  normalizeSubjectKey(b.subject) === normalizeSubjectKey(logicalSubject);
+                if (aIsCanonical === bIsCanonical) return 0;
+                return aIsCanonical ? -1 : 1;
+              });
+            const subjectForTopUp = existingVariantRows[0]?.subject ?? logicalSubject;
             const { error } = await admin.rpc("admin_add_quota", {
               p_student_id: targetStudentId,
-              p_subject: targetSubject,
+              p_subject: subjectForTopUp,
               p_amount: amount,
             });
             if (error) throw error;
@@ -1232,10 +1279,10 @@ export async function POST(req: NextRequest) {
             mode,
             mobile_number: responseMobile,
             student_count: targetStudentIds.length,
-            subject_count: targetSubjects.length,
-            units_added_total: amount * targetStudentIds.length * targetSubjects.length,
+            subject_count: logicalSubjects.length,
+            units_added_total: amount * targetStudentIds.length * logicalSubjects.length,
             targeted_students: targetStudentIds,
-            targeted_subjects: targetSubjects,
+            targeted_subjects: logicalSubjects,
             balances_after: balancesAfter,
           },
         });
