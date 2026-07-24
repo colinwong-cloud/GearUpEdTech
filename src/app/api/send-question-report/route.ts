@@ -39,7 +39,7 @@ function parseNotifyRecipients(): string[] {
   const single =
     process.env.QUESTION_REPORT_NOTIFY_EMAIL?.trim() ||
     process.env.CS_NOTIFICATION_EMAIL?.trim() ||
-    "cs@hkedutech.com";
+    "cs@gearupquiz.com";
   return [single.toLowerCase()];
 }
 
