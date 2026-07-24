@@ -158,15 +158,11 @@ function PaymentAirwallexContent() {
   const methods = useMemo(() => {
     switch (paymentMethod) {
       case "all":
-        return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+        return ["card", "applepay", "googlepay"];
       case "apple_pay":
         return ["applepay"];
       case "google_pay":
         return ["googlepay"];
-      case "alipay":
-        return ["alipayhk"];
-      case "wechat_pay":
-        return ["wechatpay"];
       default:
         return ["card"];
     }

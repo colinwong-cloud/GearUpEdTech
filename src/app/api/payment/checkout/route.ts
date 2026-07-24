@@ -3,12 +3,48 @@ import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 import {
   applyAirwallexMethodSafeguards,
+  enforceRecurringCheckoutMethods,
   getAirwallexMethodsForSelection,
 } from "@/lib/airwallex-checkout-methods";
 
 const DEFAULT_AIRWALLEX_BASE = "https://api.airwallex.com";
 const DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = "zh-HK";
 const PRICE_HKD = 99;
+const MIT_POLICY_VERSION = "mit-monthly-merchant-scheduled-v1";
+
+function getMonthlyRecurringTerms(finalAmount: number) {
+  return {
+    payment_amount_type: "FIXED",
+    fixed_payment_amount: finalAmount,
+    payment_currency: "HKD",
+    payment_schedule: {
+      period: 1,
+      period_unit: "MONTH",
+    },
+    billing_cycle_charge_day: new Date().getUTCDate(),
+    total_billing_cycles: null,
+  };
+}
+
+function assertMitRecurringTerms(
+  terms: ReturnType<typeof getMonthlyRecurringTerms>
+) {
+  if (
+    terms.payment_schedule.period !== 1 ||
+    terms.payment_schedule.period_unit !== "MONTH"
+  ) {
+    throw new Error("MIT recurring policy violation: expected monthly schedule.");
+  }
+}
+
+function logAntiMissingMitPolicy(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  console.info(
+    `[anti-missing][payment][mit-policy] ${event} ${JSON.stringify(payload)}`
+  );
+}
 
 function resolveAirwallexBaseUrl(rawBase: string | undefined): string {
   const isProductionRuntime =
@@ -864,11 +900,33 @@ export async function POST(req: Request) {
       transactionMode: "oneoff",
     });
     const {
-      methods: effectiveMethods,
+      methods: safeguardedMethods,
       missingRequired: checkoutMethodSafeguardMissing,
+      blockedByRecurringPolicy,
     } = applyAirwallexMethodSafeguards({
       paymentMethod,
       methods: requestedMethods,
+    });
+    const recurringPolicy = enforceRecurringCheckoutMethods(safeguardedMethods);
+    const effectiveMethods = recurringPolicy.methods;
+    const blockedMethods = Array.from(
+      new Set([
+        ...blockedByRecurringPolicy,
+        ...recurringPolicy.blockedByRecurringPolicy,
+      ])
+    );
+    if (effectiveMethods.length === 0) {
+      throw new Error(
+        "No recurring-safe payment methods available for monthly MIT checkout."
+      );
+    }
+    logAntiMissingMitPolicy("checkout-methods-enforced", {
+      policy_version: MIT_POLICY_VERSION,
+      payment_method_selection: paymentMethod,
+      requested_methods: requestedMethods,
+      safeguarded_methods: safeguardedMethods,
+      effective_methods: effectiveMethods,
+      blocked_methods: blockedMethods,
     });
     let applePaySetupWarning: string | null = null;
     if (recurringMethodDiagnostics.warning) {
@@ -885,6 +943,12 @@ export async function POST(req: Request) {
       applePaySetupWarning = applePaySetupWarning
         ? `${applePaySetupWarning} ${safeguardWarning}`
         : safeguardWarning;
+    }
+    if (blockedMethods.length > 0) {
+      const blockedWarning = `Recurring policy blocked unsupported methods: ${blockedMethods.join(", ")}`;
+      applePaySetupWarning = applePaySetupWarning
+        ? `${applePaySetupWarning} ${blockedWarning}`
+        : blockedWarning;
     }
     if (requestedMethods.includes("applepay")) {
       if (oneoffMethodDiagnostics.applePayAvailable === false) {
@@ -922,17 +986,8 @@ export async function POST(req: Request) {
       mobile,
       email: readString(parentRecord?.email),
     });
-    const recurringTerms = {
-      payment_amount_type: "FIXED",
-      fixed_payment_amount: finalAmount,
-      payment_currency: "HKD",
-      payment_schedule: {
-        period: 1,
-        period_unit: "MONTH",
-      },
-      billing_cycle_charge_day: new Date().getUTCDate(),
-      total_billing_cycles: null,
-    };
+    const recurringTerms = getMonthlyRecurringTerms(finalAmount);
+    assertMitRecurringTerms(recurringTerms);
     const createIntentRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/create`, {
       method: "POST",
       headers: {
@@ -960,6 +1015,10 @@ export async function POST(req: Request) {
           applepay_setup_warning: applePaySetupWarning,
           recurring_type: "monthly",
           recurring_enabled: true,
+          mit_policy_version: MIT_POLICY_VERSION,
+          mit_next_triggered_by: "merchant",
+          mit_merchant_trigger_reason: "scheduled",
+          allowed_checkout_methods: effectiveMethods.join(","),
         },
       }),
       cache: "no-store",
@@ -996,7 +1055,19 @@ export async function POST(req: Request) {
       methods: effectiveMethods,
       currency: "HKD",
       country_code: "HK",
+      mit_policy_version: MIT_POLICY_VERSION,
     };
+    logAntiMissingMitPolicy("checkout-payload-built", {
+      policy_version: MIT_POLICY_VERSION,
+      merchant_order_id: merchantOrderId,
+      payment_method_selection: paymentMethod,
+      methods: effectiveMethods,
+      has_recurring_block: true,
+      recurring_next_triggered_by: checkoutPayload.recurring.next_triggered_by,
+      recurring_trigger_reason: checkoutPayload.recurring.merchant_trigger_reason,
+      recurring_period_unit: checkoutPayload.recurring.terms_of_use.payment_schedule.period_unit,
+      recurring_period: checkoutPayload.recurring.terms_of_use.payment_schedule.period,
+    });
 
     const { error: insertErr } = await insertParentPaymentOrder(supabase, {
         parent_id: parentRecord?.id ?? null,
@@ -1036,8 +1107,11 @@ export async function POST(req: Request) {
       airwallex_available_methods_oneoff: oneoffMethodDiagnostics.availableMethods,
       airwallex_available_methods_recurring: recurringMethodDiagnostics.availableMethods,
       checkout_method_safeguard_missing: checkoutMethodSafeguardMissing,
+      blocked_by_recurring_policy: blockedMethods,
       applepay_available: oneoffMethodDiagnostics.applePayAvailable,
       applepay_setup_warning: applePaySetupWarning,
+      mit_enforced: true,
+      mit_policy_version: MIT_POLICY_VERSION,
     });
   } catch (err) {
     return NextResponse.json(

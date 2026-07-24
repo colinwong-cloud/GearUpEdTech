@@ -5142,6 +5142,7 @@ function PaymentScreen({
         body: JSON.stringify({
           mobile_number: mobileNumber.trim(),
           discount_code: discount?.valid ? discount.code : null,
+          payment_method: "all",
         }),
       });
       const payload = (await res.json()) as {
@@ -5213,12 +5214,8 @@ function PaymentScreen({
                     return ["applepay"];
                   case "google_pay":
                     return ["googlepay"];
-                  case "alipay":
-                    return ["alipayhk"];
-                  case "wechat_pay":
-                    return ["wechatpay"];
                   default:
-                    return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+                    return ["card", "applepay", "googlepay"];
                 }
               })();
         if (payload.applepay_setup_warning && methods.includes("applepay")) {
