@@ -1630,10 +1630,15 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T10:11:54.117Z",
+  "generated_at": "2026-07-24T15:05:48.181Z",
   "commit_inventory": [
     {
-      "sha": "fcb4ce98f6af1cf9e0114846b6bb1efe1caed41d",
+      "sha": "31da0c62eb9542e91cbbfcfae5f304a960b56492",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract for role-selection UI update"
+    },
+    {
+      "sha": "b3effe5153f4d5a0e67668f19cc76f218323e359",
       "date": "2026-07-24",
       "summary": "feat: refresh free-user role-selection upsell and support email"
     },
@@ -3299,7 +3304,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 333,
+    "total_commits_since_start": 334,
     "total_feature_rows": 56
   }
 }
