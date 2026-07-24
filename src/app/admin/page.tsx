@@ -85,6 +85,25 @@ interface ParentInfo {
   students: StudentInfo[];
 }
 
+type QuotaMode = "mobile_all_subjects" | "student_all_subjects" | "student_single_subject";
+
+interface AddQuotaResult {
+  mode: QuotaMode;
+  mobile_number: string;
+  student_count: number;
+  subject_count: number;
+  units_added_total: number;
+  targeted_students: string[];
+  targeted_subjects: string[];
+  balances_after: {
+    student_id: string;
+    by_subject: Record<string, number>;
+    total_remaining: number;
+  }[];
+}
+
+const QUOTA_SUBJECT_ORDER = ["Math", "Chinese", "English"] as const;
+
 interface QuestionResult {
   id: string;
   subject: string;
@@ -552,65 +571,119 @@ export default function AdminPage() {
 }
 
 function QuotaSection({ sessionToken }: { sessionToken: string }) {
-  const [searchType, setSearchType] = useState<"mobile" | "student_id">("mobile");
+  const [quotaMode, setQuotaMode] = useState<QuotaMode>("mobile_all_subjects");
   const [searchVal, setSearchVal] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
+  const [targetStudentId, setTargetStudentId] = useState("");
+  const [targetSubject, setTargetSubject] = useState("Math");
   const [addAmount, setAddAmount] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastAddResult, setLastAddResult] = useState<AddQuotaResult | null>(null);
 
   const handleSearch = async () => {
-    if (!searchVal.trim()) return;
+    const mobile = searchVal.trim();
+    if (!mobile) return;
     setLoading(true);
     setMsg("");
     setParentInfo(null);
+    setLastAddResult(null);
     try {
-      if (searchType === "mobile") {
-        const data = await adminConsoleRequest<ParentInfo | null>("search_parent", {
-          p_mobile: searchVal.trim(),
-        }, sessionToken);
-        if (!data) { setMsg("找不到此電話號碼"); return; }
-        setParentInfo(data);
-      } else {
-        setMsg("請使用電話號碼搜尋，找到後可對學生操作");
+      const data = await adminConsoleRequest<ParentInfo | null>(
+        "search_parent",
+        {
+          p_mobile: mobile,
+        },
+        sessionToken
+      );
+      if (!data) {
+        setMsg("找不到此電話號碼");
+        return;
       }
+      setParentInfo(data);
+      setTargetStudentId(data.students[0]?.student.id ?? "");
     } catch { setMsg("搜尋失敗"); }
     finally { setLoading(false); }
   };
 
-  const handleAddQuota = async (studentId: string) => {
+  const handleAddQuota = async () => {
+    if (!parentInfo) {
+      setMsg("請先搜尋家長電話");
+      return;
+    }
     const amount = parseInt(addAmount);
-    if (!amount || amount <= 0) { setMsg("請輸入有效數量"); return; }
+    if (!amount || amount <= 0) {
+      setMsg("請輸入有效數量");
+      return;
+    }
+    if (quotaMode !== "mobile_all_subjects" && !targetStudentId) {
+      setMsg("請先選擇學生");
+      return;
+    }
     setLoading(true);
+    setMsg("");
     try {
-      const result = await adminConsoleRequest<{ remaining_questions: number }>(
+      const result = await adminConsoleRequest<AddQuotaResult>(
         "add_quota",
         {
-          p_student_id: studentId,
-          p_subject: "Math",
+          p_mobile: parentInfo.parent.mobile_number,
+          p_student_id: quotaMode === "mobile_all_subjects" ? undefined : targetStudentId,
+          p_subject: quotaMode === "student_single_subject" ? targetSubject : undefined,
+          p_mode: quotaMode,
           p_amount: amount,
         },
         sessionToken
       );
-      setMsg(`成功增加 ${amount} 題，新餘額：${result.remaining_questions}`);
+      setLastAddResult(result);
+      setMsg(
+        `成功增加 ${result.units_added_total} 題（${result.student_count} 位學生 × ${result.subject_count} 科）`
+      );
       setAddAmount("");
-      await handleSearch();
+      const refreshed = await adminConsoleRequest<ParentInfo | null>(
+        "search_parent",
+        { p_mobile: parentInfo.parent.mobile_number },
+        sessionToken
+      );
+      if (refreshed) {
+        setParentInfo(refreshed);
+        if (!refreshed.students.some((student) => student.student.id === targetStudentId)) {
+          setTargetStudentId(refreshed.students[0]?.student.id ?? "");
+        }
+      }
     } catch { setMsg("增加失敗"); }
     finally { setLoading(false); }
   };
+
+  const balanceSummary = useMemo(() => {
+    if (!parentInfo) return null;
+    const totalsBySubject = new Map<string, number>();
+    let total = 0;
+    for (const studentInfo of parentInfo.students) {
+      for (const balance of studentInfo.balances) {
+        const subject = String(balance.subject || "").trim() || "Unknown";
+        const remaining = Number(balance.remaining_questions || 0);
+        totalsBySubject.set(subject, (totalsBySubject.get(subject) ?? 0) + remaining);
+        total += remaining;
+      }
+    }
+    const rows = Array.from(totalsBySubject.entries()).sort((a, b) => {
+      const ai = QUOTA_SUBJECT_ORDER.indexOf(a[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
+      const bi = QUOTA_SUBJECT_ORDER.indexOf(b[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
+      if (ai >= 0 && bi >= 0) return ai - bi;
+      if (ai >= 0) return -1;
+      if (bi >= 0) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+    return { rows, total };
+  }, [parentInfo]);
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-gray-800">增加題目配額</h2>
       <div className="flex gap-2">
-        <select value={searchType} onChange={(e) => setSearchType(e.target.value as "mobile" | "student_id")}
-          className="p-2 rounded-lg border border-gray-200 text-sm bg-white">
-          <option value="mobile">電話號碼</option>
-          <option value="student_id">學生 ID</option>
-        </select>
         <input value={searchVal} onChange={(e) => setSearchVal(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder={searchType === "mobile" ? "輸入電話號碼" : "輸入學生 UUID"}
+          placeholder="輸入電話號碼"
           className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400" />
         <button onClick={handleSearch} disabled={loading}
           className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
@@ -623,6 +696,74 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       {parentInfo && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
           <p className="text-sm text-gray-500">家長：{parentInfo.parent.mobile_number} {parentInfo.parent.parent_name && `(${parentInfo.parent.parent_name})`}</p>
+          <p className="text-xs text-gray-500">
+            配額增加模式支援：
+            <span className="font-semibold text-gray-700">整個電話（全學生 × 全科）</span>、
+            <span className="font-semibold text-gray-700">單一學生（全科）</span>、
+            <span className="font-semibold text-gray-700">單一學生（單科）</span>。
+          </p>
+          {balanceSummary && (
+            <div className="rounded-lg border border-sky-100 bg-sky-50/50 p-3 text-sm">
+              <p className="font-semibold text-sky-800">此電話現有總配額：{balanceSummary.total} 題</p>
+              <p className="mt-1 text-xs text-sky-700">
+                {balanceSummary.rows.map(([subject, total]) => `${subject}: ${total}`).join(" / ")}
+              </p>
+            </div>
+          )}
+          <div className="grid gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-4">
+            <select
+              value={quotaMode}
+              onChange={(e) => setQuotaMode(e.target.value as QuotaMode)}
+              className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
+            >
+              <option value="mobile_all_subjects">整個電話（全學生 × 全科）</option>
+              <option value="student_all_subjects">單一學生（全科）</option>
+              <option value="student_single_subject">單一學生（單科）</option>
+            </select>
+            {quotaMode !== "mobile_all_subjects" && (
+              <select
+                value={targetStudentId}
+                onChange={(e) => setTargetStudentId(e.target.value)}
+                className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
+              >
+                {parentInfo.students.map((studentInfo) => (
+                  <option key={studentInfo.student.id} value={studentInfo.student.id}>
+                    {studentInfo.student.student_name}（{studentInfo.student.grade_level}）
+                  </option>
+                ))}
+              </select>
+            )}
+            {quotaMode === "student_single_subject" && (
+              <select
+                value={targetSubject}
+                onChange={(e) => setTargetSubject(e.target.value)}
+                className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
+              >
+                <option value="Math">Math</option>
+                <option value="Chinese">Chinese</option>
+                <option value="English">English</option>
+              </select>
+            )}
+            <input
+              value={addAmount}
+              onChange={(e) => setAddAmount(e.target.value.replace(/\D/g, ""))}
+              placeholder="增加數量"
+              className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
+            />
+            <button
+              onClick={handleAddQuota}
+              disabled={loading}
+              className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            >
+              增加配額
+            </button>
+          </div>
+          {lastAddResult && (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 text-xs text-emerald-700">
+              上次操作：{lastAddResult.targeted_students.length} 位學生，{lastAddResult.targeted_subjects.join(" / ")}，
+              共增加 {lastAddResult.units_added_total} 題。
+            </div>
+          )}
           {parentInfo.students.map((si) => (
             <div key={si.student.id} className="border border-gray-100 rounded-lg p-3">
               <p className="text-sm font-semibold">{si.student.student_name} ({si.student.grade_level})</p>
@@ -632,14 +773,13 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
                   {b.subject}：<span className="font-bold text-indigo-600">{b.remaining_questions}</span> 題
                 </p>
               ))}
-              <div className="flex gap-2 mt-2">
-                <input value={addAmount} onChange={(e) => setAddAmount(e.target.value.replace(/\D/g, ""))}
-                  placeholder="增加數量" className="w-24 p-2 rounded-lg border border-gray-200 text-sm outline-none" />
-                <button onClick={() => handleAddQuota(si.student.id)} disabled={loading}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
-                  增加
-                </button>
-              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                小計：
+                <span className="font-semibold text-gray-700">
+                  {si.balances.reduce((sum, balance) => sum + Number(balance.remaining_questions || 0), 0)}
+                </span>{" "}
+                題
+              </p>
             </div>
           ))}
         </div>

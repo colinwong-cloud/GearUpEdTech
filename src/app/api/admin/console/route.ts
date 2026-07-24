@@ -643,6 +643,34 @@ function getAdminClient() {
   return createClient(url, key);
 }
 
+const QUOTA_SUBJECTS = ["Math", "Chinese", "English"] as const;
+const QUOTA_SUBJECT_VARIANTS: Record<(typeof QUOTA_SUBJECTS)[number], string[]> = {
+  Math: ["Math", "數學"],
+  Chinese: ["Chinese", "中文"],
+  English: ["English", "英文"],
+};
+type QuotaMode =
+  | "mobile_all_subjects"
+  | "student_all_subjects"
+  | "student_single_subject";
+
+function normalizeQuotaMode(raw: string): QuotaMode {
+  if (raw === "student_all_subjects") return "student_all_subjects";
+  if (raw === "student_single_subject") return "student_single_subject";
+  return "mobile_all_subjects";
+}
+
+function normalizeQuotaSubject(raw: string): (typeof QUOTA_SUBJECTS)[number] {
+  const value = raw.trim().toLowerCase();
+  if (value === "english" || value === "eng" || value === "英文") return "English";
+  if (value === "chinese" || value === "chi" || value === "中文") return "Chinese";
+  return "Math";
+}
+
+function normalizeSubjectKey(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
 export async function POST(req: NextRequest) {
   const adminSession = requireAdminSession(req);
   if (!adminSession) {
@@ -1099,16 +1127,165 @@ export async function POST(req: NextRequest) {
         });
       }
       case "add_quota": {
-        const studentId = String(payload.p_student_id ?? "");
-        const subject = String(payload.p_subject ?? "Math");
         const amount = Number(payload.p_amount ?? 0);
-        const { data, error } = await admin.rpc("admin_add_quota", {
-          p_student_id: studentId,
-          p_subject: subject,
-          p_amount: amount,
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return NextResponse.json({ error: "p_amount 必須為正整數" }, { status: 400 });
+        }
+        const mode = normalizeQuotaMode(String(payload.p_mode ?? ""));
+        const mobile = String(payload.p_mobile ?? payload.mobile_number ?? "").trim();
+        const studentId = String(payload.p_student_id ?? "").trim();
+        const subject = normalizeQuotaSubject(String(payload.p_subject ?? "Math"));
+
+        let targetStudentIds: string[] = [];
+        let responseMobile = mobile;
+
+        if (mode === "mobile_all_subjects") {
+          if (!mobile) {
+            return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+          }
+          const { data: parentRow, error: parentErr } = await admin
+            .from("parents")
+            .select("id,mobile_number")
+            .eq("mobile_number", mobile)
+            .maybeSingle();
+          if (parentErr) throw parentErr;
+          if (!parentRow?.id) {
+            return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+          }
+          responseMobile = String(parentRow.mobile_number ?? mobile);
+          const { data: studentRows, error: studentErr } = await admin
+            .from("students")
+            .select("id")
+            .eq("parent_id", parentRow.id)
+            .limit(2000);
+          if (studentErr) throw studentErr;
+          targetStudentIds = (studentRows ?? [])
+            .map((row) => String(row.id ?? "").trim())
+            .filter(Boolean);
+          if (!targetStudentIds.length) {
+            return NextResponse.json({ error: "此電話尚未建立學生資料" }, { status: 400 });
+          }
+        } else {
+          if (!studentId) {
+            return NextResponse.json({ error: "請先選擇學生" }, { status: 400 });
+          }
+          targetStudentIds = [studentId];
+          if (!responseMobile) {
+            const { data: studentRow, error: studentErr } = await admin
+              .from("students")
+              .select("parent_id")
+              .eq("id", studentId)
+              .maybeSingle();
+            if (studentErr) throw studentErr;
+            if (studentRow?.parent_id) {
+              const { data: parentRow, error: parentErr } = await admin
+                .from("parents")
+                .select("mobile_number")
+                .eq("id", studentRow.parent_id)
+                .maybeSingle();
+              if (parentErr) throw parentErr;
+              responseMobile = String(parentRow?.mobile_number ?? "");
+            }
+          }
+        }
+
+        const logicalSubjects =
+          mode === "student_single_subject" ? [subject] : [...QUOTA_SUBJECTS];
+
+        const { data: existingRows, error: existingErr } = await admin
+          .from("student_balances")
+          .select("student_id,subject,remaining_questions")
+          .in("student_id", targetStudentIds);
+        if (existingErr) throw existingErr;
+
+        const existingByStudent = new Map<
+          string,
+          { subject: string; remaining_questions: number }[]
+        >();
+        for (const row of existingRows ?? []) {
+          const sid = String(row.student_id ?? "").trim();
+          const subjectName = String(row.subject ?? "").trim();
+          if (!sid || !subjectName) continue;
+          const bucket = existingByStudent.get(sid) ?? [];
+          bucket.push({
+            subject: subjectName,
+            remaining_questions: Number(row.remaining_questions ?? 0),
+          });
+          existingByStudent.set(sid, bucket);
+        }
+
+        for (const targetStudentId of targetStudentIds) {
+          for (const logicalSubject of logicalSubjects) {
+            const variants = QUOTA_SUBJECT_VARIANTS[logicalSubject] ?? [logicalSubject];
+            const variantKeys = new Set(variants.map((variant) => normalizeSubjectKey(variant)));
+            const existingVariantRows = (existingByStudent.get(targetStudentId) ?? [])
+              .filter((item) => variantKeys.has(normalizeSubjectKey(item.subject)))
+              .sort((a, b) => {
+                if (b.remaining_questions !== a.remaining_questions) {
+                  return b.remaining_questions - a.remaining_questions;
+                }
+                const aIsCanonical =
+                  normalizeSubjectKey(a.subject) === normalizeSubjectKey(logicalSubject);
+                const bIsCanonical =
+                  normalizeSubjectKey(b.subject) === normalizeSubjectKey(logicalSubject);
+                if (aIsCanonical === bIsCanonical) return 0;
+                return aIsCanonical ? -1 : 1;
+              });
+            const subjectForTopUp = existingVariantRows[0]?.subject ?? logicalSubject;
+            const { error } = await admin.rpc("admin_add_quota", {
+              p_student_id: targetStudentId,
+              p_subject: subjectForTopUp,
+              p_amount: amount,
+            });
+            if (error) throw error;
+          }
+        }
+
+        const { data: balanceRows, error: balanceErr } = await admin
+          .from("student_balances")
+          .select("student_id,subject,remaining_questions")
+          .in("student_id", targetStudentIds);
+        if (balanceErr) throw balanceErr;
+
+        const byStudent = new Map<string, Record<string, number>>();
+        for (const targetStudentId of targetStudentIds) {
+          byStudent.set(targetStudentId, {});
+        }
+        for (const row of balanceRows ?? []) {
+          const sid = String(row.student_id ?? "").trim();
+          const subj = String(row.subject ?? "").trim();
+          if (!sid || !subj) continue;
+          const remaining = Number(row.remaining_questions ?? 0);
+          const bucket = byStudent.get(sid) ?? {};
+          bucket[subj] = remaining;
+          byStudent.set(sid, bucket);
+        }
+
+        const balancesAfter = targetStudentIds.map((targetStudentId) => {
+          const bySubject = byStudent.get(targetStudentId) ?? {};
+          const totalRemaining = Object.values(bySubject).reduce(
+            (sum, remaining) => sum + Number(remaining || 0),
+            0
+          );
+          return {
+            student_id: targetStudentId,
+            by_subject: bySubject,
+            total_remaining: totalRemaining,
+          };
         });
-        if (error) throw error;
-        return NextResponse.json({ data });
+
+        return NextResponse.json({
+          data: {
+            mode,
+            mobile_number: responseMobile,
+            student_count: targetStudentIds.length,
+            subject_count: logicalSubjects.length,
+            units_added_total: amount * targetStudentIds.length * logicalSubjects.length,
+            targeted_students: targetStudentIds,
+            targeted_subjects: logicalSubjects,
+            balances_after: balancesAfter,
+          },
+        });
       }
       case "delete_parent": {
         const mobile = String(payload.p_mobile ?? "");

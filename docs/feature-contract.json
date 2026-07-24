@@ -1576,8 +1576,38 @@
       ]
     }
   ],
-  "generated_at": "2026-07-23T02:25:48.819Z",
+  "generated_at": "2026-07-24T07:33:26.856Z",
   "commit_inventory": [
+    {
+      "sha": "b60362cb16a7fab43a260a45dc2cba0e70c7ebce",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "8ac606a88f13256767c1105392e0b609566caead",
+      "date": "2026-07-24",
+      "summary": "fix: align quota top-up with subject key variants"
+    },
+    {
+      "sha": "d18a7ae878bb9a94c5f2e31c080105177d6d77f6",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "58132d4ec6d8953a59f45df05780b1056ea47812",
+      "date": "2026-07-24",
+      "summary": "fix: stabilize quota subject summary ordering"
+    },
+    {
+      "sha": "1ce31a673a38d4e7974a061b9beb2dec6c8f7d58",
+      "date": "2026-07-24",
+      "summary": "feat: support mobile-level multi-subject quota top-up"
+    },
+    {
+      "sha": "a0adec1ffcdffb4260431b38b00296d7d3626a70",
+      "date": "2026-07-23",
+      "summary": "Refresh feature contract inventory after policy hard-commit"
+    },
     {
       "sha": "139a5feb5c0376c3a492781575ddf3430734c7e9",
       "date": "2026-07-23",
@@ -3170,7 +3200,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 318,
+    "total_commits_since_start": 324,
     "total_feature_rows": 56
   }
 }
