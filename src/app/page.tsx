@@ -1094,7 +1094,7 @@ export default function QuizApp() {
         const isDuplicateGradeError = /每個年級只可新增一位學生|同年級|same grade/i.test(rawMessage);
         setError(
           isDuplicateGradeError
-            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@hkedutech.com"
+            ? "因系統紀錄已有同年級學生而未能添加，如有查詢，請電郵至 cs@gearupquiz.com"
             : rawMessage
         );
       } finally {
@@ -4398,8 +4398,8 @@ function ContactFooter() {
     <div className="mt-8 py-4 border-t border-gray-200 text-center">
       <p className="text-xs text-gray-400">
         有問題或意見？請聯絡{" "}
-        <a href="mailto:cs@hkedutech.com" className="text-indigo-500 hover:text-indigo-600">
-          cs@hkedutech.com
+        <a href="mailto:cs@gearupquiz.com" className="text-indigo-500 hover:text-indigo-600">
+          cs@gearupquiz.com
         </a>
       </p>
     </div>
@@ -4439,12 +4439,23 @@ function RoleSelectScreen({
           </div>
         </div>
         {!tierStatus.is_paid && (
-          <button
-            onClick={onUpgrade}
-            className="mb-3 w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
-          >
-            成為月費會員(每月$99)，即可以獲得學生排名資訊。
-          </button>
+          <div className="mb-3 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-700">
+              升級月費會員 ($99)，解鎖全港同級排名！助您精準掌握子女中英數實力水平。附設無限題庫，隨時按弱項強化，讓孩子在同儕中脫穎而出！
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getRankSampleImageUrl()}
+              alt="排名範例"
+              className="mt-3 w-full rounded-xl border border-gray-200"
+            />
+            <button
+              onClick={onUpgrade}
+              className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得排名資訊
+            </button>
+          </div>
         )}
         <div className="space-y-3">
           <button
@@ -4515,16 +4526,16 @@ function RoleSelectScreen({
           <p className="mt-4 text-center text-sm text-gray-500">
             有問題或意見? 歡迎電郵至{" "}
             <a
-              href="mailto:cs@hkedutech.com"
+              href="mailto:cs@gearupquiz.com"
               className="font-semibold text-indigo-600 hover:text-indigo-700"
             >
-              cs@hkedutech.com
+              cs@gearupquiz.com
             </a>
           </p>
         )}
         <button
           onClick={onBack}
-          className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
         >
           返回
         </button>
