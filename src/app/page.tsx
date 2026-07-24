@@ -14,6 +14,9 @@ import type {
 } from "@/lib/types";
 import {
   PRIMARY_QUIZ_SUBJECT,
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
   subjectDisplayLabel,
@@ -58,6 +61,7 @@ const DEFAULT_SHARE_BANNER = "/share/gearup-share-banner.jpg?v=20260508b";
 const DEFAULT_SHARE_CAMPAIGN = "parent_share";
 const WHATSAPP_ICON_PATH = "/social/whatsapp.svg";
 const WECHAT_ICON_PATH = "/social/wechat.svg";
+const FREE_TIER_MONTHLY_CAP_ERROR = "本月免費題目額度已用完（200題）";
 
 type AirwallexPaymentsApi = {
   redirectToCheckout: (props: Record<string, unknown>) => void;
@@ -398,6 +402,222 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+interface StudentBalanceRow {
+  id: string;
+  subject: string;
+  remaining_questions: number | null;
+}
+
+interface ParentProfileForBalance {
+  students: { id: string }[];
+}
+
+type SubmitAnswerRpcArgs = {
+  p_session_id: string;
+  p_question_id: string;
+  p_student_answer: string;
+  p_is_correct: boolean;
+  p_question_order: number;
+};
+
+function getBalanceSubjectVariants(subjectKey: string): string[] {
+  const key = subjectKey.trim().toLowerCase();
+  if (key === "math" || key === "數學") {
+    return [PRIMARY_QUIZ_SUBJECT, LEGACY_PRIMARY_QUIZ_SUBJECT_KEY, "math"];
+  }
+  if (key === "chinese" || key === "中文") {
+    return [CHINESE_QUIZ_SUBJECT, "中文", "chinese"];
+  }
+  if (key === "english" || key === "英文") {
+    return [ENGLISH_QUIZ_SUBJECT, "英文", "english"];
+  }
+  return [subjectKey, key];
+}
+
+function scoreBalanceCandidate(totalBalance: number): number {
+  if (totalBalance < 0) return Number.MAX_SAFE_INTEGER;
+  return totalBalance;
+}
+
+function normalizeBalanceSubjectKey(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+async function fetchStudentBonusBalance(
+  studentId: string,
+  subjectKey: string
+): Promise<number> {
+  const variants = new Set(
+    getBalanceSubjectVariants(subjectKey).map(normalizeBalanceSubjectKey)
+  );
+  const { data } = await supabase
+    .from("student_balances")
+    .select("id,subject,remaining_questions")
+    .eq("student_id", studentId);
+  const rows = (data as StudentBalanceRow[] | null) ?? [];
+  let best = 0;
+  for (const row of rows) {
+    if (!row.subject) continue;
+    if (!variants.has(normalizeBalanceSubjectKey(row.subject))) continue;
+    const remaining = Number(row.remaining_questions ?? 0);
+    if (Number.isFinite(remaining) && remaining > best) {
+      best = remaining;
+    }
+  }
+  return best;
+}
+
+async function fetchStudentBalanceWithFallback(
+  studentId: string,
+  subjectKey: string
+): Promise<StudentBalance | null> {
+  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
+  let best: StudentBalance | null = null;
+  for (const variant of variants) {
+    const { data } = await supabase.rpc("get_student_balance", {
+      p_student_id: studentId,
+      p_subject: variant,
+    });
+    const record = data as StudentBalance | null;
+    if (!record) continue;
+    if (!best || record.remaining_questions > best.remaining_questions) {
+      best = record;
+    }
+  }
+  if (best && best.remaining_questions >= 900000) {
+    return best;
+  }
+
+  const bonusRemaining = await fetchStudentBonusBalance(studentId, subjectKey);
+  const baseRemaining = Math.max(best?.remaining_questions ?? 0, 0);
+  const combinedRemaining = baseRemaining + bonusRemaining;
+
+  if (!best && combinedRemaining <= 0) {
+    return null;
+  }
+
+  return {
+    id: best?.id ?? studentId,
+    student_id: best?.student_id ?? studentId,
+    subject: subjectKey,
+    remaining_questions: combinedRemaining,
+  };
+}
+
+async function fetchParentBonusBalance(
+  mobileNumber: string,
+  subjectKey: string
+): Promise<number> {
+  const { data: profileData } = await supabase.rpc("get_parent_profile", {
+    p_mobile: mobileNumber.trim(),
+  });
+  const profile = profileData as ParentProfileForBalance | null;
+  const studentIds = (profile?.students ?? []).map((student) => student.id);
+  if (!studentIds.length) return 0;
+
+  const variants = new Set(
+    getBalanceSubjectVariants(subjectKey).map(normalizeBalanceSubjectKey)
+  );
+  const { data } = await supabase
+    .from("student_balances")
+    .select("student_id,subject,remaining_questions")
+    .in("student_id", studentIds);
+
+  const rows =
+    (data as {
+      student_id: string;
+      subject: string;
+      remaining_questions: number | null;
+    }[] | null) ?? [];
+
+  const bestPerStudent = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.subject || !variants.has(normalizeBalanceSubjectKey(row.subject))) {
+      continue;
+    }
+    const remaining = Number(row.remaining_questions ?? 0);
+    if (!Number.isFinite(remaining) || remaining <= 0) continue;
+    const existing = bestPerStudent.get(row.student_id) ?? 0;
+    if (remaining > existing) {
+      bestPerStudent.set(row.student_id, remaining);
+    }
+  }
+
+  let total = 0;
+  for (const value of bestPerStudent.values()) {
+    total += value;
+  }
+  return total;
+}
+
+async function submitAnswerWithQuotaFallback(
+  params: SubmitAnswerRpcArgs & { studentId: string }
+): Promise<void> {
+  const { studentId, ...rpcParams } = params;
+  const { error: ansErr } = await supabase.rpc("submit_answer", rpcParams);
+  if (!ansErr) return;
+
+  const msg = String(ansErr.message || "");
+  if (!msg.includes(FREE_TIER_MONTHLY_CAP_ERROR)) {
+    throw ansErr;
+  }
+
+  const res = await fetch("/api/quiz/submit-answer-bonus", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: rpcParams.p_session_id,
+      studentId,
+      questionId: rpcParams.p_question_id,
+      studentAnswer: rpcParams.p_student_answer,
+      isCorrect: rpcParams.p_is_correct,
+      questionOrder: rpcParams.p_question_order,
+    }),
+  });
+
+  const payload = (await res.json().catch(() => null)) as
+    | { error?: string }
+    | null;
+  if (!res.ok) {
+    throw new Error(payload?.error || "提交答案失敗。");
+  }
+}
+
+async function fetchParentBalanceViewWithFallback(
+  mobileNumber: string,
+  subjectKey: string,
+  year: number,
+  month: number
+): Promise<ParentBalanceView | null> {
+  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
+  let best: ParentBalanceView | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const variant of variants) {
+    const { data } = await supabase.rpc("get_parent_balance_view", {
+      p_mobile: mobileNumber.trim(),
+      p_subject: variant,
+      p_year: year,
+      p_month: month,
+    });
+    const record = data as ParentBalanceView | null;
+    if (!record) continue;
+    const score = scoreBalanceCandidate(record.total_balance);
+    if (!best || score > bestScore) {
+      best = record;
+      bestScore = score;
+    }
+  }
+  if (!best || best.total_balance < 0) return best;
+
+  const bonusRemaining = await fetchParentBonusBalance(mobileNumber, subjectKey);
+  if (bonusRemaining <= 0) return best;
+
+  return {
+    ...best,
+    total_balance: best.total_balance + bonusRemaining,
+  };
 }
 
 interface ParentPaymentHistoryRow {
@@ -965,12 +1185,10 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data: bal } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: subject,
-        });
-
-        const balRecord = bal as StudentBalance | null;
+        const balRecord = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          subject
+        );
         if (balRecord && balRecord.remaining_questions <= 0) {
           throw new Error("你的練習題目已用完，請聯絡家長充值。");
         }
@@ -1081,14 +1299,17 @@ export default function QuizApp() {
 
     setSubmitting(true);
     try {
-      const { error: ansErr } = await supabase.rpc("submit_answer", {
+      if (!selectedStudent) {
+        throw new Error("找不到學生資料，請重新登入。");
+      }
+      await submitAnswerWithQuotaFallback({
+        studentId: selectedStudent.id,
         p_session_id: sessionId,
         p_question_id: currentQuestion.id,
         p_student_answer: answer,
         p_is_correct: isCorrect,
         p_question_order: currentIndex + 1,
       });
-      if (ansErr) throw ansErr;
 
       const newAnswer: AnswerRecord = {
         question: currentQuestion,
@@ -1118,10 +1339,10 @@ export default function QuizApp() {
         return;
       }
       if (selectedStudent && selectedSubject) {
-        const { data: balFresh } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: selectedSubject,
-        });
+        const balFresh = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          selectedSubject
+        );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
       setCurrentIndex((i) => i + 1);
@@ -1173,10 +1394,10 @@ export default function QuizApp() {
     try {
       /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
       if (selectedStudent && selectedSubject) {
-        const { data: balFresh } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: selectedSubject,
-        });
+        const balFresh = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          selectedSubject
+        );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
 
@@ -3856,14 +4077,14 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
     let cancelled = false;
     void (async () => {
       setLoading(true);
-      const { data: res } = await supabase.rpc("get_parent_balance_view", {
-        p_mobile: mobileNumber.trim(),
-        p_subject: balanceSubject,
-        p_year: viewMonth.year,
-        p_month: viewMonth.month,
-      });
+      const res = await fetchParentBalanceViewWithFallback(
+        mobileNumber.trim(),
+        balanceSubject,
+        viewMonth.year,
+        viewMonth.month
+      );
       if (!cancelled) {
-        setData(res as ParentBalanceView | null);
+        setData(res);
         setLoading(false);
       }
     })();

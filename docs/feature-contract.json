@@ -1576,8 +1576,43 @@
       ]
     }
   ],
-  "generated_at": "2026-07-23T02:25:48.819Z",
+  "generated_at": "2026-07-24T07:42:43.812Z",
   "commit_inventory": [
+    {
+      "sha": "47302b4a123f2a6f0cc2fcd67a8f4cc97e089361",
+      "date": "2026-07-24",
+      "summary": "fix: consume admin quota after free tier cap"
+    },
+    {
+      "sha": "868dcd1e3fbfc0a1fc5df2d7360d8c746463b705",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "2745ca0109c9c8d6f73c82fa201c39738e7cce67",
+      "date": "2026-07-24",
+      "summary": "fix: align quota top-up with subject key variants"
+    },
+    {
+      "sha": "0b43fd075763b652056a8a20142f21072ff2bce8",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "a8dfbb58f1f18c11705ee422076707e5f0419027",
+      "date": "2026-07-24",
+      "summary": "fix: stabilize quota subject summary ordering"
+    },
+    {
+      "sha": "afda953ea83b5bf899b178105316285d7267c63a",
+      "date": "2026-07-24",
+      "summary": "feat: support mobile-level multi-subject quota top-up"
+    },
+    {
+      "sha": "a0adec1ffcdffb4260431b38b00296d7d3626a70",
+      "date": "2026-07-23",
+      "summary": "Refresh feature contract inventory after policy hard-commit"
+    },
     {
       "sha": "139a5feb5c0376c3a492781575ddf3430734c7e9",
       "date": "2026-07-23",
@@ -3170,7 +3205,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 318,
+    "total_commits_since_start": 325,
     "total_feature_rows": 56
   }
 }
