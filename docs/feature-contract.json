@@ -1576,8 +1576,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T06:41:58.687Z",
+  "generated_at": "2026-07-24T07:33:26.856Z",
   "commit_inventory": [
+    {
+      "sha": "b60362cb16a7fab43a260a45dc2cba0e70c7ebce",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "8ac606a88f13256767c1105392e0b609566caead",
+      "date": "2026-07-24",
+      "summary": "fix: align quota top-up with subject key variants"
+    },
     {
       "sha": "d18a7ae878bb9a94c5f2e31c080105177d6d77f6",
       "date": "2026-07-24",
@@ -3190,7 +3200,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 322,
+    "total_commits_since_start": 324,
     "total_feature_rows": 56
   }
 }
