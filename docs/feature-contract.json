@@ -1576,8 +1576,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T08:15:15.742Z",
+  "generated_at": "2026-07-24T09:39:35.971Z",
   "commit_inventory": [
+    {
+      "sha": "735977b10a22ce966b83f678e60b341bc3c05363",
+      "date": "2026-07-24",
+      "summary": "fix: enforce recurring-safe checkout methods and MIT guards"
+    },
+    {
+      "sha": "5f9ee7324cc056ec8ca12b85ae6debe207d39033",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract after account UI update"
+    },
     {
       "sha": "a7280355b186432f20b08a43db557b000144bbaf",
       "date": "2026-07-24",
@@ -3215,7 +3225,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 327,
+    "total_commits_since_start": 329,
     "total_feature_rows": 56
   }
 }
