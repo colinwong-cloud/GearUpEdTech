@@ -3593,6 +3593,25 @@ function AccountMenuScreen({
           <p className="mt-2 text-gray-500">請選擇操作</p>
         </div>
         <div className="space-y-3">
+          {!tierStatus.is_paid && (
+            <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+              <p className="text-sm text-gray-700">
+                升級月費會員 ($99)，解鎖全港同級排名！助您精準掌握子女中英數實力水平。附設無限題庫，隨時按弱項強化，讓孩子在同儕中脫穎而出！
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getRankSampleImageUrl()}
+                alt="排名範例"
+                className="mt-3 w-full rounded-xl border border-gray-200"
+              />
+              <button
+                onClick={onUpgrade}
+                className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                取得排名資訊
+              </button>
+            </div>
+          )}
           <div className={`rounded-xl border px-4 py-3 ${tierStatus.is_paid ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}>
             <p className={`text-sm font-semibold ${tierStatus.is_paid ? "text-emerald-700" : "text-gray-700"}`}>
               會員狀態：{tierStatus.is_paid ? "月費用戶" : "免費用戶"}
@@ -3641,15 +3660,13 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">在此帳戶下新增學生</p>
             </div>
           </button>
-          {!tierStatus.is_paid && (
-            <button onClick={onUpgrade}
-              className="w-full bg-indigo-50 rounded-2xl shadow-sm border border-indigo-200 p-4 text-left hover:bg-indigo-100 transition-all duration-200">
-              <p className="text-sm font-semibold text-indigo-700">成為月費會員(每月$99)</p>
-              <p className="text-xs text-indigo-600 mt-1">即可以獲得學生排名資訊。</p>
-            </button>
-          )}
         </div>
-        <button onClick={onBack} className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
+        <button
+          onClick={onBack}
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+        >
+          返回
+        </button>
       </div>
     </div>
   );
