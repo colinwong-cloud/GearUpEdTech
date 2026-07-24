@@ -5,7 +5,7 @@
   "generated_timezone": "UTC",
   "policy": {
     "objective": "No approved feature is allowed to silently disappear in future releases.",
-    "payment_module_priority": "Payment and recurring module checks are mandatory release gates.",
+    "payment_module_priority": "Payment and recurring module checks are mandatory release gates; MIT monthly recurring enforcement and recurring-safe checkout methods are number-1 priority.",
     "required_feature_months": [
       "2026-04",
       "2026-05",
@@ -1188,7 +1188,8 @@
       "evidence_commits": [
         "4610f8d",
         "7b9a269",
-        "22f51b6"
+        "22f51b6",
+        "735977b"
       ],
       "checks": [
         {
@@ -1204,6 +1205,26 @@
           "type": "file_contains",
           "path": "src/app/api/payment/checkout/route.ts",
           "snippet": "DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = \"zh-HK\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "MIT_POLICY_VERSION = \"mit-monthly-merchant-scheduled-v1\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "next_triggered_by: \"merchant\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "merchant_trigger_reason: \"scheduled\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "[anti-missing][payment][mit-policy]"
         }
       ]
     },
@@ -1214,7 +1235,8 @@
       "priority": "payment-critical",
       "title": "Payment verify and webhook finalize routes",
       "evidence_commits": [
-        "4610f8d"
+        "4610f8d",
+        "735977b"
       ],
       "checks": [
         {
@@ -1228,6 +1250,11 @@
         {
           "type": "file_exists",
           "path": "src/lib/server/payment-finalize.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "[anti-missing][payment][mit-policy] missing-payment-consent-id"
         }
       ]
     },
@@ -1239,7 +1266,8 @@
       "title": "Airwallex method safeguard helper and tests",
       "evidence_commits": [
         "17596ee",
-        "3ff7c56"
+        "3ff7c56",
+        "735977b"
       ],
       "checks": [
         {
@@ -1264,6 +1292,21 @@
           "type": "file_contains",
           "path": "src/lib/airwallex-checkout-methods.ts",
           "snippet": "\"card\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.ts",
+          "snippet": "enforceRecurringCheckoutMethods"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.ts",
+          "snippet": "blockedByRecurringPolicy"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-checkout-methods.test.ts",
+          "snippet": "blocks non-recurring wallet methods from checkout payload"
         }
       ]
     },
@@ -1274,7 +1317,8 @@
       "priority": "payment-critical",
       "title": "Daily recurring payment cron execution route",
       "evidence_commits": [
-        "7e2a2f2"
+        "7e2a2f2",
+        "735977b"
       ],
       "checks": [
         {
@@ -1285,6 +1329,16 @@
           "type": "file_contains",
           "path": "src/app/api/cron-recurring-payments/route.ts",
           "snippet": "merchant_trigger_reason: \"scheduled\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "Missing recurring payment credentials (customer/payment_method/payment_consent)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "[anti-missing][payment][mit-policy] recurring-profile-missing-credentials"
         },
         {
           "type": "file_contains",
@@ -1576,8 +1630,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T09:39:35.971Z",
+  "generated_at": "2026-07-24T09:47:48.173Z",
   "commit_inventory": [
+    {
+      "sha": "5a99ae704785d5fea8e1f3080a7c9192487cf4dd",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract for recurring MIT guardrails"
+    },
     {
       "sha": "735977b10a22ce966b83f678e60b341bc3c05363",
       "date": "2026-07-24",
@@ -3225,7 +3284,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 329,
+    "total_commits_since_start": 330,
     "total_feature_rows": 56
   }
 }

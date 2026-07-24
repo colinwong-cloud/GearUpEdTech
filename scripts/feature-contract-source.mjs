@@ -7,7 +7,7 @@ export const FEATURE_CONTRACT_BASE = {
     objective:
       "No approved feature is allowed to silently disappear in future releases.",
     payment_module_priority:
-      "Payment and recurring module checks are mandatory release gates.",
+      "Payment and recurring module checks are mandatory release gates; MIT monthly recurring enforcement and recurring-safe checkout methods are number-1 priority.",
     required_feature_months: ["2026-04", "2026-05", "2026-06", "2026-07"],
   },
   features: [
@@ -614,11 +614,15 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "Airwallex checkout API with recurring consent flow",
-      evidence_commits: ["4610f8d", "7b9a269", "22f51b6"],
+      evidence_commits: ["4610f8d", "7b9a269", "22f51b6", "735977b"],
       checks: [
         { type: "file_exists", path: "src/app/api/payment/checkout/route.ts" },
         { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "payment_consent" },
         { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = \"zh-HK\"" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "MIT_POLICY_VERSION = \"mit-monthly-merchant-scheduled-v1\"" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "next_triggered_by: \"merchant\"" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "[anti-missing][payment][mit-policy]" },
       ],
     },
     {
@@ -627,11 +631,16 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "Payment verify and webhook finalize routes",
-      evidence_commits: ["4610f8d"],
+      evidence_commits: ["4610f8d", "735977b"],
       checks: [
         { type: "file_exists", path: "src/app/api/payment/verify/route.ts" },
         { type: "file_exists", path: "src/app/api/payment/webhook/route.ts" },
         { type: "file_exists", path: "src/lib/server/payment-finalize.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/server/payment-finalize.ts",
+          snippet: "[anti-missing][payment][mit-policy] missing-payment-consent-id",
+        },
       ],
     },
     {
@@ -640,13 +649,16 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "Airwallex method safeguard helper and tests",
-      evidence_commits: ["17596ee", "3ff7c56"],
+      evidence_commits: ["17596ee", "3ff7c56", "735977b"],
       checks: [
         { type: "file_exists", path: "src/lib/airwallex-checkout-methods.ts" },
         { type: "file_exists", path: "src/lib/airwallex-checkout-methods.test.ts" },
         { type: "file_contains", path: "src/lib/airwallex-checkout-methods.ts", snippet: "\"applepay\"" },
         { type: "file_contains", path: "src/lib/airwallex-checkout-methods.ts", snippet: "\"googlepay\"" },
         { type: "file_contains", path: "src/lib/airwallex-checkout-methods.ts", snippet: "\"card\"" },
+        { type: "file_contains", path: "src/lib/airwallex-checkout-methods.ts", snippet: "enforceRecurringCheckoutMethods" },
+        { type: "file_contains", path: "src/lib/airwallex-checkout-methods.ts", snippet: "blockedByRecurringPolicy" },
+        { type: "file_contains", path: "src/lib/airwallex-checkout-methods.test.ts", snippet: "blocks non-recurring wallet methods from checkout payload" },
       ],
     },
     {
@@ -655,10 +667,20 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "Daily recurring payment cron execution route",
-      evidence_commits: ["7e2a2f2"],
+      evidence_commits: ["7e2a2f2", "735977b"],
       checks: [
         { type: "file_exists", path: "src/app/api/cron-recurring-payments/route.ts" },
         { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "Missing recurring payment credentials (customer/payment_method/payment_consent)",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "[anti-missing][payment][mit-policy] recurring-profile-missing-credentials",
+        },
         { type: "file_contains", path: "vercel.json", snippet: "/api/cron-recurring-payments" },
       ],
     },
