@@ -14,6 +14,9 @@ import type {
 } from "@/lib/types";
 import {
   PRIMARY_QUIZ_SUBJECT,
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
   subjectDisplayLabel,
@@ -398,6 +401,72 @@ interface ParentBalanceView {
   total_balance: number;
   opening_balance: number;
   transactions: (BalanceTransaction & { student_name: string })[];
+}
+
+function getBalanceSubjectVariants(subjectKey: string): string[] {
+  const key = subjectKey.trim().toLowerCase();
+  if (key === "math" || key === "數學") {
+    return [PRIMARY_QUIZ_SUBJECT, LEGACY_PRIMARY_QUIZ_SUBJECT_KEY];
+  }
+  if (key === "chinese" || key === "中文") {
+    return [CHINESE_QUIZ_SUBJECT, "中文"];
+  }
+  if (key === "english" || key === "英文") {
+    return [ENGLISH_QUIZ_SUBJECT, "英文"];
+  }
+  return [subjectKey];
+}
+
+function scoreBalanceCandidate(totalBalance: number): number {
+  if (totalBalance < 0) return Number.MAX_SAFE_INTEGER;
+  return totalBalance;
+}
+
+async function fetchStudentBalanceWithFallback(
+  studentId: string,
+  subjectKey: string
+): Promise<StudentBalance | null> {
+  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
+  let best: StudentBalance | null = null;
+  for (const variant of variants) {
+    const { data } = await supabase.rpc("get_student_balance", {
+      p_student_id: studentId,
+      p_subject: variant,
+    });
+    const record = data as StudentBalance | null;
+    if (!record) continue;
+    if (!best || record.remaining_questions > best.remaining_questions) {
+      best = record;
+    }
+  }
+  return best;
+}
+
+async function fetchParentBalanceViewWithFallback(
+  mobileNumber: string,
+  subjectKey: string,
+  year: number,
+  month: number
+): Promise<ParentBalanceView | null> {
+  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
+  let best: ParentBalanceView | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const variant of variants) {
+    const { data } = await supabase.rpc("get_parent_balance_view", {
+      p_mobile: mobileNumber.trim(),
+      p_subject: variant,
+      p_year: year,
+      p_month: month,
+    });
+    const record = data as ParentBalanceView | null;
+    if (!record) continue;
+    const score = scoreBalanceCandidate(record.total_balance);
+    if (!best || score > bestScore) {
+      best = record;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 interface ParentPaymentHistoryRow {
@@ -965,12 +1034,10 @@ export default function QuizApp() {
       setLoading(true);
       setError(null);
       try {
-        const { data: bal } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: subject,
-        });
-
-        const balRecord = bal as StudentBalance | null;
+        const balRecord = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          subject
+        );
         if (balRecord && balRecord.remaining_questions <= 0) {
           throw new Error("你的練習題目已用完，請聯絡家長充值。");
         }
@@ -1118,10 +1185,10 @@ export default function QuizApp() {
         return;
       }
       if (selectedStudent && selectedSubject) {
-        const { data: balFresh } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: selectedSubject,
-        });
+        const balFresh = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          selectedSubject
+        );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
       setCurrentIndex((i) => i + 1);
@@ -1173,10 +1240,10 @@ export default function QuizApp() {
     try {
       /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
       if (selectedStudent && selectedSubject) {
-        const { data: balFresh } = await supabase.rpc("get_student_balance", {
-          p_student_id: selectedStudent.id,
-          p_subject: selectedSubject,
-        });
+        const balFresh = await fetchStudentBalanceWithFallback(
+          selectedStudent.id,
+          selectedSubject
+        );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
 
@@ -3856,14 +3923,14 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
     let cancelled = false;
     void (async () => {
       setLoading(true);
-      const { data: res } = await supabase.rpc("get_parent_balance_view", {
-        p_mobile: mobileNumber.trim(),
-        p_subject: balanceSubject,
-        p_year: viewMonth.year,
-        p_month: viewMonth.month,
-      });
+      const res = await fetchParentBalanceViewWithFallback(
+        mobileNumber.trim(),
+        balanceSubject,
+        viewMonth.year,
+        viewMonth.month
+      );
       if (!cancelled) {
-        setData(res as ParentBalanceView | null);
+        setData(res);
         setLoading(false);
       }
     })();
