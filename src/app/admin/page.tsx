@@ -102,6 +102,8 @@ interface AddQuotaResult {
   }[];
 }
 
+const QUOTA_SUBJECT_ORDER = ["Math", "Chinese", "English"] as const;
+
 interface QuestionResult {
   id: string;
   subject: string;
@@ -652,7 +654,6 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
     finally { setLoading(false); }
   };
 
-  const subjectOrder = ["Math", "Chinese", "English"];
   const balanceSummary = useMemo(() => {
     if (!parentInfo) return null;
     const totalsBySubject = new Map<string, number>();
@@ -666,8 +667,8 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       }
     }
     const rows = Array.from(totalsBySubject.entries()).sort((a, b) => {
-      const ai = subjectOrder.indexOf(a[0]);
-      const bi = subjectOrder.indexOf(b[0]);
+      const ai = QUOTA_SUBJECT_ORDER.indexOf(a[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
+      const bi = QUOTA_SUBJECT_ORDER.indexOf(b[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
       if (ai >= 0 && bi >= 0) return ai - bi;
       if (ai >= 0) return -1;
       if (bi >= 0) return 1;
