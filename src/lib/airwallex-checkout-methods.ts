@@ -2,8 +2,6 @@ export const REQUIRED_AIRWALLEX_ALL_METHODS = [
   "card",
   "applepay",
   "googlepay",
-  "alipayhk",
-  "wechatpay",
 ] as const;
 
 const AIRWALLEX_METHOD_MAP: Record<string, readonly string[]> = {
@@ -11,8 +9,6 @@ const AIRWALLEX_METHOD_MAP: Record<string, readonly string[]> = {
   cards: ["card"],
   apple_pay: ["applepay"],
   google_pay: ["googlepay"],
-  alipay: ["alipayhk"],
-  wechat_pay: ["wechatpay"],
 };
 
 function normalizeMethodToken(value: string): string {
@@ -28,6 +24,20 @@ export function getAirwallexMethodsForSelection(paymentMethod: string): string[]
   return [...(AIRWALLEX_METHOD_MAP[key] ?? AIRWALLEX_METHOD_MAP.all)];
 }
 
+export function enforceRecurringCheckoutMethods(methods: string[]): {
+  methods: string[];
+  blockedByRecurringPolicy: string[];
+} {
+  const normalized = dedupeMethods(methods);
+  const allowed = new Set(REQUIRED_AIRWALLEX_ALL_METHODS);
+  const allowedMethods = normalized.filter((method) => allowed.has(method as (typeof REQUIRED_AIRWALLEX_ALL_METHODS)[number]));
+  const blockedByRecurringPolicy = normalized.filter((method) => !allowed.has(method as (typeof REQUIRED_AIRWALLEX_ALL_METHODS)[number]));
+  return {
+    methods: allowedMethods,
+    blockedByRecurringPolicy,
+  };
+}
+
 export function applyAirwallexMethodSafeguards({
   paymentMethod,
   methods,
@@ -37,21 +47,25 @@ export function applyAirwallexMethodSafeguards({
 }): {
   methods: string[];
   missingRequired: string[];
+  blockedByRecurringPolicy: string[];
 } {
   const candidate = methods.length > 0 ? methods : getAirwallexMethodsForSelection(paymentMethod);
-  const normalizedMethods = dedupeMethods(candidate);
+  const { methods: recurringMethods, blockedByRecurringPolicy } =
+    enforceRecurringCheckoutMethods(candidate);
   if (normalizeMethodToken(paymentMethod || "all") !== "all") {
     return {
-      methods: normalizedMethods,
+      methods: recurringMethods,
       missingRequired: [],
+      blockedByRecurringPolicy,
     };
   }
 
   const missingRequired = REQUIRED_AIRWALLEX_ALL_METHODS.filter(
-    (method) => !normalizedMethods.includes(method)
+    (method) => !recurringMethods.includes(method)
   );
   return {
-    methods: [...normalizedMethods, ...missingRequired],
+    methods: [...recurringMethods, ...missingRequired],
     missingRequired: [...missingRequired],
+    blockedByRecurringPolicy,
   };
 }

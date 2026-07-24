@@ -264,6 +264,29 @@ async function upsertRecurringProfile(
   if (!snapshot.customerId || !snapshot.paymentMethodId || !snapshot.paymentMethodType) {
     return;
   }
+  if (!snapshot.paymentConsentId) {
+    console.error(
+      "[anti-missing][payment][mit-policy] missing-payment-consent-id",
+      JSON.stringify({
+        order_id: order.id,
+        mobile_number: order.mobile_number,
+        payment_method_type: snapshot.paymentMethodType,
+        payment_method_id: snapshot.paymentMethodId,
+      })
+    );
+    await supabaseAdmin
+      .from("parent_recurring_profiles")
+      .update({
+        status: "failed",
+        last_order_id: order.id,
+        last_order_status: "failed",
+        last_error:
+          "Missing payment_consent_id after initial recurring checkout confirmation",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("mobile_number", order.mobile_number);
+    return;
+  }
   const amount = Number(order.final_amount_hkd || 0);
   if (!(amount > 0)) return;
 

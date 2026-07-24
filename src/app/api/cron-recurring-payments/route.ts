@@ -166,11 +166,24 @@ export async function GET(req: NextRequest) {
       processed += 1;
       if (
         !profile.airwallex_customer_id ||
+        !profile.airwallex_payment_consent_id ||
         !profile.airwallex_payment_method_id ||
         !profile.payment_method_type
       ) {
         failed += 1;
-        const reason = "Missing recurring payment credentials";
+        const reason =
+          "Missing recurring payment credentials (customer/payment_method/payment_consent)";
+        console.error(
+          "[anti-missing][payment][mit-policy] recurring-profile-missing-credentials",
+          JSON.stringify({
+            profile_id: profile.id,
+            mobile_number: profile.mobile_number,
+            has_customer_id: Boolean(profile.airwallex_customer_id),
+            has_payment_consent_id: Boolean(profile.airwallex_payment_consent_id),
+            has_payment_method_id: Boolean(profile.airwallex_payment_method_id),
+            has_payment_method_type: Boolean(profile.payment_method_type),
+          })
+        );
         failures.push({ mobile_number: profile.mobile_number, reason });
         await markRecurringProfile(supabase, profile.id, {
           status: "failed",
