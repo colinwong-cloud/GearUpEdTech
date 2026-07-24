@@ -37,6 +37,9 @@ type IntentCreatePayload = {
   };
 };
 
+const RECURRING_METHOD_TYPES = new Set(["card", "applepay", "googlepay"]);
+const FAILED_RETRY_HOURS = 24;
+
 function getSupabaseAdmin() {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -94,6 +97,13 @@ function addOneMonthIsoFrom(value: string): string {
   return next.toISOString();
 }
 
+function addHoursIsoFrom(value: string, hours: number): string {
+  const source = new Date(value);
+  const next = Number.isNaN(source.getTime()) ? new Date() : source;
+  next.setUTCHours(next.getUTCHours() + hours);
+  return next.toISOString();
+}
+
 async function markRecurringProfile(
   supabase: ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never,
   profileId: string,
@@ -119,14 +129,64 @@ async function insertParentPaymentOrder(
   supabase: ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never,
   payload: Record<string, unknown>
 ) {
-  let response = await supabase.from("parent_payment_orders").insert(payload);
+  let response = await supabase
+    .from("parent_payment_orders")
+    .insert(payload)
+    .select("id")
+    .limit(1)
+    .maybeSingle();
   if (response.error && isMissingOrderTrackingColumnError(response.error.message)) {
     const legacy = { ...payload };
     delete legacy.payment_started_at;
     delete legacy.is_recurring_payment;
-    response = await supabase.from("parent_payment_orders").insert(legacy);
+    response = await supabase
+      .from("parent_payment_orders")
+      .insert(legacy)
+      .select("id")
+      .limit(1)
+      .maybeSingle();
   }
   return response;
+}
+
+async function recordPrecheckFailedOrder({
+  supabase,
+  profile,
+  amount,
+  reason,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never;
+  profile: RecurringProfileRow;
+  amount: number;
+  reason: string;
+}): Promise<string | null> {
+  const merchantOrderId = `GU-R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const requestId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
+  const { data, error } = await insertParentPaymentOrder(supabase, {
+    parent_id: profile.parent_id,
+    mobile_number: profile.mobile_number,
+    merchant_order_id: merchantOrderId,
+    request_id: requestId,
+    amount_hkd: amount > 0 ? amount : 0,
+    discount_code: null,
+    discount_percent: 0,
+    final_amount_hkd: amount > 0 ? amount : 0,
+    payment_method: "recurring_auto_charge",
+    status: "failed",
+    payment_started_at: startedAt,
+    is_recurring_payment: true,
+    airwallex_customer_id: profile.airwallex_customer_id,
+    airwallex_payment_consent_id: profile.airwallex_payment_consent_id,
+    airwallex_payment_method_id: profile.airwallex_payment_method_id,
+    raw_response: {
+      flow: "cron_recurring",
+      stage: "precheck",
+      error: reason,
+    },
+  });
+  if (error) return null;
+  return readString(data?.id);
 }
 
 export async function GET(req: NextRequest) {
@@ -153,7 +213,7 @@ export async function GET(req: NextRequest) {
       .select(
         "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at"
       )
-      .eq("status", "active")
+      .in("status", ["active", "failed"])
       .lte("next_charge_at", new Date().toISOString())
       .order("next_charge_at", { ascending: true })
       .limit(100);
@@ -166,16 +226,46 @@ export async function GET(req: NextRequest) {
       processed += 1;
       if (
         !profile.airwallex_customer_id ||
+        !profile.airwallex_payment_consent_id ||
         !profile.airwallex_payment_method_id ||
         !profile.payment_method_type
       ) {
         failed += 1;
-        const reason = "Missing recurring payment credentials";
+        const reason = "Missing recurring payment credentials (customer/consent/method)";
         failures.push({ mobile_number: profile.mobile_number, reason });
+        const failedOrderId = await recordPrecheckFailedOrder({
+          supabase,
+          profile,
+          amount: Number(profile.recurring_amount_hkd || 0),
+          reason,
+        });
         await markRecurringProfile(supabase, profile.id, {
           status: "failed",
+          last_order_id: failedOrderId,
           last_order_status: "failed",
           last_error: reason,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
+        });
+        continue;
+      }
+
+      const normalizedMethodType = profile.payment_method_type.trim().toLowerCase();
+      if (!RECURRING_METHOD_TYPES.has(normalizedMethodType)) {
+        failed += 1;
+        const reason = `Unsupported recurring payment method type: ${profile.payment_method_type}`;
+        failures.push({ mobile_number: profile.mobile_number, reason });
+        const failedOrderId = await recordPrecheckFailedOrder({
+          supabase,
+          profile,
+          amount: Number(profile.recurring_amount_hkd || 0),
+          reason,
+        });
+        await markRecurringProfile(supabase, profile.id, {
+          status: "failed",
+          last_order_id: failedOrderId,
+          last_order_status: "failed",
+          last_error: reason,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
         });
         continue;
       }
@@ -185,10 +275,18 @@ export async function GET(req: NextRequest) {
         failed += 1;
         const reason = "Recurring amount is invalid";
         failures.push({ mobile_number: profile.mobile_number, reason });
+        const failedOrderId = await recordPrecheckFailedOrder({
+          supabase,
+          profile,
+          amount,
+          reason,
+        });
         await markRecurringProfile(supabase, profile.id, {
           status: "failed",
+          last_order_id: failedOrderId,
           last_order_status: "failed",
           last_error: reason,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
         });
         continue;
       }
@@ -196,7 +294,7 @@ export async function GET(req: NextRequest) {
       const merchantOrderId = `GU-R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       const requestId = crypto.randomUUID();
       const startedAt = new Date().toISOString();
-      const { error: createOrderErr } = await insertParentPaymentOrder(supabase, {
+      const { data: createdOrder, error: createOrderErr } = await insertParentPaymentOrder(supabase, {
         parent_id: profile.parent_id,
         mobile_number: profile.mobile_number,
         merchant_order_id: merchantOrderId,
@@ -223,6 +321,7 @@ export async function GET(req: NextRequest) {
           status: "failed",
           last_order_status: "failed",
           last_error: createOrderErr.message,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
         });
         continue;
       }
@@ -261,8 +360,10 @@ export async function GET(req: NextRequest) {
         failures.push({ mobile_number: profile.mobile_number, reason });
         await markRecurringProfile(supabase, profile.id, {
           status: "failed",
+          last_order_id: readString(createdOrder?.id),
           last_order_status: "failed",
           last_error: reason,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
         });
         await finalizePaymentByIntent({
           supabaseAdmin: supabase,
@@ -292,9 +393,9 @@ export async function GET(req: NextRequest) {
             customer_id: profile.airwallex_customer_id,
             payment_method: {
               id: profile.airwallex_payment_method_id,
-              type: profile.payment_method_type,
+              type: normalizedMethodType,
             },
-            payment_consent_id: profile.airwallex_payment_consent_id || undefined,
+            payment_consent_id: profile.airwallex_payment_consent_id,
             external_recurring_data: {
               initial_payment: false,
               triggered_by: "merchant",
@@ -346,6 +447,7 @@ export async function GET(req: NextRequest) {
           last_order_id: finalize.orderId,
           last_order_status: "failed",
           last_error: reason,
+          next_charge_at: addHoursIsoFrom(new Date().toISOString(), FAILED_RETRY_HOURS),
         });
         continue;
       }

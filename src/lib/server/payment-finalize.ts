@@ -18,6 +18,11 @@ type AirwallexIntentResponse = {
   id?: string;
   status?: string;
   customer_id?: string;
+  payment_consent_id?: string;
+  payment_consent?: {
+    id?: string;
+  };
+  payment_method?: AirwallexPaymentMethod;
   latest_payment_attempt?: {
     id?: string;
     status?: string;
@@ -33,6 +38,9 @@ type PaymentOrderRow = {
   final_amount_hkd: number;
   finalized_at: string | null;
   airwallex_customer_id: string | null;
+  airwallex_payment_consent_id: string | null;
+  airwallex_payment_method_id: string | null;
+  payment_method_type: string | null;
   airwallex_payment_intent_id: string | null;
 };
 
@@ -76,6 +84,19 @@ type AirwallexAttemptResponse = {
   failure_details?: AirwallexFailureDetails;
   provider_original_response_code?: string;
   provider_original_response_message?: string;
+};
+
+type AirwallexPaymentAttemptListResponse = {
+  items?: AirwallexAttemptResponse[];
+};
+
+type AirwallexPaymentConsentResponse = {
+  id?: string;
+  customer_id?: string;
+  payment_method_id?: string;
+  payment_method_type?: string;
+  payment_method_brand?: string;
+  payment_method?: AirwallexPaymentMethod;
 };
 
 type PaymentDetailSnapshot = {
@@ -161,11 +182,23 @@ function extractAttemptObject(rawPayload: Record<string, unknown>): Record<strin
   return null;
 }
 
+function extractIntentObject(rawPayload: Record<string, unknown>): AirwallexIntentResponse | null {
+  if (readObject(rawPayload.latest_payment_attempt)) {
+    return rawPayload as AirwallexIntentResponse;
+  }
+  const envelope = readObject(rawPayload.data);
+  const object = readObject(envelope?.object);
+  if (object && readObject(object.latest_payment_attempt)) {
+    return object as AirwallexIntentResponse;
+  }
+  return null;
+}
+
 function buildSnapshotFromAttempt(
   attempt: AirwallexAttemptResponse | null,
   intent: AirwallexIntentResponse | null
 ): PaymentDetailSnapshot {
-  const method = attempt?.payment_method;
+  const method = attempt?.payment_method || intent?.payment_method;
   const normalizedType = normalizeMethodType(readString(method?.type));
   const tokenizedBrand =
     readString(method?.applepay?.tokenized_card?.brand) ||
@@ -203,7 +236,11 @@ function buildSnapshotFromAttempt(
 
   return {
     customerId,
-    paymentConsentId: readString(attempt?.payment_consent_id),
+    paymentConsentId:
+      readString(attempt?.payment_consent_id) ||
+      readString(intent?.payment_consent_id) ||
+      readString(intent?.payment_consent?.id) ||
+      null,
     paymentMethodId: readString(method?.id),
     paymentMethodType: normalizedType,
     paymentMethodBrand: cardBrand,
@@ -217,6 +254,74 @@ function buildSnapshotFromAttempt(
     paymentProviderResponseCode: providerResponseCode,
     paymentProviderResponseMessage: providerResponseMessage,
   };
+}
+
+function mergeSnapshotWithConsentFallback(
+  snapshot: PaymentDetailSnapshot,
+  consent: AirwallexPaymentConsentResponse | null
+): PaymentDetailSnapshot {
+  if (!consent) return snapshot;
+  const method = consent.payment_method;
+  const normalizedType = normalizeMethodType(
+    readString(consent.payment_method_type) || readString(method?.type)
+  );
+  const tokenizedBrand =
+    readString(method?.applepay?.tokenized_card?.brand) ||
+    readString(method?.googlepay?.tokenized_card?.brand) ||
+    null;
+  const cardBrand = normalizeCardBrand(
+    readString(consent.payment_method_brand) ||
+      readString(method?.card?.brand) ||
+      normalizeCardBrand(tokenizedBrand)
+  );
+  const cardLast4 =
+    readString(method?.card?.last4) ||
+    readString(method?.applepay?.tokenized_card?.last4) ||
+    readString(method?.googlepay?.tokenized_card?.last4) ||
+    null;
+  const methodType = snapshot.paymentMethodType || normalizedType;
+  const methodBrand = snapshot.paymentMethodBrand || cardBrand;
+  return {
+    ...snapshot,
+    customerId: snapshot.customerId || readString(consent.customer_id) || null,
+    paymentConsentId: snapshot.paymentConsentId || readString(consent.id) || null,
+    paymentMethodId:
+      snapshot.paymentMethodId ||
+      readString(consent.payment_method_id) ||
+      readString(method?.id) ||
+      null,
+    paymentMethodType: methodType,
+    paymentMethodBrand: methodBrand,
+    paymentMethodLast4: snapshot.paymentMethodLast4 || cardLast4,
+    paymentMethodLabel:
+      snapshot.paymentMethodLabel || toPaymentMethodLabel(methodType, methodBrand),
+  };
+}
+
+function snapshotHasRecurringLinkage(snapshot: PaymentDetailSnapshot): boolean {
+  return Boolean(
+    snapshot.customerId &&
+      snapshot.paymentConsentId &&
+      snapshot.paymentMethodId &&
+      snapshot.paymentMethodType
+  );
+}
+
+function mergeSnapshotWithOrderFallback(
+  snapshot: PaymentDetailSnapshot,
+  order: PaymentOrderRow
+): PaymentDetailSnapshot {
+  return {
+    ...snapshot,
+    customerId: snapshot.customerId || order.airwallex_customer_id || null,
+    paymentConsentId: snapshot.paymentConsentId || order.airwallex_payment_consent_id || null,
+    paymentMethodId: snapshot.paymentMethodId || order.airwallex_payment_method_id || null,
+    paymentMethodType: snapshot.paymentMethodType || order.payment_method_type || null,
+  };
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function updateOrderPaymentDetails(
@@ -256,13 +361,32 @@ async function updateOrderPaymentDetails(
   }
 }
 
+async function recordRecurringSetupFailure(
+  supabaseAdmin: SupabaseClient,
+  orderId: string,
+  message: string
+) {
+  const { error } = await supabaseAdmin
+    .from("parent_payment_orders")
+    .update({
+      payment_failure_code: "recurring_setup_incomplete",
+      payment_failure_message: message,
+    })
+    .eq("id", orderId);
+  if (error) {
+    throw error;
+  }
+}
+
 async function upsertRecurringProfile(
   supabaseAdmin: SupabaseClient,
   order: PaymentOrderRow,
   snapshot: PaymentDetailSnapshot
 ) {
-  if (!snapshot.customerId || !snapshot.paymentMethodId || !snapshot.paymentMethodType) {
-    return;
+  if (!snapshotHasRecurringLinkage(snapshot)) {
+    throw new Error(
+      "Recurring setup incomplete: missing customer/consent/payment method details from Airwallex."
+    );
   }
   const amount = Number(order.final_amount_hkd || 0);
   if (!(amount > 0)) return;
@@ -294,6 +418,62 @@ async function upsertRecurringProfile(
   if (error) {
     throw error;
   }
+}
+
+async function getAirwallexPaymentIntent({
+  baseUrl,
+  accessToken,
+  paymentIntentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentIntentId: string;
+}): Promise<AirwallexIntentResponse> {
+  const resp = await fetch(
+    `${baseUrl}/api/v1/pa/payment_intents/${encodeURIComponent(paymentIntentId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+
+  const payload = (await resp.json()) as AirwallexIntentResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to retrieve payment intent from Airwallex");
+  }
+  return payload;
+}
+
+async function getAirwallexPaymentConsent({
+  baseUrl,
+  accessToken,
+  paymentConsentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentConsentId: string;
+}): Promise<AirwallexPaymentConsentResponse> {
+  const resp = await fetch(
+    `${baseUrl}/api/v1/pa/payment_consents/${encodeURIComponent(paymentConsentId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+
+  const payload = (await resp.json()) as AirwallexPaymentConsentResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to retrieve payment consent from Airwallex");
+  }
+  return payload;
 }
 
 export function getSupabaseAdmin(): SupabaseClient | null {
@@ -413,6 +593,39 @@ export async function getAirwallexPaymentAttempt({
   return payload;
 }
 
+export async function getLatestAirwallexPaymentAttemptByIntent({
+  baseUrl,
+  accessToken,
+  paymentIntentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  paymentIntentId: string;
+}): Promise<AirwallexAttemptResponse | null> {
+  const params = new URLSearchParams({
+    page_num: "0",
+    page_size: "1",
+    payment_intent_id: paymentIntentId,
+  });
+  const resp = await fetch(
+    `${baseUrl}/api/v1/pa/payment_attempts?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+  const payload = (await resp.json()) as AirwallexPaymentAttemptListResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to list payment attempts from Airwallex");
+  }
+  const attempts = Array.isArray(payload.items) ? payload.items : [];
+  return attempts[0] ?? null;
+}
+
 async function getOrderByReference(
   supabaseAdmin: SupabaseClient,
   paymentIntentId: string | null,
@@ -422,7 +635,7 @@ async function getOrderByReference(
     const { data, error } = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,airwallex_payment_intent_id"
       )
       .eq("airwallex_payment_intent_id", paymentIntentId)
       .order("created_at", { ascending: false })
@@ -435,7 +648,7 @@ async function getOrderByReference(
     const { data, error } = await supabaseAdmin
       .from("parent_payment_orders")
       .select(
-        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_intent_id"
+        "id,parent_id,mobile_number,merchant_order_id,status,finalized_at,final_amount_hkd,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,airwallex_payment_intent_id"
       )
       .eq("merchant_order_id", merchantOrderId)
       .order("created_at", { ascending: false })
@@ -489,22 +702,11 @@ export async function verifyAndFinalizeParentPayment({
 
   const baseUrl = getAirwallexBaseUrl();
   const accessToken = await getAirwallexAccessToken(baseUrl);
-  const intentRes = await fetch(
-    `${baseUrl}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    }
-  );
-
-  const intent = (await intentRes.json()) as AirwallexIntentResponse;
-  if (!intentRes.ok) {
-    throw new Error("Unable to retrieve payment intent from Airwallex");
-  }
+  const intent = await getAirwallexPaymentIntent({
+    baseUrl,
+    accessToken,
+    paymentIntentId: intentId,
+  });
 
   const normalizedStatus = String(intent.status || "").toUpperCase();
   const latestStatus = String(
@@ -537,18 +739,70 @@ export async function verifyAndFinalizeParentPayment({
         accessToken,
         paymentAttemptId,
       });
+    } else {
+      attempt = await getLatestAirwallexPaymentAttemptByIntent({
+        baseUrl,
+        accessToken,
+        paymentIntentId: intentId,
+      });
     }
-    const snapshot = buildSnapshotFromAttempt(attempt, intent);
+    let snapshot = mergeSnapshotWithOrderFallback(
+      buildSnapshotFromAttempt(attempt, intent),
+      order
+    );
+    if (isPaid && !snapshotHasRecurringLinkage(snapshot)) {
+      for (let i = 0; i < 3; i += 1) {
+        const refreshedIntent = await getAirwallexPaymentIntent({
+          baseUrl,
+          accessToken,
+          paymentIntentId: intentId,
+        });
+        const refreshedAttemptId =
+          readString(refreshedIntent.latest_payment_attempt?.id) || paymentAttemptId;
+        if (refreshedAttemptId) {
+          attempt = await getAirwallexPaymentAttempt({
+            baseUrl,
+            accessToken,
+            paymentAttemptId: refreshedAttemptId,
+          });
+        }
+        snapshot = mergeSnapshotWithOrderFallback(
+          buildSnapshotFromAttempt(attempt, refreshedIntent),
+          order
+        );
+        if (snapshotHasRecurringLinkage(snapshot)) break;
+        if (i < 2) await sleep(800);
+      }
+    }
+    if (isPaid && !snapshotHasRecurringLinkage(snapshot) && snapshot.paymentConsentId) {
+      const consent = await getAirwallexPaymentConsent({
+        baseUrl,
+        accessToken,
+        paymentConsentId: snapshot.paymentConsentId,
+      });
+      snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
+    }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       order.id,
-      paymentAttemptId,
+      readString(attempt?.id) || paymentAttemptId,
       snapshot
     );
     if (isPaid) {
       await upsertRecurringProfile(supabaseAdmin, order, snapshot);
     }
-  } catch {
+  } catch (error) {
+    if (isPaid) {
+      const message =
+        error instanceof Error
+          ? `Recurring setup failed: ${error.message}`
+          : "Recurring setup failed: Unknown error";
+      try {
+        await recordRecurringSetupFailure(supabaseAdmin, order.id, message);
+      } catch {
+        // No-op: enrichment failure should not block payment finalization.
+      }
+    }
     // Payment status finalization should not fail because of metadata enrichment.
   }
 
@@ -621,29 +875,119 @@ export async function finalizePaymentByIntent({
   const payload = (finalizeData as { already_finalized?: boolean } | null) ?? {};
   try {
     const nestedAttempt = extractAttemptObject(rawPayload) as AirwallexAttemptResponse | null;
+    const nestedIntent = extractIntentObject(rawPayload);
     let attempt: AirwallexAttemptResponse | null = nestedAttempt;
+    let intent: AirwallexIntentResponse | null = nestedIntent;
     const normalizedAttemptId =
       readString(paymentAttemptId) || readString(nestedAttempt?.id) || null;
-    if (!attempt && normalizedAttemptId && hasAirwallexApiCredentials()) {
-      const baseUrl = getAirwallexBaseUrl();
-      const accessToken = await getAirwallexAccessToken(baseUrl);
-      attempt = await getAirwallexPaymentAttempt({
-        baseUrl,
-        accessToken,
-        paymentAttemptId: normalizedAttemptId,
-      });
+    const canQueryAirwallex = hasAirwallexApiCredentials();
+    let baseUrl: string | null = null;
+    let accessToken: string | null = null;
+    const ensureAirwallexContext = async (): Promise<{
+      baseUrl: string;
+      accessToken: string;
+    } | null> => {
+      if (!canQueryAirwallex) return null;
+      if (baseUrl && accessToken) return { baseUrl, accessToken };
+      baseUrl = getAirwallexBaseUrl();
+      accessToken = await getAirwallexAccessToken(baseUrl);
+      return { baseUrl, accessToken };
+    };
+
+    if (canQueryAirwallex) {
+      const context = await ensureAirwallexContext();
+      if (context && (!intent || paid)) {
+        intent = await getAirwallexPaymentIntent({
+          baseUrl: context.baseUrl,
+          accessToken: context.accessToken,
+          paymentIntentId,
+        });
+      }
+      if (context && !attempt) {
+        const fallbackAttemptId =
+          normalizedAttemptId || readString(intent?.latest_payment_attempt?.id);
+        if (fallbackAttemptId) {
+          attempt = await getAirwallexPaymentAttempt({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentAttemptId: fallbackAttemptId,
+          });
+        } else {
+          attempt = await getLatestAirwallexPaymentAttemptByIntent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentIntentId,
+          });
+        }
+      }
     }
-    const snapshot = buildSnapshotFromAttempt(attempt, null);
+
+    let snapshot = mergeSnapshotWithOrderFallback(
+      buildSnapshotFromAttempt(attempt, intent),
+      order
+    );
+    if (paid && !snapshotHasRecurringLinkage(snapshot) && canQueryAirwallex) {
+      const context = await ensureAirwallexContext();
+      if (context) {
+        for (let i = 0; i < 3; i += 1) {
+          intent = await getAirwallexPaymentIntent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentIntentId,
+          });
+          const fallbackAttemptId =
+            normalizedAttemptId || readString(intent?.latest_payment_attempt?.id);
+          if (fallbackAttemptId) {
+            attempt = await getAirwallexPaymentAttempt({
+              baseUrl: context.baseUrl,
+              accessToken: context.accessToken,
+              paymentAttemptId: fallbackAttemptId,
+            });
+          } else {
+            attempt = await getLatestAirwallexPaymentAttemptByIntent({
+              baseUrl: context.baseUrl,
+              accessToken: context.accessToken,
+              paymentIntentId,
+            });
+          }
+          snapshot = mergeSnapshotWithOrderFallback(
+            buildSnapshotFromAttempt(attempt, intent),
+            order
+          );
+          if (snapshotHasRecurringLinkage(snapshot)) break;
+          if (i < 2) await sleep(800);
+        }
+        if (!snapshotHasRecurringLinkage(snapshot) && snapshot.paymentConsentId) {
+          const consent = await getAirwallexPaymentConsent({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            paymentConsentId: snapshot.paymentConsentId,
+          });
+          snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
+        }
+      }
+    }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       orderId,
-      normalizedAttemptId,
+      readString(attempt?.id) || normalizedAttemptId,
       snapshot
     );
     if (paid) {
       await upsertRecurringProfile(supabaseAdmin, order, snapshot);
     }
-  } catch {
+  } catch (error) {
+    if (paid) {
+      const message =
+        error instanceof Error
+          ? `Recurring setup failed: ${error.message}`
+          : "Recurring setup failed: Unknown error";
+      try {
+        await recordRecurringSetupFailure(supabaseAdmin, orderId, message);
+      } catch {
+        // Keep webhook finalization successful even if this fallback fails.
+      }
+    }
     // Keep webhook/verify finalization successful even if enrichment fails.
   }
 

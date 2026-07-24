@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { verifyAndFinalizeParentPayment } from "@/lib/server/payment-finalize";
 import {
   applyAirwallexMethodSafeguards,
+  filterRecurringCapableMethods,
   getAirwallexMethodsForSelection,
 } from "@/lib/airwallex-checkout-methods";
 
@@ -723,7 +724,8 @@ export async function POST(req: Request) {
   }
 
   const mobile = body.mobile_number?.trim() ?? "";
-  const paymentMethod = body.payment_method?.trim() || "all";
+  const paymentMethod = "all";
+  const orderPaymentMethod = "recurring_subscription";
   const discountCode = body.discount_code?.trim().toUpperCase() || null;
 
   if (!mobile) {
@@ -820,7 +822,7 @@ export async function POST(req: Request) {
         discount_code: discountCodeApplied,
         discount_percent: discountPercent,
         final_amount_hkd: 0,
-        payment_method: paymentMethod,
+        payment_method: orderPaymentMethod,
         status: "paid",
         payment_started_at: new Date().toISOString(),
         is_recurring_payment: false,
@@ -864,12 +866,25 @@ export async function POST(req: Request) {
       transactionMode: "oneoff",
     });
     const {
-      methods: effectiveMethods,
+      methods: safeguardedMethods,
       missingRequired: checkoutMethodSafeguardMissing,
     } = applyAirwallexMethodSafeguards({
       paymentMethod,
       methods: requestedMethods,
     });
+    const {
+      methods: recurringCapableMethods,
+      missingFromAirwallex: checkoutMethodUnavailableInRecurring,
+    } = filterRecurringCapableMethods({
+      methods: safeguardedMethods,
+      availableMethods: recurringMethodDiagnostics.availableMethods,
+    });
+    const effectiveMethods =
+      recurringCapableMethods.length > 0
+        ? recurringCapableMethods
+        : safeguardedMethods;
+    const recurringMethodFallbackUsed =
+      recurringCapableMethods.length === 0 && safeguardedMethods.length > 0;
     let applePaySetupWarning: string | null = null;
     if (recurringMethodDiagnostics.warning) {
       applePaySetupWarning = `Recurring method diagnostics: ${recurringMethodDiagnostics.warning}`;
@@ -885,6 +900,19 @@ export async function POST(req: Request) {
       applePaySetupWarning = applePaySetupWarning
         ? `${applePaySetupWarning} ${safeguardWarning}`
         : safeguardWarning;
+    }
+    if (checkoutMethodUnavailableInRecurring.length > 0) {
+      const unavailableWarning = `Recurring capability filter removed methods unavailable in Airwallex recurring mode: ${checkoutMethodUnavailableInRecurring.join(", ")}`;
+      applePaySetupWarning = applePaySetupWarning
+        ? `${applePaySetupWarning} ${unavailableWarning}`
+        : unavailableWarning;
+    }
+    if (recurringMethodFallbackUsed) {
+      const fallbackWarning =
+        "Recurring capability filter fell back to safeguarded methods because recurring diagnostics returned no eligible methods.";
+      applePaySetupWarning = applePaySetupWarning
+        ? `${applePaySetupWarning} ${fallbackWarning}`
+        : fallbackWarning;
     }
     if (requestedMethods.includes("applepay")) {
       if (oneoffMethodDiagnostics.applePayAvailable === false) {
@@ -955,7 +983,8 @@ export async function POST(req: Request) {
           merchant_order_id: merchantOrderId,
           request_id: requestId,
           mobile_number: mobile,
-          payment_method: paymentMethod,
+            payment_method: orderPaymentMethod,
+            checkout_methods: effectiveMethods.join(","),
           discount_code: discountCodeApplied,
           applepay_setup_warning: applePaySetupWarning,
           recurring_type: "monthly",
@@ -968,6 +997,10 @@ export async function POST(req: Request) {
     const createIntentPayload = (createIntentBody.json || {}) as {
       id?: string;
       client_secret?: string;
+      payment_consent_id?: string;
+      payment_consent?: {
+        id?: string;
+      };
     };
     if (!createIntentRes.ok || !createIntentPayload.id || !createIntentPayload.client_secret) {
       throw new Error(
@@ -980,6 +1013,9 @@ export async function POST(req: Request) {
     }
 
     const resolvedIntentId = createIntentPayload.id;
+    const resolvedPaymentConsentId =
+      readString(createIntentPayload.payment_consent_id) ||
+      readString(createIntentPayload.payment_consent?.id);
     const checkoutPayload = {
       flow: "intent_recurring",
       mode: "recurring",
@@ -992,7 +1028,7 @@ export async function POST(req: Request) {
         terms_of_use: recurringTerms,
       },
       intent: createIntentPayload,
-      payment_method: paymentMethod,
+      payment_method: orderPaymentMethod,
       methods: effectiveMethods,
       currency: "HKD",
       country_code: "HK",
@@ -1007,14 +1043,16 @@ export async function POST(req: Request) {
         discount_code: discountCodeApplied,
         discount_percent: discountPercent,
         final_amount_hkd: finalAmount,
-        payment_method: paymentMethod,
+        payment_method: orderPaymentMethod,
         status: "created",
         payment_started_at: new Date().toISOString(),
         is_recurring_payment: true,
         airwallex_customer_id: customerId,
+        airwallex_payment_consent_id: resolvedPaymentConsentId,
         airwallex_payment_intent_id: resolvedIntentId,
         raw_response: {
           checkout: checkoutPayload,
+          create_intent_response: createIntentBody.json || null,
         },
       });
     if (insertErr) {
@@ -1024,7 +1062,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       intent_id: resolvedIntentId,
       client_secret: createIntentPayload.client_secret,
-      payment_method: paymentMethod,
+      payment_method: orderPaymentMethod,
       methods: effectiveMethods,
       currency: "HKD",
       country_code: "HK",
@@ -1036,6 +1074,8 @@ export async function POST(req: Request) {
       airwallex_available_methods_oneoff: oneoffMethodDiagnostics.availableMethods,
       airwallex_available_methods_recurring: recurringMethodDiagnostics.availableMethods,
       checkout_method_safeguard_missing: checkoutMethodSafeguardMissing,
+      checkout_method_unavailable_in_recurring: checkoutMethodUnavailableInRecurring,
+      recurring_method_fallback_used: recurringMethodFallbackUsed,
       applepay_available: oneoffMethodDiagnostics.applePayAvailable,
       applepay_setup_warning: applePaySetupWarning,
     });

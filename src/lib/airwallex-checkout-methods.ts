@@ -1,9 +1,7 @@
 export const REQUIRED_AIRWALLEX_ALL_METHODS = [
-  "card",
   "applepay",
   "googlepay",
-  "alipayhk",
-  "wechatpay",
+  "card",
 ] as const;
 
 const AIRWALLEX_METHOD_MAP: Record<string, readonly string[]> = {
@@ -53,5 +51,40 @@ export function applyAirwallexMethodSafeguards({
   return {
     methods: [...normalizedMethods, ...missingRequired],
     missingRequired: [...missingRequired],
+  };
+}
+
+export function filterRecurringCapableMethods({
+  methods,
+  availableMethods,
+}: {
+  methods: string[];
+  availableMethods: string[];
+}): {
+  methods: string[];
+  missingFromAirwallex: string[];
+} {
+  const recurringAllowed = new Set(REQUIRED_AIRWALLEX_ALL_METHODS);
+  const requestedRecurring = dedupeMethods(methods).filter((method) =>
+    recurringAllowed.has(method as (typeof REQUIRED_AIRWALLEX_ALL_METHODS)[number])
+  );
+  if (requestedRecurring.length === 0) {
+    return { methods: [], missingFromAirwallex: [] };
+  }
+
+  const normalizedAvailable = dedupeMethods(availableMethods);
+  if (normalizedAvailable.length === 0) {
+    return {
+      methods: requestedRecurring,
+      missingFromAirwallex: [],
+    };
+  }
+
+  const availableSet = new Set(normalizedAvailable);
+  const methodsInAirwallex = requestedRecurring.filter((method) => availableSet.has(method));
+  const missingFromAirwallex = requestedRecurring.filter((method) => !availableSet.has(method));
+  return {
+    methods: methodsInAirwallex,
+    missingFromAirwallex,
   };
 }

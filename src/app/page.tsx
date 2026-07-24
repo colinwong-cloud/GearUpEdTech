@@ -5157,7 +5157,7 @@ function PaymentScreen({
       let resolvedCurrency = payload.currency || "HKD";
       let resolvedCountryCode = payload.country_code || "HK";
       const resolvedAirwallexEnv = payload.airwallex_env || getAirwallexEnv();
-      let resolvedPaymentMethod = payload.payment_method || "all";
+      let resolvedPaymentMethod = payload.payment_method || "recurring_subscription";
       if ((!resolvedIntentId || !resolvedClientSecret) && payload.checkout_url) {
         try {
           const parsed = new URL(payload.checkout_url, window.location.origin);
@@ -5201,7 +5201,7 @@ function PaymentScreen({
                   case "wechat_pay":
                     return ["wechatpay"];
                   default:
-                    return ["card", "applepay", "googlepay", "alipayhk", "wechatpay"];
+                    return ["applepay", "googlepay", "card"];
                 }
               })();
         if (payload.applepay_setup_warning && methods.includes("applepay")) {
