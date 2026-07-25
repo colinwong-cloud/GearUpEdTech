@@ -643,32 +643,88 @@ function getAdminClient() {
   return createClient(url, key);
 }
 
-const QUOTA_SUBJECTS = ["Math", "Chinese", "English"] as const;
-const QUOTA_SUBJECT_VARIANTS: Record<(typeof QUOTA_SUBJECTS)[number], string[]> = {
-  Math: ["Math", "數學"],
-  Chinese: ["Chinese", "中文"],
-  English: ["English", "英文"],
-};
-type QuotaMode =
-  | "mobile_all_subjects"
-  | "student_all_subjects"
-  | "student_single_subject";
+const QUOTA_POOL_ANCHOR_SUBJECT = "Math";
+const MOBILE_SHARED_QUOTA_POLICY_VERSION = "mobile-shared-quota-v1";
+const BASE_MONTHLY_MOBILE_QUOTA = 200;
+const QUOTA_TOPUP_DESCRIPTIONS = new Set(["管理員手動增加", "ADMIN_QUOTA_TOPUP"]);
+const QUOTA_USAGE_DESCRIPTIONS = new Set([
+  "FREE_TIER_USAGE",
+  "ADMIN_QUOTA_USAGE",
+  "練習作答扣除",
+]);
+type QuotaMode = "mobile_shared_pool";
 
-function normalizeQuotaMode(raw: string): QuotaMode {
-  if (raw === "student_all_subjects") return "student_all_subjects";
-  if (raw === "student_single_subject") return "student_single_subject";
-  return "mobile_all_subjects";
+function normalizeQuotaMode(): QuotaMode {
+  return "mobile_shared_pool";
 }
 
-function normalizeQuotaSubject(raw: string): (typeof QUOTA_SUBJECTS)[number] {
-  const value = raw.trim().toLowerCase();
-  if (value === "english" || value === "eng" || value === "英文") return "English";
-  if (value === "chinese" || value === "chi" || value === "中文") return "Chinese";
-  return "Math";
+function getCurrentHktMonthRangeIso() {
+  const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const now = new Date();
+  const hktNow = new Date(now.getTime() + HKT_OFFSET_MS);
+  const year = hktNow.getUTCFullYear();
+  const month = hktNow.getUTCMonth();
+  const monthStartUtcMs = Date.UTC(year, month, 1) - HKT_OFFSET_MS;
+  const nextMonthStartUtcMs = Date.UTC(year, month + 1, 1) - HKT_OFFSET_MS;
+  return {
+    startIso: new Date(monthStartUtcMs).toISOString(),
+    endIso: new Date(nextMonthStartUtcMs).toISOString(),
+  };
 }
 
-function normalizeSubjectKey(raw: string): string {
-  return raw.trim().toLowerCase();
+async function computeMobileSharedQuota({
+  admin,
+  studentIds,
+  isPaidTier,
+}: {
+  admin: AdminClient;
+  studentIds: string[];
+  isPaidTier: boolean;
+}): Promise<{ total: number; topup: number; usage: number }> {
+  if (isPaidTier) {
+    return { total: -1, topup: 0, usage: 0 };
+  }
+  if (!studentIds.length) {
+    return { total: BASE_MONTHLY_MOBILE_QUOTA, topup: 0, usage: 0 };
+  }
+
+  const { startIso, endIso } = getCurrentHktMonthRangeIso();
+  const { data: txRows, error: txErr } = await admin
+    .from("balance_transactions")
+    .select("change_amount,description")
+    .in("student_id", studentIds)
+    .gte("created_at", startIso)
+    .lt("created_at", endIso);
+  if (txErr) throw txErr;
+
+  let topup = 0;
+  let usage = 0;
+  const rows = ((txRows ?? []) as { change_amount: number | null; description: string | null }[]);
+  for (const row of rows) {
+    const description = String(row.description ?? "").trim();
+    const change = Number(row.change_amount ?? 0);
+    if (!description || !Number.isFinite(change)) continue;
+    if (QUOTA_TOPUP_DESCRIPTIONS.has(description) && change > 0) {
+      topup += change;
+    }
+    if (QUOTA_USAGE_DESCRIPTIONS.has(description) && change < 0) {
+      usage += Math.abs(change);
+    }
+  }
+  return {
+    total: Math.max(BASE_MONTHLY_MOBILE_QUOTA + topup - usage, 0),
+    topup,
+    usage,
+  };
+}
+
+function logAntiMissingMobileSharedQuota(event: string, payload: Record<string, unknown>) {
+  console.info(
+    `[anti-missing][quota][mobile-shared] ${event} ${JSON.stringify({
+      policy_version: MOBILE_SHARED_QUOTA_POLICY_VERSION,
+      ...payload,
+    })}`
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -1131,66 +1187,39 @@ export async function POST(req: NextRequest) {
         if (!Number.isFinite(amount) || amount <= 0) {
           return NextResponse.json({ error: "p_amount 必須為正整數" }, { status: 400 });
         }
-        const mode = normalizeQuotaMode(String(payload.p_mode ?? ""));
+        const mode = normalizeQuotaMode();
         const mobile = String(payload.p_mobile ?? payload.mobile_number ?? "").trim();
-        const studentId = String(payload.p_student_id ?? "").trim();
-        const subject = normalizeQuotaSubject(String(payload.p_subject ?? "Math"));
-
-        let targetStudentIds: string[] = [];
-        let responseMobile = mobile;
-
-        if (mode === "mobile_all_subjects") {
-          if (!mobile) {
-            return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
-          }
-          const { data: parentRow, error: parentErr } = await admin
-            .from("parents")
-            .select("id,mobile_number")
-            .eq("mobile_number", mobile)
-            .maybeSingle();
-          if (parentErr) throw parentErr;
-          if (!parentRow?.id) {
-            return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
-          }
-          responseMobile = String(parentRow.mobile_number ?? mobile);
-          const { data: studentRows, error: studentErr } = await admin
-            .from("students")
-            .select("id")
-            .eq("parent_id", parentRow.id)
-            .limit(2000);
-          if (studentErr) throw studentErr;
-          targetStudentIds = (studentRows ?? [])
-            .map((row) => String(row.id ?? "").trim())
-            .filter(Boolean);
-          if (!targetStudentIds.length) {
-            return NextResponse.json({ error: "此電話尚未建立學生資料" }, { status: 400 });
-          }
-        } else {
-          if (!studentId) {
-            return NextResponse.json({ error: "請先選擇學生" }, { status: 400 });
-          }
-          targetStudentIds = [studentId];
-          if (!responseMobile) {
-            const { data: studentRow, error: studentErr } = await admin
-              .from("students")
-              .select("parent_id")
-              .eq("id", studentId)
-              .maybeSingle();
-            if (studentErr) throw studentErr;
-            if (studentRow?.parent_id) {
-              const { data: parentRow, error: parentErr } = await admin
-                .from("parents")
-                .select("mobile_number")
-                .eq("id", studentRow.parent_id)
-                .maybeSingle();
-              if (parentErr) throw parentErr;
-              responseMobile = String(parentRow?.mobile_number ?? "");
-            }
-          }
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
         }
 
-        const logicalSubjects =
-          mode === "student_single_subject" ? [subject] : [...QUOTA_SUBJECTS];
+        const { data: parentRow, error: parentErr } = await admin
+          .from("parents")
+          .select("id,mobile_number")
+          .eq("mobile_number", mobile)
+          .maybeSingle();
+        if (parentErr) throw parentErr;
+        if (!parentRow?.id) {
+          return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+        }
+        const responseMobile = String(parentRow.mobile_number ?? mobile);
+        const { data: studentRows, error: studentErr } = await admin
+          .from("students")
+          .select("id")
+          .eq("parent_id", parentRow.id)
+          .limit(2000);
+        if (studentErr) throw studentErr;
+        const targetStudentIds = (studentRows ?? [])
+          .map((row) => String(row.id ?? "").trim())
+          .filter(Boolean);
+        if (!targetStudentIds.length) {
+          return NextResponse.json({ error: "此電話尚未建立學生資料" }, { status: 400 });
+        }
+        const { data: tierData, error: tierErr } = await admin.rpc("get_parent_tier_status", {
+          p_mobile: responseMobile,
+        });
+        if (tierErr) throw tierErr;
+        const isPaidTier = Boolean((tierData as { is_paid?: boolean } | null)?.is_paid);
 
         const { data: existingRows, error: existingErr } = await admin
           .from("student_balances")
@@ -1198,48 +1227,39 @@ export async function POST(req: NextRequest) {
           .in("student_id", targetStudentIds);
         if (existingErr) throw existingErr;
 
-        const existingByStudent = new Map<
-          string,
-          { subject: string; remaining_questions: number }[]
-        >();
-        for (const row of existingRows ?? []) {
-          const sid = String(row.student_id ?? "").trim();
-          const subjectName = String(row.subject ?? "").trim();
-          if (!sid || !subjectName) continue;
-          const bucket = existingByStudent.get(sid) ?? [];
-          bucket.push({
-            subject: subjectName,
-            remaining_questions: Number(row.remaining_questions ?? 0),
-          });
-          existingByStudent.set(sid, bucket);
-        }
+        const sharedBeforeSummary = await computeMobileSharedQuota({
+          admin,
+          studentIds: targetStudentIds,
+          isPaidTier,
+        });
+        const sharedTotalBefore = sharedBeforeSummary.total;
+        const sortedRows = [...(existingRows ?? [])].sort((a, b) => {
+          const diff = Number(b.remaining_questions ?? 0) - Number(a.remaining_questions ?? 0);
+          if (diff !== 0) return diff;
+          const aStudent = String(a.student_id ?? "");
+          const bStudent = String(b.student_id ?? "");
+          return aStudent.localeCompare(bStudent);
+        });
+        const anchorStudentId =
+          String(sortedRows[0]?.student_id ?? "").trim() || targetStudentIds[0];
+        const anchorSubject = String(sortedRows[0]?.subject ?? "").trim() || QUOTA_POOL_ANCHOR_SUBJECT;
 
-        for (const targetStudentId of targetStudentIds) {
-          for (const logicalSubject of logicalSubjects) {
-            const variants = QUOTA_SUBJECT_VARIANTS[logicalSubject] ?? [logicalSubject];
-            const variantKeys = new Set(variants.map((variant) => normalizeSubjectKey(variant)));
-            const existingVariantRows = (existingByStudent.get(targetStudentId) ?? [])
-              .filter((item) => variantKeys.has(normalizeSubjectKey(item.subject)))
-              .sort((a, b) => {
-                if (b.remaining_questions !== a.remaining_questions) {
-                  return b.remaining_questions - a.remaining_questions;
-                }
-                const aIsCanonical =
-                  normalizeSubjectKey(a.subject) === normalizeSubjectKey(logicalSubject);
-                const bIsCanonical =
-                  normalizeSubjectKey(b.subject) === normalizeSubjectKey(logicalSubject);
-                if (aIsCanonical === bIsCanonical) return 0;
-                return aIsCanonical ? -1 : 1;
-              });
-            const subjectForTopUp = existingVariantRows[0]?.subject ?? logicalSubject;
-            const { error } = await admin.rpc("admin_add_quota", {
-              p_student_id: targetStudentId,
-              p_subject: subjectForTopUp,
-              p_amount: amount,
-            });
-            if (error) throw error;
-          }
-        }
+        logAntiMissingMobileSharedQuota("add-quota-mobile-shared-request", {
+          mode,
+          mobile_number: responseMobile,
+          add_amount: amount,
+          student_count: targetStudentIds.length,
+          anchor_student_id: anchorStudentId,
+          anchor_subject: anchorSubject,
+          shared_total_before: sharedTotalBefore,
+        });
+
+        const { error: addQuotaErr } = await admin.rpc("admin_add_quota", {
+          p_student_id: anchorStudentId,
+          p_subject: anchorSubject,
+          p_amount: amount,
+        });
+        if (addQuotaErr) throw addQuotaErr;
 
         const { data: balanceRows, error: balanceErr } = await admin
           .from("student_balances")
@@ -1273,17 +1293,43 @@ export async function POST(req: NextRequest) {
             total_remaining: totalRemaining,
           };
         });
+        const sharedAfterSummary = await computeMobileSharedQuota({
+          admin,
+          studentIds: targetStudentIds,
+          isPaidTier,
+        });
+        const sharedTotalAfter = sharedAfterSummary.total;
+        logAntiMissingMobileSharedQuota("add-quota-mobile-shared-applied", {
+          mode,
+          mobile_number: responseMobile,
+          add_amount: amount,
+          student_count: targetStudentIds.length,
+          anchor_student_id: anchorStudentId,
+          anchor_subject: anchorSubject,
+          shared_total_before: sharedTotalBefore,
+          shared_total_after: sharedTotalAfter,
+          tier_is_paid: isPaidTier,
+          monthly_topped_up_before: sharedBeforeSummary.topup,
+          monthly_usage_before: sharedBeforeSummary.usage,
+          monthly_topped_up_after: sharedAfterSummary.topup,
+          monthly_usage_after: sharedAfterSummary.usage,
+        });
 
         return NextResponse.json({
           data: {
             mode,
             mobile_number: responseMobile,
             student_count: targetStudentIds.length,
-            subject_count: logicalSubjects.length,
-            units_added_total: amount * targetStudentIds.length * logicalSubjects.length,
+            subject_count: 1,
+            units_added_total: amount,
             targeted_students: targetStudentIds,
-            targeted_subjects: logicalSubjects,
+            targeted_subjects: ["MOBILE_SHARED_POOL"],
             balances_after: balancesAfter,
+            shared_total_before: sharedTotalBefore,
+            shared_total_after: sharedTotalAfter,
+            is_paid: isPaidTier,
+            pool_anchor_student_id: anchorStudentId,
+            pool_anchor_subject: anchorSubject,
           },
         });
       }

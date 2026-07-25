@@ -590,8 +590,23 @@
           "snippet": "題目餘額"
         },
         {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "題目餘額（共享）"
+        },
+        {
           "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quiz/submit-answer-bonus/route.ts",
+          "snippet": "consume-shared-quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quiz/submit-answer-bonus/route.ts",
+          "snippet": "submit-answer-shared-fallback-triggered"
         }
       ]
     },
@@ -760,6 +775,16 @@
         {
           "type": "file_exists",
           "path": "supabase_admin_console.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "共享題目配額池"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "add-quota-mobile-shared-applied"
         }
       ]
     },
@@ -1630,8 +1655,38 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T15:05:48.181Z",
+  "generated_at": "2026-07-25T09:15:12.425Z",
   "commit_inventory": [
+    {
+      "sha": "140900baa5cc9209f675820e6d4da6a9861a9c7e",
+      "date": "2026-07-25",
+      "summary": "fix: align mobile monthly quota to shared 200 model"
+    },
+    {
+      "sha": "9d53d8e334989afe25194f60479c2b8637f56c6b",
+      "date": "2026-07-25",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "624d8eb5760ddc8f781edd94fd8d9deb479fbf16",
+      "date": "2026-07-25",
+      "summary": "fix: unify student quota to mobile shared pool"
+    },
+    {
+      "sha": "e279b7452bbf0a3aa12fae78de5a47670b6ed59f",
+      "date": "2026-07-25",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "1165d970230eb0fc75f8fcb1438ed1ead21740d4",
+      "date": "2026-07-25",
+      "summary": "feat: enforce mobile-shared question quota pool"
+    },
+    {
+      "sha": "4e1c1abec7acb635ec54b7ef0447566723e003a6",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract for deploy-role-selection branch"
+    },
     {
       "sha": "31da0c62eb9542e91cbbfcfae5f304a960b56492",
       "date": "2026-07-24",
@@ -3304,7 +3359,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 334,
+    "total_commits_since_start": 340,
     "total_feature_rows": 56
   }
 }

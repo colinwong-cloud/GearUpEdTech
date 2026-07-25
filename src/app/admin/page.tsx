@@ -85,7 +85,7 @@ interface ParentInfo {
   students: StudentInfo[];
 }
 
-type QuotaMode = "mobile_all_subjects" | "student_all_subjects" | "student_single_subject";
+type QuotaMode = "mobile_shared_pool";
 
 interface AddQuotaResult {
   mode: QuotaMode;
@@ -100,9 +100,18 @@ interface AddQuotaResult {
     by_subject: Record<string, number>;
     total_remaining: number;
   }[];
+  shared_total_before?: number;
+  shared_total_after?: number;
+  pool_anchor_student_id?: string;
+  pool_anchor_subject?: string;
+  is_paid?: boolean;
 }
 
-const QUOTA_SUBJECT_ORDER = ["Math", "Chinese", "English"] as const;
+type SharedQuotaSummary = {
+  is_paid: boolean;
+  total_balance: number;
+  month: string;
+};
 
 interface QuestionResult {
   id: string;
@@ -571,15 +580,30 @@ export default function AdminPage() {
 }
 
 function QuotaSection({ sessionToken }: { sessionToken: string }) {
-  const [quotaMode, setQuotaMode] = useState<QuotaMode>("mobile_all_subjects");
+  const [quotaMode] = useState<QuotaMode>("mobile_shared_pool");
   const [searchVal, setSearchVal] = useState("");
   const [parentInfo, setParentInfo] = useState<ParentInfo | null>(null);
-  const [targetStudentId, setTargetStudentId] = useState("");
-  const [targetSubject, setTargetSubject] = useState("Math");
   const [addAmount, setAddAmount] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastAddResult, setLastAddResult] = useState<AddQuotaResult | null>(null);
+  const [sharedQuotaSummary, setSharedQuotaSummary] = useState<SharedQuotaSummary | null>(null);
+
+  const loadSharedQuotaSummary = useCallback(async (mobile: string) => {
+    const res = await fetch("/api/quota/mobile-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile_number: mobile.trim(), subject: "all" }),
+    });
+    const payload = (await res.json()) as {
+      data?: SharedQuotaSummary;
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(payload.error || "未能讀取共享配額");
+    }
+    setSharedQuotaSummary(payload.data ?? null);
+  }, []);
 
   const handleSearch = async () => {
     const mobile = searchVal.trim();
@@ -588,6 +612,7 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
     setMsg("");
     setParentInfo(null);
     setLastAddResult(null);
+    setSharedQuotaSummary(null);
     try {
       const data = await adminConsoleRequest<ParentInfo | null>(
         "search_parent",
@@ -601,7 +626,7 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
         return;
       }
       setParentInfo(data);
-      setTargetStudentId(data.students[0]?.student.id ?? "");
+      await loadSharedQuotaSummary(data.parent.mobile_number);
     } catch { setMsg("搜尋失敗"); }
     finally { setLoading(false); }
   };
@@ -616,10 +641,6 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       setMsg("請輸入有效數量");
       return;
     }
-    if (quotaMode !== "mobile_all_subjects" && !targetStudentId) {
-      setMsg("請先選擇學生");
-      return;
-    }
     setLoading(true);
     setMsg("");
     try {
@@ -627,8 +648,6 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
         "add_quota",
         {
           p_mobile: parentInfo.parent.mobile_number,
-          p_student_id: quotaMode === "mobile_all_subjects" ? undefined : targetStudentId,
-          p_subject: quotaMode === "student_single_subject" ? targetSubject : undefined,
           p_mode: quotaMode,
           p_amount: amount,
         },
@@ -636,7 +655,7 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       );
       setLastAddResult(result);
       setMsg(
-        `成功增加 ${result.units_added_total} 題（${result.student_count} 位學生 × ${result.subject_count} 科）`
+        `成功增加共享配額 ${result.units_added_total} 題（電話 ${result.mobile_number}）`
       );
       setAddAmount("");
       const refreshed = await adminConsoleRequest<ParentInfo | null>(
@@ -646,36 +665,11 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       );
       if (refreshed) {
         setParentInfo(refreshed);
-        if (!refreshed.students.some((student) => student.student.id === targetStudentId)) {
-          setTargetStudentId(refreshed.students[0]?.student.id ?? "");
-        }
+        await loadSharedQuotaSummary(refreshed.parent.mobile_number);
       }
     } catch { setMsg("增加失敗"); }
     finally { setLoading(false); }
   };
-
-  const balanceSummary = useMemo(() => {
-    if (!parentInfo) return null;
-    const totalsBySubject = new Map<string, number>();
-    let total = 0;
-    for (const studentInfo of parentInfo.students) {
-      for (const balance of studentInfo.balances) {
-        const subject = String(balance.subject || "").trim() || "Unknown";
-        const remaining = Number(balance.remaining_questions || 0);
-        totalsBySubject.set(subject, (totalsBySubject.get(subject) ?? 0) + remaining);
-        total += remaining;
-      }
-    }
-    const rows = Array.from(totalsBySubject.entries()).sort((a, b) => {
-      const ai = QUOTA_SUBJECT_ORDER.indexOf(a[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
-      const bi = QUOTA_SUBJECT_ORDER.indexOf(b[0] as (typeof QUOTA_SUBJECT_ORDER)[number]);
-      if (ai >= 0 && bi >= 0) return ai - bi;
-      if (ai >= 0) return -1;
-      if (bi >= 0) return 1;
-      return a[0].localeCompare(b[0]);
-    });
-    return { rows, total };
-  }, [parentInfo]);
 
   return (
     <div className="space-y-4">
@@ -697,57 +691,28 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
           <p className="text-sm text-gray-500">家長：{parentInfo.parent.mobile_number} {parentInfo.parent.parent_name && `(${parentInfo.parent.parent_name})`}</p>
           <p className="text-xs text-gray-500">
-            配額增加模式支援：
-            <span className="font-semibold text-gray-700">整個電話（全學生 × 全科）</span>、
-            <span className="font-semibold text-gray-700">單一學生（全科）</span>、
-            <span className="font-semibold text-gray-700">單一學生（單科）</span>。
+            目前策略：<span className="font-semibold text-gray-700">共享題目配額池</span>。增加後可由此電話下
+            <span className="font-semibold text-gray-700">所有學生</span>於
+            <span className="font-semibold text-gray-700">所有科目</span>共用。
           </p>
-          {balanceSummary && (
+          {sharedQuotaSummary && (
             <div className="rounded-lg border border-sky-100 bg-sky-50/50 p-3 text-sm">
-              <p className="font-semibold text-sky-800">此電話現有總配額：{balanceSummary.total} 題</p>
+              <p className="font-semibold text-sky-800">
+                此電話共享總配額：
+                {sharedQuotaSummary.total_balance < 0
+                  ? " Unlimited"
+                  : ` ${sharedQuotaSummary.total_balance} 題`}
+              </p>
               <p className="mt-1 text-xs text-sky-700">
-                {balanceSummary.rows.map(([subject, total]) => `${subject}: ${total}`).join(" / ")}
+                共享範圍：{parentInfo.students.length} 位學生 × 全部科目（{sharedQuotaSummary.month}）
               </p>
             </div>
           )}
-          <div className="grid gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-4">
-            <select
-              value={quotaMode}
-              onChange={(e) => setQuotaMode(e.target.value as QuotaMode)}
-              className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
-            >
-              <option value="mobile_all_subjects">整個電話（全學生 × 全科）</option>
-              <option value="student_all_subjects">單一學生（全科）</option>
-              <option value="student_single_subject">單一學生（單科）</option>
-            </select>
-            {quotaMode !== "mobile_all_subjects" && (
-              <select
-                value={targetStudentId}
-                onChange={(e) => setTargetStudentId(e.target.value)}
-                className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
-              >
-                {parentInfo.students.map((studentInfo) => (
-                  <option key={studentInfo.student.id} value={studentInfo.student.id}>
-                    {studentInfo.student.student_name}（{studentInfo.student.grade_level}）
-                  </option>
-                ))}
-              </select>
-            )}
-            {quotaMode === "student_single_subject" && (
-              <select
-                value={targetSubject}
-                onChange={(e) => setTargetSubject(e.target.value)}
-                className="p-2 rounded-lg border border-gray-200 text-sm bg-white"
-              >
-                <option value="Math">Math</option>
-                <option value="Chinese">Chinese</option>
-                <option value="English">English</option>
-              </select>
-            )}
+          <div className="grid gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-2">
             <input
               value={addAmount}
               onChange={(e) => setAddAmount(e.target.value.replace(/\D/g, ""))}
-              placeholder="增加數量"
+              placeholder="增加共享配額數量"
               className="p-2 rounded-lg border border-gray-200 text-sm outline-none"
             />
             <button
@@ -760,25 +725,20 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
           </div>
           {lastAddResult && (
             <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 text-xs text-emerald-700">
-              上次操作：{lastAddResult.targeted_students.length} 位學生，{lastAddResult.targeted_subjects.join(" / ")}，
-              共增加 {lastAddResult.units_added_total} 題。
+              上次操作：電話 {lastAddResult.mobile_number} 共享池增加 {lastAddResult.units_added_total} 題（
+              {lastAddResult.shared_total_before ?? "?"} → {lastAddResult.shared_total_after ?? "?"} 題）。
             </div>
           )}
           {parentInfo.students.map((si) => (
             <div key={si.student.id} className="border border-gray-100 rounded-lg p-3">
               <p className="text-sm font-semibold">{si.student.student_name} ({si.student.grade_level})</p>
               <p className="text-xs text-gray-400 mb-2">ID: {si.student.id}</p>
-              {si.balances.map((b) => (
-                <p key={b.id} className="text-sm">
-                  {b.subject}：<span className="font-bold text-indigo-600">{b.remaining_questions}</span> 題
-                </p>
-              ))}
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500">
                 小計：
                 <span className="font-semibold text-gray-700">
                   {si.balances.reduce((sum, balance) => sum + Number(balance.remaining_questions || 0), 0)}
                 </span>{" "}
-                題
+                題（共享池內部分佈）
               </p>
             </div>
           ))}
