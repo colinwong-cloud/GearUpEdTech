@@ -590,6 +590,11 @@
           "snippet": "題目餘額"
         },
         {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "題目餘額（共享）"
+        },
+        {
           "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
         },
@@ -597,6 +602,11 @@
           "type": "file_contains",
           "path": "src/app/api/quiz/submit-answer-bonus/route.ts",
           "snippet": "consume-shared-quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quiz/submit-answer-bonus/route.ts",
+          "snippet": "submit-answer-shared-fallback-triggered"
         }
       ]
     },
@@ -1645,8 +1655,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-25T06:22:36.112Z",
+  "generated_at": "2026-07-25T06:35:18.935Z",
   "commit_inventory": [
+    {
+      "sha": "e279b7452bbf0a3aa12fae78de5a47670b6ed59f",
+      "date": "2026-07-25",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "1165d970230eb0fc75f8fcb1438ed1ead21740d4",
       "date": "2026-07-25",
@@ -3329,7 +3344,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 336,
+    "total_commits_since_start": 337,
     "total_feature_rows": 56
   }
 }

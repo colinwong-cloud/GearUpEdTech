@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const FREE_TIER_MONTHLY_CAP_ERROR = "本月免費題目額度已用完（200題）";
 const MOBILE_SHARED_QUOTA_POLICY_VERSION = "mobile-shared-quota-v1";
+const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
 
 type BonusSubmitPayload = {
   sessionId?: string;
@@ -93,9 +94,20 @@ export async function POST(req: NextRequest) {
   }
 
   const submitErrMessage = String(submitErr.message || "");
-  if (!submitErrMessage.includes(FREE_TIER_MONTHLY_CAP_ERROR)) {
+  const fallbackReason = submitErrMessage.includes(FREE_TIER_MONTHLY_CAP_ERROR)
+    ? "free-tier-monthly-cap"
+    : INSUFFICIENT_BALANCE_ERROR_RE.test(submitErrMessage)
+      ? "insufficient-subject-balance"
+      : null;
+  if (!fallbackReason) {
     return NextResponse.json({ error: submitErrMessage || "提交答案失敗。" }, { status: 400 });
   }
+  logAntiMissingMobileSharedQuota("submit-answer-shared-fallback-triggered", {
+    session_id: sessionId,
+    student_id: studentId,
+    reason: fallbackReason,
+    submit_error_message: submitErrMessage,
+  });
 
   const { data: sessionData, error: sessionErr } = await admin
     .from("quiz_sessions")

@@ -404,16 +404,6 @@ interface ParentBalanceView {
   transactions: (BalanceTransaction & { student_name: string })[];
 }
 
-interface StudentBalanceRow {
-  id: string;
-  subject: string;
-  remaining_questions: number | null;
-}
-
-interface ParentProfileForBalance {
-  students: { id: string }[];
-}
-
 type SubmitAnswerRpcArgs = {
   p_session_id: string;
   p_question_id: string;
@@ -421,6 +411,13 @@ type SubmitAnswerRpcArgs = {
   p_is_correct: boolean;
   p_question_order: number;
 };
+
+const SHARED_BALANCE_SUBJECT_KEYS = [
+  PRIMARY_QUIZ_SUBJECT,
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
+] as const;
+const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
 
 function getBalanceSubjectVariants(subjectKey: string): string[] {
   const key = subjectKey.trim().toLowerCase();
@@ -436,40 +433,7 @@ function getBalanceSubjectVariants(subjectKey: string): string[] {
   return [subjectKey, key];
 }
 
-function scoreBalanceCandidate(totalBalance: number): number {
-  if (totalBalance < 0) return Number.MAX_SAFE_INTEGER;
-  return totalBalance;
-}
-
-function normalizeBalanceSubjectKey(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-async function fetchStudentBonusBalance(
-  studentId: string,
-  subjectKey: string
-): Promise<number> {
-  const variants = new Set(
-    getBalanceSubjectVariants(subjectKey).map(normalizeBalanceSubjectKey)
-  );
-  const { data } = await supabase
-    .from("student_balances")
-    .select("id,subject,remaining_questions")
-    .eq("student_id", studentId);
-  const rows = (data as StudentBalanceRow[] | null) ?? [];
-  let best = 0;
-  for (const row of rows) {
-    if (!row.subject) continue;
-    if (!variants.has(normalizeBalanceSubjectKey(row.subject))) continue;
-    const remaining = Number(row.remaining_questions ?? 0);
-    if (Number.isFinite(remaining) && remaining > best) {
-      best = remaining;
-    }
-  }
-  return best;
-}
-
-async function fetchStudentBalanceWithFallback(
+async function fetchStudentSubjectFamilyBalance(
   studentId: string,
   subjectKey: string
 ): Promise<StudentBalance | null> {
@@ -486,70 +450,38 @@ async function fetchStudentBalanceWithFallback(
       best = record;
     }
   }
-  if (best && best.remaining_questions >= 900000) {
-    return best;
+  return best;
+}
+
+async function fetchStudentBalanceWithFallback(
+  studentId: string,
+  subjectKey: string
+): Promise<StudentBalance | null> {
+  let hasAnyBalanceRecord = false;
+  let sharedTotal = 0;
+  let hasUnlimitedBalance = false;
+
+  for (const sharedSubject of SHARED_BALANCE_SUBJECT_KEYS) {
+    const subjectBalance = await fetchStudentSubjectFamilyBalance(studentId, sharedSubject);
+    if (!subjectBalance) continue;
+    hasAnyBalanceRecord = true;
+    if (subjectBalance.remaining_questions < 0) {
+      hasUnlimitedBalance = true;
+      break;
+    }
+    sharedTotal += Math.max(0, Number(subjectBalance.remaining_questions || 0));
   }
 
-  const bonusRemaining = await fetchStudentBonusBalance(studentId, subjectKey);
-  const baseRemaining = Math.max(best?.remaining_questions ?? 0, 0);
-  const combinedRemaining = baseRemaining + bonusRemaining;
-
-  if (!best && combinedRemaining <= 0) {
+  if (!hasAnyBalanceRecord) {
     return null;
   }
 
   return {
-    id: best?.id ?? studentId,
-    student_id: best?.student_id ?? studentId,
+    id: studentId,
+    student_id: studentId,
     subject: subjectKey,
-    remaining_questions: combinedRemaining,
+    remaining_questions: hasUnlimitedBalance ? -1 : sharedTotal,
   };
-}
-
-async function fetchParentBonusBalance(
-  mobileNumber: string,
-  subjectKey: string
-): Promise<number> {
-  const { data: profileData } = await supabase.rpc("get_parent_profile", {
-    p_mobile: mobileNumber.trim(),
-  });
-  const profile = profileData as ParentProfileForBalance | null;
-  const studentIds = (profile?.students ?? []).map((student) => student.id);
-  if (!studentIds.length) return 0;
-
-  const variants = new Set(
-    getBalanceSubjectVariants(subjectKey).map(normalizeBalanceSubjectKey)
-  );
-  const { data } = await supabase
-    .from("student_balances")
-    .select("student_id,subject,remaining_questions")
-    .in("student_id", studentIds);
-
-  const rows =
-    (data as {
-      student_id: string;
-      subject: string;
-      remaining_questions: number | null;
-    }[] | null) ?? [];
-
-  const bestPerStudent = new Map<string, number>();
-  for (const row of rows) {
-    if (!row.subject || !variants.has(normalizeBalanceSubjectKey(row.subject))) {
-      continue;
-    }
-    const remaining = Number(row.remaining_questions ?? 0);
-    if (!Number.isFinite(remaining) || remaining <= 0) continue;
-    const existing = bestPerStudent.get(row.student_id) ?? 0;
-    if (remaining > existing) {
-      bestPerStudent.set(row.student_id, remaining);
-    }
-  }
-
-  let total = 0;
-  for (const value of bestPerStudent.values()) {
-    total += value;
-  }
-  return total;
 }
 
 async function submitAnswerWithQuotaFallback(
@@ -560,7 +492,9 @@ async function submitAnswerWithQuotaFallback(
   if (!ansErr) return;
 
   const msg = String(ansErr.message || "");
-  if (!msg.includes(FREE_TIER_MONTHLY_CAP_ERROR)) {
+  const isSharedPoolFallbackError =
+    msg.includes(FREE_TIER_MONTHLY_CAP_ERROR) || INSUFFICIENT_BALANCE_ERROR_RE.test(msg);
+  if (!isSharedPoolFallbackError) {
     throw ansErr;
   }
 
@@ -587,36 +521,77 @@ async function submitAnswerWithQuotaFallback(
 
 async function fetchParentBalanceViewWithFallback(
   mobileNumber: string,
-  subjectKey: string,
+  _subjectKey: string,
   year: number,
   month: number
 ): Promise<ParentBalanceView | null> {
-  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
-  let best: ParentBalanceView | null = null;
-  let bestScore = Number.NEGATIVE_INFINITY;
-  for (const variant of variants) {
-    const { data } = await supabase.rpc("get_parent_balance_view", {
-      p_mobile: mobileNumber.trim(),
-      p_subject: variant,
-      p_year: year,
-      p_month: month,
-    });
-    const record = data as ParentBalanceView | null;
-    if (!record) continue;
-    const score = scoreBalanceCandidate(record.total_balance);
-    if (!best || score > bestScore) {
-      best = record;
-      bestScore = score;
-    }
-  }
-  if (!best || best.total_balance < 0) return best;
+  let hasAny = false;
+  let hasUnlimitedBalance = false;
+  let totalBalance = 0;
+  let openingBalance = 0;
+  const mergedTransactions: (BalanceTransaction & { student_name: string })[] = [];
 
-  const bonusRemaining = await fetchParentBonusBalance(mobileNumber, subjectKey);
-  if (bonusRemaining <= 0) return best;
+  for (const sharedSubject of SHARED_BALANCE_SUBJECT_KEYS) {
+    const variants = Array.from(new Set(getBalanceSubjectVariants(sharedSubject)));
+    let best: ParentBalanceView | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const variant of variants) {
+      const { data } = await supabase.rpc("get_parent_balance_view", {
+        p_mobile: mobileNumber.trim(),
+        p_subject: variant,
+        p_year: year,
+        p_month: month,
+      });
+      const record = data as ParentBalanceView | null;
+      if (!record) continue;
+      const score =
+        record.total_balance < 0 ? Number.MAX_SAFE_INTEGER : Number(record.total_balance || 0);
+      if (!best || score > bestScore) {
+        best = record;
+        bestScore = score;
+      }
+    }
+    if (!best) continue;
+    hasAny = true;
+    if (best.total_balance < 0 || best.opening_balance < 0) {
+      hasUnlimitedBalance = true;
+    }
+    totalBalance += Math.max(0, Number(best.total_balance || 0));
+    openingBalance += Math.max(0, Number(best.opening_balance || 0));
+    mergedTransactions.push(...(best.transactions ?? []));
+  }
+
+  if (!hasAny) return null;
+  if (hasUnlimitedBalance) {
+    return {
+      total_balance: -1,
+      opening_balance: -1,
+      transactions: mergedTransactions,
+    };
+  }
+
+  const sortedTransactions = [...mergedTransactions].sort((a, b) => {
+    const ta = new Date(a.created_at).getTime();
+    const tb = new Date(b.created_at).getTime();
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+    if (Number.isNaN(ta)) return 1;
+    if (Number.isNaN(tb)) return -1;
+    return ta - tb;
+  });
+
+  let runningBalance = openingBalance;
+  const sharedTransactions = sortedTransactions.map((tx) => {
+    runningBalance += Number(tx.change_amount || 0);
+    return {
+      ...tx,
+      balance_after: runningBalance,
+    };
+  });
 
   return {
-    ...best,
-    total_balance: best.total_balance + bonusRemaining,
+    total_balance: totalBalance,
+    opening_balance: openingBalance,
+    transactions: sharedTransactions,
   };
 }
 
@@ -4081,7 +4056,6 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
 }
 
 function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
-  const [balanceSubject, setBalanceSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [data, setData] = useState<ParentBalanceView | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -4096,7 +4070,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
       setLoading(true);
       const res = await fetchParentBalanceViewWithFallback(
         mobileNumber.trim(),
-        balanceSubject,
+        PRIMARY_QUIZ_SUBJECT,
         viewMonth.year,
         viewMonth.month
       );
@@ -4108,7 +4082,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
     return () => {
       cancelled = true;
     };
-  }, [mobileNumber, viewMonth, fetchKey, balanceSubject]);
+  }, [mobileNumber, viewMonth, fetchKey]);
 
   const prevMonth = () => {
     setLoading(true);
@@ -4146,29 +4120,9 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {STUDENT_SUBJECT_OPTIONS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => {
-                if (s.key === balanceSubject) return;
-                setBalanceSubject(s.key);
-              }}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                balanceSubject === s.key
-                  ? "bg-indigo-600 text-white shadow-md"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
-            <p className="text-indigo-100 text-xs font-medium">題目餘額（{subjectDisplayLabel(balanceSubject)}）</p>
+            <p className="text-indigo-100 text-xs font-medium">題目餘額（共享）</p>
             <p className="text-white text-4xl font-extrabold mt-1">{totalBalanceLabel}</p>
             <p className="text-indigo-200 text-xs mt-2">此餘額由所有學生共用</p>
           </div>
