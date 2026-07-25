@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const FREE_TIER_MONTHLY_CAP_ERROR = "本月免費題目額度已用完（200題）";
+const MOBILE_SHARED_QUOTA_POLICY_VERSION = "mobile-shared-quota-v1";
 
 type BonusSubmitPayload = {
   sessionId?: string;
@@ -20,8 +21,13 @@ type QuizSessionRow = {
 
 type StudentBalanceRow = {
   id: string;
+  student_id: string | null;
   subject: string | null;
   remaining_questions: number | null;
+};
+
+type StudentParentRow = {
+  parent_id: string | null;
 };
 
 function getAdminClient() {
@@ -31,22 +37,13 @@ function getAdminClient() {
   return createClient(url, key);
 }
 
-function normalizeSubjectKey(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-function getSubjectVariantKeys(subject: string | null): Set<string> {
-  const normalized = normalizeSubjectKey(subject || "");
-  if (normalized === "math" || normalized === "數學") {
-    return new Set(["math", "數學"]);
-  }
-  if (normalized === "chinese" || normalized === "中文") {
-    return new Set(["chinese", "中文"]);
-  }
-  if (normalized === "english" || normalized === "英文") {
-    return new Set(["english", "英文"]);
-  }
-  return new Set([normalized]);
+function logAntiMissingMobileSharedQuota(event: string, payload: Record<string, unknown>) {
+  console.info(
+    `[anti-missing][quota][mobile-shared] ${event} ${JSON.stringify({
+      policy_version: MOBILE_SHARED_QUOTA_POLICY_VERSION,
+      ...payload,
+    })}`
+  );
 }
 
 function normalizeQuestionOrder(value: unknown): number | null {
@@ -118,24 +115,56 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "學生資料不匹配，請重新登入。" }, { status: 400 });
   }
 
-  const subjectKeys = getSubjectVariantKeys(sessionData.subject);
+  const { data: practicingStudent, error: practicingStudentErr } = await admin
+    .from("students")
+    .select("parent_id")
+    .eq("id", sessionData.student_id)
+    .maybeSingle<StudentParentRow>();
+  if (practicingStudentErr) {
+    return NextResponse.json(
+      { error: practicingStudentErr.message || "讀取學生資料失敗" },
+      { status: 500 }
+    );
+  }
+  if (!practicingStudent?.parent_id) {
+    return NextResponse.json({ error: "找不到學生家長資料" }, { status: 404 });
+  }
+
+  const { data: parentStudentRows, error: parentStudentsErr } = await admin
+    .from("students")
+    .select("id")
+    .eq("parent_id", practicingStudent.parent_id)
+    .limit(2000);
+  if (parentStudentsErr) {
+    return NextResponse.json(
+      { error: parentStudentsErr.message || "讀取家長學生資料失敗" },
+      { status: 500 }
+    );
+  }
+  const familyStudentIds = (parentStudentRows ?? [])
+    .map((row) => String(row.id ?? "").trim())
+    .filter(Boolean);
+  if (!familyStudentIds.length) {
+    return NextResponse.json({ error: "找不到同電話學生資料" }, { status: 404 });
+  }
+
   const { data: balanceRows, error: balanceErr } = await admin
     .from("student_balances")
-    .select("id,subject,remaining_questions")
-    .eq("student_id", sessionData.student_id);
+    .select("id,student_id,subject,remaining_questions")
+    .in("student_id", familyStudentIds);
 
   if (balanceErr) {
     return NextResponse.json({ error: balanceErr.message || "讀取配額失敗" }, { status: 500 });
   }
 
   const candidates = ((balanceRows as StudentBalanceRow[] | null) ?? [])
-    .filter((row) => {
-      if (!row.subject) return false;
-      return subjectKeys.has(normalizeSubjectKey(row.subject));
-    })
+    .filter((row) => Number(row.remaining_questions ?? 0) > 0)
     .sort((a, b) => (b.remaining_questions ?? 0) - (a.remaining_questions ?? 0));
+  const ownCandidates = candidates.filter(
+    (row) => String(row.student_id ?? "").trim() === sessionData.student_id
+  );
 
-  const targetBalance = candidates[0];
+  const targetBalance = ownCandidates[0] ?? candidates[0];
   const currentRemaining = Number(targetBalance?.remaining_questions ?? 0);
   if (!targetBalance || currentRemaining <= 0) {
     return NextResponse.json(
@@ -143,6 +172,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  const familyTotalBefore = ((balanceRows as StudentBalanceRow[] | null) ?? []).reduce(
+    (sum, row) => sum + Math.max(0, Number(row.remaining_questions ?? 0)),
+    0
+  );
 
   const { error: insertAnswerErr } = await admin.from("session_answers").insert({
     session_id: sessionId,
@@ -164,22 +197,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: updateBalanceErr.message || "更新配額失敗" }, { status: 500 });
   }
 
+  const familyTotalAfter = Math.max(0, familyTotalBefore - 1);
   const txSubject = String(targetBalance.subject || sessionData.subject || "Math").trim();
   const { error: txErr } = await admin.from("balance_transactions").insert({
     student_id: sessionData.student_id,
     subject: txSubject,
     change_amount: -1,
-    balance_after: nextRemaining,
+    balance_after: familyTotalAfter,
     description: "ADMIN_QUOTA_USAGE",
     session_id: sessionId,
   });
   if (txErr) {
     console.error("submit-answer-bonus tx insert warning:", txErr.message);
   }
+  logAntiMissingMobileSharedQuota("consume-shared-quota", {
+    session_id: sessionId,
+    student_id: sessionData.student_id,
+    charged_balance_id: targetBalance.id,
+    charged_balance_student_id: targetBalance.student_id,
+    charged_balance_subject: txSubject,
+    family_total_before: familyTotalBefore,
+    family_total_after: familyTotalAfter,
+  });
 
   return NextResponse.json({
     ok: true,
     source: "admin_quota_bonus",
-    remaining_questions: nextRemaining,
+    remaining_questions: familyTotalAfter,
+    shared_pool: true,
+    policy_version: MOBILE_SHARED_QUOTA_POLICY_VERSION,
   });
 }

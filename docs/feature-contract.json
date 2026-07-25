@@ -592,6 +592,11 @@
         {
           "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quiz/submit-answer-bonus/route.ts",
+          "snippet": "consume-shared-quota"
         }
       ]
     },
@@ -760,6 +765,16 @@
         {
           "type": "file_exists",
           "path": "supabase_admin_console.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "共享題目配額池"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "add-quota-mobile-shared-applied"
         }
       ]
     },
@@ -1630,8 +1645,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-24T15:05:48.181Z",
+  "generated_at": "2026-07-25T06:20:09.878Z",
   "commit_inventory": [
+    {
+      "sha": "4e1c1abec7acb635ec54b7ef0447566723e003a6",
+      "date": "2026-07-24",
+      "summary": "chore: refresh feature contract for deploy-role-selection branch"
+    },
     {
       "sha": "31da0c62eb9542e91cbbfcfae5f304a960b56492",
       "date": "2026-07-24",
@@ -3304,7 +3324,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 334,
+    "total_commits_since_start": 335,
     "total_feature_rows": 56
   }
 }

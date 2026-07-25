@@ -326,6 +326,11 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "supabase_question_balance_per_answer.sql" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "題目餘額" },
         { type: "file_exists", path: "src/lib/balance-transactions.ts" },
+        {
+          type: "file_contains",
+          path: "src/app/api/quiz/submit-answer-bonus/route.ts",
+          snippet: "consume-shared-quota",
+        },
       ],
     },
     {
@@ -414,6 +419,16 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_exists", path: "src/app/admin/page.tsx" },
         { type: "file_exists", path: "supabase_admin_console.sql" },
+        {
+          type: "file_contains",
+          path: "src/app/admin/page.tsx",
+          snippet: "共享題目配額池",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "add-quota-mobile-shared-applied",
+        },
       ],
     },
     {
