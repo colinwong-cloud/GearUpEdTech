@@ -14,9 +14,6 @@ import type {
 } from "@/lib/types";
 import {
   PRIMARY_QUIZ_SUBJECT,
-  CHINESE_QUIZ_SUBJECT,
-  ENGLISH_QUIZ_SUBJECT,
-  LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
   subjectDisplayLabel,
@@ -29,10 +26,6 @@ import {
 import {
   pushGtmEventOncePerSession,
 } from "@/lib/gtm-events";
-import {
-  groupBalanceTransactions,
-  type GroupedBalanceTransactionRow,
-} from "@/lib/balance-transactions";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
@@ -389,20 +382,21 @@ interface ParentGradeRankPayload {
   is_eligible?: boolean;
 }
 
-interface BalanceTransaction {
+interface QuotaUsageRecord {
   id: string;
-  change_amount: number;
-  balance_after: number | null;
-  description: string;
-  session_id: string | null;
-  created_at: string;
+  date: string;
+  student_name: string;
+  questions_practiced: number;
 }
 
-interface ParentBalanceView {
+interface MobileQuotaSummary {
+  is_paid: boolean;
   total_balance: number;
   opening_balance: number;
-  transactions: (BalanceTransaction & { student_name: string })[];
+  records: QuotaUsageRecord[];
 }
+
+type ParentBalanceView = MobileQuotaSummary;
 
 type SubmitAnswerRpcArgs = {
   p_session_id: string;
@@ -412,67 +406,49 @@ type SubmitAnswerRpcArgs = {
   p_question_order: number;
 };
 
-const SHARED_BALANCE_SUBJECT_KEYS = [
-  PRIMARY_QUIZ_SUBJECT,
-  CHINESE_QUIZ_SUBJECT,
-  ENGLISH_QUIZ_SUBJECT,
-] as const;
 const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
 
-function getBalanceSubjectVariants(subjectKey: string): string[] {
-  const key = subjectKey.trim().toLowerCase();
-  if (key === "math" || key === "數學") {
-    return [PRIMARY_QUIZ_SUBJECT, LEGACY_PRIMARY_QUIZ_SUBJECT_KEY, "math"];
-  }
-  if (key === "chinese" || key === "中文") {
-    return [CHINESE_QUIZ_SUBJECT, "中文", "chinese"];
-  }
-  if (key === "english" || key === "英文") {
-    return [ENGLISH_QUIZ_SUBJECT, "英文", "english"];
-  }
-  return [subjectKey, key];
-}
+type MobileQuotaSummaryRequest = {
+  mobileNumber: string;
+  subject?: string;
+  year?: number;
+  month?: number;
+};
 
-async function fetchStudentSubjectFamilyBalance(
-  studentId: string,
-  subjectKey: string
-): Promise<StudentBalance | null> {
-  const variants = Array.from(new Set(getBalanceSubjectVariants(subjectKey)));
-  let best: StudentBalance | null = null;
-  for (const variant of variants) {
-    const { data } = await supabase.rpc("get_student_balance", {
-      p_student_id: studentId,
-      p_subject: variant,
-    });
-    const record = data as StudentBalance | null;
-    if (!record) continue;
-    if (!best || record.remaining_questions > best.remaining_questions) {
-      best = record;
-    }
+async function fetchMobileQuotaSummary({
+  mobileNumber,
+  subject,
+  year,
+  month,
+}: MobileQuotaSummaryRequest): Promise<MobileQuotaSummary | null> {
+  const mobile = mobileNumber.trim();
+  if (!mobile) return null;
+  const res = await fetch("/api/quota/mobile-summary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mobile_number: mobile,
+      subject: subject || "all",
+      year,
+      month,
+    }),
+  });
+  const payload = (await res.json().catch(() => null)) as
+    | { data?: MobileQuotaSummary; error?: string }
+    | null;
+  if (!res.ok) {
+    throw new Error(payload?.error || "未能讀取題目配額");
   }
-  return best;
+  return payload?.data ?? null;
 }
 
 async function fetchStudentBalanceWithFallback(
   studentId: string,
-  subjectKey: string
+  subjectKey: string,
+  mobileNumber: string
 ): Promise<StudentBalance | null> {
-  let hasAnyBalanceRecord = false;
-  let sharedTotal = 0;
-  let hasUnlimitedBalance = false;
-
-  for (const sharedSubject of SHARED_BALANCE_SUBJECT_KEYS) {
-    const subjectBalance = await fetchStudentSubjectFamilyBalance(studentId, sharedSubject);
-    if (!subjectBalance) continue;
-    hasAnyBalanceRecord = true;
-    if (subjectBalance.remaining_questions < 0) {
-      hasUnlimitedBalance = true;
-      break;
-    }
-    sharedTotal += Math.max(0, Number(subjectBalance.remaining_questions || 0));
-  }
-
-  if (!hasAnyBalanceRecord) {
+  const summary = await fetchMobileQuotaSummary({ mobileNumber, subject: "all" });
+  if (!summary) {
     return null;
   }
 
@@ -480,7 +456,7 @@ async function fetchStudentBalanceWithFallback(
     id: studentId,
     student_id: studentId,
     subject: subjectKey,
-    remaining_questions: hasUnlimitedBalance ? -1 : sharedTotal,
+    remaining_questions: summary.total_balance,
   };
 }
 
@@ -521,78 +497,16 @@ async function submitAnswerWithQuotaFallback(
 
 async function fetchParentBalanceViewWithFallback(
   mobileNumber: string,
-  _subjectKey: string,
+  subjectKey: string,
   year: number,
   month: number
 ): Promise<ParentBalanceView | null> {
-  let hasAny = false;
-  let hasUnlimitedBalance = false;
-  let totalBalance = 0;
-  let openingBalance = 0;
-  const mergedTransactions: (BalanceTransaction & { student_name: string })[] = [];
-
-  for (const sharedSubject of SHARED_BALANCE_SUBJECT_KEYS) {
-    const variants = Array.from(new Set(getBalanceSubjectVariants(sharedSubject)));
-    let best: ParentBalanceView | null = null;
-    let bestScore = Number.NEGATIVE_INFINITY;
-    for (const variant of variants) {
-      const { data } = await supabase.rpc("get_parent_balance_view", {
-        p_mobile: mobileNumber.trim(),
-        p_subject: variant,
-        p_year: year,
-        p_month: month,
-      });
-      const record = data as ParentBalanceView | null;
-      if (!record) continue;
-      const score =
-        record.total_balance < 0 ? Number.MAX_SAFE_INTEGER : Number(record.total_balance || 0);
-      if (!best || score > bestScore) {
-        best = record;
-        bestScore = score;
-      }
-    }
-    if (!best) continue;
-    hasAny = true;
-    if (best.total_balance < 0 || best.opening_balance < 0) {
-      hasUnlimitedBalance = true;
-    }
-    totalBalance += Math.max(0, Number(best.total_balance || 0));
-    openingBalance += Math.max(0, Number(best.opening_balance || 0));
-    mergedTransactions.push(...(best.transactions ?? []));
-  }
-
-  if (!hasAny) return null;
-  if (hasUnlimitedBalance) {
-    return {
-      total_balance: -1,
-      opening_balance: -1,
-      transactions: mergedTransactions,
-    };
-  }
-
-  const sortedTransactions = [...mergedTransactions].sort((a, b) => {
-    const ta = new Date(a.created_at).getTime();
-    const tb = new Date(b.created_at).getTime();
-    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
-    if (Number.isNaN(ta)) return 1;
-    if (Number.isNaN(tb)) return -1;
-    return ta - tb;
+  return fetchMobileQuotaSummary({
+    mobileNumber,
+    subject: subjectKey,
+    year,
+    month,
   });
-
-  let runningBalance = openingBalance;
-  const sharedTransactions = sortedTransactions.map((tx) => {
-    runningBalance += Number(tx.change_amount || 0);
-    return {
-      ...tx,
-      balance_after: runningBalance,
-    };
-  });
-
-  return {
-    total_balance: totalBalance,
-    opening_balance: openingBalance,
-    transactions: sharedTransactions,
-  };
 }
 
 interface ParentPaymentHistoryRow {
@@ -1162,9 +1076,10 @@ export default function QuizApp() {
       try {
         const balRecord = await fetchStudentBalanceWithFallback(
           selectedStudent.id,
-          subject
+          subject,
+          mobileNumber
         );
-        if (balRecord && balRecord.remaining_questions <= 0) {
+        if (balRecord && balRecord.remaining_questions >= 0 && balRecord.remaining_questions <= 0) {
           throw new Error("你的練習題目已用完，請聯絡家長充值。");
         }
 
@@ -1177,12 +1092,12 @@ export default function QuizApp() {
         setLoading(false);
       }
     },
-    [selectedStudent]
+    [selectedStudent, mobileNumber]
   );
 
   const handleQuestionCountSelect = async (count: number) => {
     if (!selectedStudent || !selectedSubject) return;
-    if (balance && balance.remaining_questions < count) {
+    if (balance && balance.remaining_questions >= 0 && balance.remaining_questions < count) {
       setError(`餘額不足，你只剩 ${balance.remaining_questions} 題，請選擇較少的題數。`);
       return;
     }
@@ -1316,7 +1231,8 @@ export default function QuizApp() {
       if (selectedStudent && selectedSubject) {
         const balFresh = await fetchStudentBalanceWithFallback(
           selectedStudent.id,
-          selectedSubject
+          selectedSubject,
+          mobileNumber
         );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
@@ -1371,7 +1287,8 @@ export default function QuizApp() {
       if (selectedStudent && selectedSubject) {
         const balFresh = await fetchStudentBalanceWithFallback(
           selectedStudent.id,
-          selectedSubject
+          selectedSubject,
+          mobileNumber
         );
         if (balFresh) setBalance(balFresh as StudentBalance);
       }
@@ -2919,7 +2836,7 @@ function QuestionCountScreen({
           </p>
           {balance !== null && (
             <p className="mt-1 text-sm text-indigo-600 font-medium">
-              目前餘額：{balance} 題
+              目前餘額：{balance < 0 ? "Unlimited" : `${balance} 題`}
             </p>
           )}
         </div>
@@ -2930,7 +2847,7 @@ function QuestionCountScreen({
         )}
         <div className="space-y-3">
           {QUESTION_COUNT_OPTIONS.map((count) => {
-            const disabled = balance !== null && balance < count;
+            const disabled = balance !== null && balance >= 0 && balance < count;
             return (
               <button
                 key={count}
@@ -3077,7 +2994,7 @@ function ResultsView({
           <p className="mt-2 text-lg text-gray-600">{percentage}% 正確</p>
           {balance && (
             <p className="mt-2 text-sm text-gray-500">
-              剩餘題目：{balance.remaining_questions}
+              剩餘題目：{balance.remaining_questions < 0 ? "Unlimited" : balance.remaining_questions}
             </p>
           )}
         </div>
@@ -4056,6 +3973,7 @@ function ForgotPasswordScreen({ mobileNumber, onBack }: { mobileNumber: string; 
 }
 
 function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onBack: () => void }) {
+  const [balanceSubject, setBalanceSubject] = useState(PRIMARY_QUIZ_SUBJECT);
   const [data, setData] = useState<ParentBalanceView | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -4070,7 +3988,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
       setLoading(true);
       const res = await fetchParentBalanceViewWithFallback(
         mobileNumber.trim(),
-        PRIMARY_QUIZ_SUBJECT,
+        balanceSubject,
         viewMonth.year,
         viewMonth.month
       );
@@ -4082,7 +4000,7 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
     return () => {
       cancelled = true;
     };
-  }, [mobileNumber, viewMonth, fetchKey]);
+  }, [mobileNumber, viewMonth, fetchKey, balanceSubject]);
 
   const prevMonth = () => {
     setLoading(true);
@@ -4106,12 +4024,8 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
   };
 
   const monthLabel = `${viewMonth.year} 年 ${viewMonth.month} 月`;
-  const groupedTransactions = useMemo<GroupedBalanceTransactionRow[]>(() => {
-    return groupBalanceTransactions(data?.transactions ?? []);
-  }, [data]);
   const isUnlimited = Boolean(data && data.total_balance < 0);
   const totalBalanceLabel = isUnlimited ? "Unlimited" : String(data?.total_balance ?? 0);
-  const openingBalanceLabel = isUnlimited ? "Unlimited" : String(data?.opening_balance ?? 0);
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
@@ -4120,6 +4034,26 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {STUDENT_SUBJECT_OPTIONS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => {
+                if (s.key === balanceSubject) return;
+                setBalanceSubject(s.key);
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                balanceSubject === s.key
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         {data && (
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-md p-5">
             <p className="text-indigo-100 text-xs font-medium">題目餘額（共享）</p>
@@ -4140,44 +4074,26 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
         {loading ? (
           <div className="text-center py-8"><Spinner size="lg" /></div>
-        ) : data && groupedTransactions.length > 0 ? (
+        ) : data && data.records.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">日期</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">學生</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">描述</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">變動</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">餘額</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">練習題數</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                <tr className="bg-gray-50/50">
-                  <td className="px-3 py-2 text-xs text-gray-400">{viewMonth.month}/1</td>
-                  <td className="px-3 py-2 text-xs text-gray-400">—</td>
-                  <td className="px-3 py-2 text-xs text-gray-400">月初餘額</td>
-                  <td className="px-3 py-2 text-xs text-gray-400 text-right">—</td>
-                  <td className="px-3 py-2 text-xs font-semibold text-gray-600 text-right">{openingBalanceLabel}</td>
-                </tr>
-                {groupedTransactions.map((tx) => {
-                  const [, mm, dd] = tx.date.split("-");
+                {data.records.map((record) => {
+                  const [, mm, dd] = record.date.split("-");
                   const dateStr = `${Number(mm)}/${Number(dd)}`;
-                  const isPositive = tx.change_amount > 0;
                   return (
-                    <tr key={tx.id}>
+                    <tr key={record.id}>
                       <td className="px-3 py-2 text-xs text-gray-500">{dateStr}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{tx.student_name}</td>
-                      <td className="px-3 py-2 text-xs text-gray-600">{tx.description}</td>
-                      <td className={`px-3 py-2 text-xs font-semibold text-right ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
-                        {isPositive ? "+" : ""}{tx.change_amount}
-                      </td>
-                      <td className="px-3 py-2 text-xs font-semibold text-gray-700 text-right">
-                        {tx.balance_after === null
-                          ? "—"
-                          : tx.balance_after < 0
-                            ? "Unlimited"
-                            : tx.balance_after}
+                      <td className="px-3 py-2 text-xs text-gray-600">{record.student_name}</td>
+                      <td className="px-3 py-2 text-xs font-semibold text-right text-red-500">
+                        -{record.questions_practiced}
                       </td>
                     </tr>
                   );

@@ -104,7 +104,14 @@ interface AddQuotaResult {
   shared_total_after?: number;
   pool_anchor_student_id?: string;
   pool_anchor_subject?: string;
+  is_paid?: boolean;
 }
+
+type SharedQuotaSummary = {
+  is_paid: boolean;
+  total_balance: number;
+  month: string;
+};
 
 interface QuestionResult {
   id: string;
@@ -580,6 +587,23 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastAddResult, setLastAddResult] = useState<AddQuotaResult | null>(null);
+  const [sharedQuotaSummary, setSharedQuotaSummary] = useState<SharedQuotaSummary | null>(null);
+
+  const loadSharedQuotaSummary = useCallback(async (mobile: string) => {
+    const res = await fetch("/api/quota/mobile-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile_number: mobile.trim(), subject: "all" }),
+    });
+    const payload = (await res.json()) as {
+      data?: SharedQuotaSummary;
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(payload.error || "未能讀取共享配額");
+    }
+    setSharedQuotaSummary(payload.data ?? null);
+  }, []);
 
   const handleSearch = async () => {
     const mobile = searchVal.trim();
@@ -588,6 +612,7 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
     setMsg("");
     setParentInfo(null);
     setLastAddResult(null);
+    setSharedQuotaSummary(null);
     try {
       const data = await adminConsoleRequest<ParentInfo | null>(
         "search_parent",
@@ -601,6 +626,7 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
         return;
       }
       setParentInfo(data);
+      await loadSharedQuotaSummary(data.parent.mobile_number);
     } catch { setMsg("搜尋失敗"); }
     finally { setLoading(false); }
   };
@@ -639,22 +665,11 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
       );
       if (refreshed) {
         setParentInfo(refreshed);
+        await loadSharedQuotaSummary(refreshed.parent.mobile_number);
       }
     } catch { setMsg("增加失敗"); }
     finally { setLoading(false); }
   };
-
-  const balanceSummary = useMemo(() => {
-    if (!parentInfo) return null;
-    let total = 0;
-    for (const studentInfo of parentInfo.students) {
-      for (const balance of studentInfo.balances) {
-        const remaining = Number(balance.remaining_questions || 0);
-        total += remaining;
-      }
-    }
-    return { total, studentCount: parentInfo.students.length };
-  }, [parentInfo]);
 
   return (
     <div className="space-y-4">
@@ -680,11 +695,16 @@ function QuotaSection({ sessionToken }: { sessionToken: string }) {
             <span className="font-semibold text-gray-700">所有學生</span>於
             <span className="font-semibold text-gray-700">所有科目</span>共用。
           </p>
-          {balanceSummary && (
+          {sharedQuotaSummary && (
             <div className="rounded-lg border border-sky-100 bg-sky-50/50 p-3 text-sm">
-              <p className="font-semibold text-sky-800">此電話共享總配額：{balanceSummary.total} 題</p>
+              <p className="font-semibold text-sky-800">
+                此電話共享總配額：
+                {sharedQuotaSummary.total_balance < 0
+                  ? " Unlimited"
+                  : ` ${sharedQuotaSummary.total_balance} 題`}
+              </p>
               <p className="mt-1 text-xs text-sky-700">
-                共享範圍：{balanceSummary.studentCount} 位學生 × 全部科目
+                共享範圍：{parentInfo.students.length} 位學生 × 全部科目（{sharedQuotaSummary.month}）
               </p>
             </div>
           )}

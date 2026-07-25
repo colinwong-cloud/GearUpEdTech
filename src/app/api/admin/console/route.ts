@@ -645,19 +645,77 @@ function getAdminClient() {
 
 const QUOTA_POOL_ANCHOR_SUBJECT = "Math";
 const MOBILE_SHARED_QUOTA_POLICY_VERSION = "mobile-shared-quota-v1";
+const BASE_MONTHLY_MOBILE_QUOTA = 200;
+const QUOTA_TOPUP_DESCRIPTIONS = new Set(["管理員手動增加", "ADMIN_QUOTA_TOPUP"]);
+const QUOTA_USAGE_DESCRIPTIONS = new Set([
+  "FREE_TIER_USAGE",
+  "ADMIN_QUOTA_USAGE",
+  "練習作答扣除",
+]);
 type QuotaMode = "mobile_shared_pool";
 
 function normalizeQuotaMode(): QuotaMode {
   return "mobile_shared_pool";
 }
 
-function sumRemainingQuestions(
-  rows: { remaining_questions: number | null | undefined }[] | null | undefined
-): number {
-  return (rows ?? []).reduce(
-    (sum, row) => sum + Math.max(0, Number(row.remaining_questions ?? 0)),
-    0
-  );
+function getCurrentHktMonthRangeIso() {
+  const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const now = new Date();
+  const hktNow = new Date(now.getTime() + HKT_OFFSET_MS);
+  const year = hktNow.getUTCFullYear();
+  const month = hktNow.getUTCMonth();
+  const monthStartUtcMs = Date.UTC(year, month, 1) - HKT_OFFSET_MS;
+  const nextMonthStartUtcMs = Date.UTC(year, month + 1, 1) - HKT_OFFSET_MS;
+  return {
+    startIso: new Date(monthStartUtcMs).toISOString(),
+    endIso: new Date(nextMonthStartUtcMs).toISOString(),
+  };
+}
+
+async function computeMobileSharedQuota({
+  admin,
+  studentIds,
+  isPaidTier,
+}: {
+  admin: AdminClient;
+  studentIds: string[];
+  isPaidTier: boolean;
+}): Promise<{ total: number; topup: number; usage: number }> {
+  if (isPaidTier) {
+    return { total: -1, topup: 0, usage: 0 };
+  }
+  if (!studentIds.length) {
+    return { total: BASE_MONTHLY_MOBILE_QUOTA, topup: 0, usage: 0 };
+  }
+
+  const { startIso, endIso } = getCurrentHktMonthRangeIso();
+  const { data: txRows, error: txErr } = await admin
+    .from("balance_transactions")
+    .select("change_amount,description")
+    .in("student_id", studentIds)
+    .gte("created_at", startIso)
+    .lt("created_at", endIso);
+  if (txErr) throw txErr;
+
+  let topup = 0;
+  let usage = 0;
+  const rows = ((txRows ?? []) as { change_amount: number | null; description: string | null }[]);
+  for (const row of rows) {
+    const description = String(row.description ?? "").trim();
+    const change = Number(row.change_amount ?? 0);
+    if (!description || !Number.isFinite(change)) continue;
+    if (QUOTA_TOPUP_DESCRIPTIONS.has(description) && change > 0) {
+      topup += change;
+    }
+    if (QUOTA_USAGE_DESCRIPTIONS.has(description) && change < 0) {
+      usage += Math.abs(change);
+    }
+  }
+  return {
+    total: Math.max(BASE_MONTHLY_MOBILE_QUOTA + topup - usage, 0),
+    topup,
+    usage,
+  };
 }
 
 function logAntiMissingMobileSharedQuota(event: string, payload: Record<string, unknown>) {
@@ -1157,6 +1215,11 @@ export async function POST(req: NextRequest) {
         if (!targetStudentIds.length) {
           return NextResponse.json({ error: "此電話尚未建立學生資料" }, { status: 400 });
         }
+        const { data: tierData, error: tierErr } = await admin.rpc("get_parent_tier_status", {
+          p_mobile: responseMobile,
+        });
+        if (tierErr) throw tierErr;
+        const isPaidTier = Boolean((tierData as { is_paid?: boolean } | null)?.is_paid);
 
         const { data: existingRows, error: existingErr } = await admin
           .from("student_balances")
@@ -1164,7 +1227,12 @@ export async function POST(req: NextRequest) {
           .in("student_id", targetStudentIds);
         if (existingErr) throw existingErr;
 
-        const sharedTotalBefore = sumRemainingQuestions(existingRows);
+        const sharedBeforeSummary = await computeMobileSharedQuota({
+          admin,
+          studentIds: targetStudentIds,
+          isPaidTier,
+        });
+        const sharedTotalBefore = sharedBeforeSummary.total;
         const sortedRows = [...(existingRows ?? [])].sort((a, b) => {
           const diff = Number(b.remaining_questions ?? 0) - Number(a.remaining_questions ?? 0);
           if (diff !== 0) return diff;
@@ -1225,7 +1293,12 @@ export async function POST(req: NextRequest) {
             total_remaining: totalRemaining,
           };
         });
-        const sharedTotalAfter = sumRemainingQuestions(balanceRows);
+        const sharedAfterSummary = await computeMobileSharedQuota({
+          admin,
+          studentIds: targetStudentIds,
+          isPaidTier,
+        });
+        const sharedTotalAfter = sharedAfterSummary.total;
         logAntiMissingMobileSharedQuota("add-quota-mobile-shared-applied", {
           mode,
           mobile_number: responseMobile,
@@ -1235,6 +1308,11 @@ export async function POST(req: NextRequest) {
           anchor_subject: anchorSubject,
           shared_total_before: sharedTotalBefore,
           shared_total_after: sharedTotalAfter,
+          tier_is_paid: isPaidTier,
+          monthly_topped_up_before: sharedBeforeSummary.topup,
+          monthly_usage_before: sharedBeforeSummary.usage,
+          monthly_topped_up_after: sharedAfterSummary.topup,
+          monthly_usage_after: sharedAfterSummary.usage,
         });
 
         return NextResponse.json({
@@ -1249,6 +1327,7 @@ export async function POST(req: NextRequest) {
             balances_after: balancesAfter,
             shared_total_before: sharedTotalBefore,
             shared_total_after: sharedTotalAfter,
+            is_paid: isPaidTier,
             pool_anchor_student_id: anchorStudentId,
             pool_anchor_subject: anchorSubject,
           },

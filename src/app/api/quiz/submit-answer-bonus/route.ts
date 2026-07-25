@@ -4,6 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 const FREE_TIER_MONTHLY_CAP_ERROR = "本月免費題目額度已用完（200題）";
 const MOBILE_SHARED_QUOTA_POLICY_VERSION = "mobile-shared-quota-v1";
 const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
+const BASE_MONTHLY_MOBILE_QUOTA = 200;
+const TOPUP_DESCRIPTIONS = new Set(["管理員手動增加", "ADMIN_QUOTA_TOPUP"]);
+const USAGE_DESCRIPTIONS_FOR_QUOTA = new Set([
+  "FREE_TIER_USAGE",
+  "ADMIN_QUOTA_USAGE",
+  "練習作答扣除",
+]);
 
 type BonusSubmitPayload = {
   sessionId?: string;
@@ -20,15 +27,13 @@ type QuizSessionRow = {
   subject: string | null;
 };
 
-type StudentBalanceRow = {
-  id: string;
-  student_id: string | null;
-  subject: string | null;
-  remaining_questions: number | null;
-};
-
 type StudentParentRow = {
   parent_id: string | null;
+};
+
+type BalanceTransactionRow = {
+  change_amount: number | null;
+  description: string | null;
 };
 
 function getAdminClient() {
@@ -51,6 +56,26 @@ function normalizeQuestionOrder(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) return null;
   return n;
+}
+
+function getCurrentHktMonthRangeIso() {
+  const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const now = new Date();
+  const hktNow = new Date(now.getTime() + HKT_OFFSET_MS);
+  const year = hktNow.getUTCFullYear();
+  const month = hktNow.getUTCMonth();
+  const monthStartUtcMs = Date.UTC(year, month, 1) - HKT_OFFSET_MS;
+  const nextMonthStartUtcMs = Date.UTC(year, month + 1, 1) - HKT_OFFSET_MS;
+  return {
+    startIso: new Date(monthStartUtcMs).toISOString(),
+    endIso: new Date(nextMonthStartUtcMs).toISOString(),
+  };
+}
+
+function normalizeUsageSubject(raw: string | null): string {
+  const value = String(raw || "").trim();
+  if (!value) return "Math";
+  return value.toLowerCase() === "math" ? "Math" : value;
 }
 
 export async function POST(req: NextRequest) {
@@ -142,6 +167,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "找不到學生家長資料" }, { status: 404 });
   }
 
+  const { data: parentRow, error: parentErr } = await admin
+    .from("parents")
+    .select("mobile_number")
+    .eq("id", practicingStudent.parent_id)
+    .maybeSingle();
+  if (parentErr) {
+    return NextResponse.json({ error: parentErr.message || "讀取家長資料失敗" }, { status: 500 });
+  }
+  const mobileNumber = String(parentRow?.mobile_number || "").trim();
+  if (!mobileNumber) {
+    return NextResponse.json({ error: "找不到家長電話資料" }, { status: 404 });
+  }
+
+  const { data: tierData, error: tierErr } = await admin.rpc("get_parent_tier_status", {
+    p_mobile: mobileNumber,
+  });
+  if (tierErr) {
+    return NextResponse.json({ error: tierErr.message || "讀取家長會員狀態失敗" }, { status: 500 });
+  }
+  const isPaidTier = Boolean((tierData as { is_paid?: boolean } | null)?.is_paid);
+
   const { data: parentStudentRows, error: parentStudentsErr } = await admin
     .from("students")
     .select("id")
@@ -160,34 +206,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "找不到同電話學生資料" }, { status: 404 });
   }
 
-  const { data: balanceRows, error: balanceErr } = await admin
-    .from("student_balances")
-    .select("id,student_id,subject,remaining_questions")
-    .in("student_id", familyStudentIds);
-
-  if (balanceErr) {
-    return NextResponse.json({ error: balanceErr.message || "讀取配額失敗" }, { status: 500 });
+  const { startIso, endIso } = getCurrentHktMonthRangeIso();
+  let topupInMonth = 0;
+  let usageInMonth = 0;
+  if (!isPaidTier) {
+    const { data: monthlyRows, error: monthlyErr } = await admin
+      .from("balance_transactions")
+      .select("change_amount,description")
+      .in("student_id", familyStudentIds)
+      .gte("created_at", startIso)
+      .lt("created_at", endIso);
+    if (monthlyErr) {
+      return NextResponse.json({ error: monthlyErr.message || "讀取月度配額失敗" }, { status: 500 });
+    }
+    for (const row of (monthlyRows as BalanceTransactionRow[] | null) ?? []) {
+      const description = String(row.description || "").trim();
+      const change = Number(row.change_amount ?? 0);
+      if (!description || !Number.isFinite(change)) continue;
+      if (TOPUP_DESCRIPTIONS.has(description) && change > 0) {
+        topupInMonth += change;
+      }
+      if (USAGE_DESCRIPTIONS_FOR_QUOTA.has(description) && change < 0) {
+        usageInMonth += Math.abs(change);
+      }
+    }
   }
 
-  const candidates = ((balanceRows as StudentBalanceRow[] | null) ?? [])
-    .filter((row) => Number(row.remaining_questions ?? 0) > 0)
-    .sort((a, b) => (b.remaining_questions ?? 0) - (a.remaining_questions ?? 0));
-  const ownCandidates = candidates.filter(
-    (row) => String(row.student_id ?? "").trim() === sessionData.student_id
-  );
-
-  const targetBalance = ownCandidates[0] ?? candidates[0];
-  const currentRemaining = Number(targetBalance?.remaining_questions ?? 0);
-  if (!targetBalance || currentRemaining <= 0) {
-    return NextResponse.json(
-      { error: "你的練習題目已用完，請聯絡家長充值。" },
-      { status: 400 }
-    );
+  const allowance = BASE_MONTHLY_MOBILE_QUOTA + topupInMonth;
+  const familyTotalBefore = isPaidTier ? -1 : Math.max(allowance - usageInMonth, 0);
+  if (!isPaidTier && familyTotalBefore <= 0) {
+    return NextResponse.json({ error: "你的練習題目已用完，請聯絡家長充值。" }, { status: 400 });
   }
-  const familyTotalBefore = ((balanceRows as StudentBalanceRow[] | null) ?? []).reduce(
-    (sum, row) => sum + Math.max(0, Number(row.remaining_questions ?? 0)),
-    0
-  );
 
   const { error: insertAnswerErr } = await admin.from("session_answers").insert({
     session_id: sessionId,
@@ -199,24 +248,15 @@ export async function POST(req: NextRequest) {
   if (insertAnswerErr) {
     return NextResponse.json({ error: insertAnswerErr.message || "提交答案失敗。" }, { status: 500 });
   }
-
-  const nextRemaining = currentRemaining - 1;
-  const { error: updateBalanceErr } = await admin
-    .from("student_balances")
-    .update({ remaining_questions: nextRemaining })
-    .eq("id", targetBalance.id);
-  if (updateBalanceErr) {
-    return NextResponse.json({ error: updateBalanceErr.message || "更新配額失敗" }, { status: 500 });
-  }
-
-  const familyTotalAfter = Math.max(0, familyTotalBefore - 1);
-  const txSubject = String(targetBalance.subject || sessionData.subject || "Math").trim();
+  const familyTotalAfter = isPaidTier ? -1 : Math.max(familyTotalBefore - 1, 0);
+  const txSubject = normalizeUsageSubject(sessionData.subject);
+  const txDescription = isPaidTier ? "PAID_TIER_USAGE" : "ADMIN_QUOTA_USAGE";
   const { error: txErr } = await admin.from("balance_transactions").insert({
     student_id: sessionData.student_id,
     subject: txSubject,
     change_amount: -1,
     balance_after: familyTotalAfter,
-    description: "ADMIN_QUOTA_USAGE",
+    description: txDescription,
     session_id: sessionId,
   });
   if (txErr) {
@@ -225,9 +265,10 @@ export async function POST(req: NextRequest) {
   logAntiMissingMobileSharedQuota("consume-shared-quota", {
     session_id: sessionId,
     student_id: sessionData.student_id,
-    charged_balance_id: targetBalance.id,
-    charged_balance_student_id: targetBalance.student_id,
     charged_balance_subject: txSubject,
+    tier_is_paid: isPaidTier,
+    monthly_topped_up: topupInMonth,
+    monthly_used_before: usageInMonth,
     family_total_before: familyTotalBefore,
     family_total_after: familyTotalAfter,
   });
