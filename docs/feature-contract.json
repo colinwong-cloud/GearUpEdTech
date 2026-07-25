@@ -1655,8 +1655,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-25T09:13:51.699Z",
+  "generated_at": "2026-07-25T09:15:12.425Z",
   "commit_inventory": [
+    {
+      "sha": "140900baa5cc9209f675820e6d4da6a9861a9c7e",
+      "date": "2026-07-25",
+      "summary": "fix: align mobile monthly quota to shared 200 model"
+    },
     {
       "sha": "9d53d8e334989afe25194f60479c2b8637f56c6b",
       "date": "2026-07-25",
@@ -3354,7 +3359,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 339,
+    "total_commits_since_start": 340,
     "total_feature_rows": 56
   }
 }
