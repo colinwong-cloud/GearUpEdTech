@@ -596,6 +596,20 @@
         },
         {
           "type": "file_exists",
+          "path": "src/app/api/quota/mobile-remaining/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quota/mobile-remaining/route.ts",
+          "snippet": "mobile-remaining-read"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\""
+        },
+        {
+          "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
         },
         {
@@ -1655,8 +1669,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-25T09:15:12.425Z",
+  "generated_at": "2026-07-29T03:14:41.479Z",
   "commit_inventory": [
+    {
+      "sha": "cc7966a112d9277c339f3572cdc5cb57349aaecb",
+      "date": "2026-07-29",
+      "summary": "Improve quiz submit latency with fast-path flow"
+    },
+    {
+      "sha": "8a009c808e88ce604b0443382287d4768ef7989f",
+      "date": "2026-07-25",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "140900baa5cc9209f675820e6d4da6a9861a9c7e",
       "date": "2026-07-25",
@@ -3359,7 +3383,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 340,
+    "total_commits_since_start": 342,
     "total_feature_rows": 56
   }
 }

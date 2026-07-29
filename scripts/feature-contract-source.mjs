@@ -335,7 +335,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "[anti-missing][quiz][submit-latency] fast-path-advanced",
+          snippet: "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\"",
         },
         { type: "file_exists", path: "src/lib/balance-transactions.ts" },
         {
