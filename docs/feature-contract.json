@@ -611,7 +611,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "logAntiMissingQuizSubmitLatency(\"shared-fallback-retry-scheduled\""
+          "snippet": "logAntiMissingQuizSubmitLatency(\"submit-error-nonblocking\""
         },
         {
           "type": "file_contains",
@@ -1679,8 +1679,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T03:50:34.921Z",
+  "generated_at": "2026-07-29T04:17:37.914Z",
   "commit_inventory": [
+    {
+      "sha": "15f6a3bb14512c9d44c72be62bd9a80021e019df",
+      "date": "2026-07-29",
+      "summary": "Remove submit retry delay from quiz fast path"
+    },
+    {
+      "sha": "6a9bc769c0a77d8ce8016a7fe154a212b1a40d41",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract for phase3 resilience commit"
+    },
     {
       "sha": "e1b5c344a220bdad55a56f038651c1c76cc8af9d",
       "date": "2026-07-29",
@@ -3408,7 +3418,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 345,
+    "total_commits_since_start": 347,
     "total_feature_rows": 56
   }
 }
