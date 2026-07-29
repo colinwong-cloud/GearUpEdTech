@@ -787,7 +787,8 @@ export default function QuizApp() {
   const [showSpeedReminder, setShowSpeedReminder] = useState(false);
   const speedReminderShownRef = useRef(false);
   const answerTimestampsRef = useRef<number[]>([]);
-  const pendingQuizSubmitChainRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingQuizSubmitPromisesRef = useRef<Set<Promise<void>>>(new Set());
+  const activeSessionIdRef = useRef<string | null>(null);
   const [quizTransition, setQuizTransition] = useState(0);
   const [encourageIndex, setEncourageIndex] = useState(0);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
@@ -796,14 +797,38 @@ export default function QuizApp() {
     setQuizSoundOn(getQuizSoundEnabled());
   }, []);
 
+  useEffect(() => {
+    activeSessionIdRef.current = sessionId;
+  }, [sessionId]);
+
   const resetPendingQuizSubmitQueue = useCallback(() => {
-    pendingQuizSubmitChainRef.current = Promise.resolve();
+    pendingQuizSubmitPromisesRef.current.clear();
   }, []);
 
-  const enqueueQuizSubmitPersistence = useCallback((task: () => Promise<void>) => {
-    const run = pendingQuizSubmitChainRef.current.then(task, task);
-    pendingQuizSubmitChainRef.current = run.catch(() => {});
-    return run;
+  const trackPendingQuizSubmitPromise = useCallback((promise: Promise<void>) => {
+    pendingQuizSubmitPromisesRef.current.add(promise);
+    void promise.finally(() => {
+      pendingQuizSubmitPromisesRef.current.delete(promise);
+    });
+  }, []);
+
+  const waitForPendingQuizSubmissions = useCallback(async (timeoutMs: number) => {
+    const pending = Array.from(pendingQuizSubmitPromisesRef.current);
+    if (!pending.length) {
+      return { timedOut: false, pendingCount: 0 };
+    }
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const waitResult = await Promise.race([
+      Promise.allSettled(pending).then(() => "settled" as const),
+      new Promise<"timeout">((resolve) => {
+        timeoutId = setTimeout(() => resolve("timeout"), timeoutMs);
+      }),
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return {
+      timedOut: waitResult === "timeout",
+      pendingCount: pending.length,
+    };
   }, []);
 
   const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
@@ -1291,27 +1316,33 @@ export default function QuizApp() {
         p_question_order: currentIndex + 1,
       };
 
-      const persistTask = async () => {
-        const deferredStartedAt = Date.now();
+      const persistAnswerTask = async () => {
         await submitAnswerWithQuotaFallback(submitRpcPayload);
+      };
+
+      if (isLastQ) {
+        const finalPersistStartedAt = Date.now();
+        await persistAnswerTask();
+        const pendingWait = await waitForPendingQuizSubmissions(2500);
+        if (pendingWait.timedOut) {
+          logAntiMissingQuizSubmitLatency("pending-submit-timeout-before-results", {
+            session_id: sessionId,
+            pending_count: pendingWait.pendingCount,
+            timeout_ms: 2500,
+          });
+        }
         await supabase.rpc("update_quiz_session", {
           p_session_id: sessionId,
           p_questions_attempted: updatedAnswers.length,
           p_score: newScore,
           p_time_spent_seconds: timeSpent,
         });
-        return Date.now() - deferredStartedAt;
-      };
-
-      if (isLastQ) {
-        await enqueueQuizSubmitPersistence(async () => {
-          const elapsedMs = await persistTask();
-          logAntiMissingQuizSubmitLatency("deferred-post-submit-finished", {
-            session_id: sessionId,
-            question_order: currentIndex + 1,
-            elapsed_ms_deferred: elapsedMs,
-            is_last_question: true,
-          });
+        logAntiMissingQuizSubmitLatency("final-submit-persisted", {
+          session_id: sessionId,
+          question_order: currentIndex + 1,
+          elapsed_ms_persist: Date.now() - finalPersistStartedAt,
+          pending_count: pendingWait.pendingCount,
+          pending_timed_out: pendingWait.timedOut,
         });
         const summary = await finalizeQuizAndSummary(updatedAnswers);
         setSessionPracticeSummary(summary);
@@ -1329,14 +1360,14 @@ export default function QuizApp() {
         session_id: sessionId,
         question_order: currentIndex + 1,
       });
-      void enqueueQuizSubmitPersistence(async () => {
+      const backgroundPersistPromise = (async () => {
         const deferredStartedAt = Date.now();
         try {
-          const elapsedMs = await persistTask();
+          await persistAnswerTask();
           logAntiMissingQuizSubmitLatency("deferred-post-submit-finished", {
             session_id: sessionId,
             question_order: currentIndex + 1,
-            elapsed_ms_deferred: elapsedMs,
+            elapsed_ms_deferred: Date.now() - deferredStartedAt,
             is_last_question: false,
           });
         } catch (deferredErr) {
@@ -1349,6 +1380,9 @@ export default function QuizApp() {
             retryable,
             error_message: submitErrorMessage.slice(0, 160),
           });
+          if (activeSessionIdRef.current !== submitRpcPayload.p_session_id) {
+            return;
+          }
           if (submitErrorMessage.includes("重新登入")) {
             setError(submitErrorMessage);
             return;
@@ -1357,7 +1391,8 @@ export default function QuizApp() {
             retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
           );
         }
-      });
+      })();
+      trackPendingQuizSubmitPromise(backgroundPersistPromise);
     } catch (err) {
       const submitErrorMessage = getErrorMessage(err) || "提交答案失敗。";
       const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
