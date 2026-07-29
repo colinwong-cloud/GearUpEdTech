@@ -609,6 +609,16 @@
           "snippet": "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\""
         },
         {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"shared-fallback-retry-scheduled\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "網絡稍慢，系統已重試。請再按一次提交。"
+        },
+        {
           "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
         },
@@ -1669,8 +1679,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T03:38:14.997Z",
+  "generated_at": "2026-07-29T03:50:34.921Z",
   "commit_inventory": [
+    {
+      "sha": "e1b5c344a220bdad55a56f038651c1c76cc8af9d",
+      "date": "2026-07-29",
+      "summary": "Harden quiz submit retry and non-blocking notices"
+    },
+    {
+      "sha": "13bae83fe9b37fcbf91f17aa0ebb0fc5541b0dad",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory for latest commit"
+    },
     {
       "sha": "665cb264771cca58c6b8bbdcb8485185ca74a5a7",
       "date": "2026-07-29",
@@ -3388,7 +3408,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 343,
+    "total_commits_since_start": 345,
     "total_feature_rows": 56
   }
 }
