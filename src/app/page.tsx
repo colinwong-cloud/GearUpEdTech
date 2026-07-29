@@ -415,6 +415,10 @@ const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insuffic
 const QUIZ_LATENCY_POLICY_VERSION = "quiz-fast-path-v1";
 const QUIZ_SUBMIT_RETRYABLE_ERROR_RE =
   /(timeout|timed out|network|failed to fetch|fetch failed|connection|econnreset|etimedout|service unavailable|bad gateway|gateway timeout|temporarily unavailable|too many requests|rate limit)/i;
+const QUIZ_ADVANCE_WARNING_MS = 1000;
+const QUIZ_RESULT_SCREEN_WARNING_MS = 1200;
+const QUIZ_FINAL_PERSIST_WARNING_MS = 5000;
+const QUIZ_BACKGROUND_FINALIZE_WARNING_MS = 4000;
 
 function logAntiMissingQuizSubmitLatency(event: string, payload: Record<string, unknown>) {
   console.info(
@@ -1337,11 +1341,20 @@ export default function QuizApp() {
             : "";
         setSessionPracticeSummary(summary);
         setScreen("results");
+        const elapsedToResultsMs = Date.now() - submitStartedAt;
         logAntiMissingQuizSubmitLatency("result-screen-shown-fast", {
           session_id: finalSessionId,
           question_order: currentIndex + 1,
-          elapsed_ms_to_results: Date.now() - submitStartedAt,
+          elapsed_ms_to_results: elapsedToResultsMs,
         });
+        if (elapsedToResultsMs > QUIZ_RESULT_SCREEN_WARNING_MS) {
+          logAntiMissingQuizSubmitLatency("result-screen-latency-warning", {
+            session_id: finalSessionId,
+            question_order: currentIndex + 1,
+            threshold_ms: QUIZ_RESULT_SCREEN_WARNING_MS,
+            elapsed_ms_to_results: elapsedToResultsMs,
+          });
+        }
         void (async () => {
           const finalPersistStartedAt = Date.now();
           try {
@@ -1368,13 +1381,22 @@ export default function QuizApp() {
               studentSnapshot: finalStudent,
               subjectSnapshot: finalSubject,
             });
+            const finalPersistElapsedMs = Date.now() - finalPersistStartedAt;
             logAntiMissingQuizSubmitLatency("final-submit-persisted", {
               session_id: finalSessionId,
               question_order: currentIndex + 1,
-              elapsed_ms_persist: Date.now() - finalPersistStartedAt,
+              elapsed_ms_persist: finalPersistElapsedMs,
               pending_count: pendingWait.pendingCount,
               pending_timed_out: pendingWait.timedOut,
             });
+            if (finalPersistElapsedMs > QUIZ_FINAL_PERSIST_WARNING_MS) {
+              logAntiMissingQuizSubmitLatency("final-submit-persist-latency-warning", {
+                session_id: finalSessionId,
+                question_order: currentIndex + 1,
+                threshold_ms: QUIZ_FINAL_PERSIST_WARNING_MS,
+                elapsed_ms_persist: finalPersistElapsedMs,
+              });
+            }
           } catch (finalErr) {
             const submitErrorMessage = getErrorMessage(finalErr) || "提交答案失敗。";
             const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
@@ -1406,6 +1428,15 @@ export default function QuizApp() {
         elapsed_ms_submit: Date.now() - submitStartedAt,
         is_last_question: false,
       });
+      const elapsedSubmitMs = Date.now() - submitStartedAt;
+      if (elapsedSubmitMs > QUIZ_ADVANCE_WARNING_MS) {
+        logAntiMissingQuizSubmitLatency("fast-path-latency-warning", {
+          session_id: sessionId,
+          question_order: currentIndex + 1,
+          threshold_ms: QUIZ_ADVANCE_WARNING_MS,
+          elapsed_ms_submit: elapsedSubmitMs,
+        });
+      }
       logAntiMissingQuizSubmitLatency("deferred-post-submit-started", {
         session_id: sessionId,
         question_order: currentIndex + 1,
@@ -1575,15 +1606,25 @@ export default function QuizApp() {
     } catch {
       // non-critical: don't block results
     } finally {
+      const finalizeElapsedMs = Date.now() - finalizeStartedAt;
       logAntiMissingQuizSubmitLatency("result-background-finalize-finished", {
         session_id: sessionIdSnapshot,
-        elapsed_ms_total: Date.now() - finalizeStartedAt,
+        elapsed_ms_total: finalizeElapsedMs,
         elapsed_ms_summary_save: summarySaveMs,
         elapsed_ms_balance_refresh: balanceRefreshMs,
         elapsed_ms_rank_upsert: rankUpsertMs,
         rank_group_count: rankGroupCount,
         rank_upsert_failures: rankUpsertFailures,
       });
+      if (finalizeElapsedMs > QUIZ_BACKGROUND_FINALIZE_WARNING_MS) {
+        logAntiMissingQuizSubmitLatency("result-background-finalize-latency-warning", {
+          session_id: sessionIdSnapshot,
+          threshold_ms: QUIZ_BACKGROUND_FINALIZE_WARNING_MS,
+          elapsed_ms_total: finalizeElapsedMs,
+          rank_group_count: rankGroupCount,
+          rank_upsert_failures: rankUpsertFailures,
+        });
+      }
     }
   };
 

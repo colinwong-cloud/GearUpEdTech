@@ -361,6 +361,16 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/page.tsx",
+          snippet: "logAntiMissingQuizSubmitLatency(\"result-screen-latency-warning\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "logAntiMissingQuizSubmitLatency(\"result-background-finalize-latency-warning\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
           snippet: "網絡稍慢，系統已重試。請再按一次提交。",
         },
         { type: "file_exists", path: "src/lib/balance-transactions.ts" },
