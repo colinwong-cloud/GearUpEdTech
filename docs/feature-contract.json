@@ -609,6 +609,16 @@
           "snippet": "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\""
         },
         {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"submit-error-nonblocking\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "網絡稍慢，系統已重試。請再按一次提交。"
+        },
+        {
           "type": "file_exists",
           "path": "src/lib/balance-transactions.ts"
         },
@@ -1669,8 +1679,53 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T03:38:14.997Z",
+  "generated_at": "2026-07-29T05:16:17.726Z",
   "commit_inventory": [
+    {
+      "sha": "f8b750a70f95f402fd046ae71c9e62c1a133c5f1",
+      "date": "2026-07-29",
+      "summary": "Render result screen before final persistence completes"
+    },
+    {
+      "sha": "1cfebffbfe13c4939e310ac34680240ed199ec0f",
+      "date": "2026-07-29",
+      "summary": "Prevent result-page wait on queued quiz submissions"
+    },
+    {
+      "sha": "8c656f1f21a796f912386b64785c65dabb60839a",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory after optimistic flow"
+    },
+    {
+      "sha": "85b8ad53f54a753756d8bf14ca6dd1f1e2017b43",
+      "date": "2026-07-29",
+      "summary": "Advance next quiz question before submit persistence"
+    },
+    {
+      "sha": "493b0660e75e3dc28e30fd1b2c823e5bd1143a6f",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract after lag fix"
+    },
+    {
+      "sha": "15f6a3bb14512c9d44c72be62bd9a80021e019df",
+      "date": "2026-07-29",
+      "summary": "Remove submit retry delay from quiz fast path"
+    },
+    {
+      "sha": "6a9bc769c0a77d8ce8016a7fe154a212b1a40d41",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract for phase3 resilience commit"
+    },
+    {
+      "sha": "e1b5c344a220bdad55a56f038651c1c76cc8af9d",
+      "date": "2026-07-29",
+      "summary": "Harden quiz submit retry and non-blocking notices"
+    },
+    {
+      "sha": "13bae83fe9b37fcbf91f17aa0ebb0fc5541b0dad",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory for latest commit"
+    },
     {
       "sha": "665cb264771cca58c6b8bbdcb8485185ca74a5a7",
       "date": "2026-07-29",
@@ -3388,7 +3443,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 343,
+    "total_commits_since_start": 352,
     "total_feature_rows": 56
   }
 }

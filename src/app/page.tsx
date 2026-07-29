@@ -413,6 +413,8 @@ type SubmitAnswerRpcArgs = {
 
 const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
 const QUIZ_LATENCY_POLICY_VERSION = "quiz-fast-path-v1";
+const QUIZ_SUBMIT_RETRYABLE_ERROR_RE =
+  /(timeout|timed out|network|failed to fetch|fetch failed|connection|econnreset|etimedout|service unavailable|bad gateway|gateway timeout|temporarily unavailable|too many requests|rate limit)/i;
 
 function logAntiMissingQuizSubmitLatency(event: string, payload: Record<string, unknown>) {
   console.info(
@@ -421,6 +423,12 @@ function logAntiMissingQuizSubmitLatency(event: string, payload: Record<string, 
       ...payload,
     })}`
   );
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "";
 }
 
 type MobileQuotaSummaryRequest = {
@@ -501,9 +509,9 @@ async function submitAnswerWithQuotaFallback(
   const { error: ansErr } = await supabase.rpc("submit_answer", rpcParams);
   if (!ansErr) return;
 
-  const msg = String(ansErr.message || "");
+  const message = String(ansErr.message || "");
   const isSharedPoolFallbackError =
-    msg.includes(FREE_TIER_MONTHLY_CAP_ERROR) || INSUFFICIENT_BALANCE_ERROR_RE.test(msg);
+    message.includes(FREE_TIER_MONTHLY_CAP_ERROR) || INSUFFICIENT_BALANCE_ERROR_RE.test(message);
   if (!isSharedPoolFallbackError) {
     throw ansErr;
   }
@@ -520,12 +528,18 @@ async function submitAnswerWithQuotaFallback(
       questionOrder: rpcParams.p_question_order,
     }),
   });
-
   const payload = (await res.json().catch(() => null)) as
     | { error?: string }
     | null;
   if (!res.ok) {
-    throw new Error(payload?.error || "提交答案失敗。");
+    const errMsg = payload?.error || "提交答案失敗。";
+    logAntiMissingQuizSubmitLatency("shared-fallback-failed", {
+      session_id: rpcParams.p_session_id,
+      question_order: rpcParams.p_question_order,
+      retryable: QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(errMsg),
+      error_message: errMsg.slice(0, 160),
+    });
+    throw new Error(errMsg);
   }
 }
 
@@ -768,16 +782,53 @@ export default function QuizApp() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quizSubmitNotice, setQuizSubmitNotice] = useState<string | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const [showSpeedReminder, setShowSpeedReminder] = useState(false);
   const speedReminderShownRef = useRef(false);
   const answerTimestampsRef = useRef<number[]>([]);
+  const pendingQuizSubmitPromisesRef = useRef<Set<Promise<void>>>(new Set());
+  const activeSessionIdRef = useRef<string | null>(null);
   const [quizTransition, setQuizTransition] = useState(0);
   const [encourageIndex, setEncourageIndex] = useState(0);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
   const [sessionPracticeSummary, setSessionPracticeSummary] = useState<string | null>(null);
   useEffect(() => {
     setQuizSoundOn(getQuizSoundEnabled());
+  }, []);
+
+  useEffect(() => {
+    activeSessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  const resetPendingQuizSubmitQueue = useCallback(() => {
+    pendingQuizSubmitPromisesRef.current.clear();
+  }, []);
+
+  const trackPendingQuizSubmitPromise = useCallback((promise: Promise<void>) => {
+    pendingQuizSubmitPromisesRef.current.add(promise);
+    void promise.finally(() => {
+      pendingQuizSubmitPromisesRef.current.delete(promise);
+    });
+  }, []);
+
+  const waitForPendingQuizSubmissions = useCallback(async (timeoutMs: number) => {
+    const pending = Array.from(pendingQuizSubmitPromisesRef.current);
+    if (!pending.length) {
+      return { timedOut: false, pendingCount: 0 };
+    }
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const waitResult = await Promise.race([
+      Promise.allSettled(pending).then(() => "settled" as const),
+      new Promise<"timeout">((resolve) => {
+        timeoutId = setTimeout(() => resolve("timeout"), timeoutMs);
+      }),
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
+    return {
+      timedOut: waitResult === "timeout",
+      pendingCount: pending.length,
+    };
   }, []);
 
   const [parentSessions, setParentSessions] = useState<SessionSummary[]>([]);
@@ -1140,6 +1191,7 @@ export default function QuizApp() {
   };
 
   const startQuiz = async (student: Student, subject: string, count: number = 10) => {
+    resetPendingQuizSubmitQueue();
     setLoading(true);
     setCurrentIndex(0);
     setTextAnswer("");
@@ -1207,6 +1259,7 @@ export default function QuizApp() {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion || !sessionId || submitting) return;
     const submitStartedAt = Date.now();
+    setQuizSubmitNotice(null);
 
     const isCorrect = isShortAnswer(currentQuestion)
       ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
@@ -1227,16 +1280,6 @@ export default function QuizApp() {
       if (!selectedStudent) {
         throw new Error("找不到學生資料，請重新登入。");
       }
-      await submitAnswerWithQuotaFallback({
-        studentId: selectedStudent.id,
-        p_session_id: sessionId,
-        p_question_id: currentQuestion.id,
-        p_student_answer: answer,
-        p_is_correct: isCorrect,
-        p_question_order: currentIndex + 1,
-      });
-      const submitElapsedMs = Date.now() - submitStartedAt;
-
       const newAnswer: AnswerRecord = {
         question: currentQuestion,
         studentAnswer: answer,
@@ -1250,25 +1293,6 @@ export default function QuizApp() {
         (Date.now() - startTimeRef.current) / 1000
       );
       const isLastQ = currentIndex + 1 >= questions.length;
-      logAntiMissingQuizSubmitLatency("fast-path-advanced", {
-        session_id: sessionId,
-        question_order: currentIndex + 1,
-        elapsed_ms_submit: submitElapsedMs,
-        is_last_question: isLastQ,
-      });
-
-      if (isLastQ) {
-        await supabase.rpc("update_quiz_session", {
-          p_session_id: sessionId,
-          p_questions_attempted: updatedAnswers.length,
-          p_score: newScore,
-          p_time_spent_seconds: timeSpent,
-        });
-        const summary = await finalizeQuizAndSummary(updatedAnswers);
-        setSessionPracticeSummary(summary);
-        setScreen("results");
-        return;
-      }
 
       if (balance && balance.remaining_questions >= 0) {
         setBalance({
@@ -1276,40 +1300,165 @@ export default function QuizApp() {
           remaining_questions: Math.max(balance.remaining_questions - 1, 0),
         });
       }
-      setCurrentIndex((i) => i + 1);
-      setTextAnswer("");
-      setQuizTransition((k) => k + 1);
-      setEncourageIndex((e) => e + 1);
+      if (!isLastQ) {
+        setCurrentIndex((i) => i + 1);
+        setTextAnswer("");
+        setQuizTransition((k) => k + 1);
+        setEncourageIndex((e) => e + 1);
+      }
 
+      const submitRpcPayload = {
+        studentId: selectedStudent.id,
+        p_session_id: sessionId,
+        p_question_id: currentQuestion.id,
+        p_student_answer: answer,
+        p_is_correct: isCorrect,
+        p_question_order: currentIndex + 1,
+      };
+
+      const persistAnswerTask = async () => {
+        await submitAnswerWithQuotaFallback(submitRpcPayload);
+      };
+
+      if (isLastQ) {
+        const finalSessionId = sessionId;
+        const finalStudent = selectedStudent;
+        const finalSubject = selectedSubject;
+        const summary = finalSubject
+          ? buildSessionPracticeSummary(updatedAnswers, finalSubject)
+          : "";
+        const summaryParent =
+          finalSubject
+            ? buildSessionPracticeSummaryForParent(
+                updatedAnswers,
+                finalSubject,
+                finalStudent.student_name || ""
+              )
+            : "";
+        setSessionPracticeSummary(summary);
+        setScreen("results");
+        logAntiMissingQuizSubmitLatency("result-screen-shown-fast", {
+          session_id: finalSessionId,
+          question_order: currentIndex + 1,
+          elapsed_ms_to_results: Date.now() - submitStartedAt,
+        });
+        void (async () => {
+          const finalPersistStartedAt = Date.now();
+          try {
+            await persistAnswerTask();
+            const pendingWait = await waitForPendingQuizSubmissions(350);
+            if (pendingWait.timedOut) {
+              logAntiMissingQuizSubmitLatency("pending-submit-timeout-before-results", {
+                session_id: finalSessionId,
+                pending_count: pendingWait.pendingCount,
+                timeout_ms: 350,
+              });
+            }
+            await supabase.rpc("update_quiz_session", {
+              p_session_id: finalSessionId,
+              p_questions_attempted: updatedAnswers.length,
+              p_score: newScore,
+              p_time_spent_seconds: timeSpent,
+            });
+            await finalizeQuizAndSummary({
+              finalAnswers: updatedAnswers,
+              summary,
+              summaryParent,
+              sessionIdSnapshot: finalSessionId,
+              studentSnapshot: finalStudent,
+              subjectSnapshot: finalSubject,
+            });
+            logAntiMissingQuizSubmitLatency("final-submit-persisted", {
+              session_id: finalSessionId,
+              question_order: currentIndex + 1,
+              elapsed_ms_persist: Date.now() - finalPersistStartedAt,
+              pending_count: pendingWait.pendingCount,
+              pending_timed_out: pendingWait.timedOut,
+            });
+          } catch (finalErr) {
+            const submitErrorMessage = getErrorMessage(finalErr) || "提交答案失敗。";
+            const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
+            logAntiMissingQuizSubmitLatency("final-submit-background-failed", {
+              session_id: finalSessionId,
+              question_order: currentIndex + 1,
+              elapsed_ms_persist: Date.now() - finalPersistStartedAt,
+              retryable,
+              error_message: submitErrorMessage.slice(0, 160),
+            });
+            if (activeSessionIdRef.current !== finalSessionId) {
+              return;
+            }
+            if (submitErrorMessage.includes("重新登入")) {
+              setError(submitErrorMessage);
+              return;
+            }
+            setQuizSubmitNotice(
+              retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
+            );
+          }
+        })();
+        return;
+      }
+
+      logAntiMissingQuizSubmitLatency("fast-path-advanced", {
+        session_id: sessionId,
+        question_order: currentIndex + 1,
+        elapsed_ms_submit: Date.now() - submitStartedAt,
+        is_last_question: false,
+      });
       logAntiMissingQuizSubmitLatency("deferred-post-submit-started", {
         session_id: sessionId,
         question_order: currentIndex + 1,
       });
-      void (async () => {
+      const backgroundPersistPromise = (async () => {
         const deferredStartedAt = Date.now();
         try {
-          await supabase.rpc("update_quiz_session", {
-            p_session_id: sessionId,
-            p_questions_attempted: updatedAnswers.length,
-            p_score: newScore,
-            p_time_spent_seconds: timeSpent,
-          });
+          await persistAnswerTask();
           logAntiMissingQuizSubmitLatency("deferred-post-submit-finished", {
             session_id: sessionId,
             question_order: currentIndex + 1,
             elapsed_ms_deferred: Date.now() - deferredStartedAt,
+            is_last_question: false,
           });
         } catch (deferredErr) {
-          console.error("update_quiz_session deferred sync failed", deferredErr);
+          const submitErrorMessage = getErrorMessage(deferredErr) || "提交答案失敗。";
+          const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
           logAntiMissingQuizSubmitLatency("deferred-post-submit-failed", {
             session_id: sessionId,
             question_order: currentIndex + 1,
             elapsed_ms_deferred: Date.now() - deferredStartedAt,
+            retryable,
+            error_message: submitErrorMessage.slice(0, 160),
           });
+          if (activeSessionIdRef.current !== submitRpcPayload.p_session_id) {
+            return;
+          }
+          if (submitErrorMessage.includes("重新登入")) {
+            setError(submitErrorMessage);
+            return;
+          }
+          setQuizSubmitNotice(
+            retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
+          );
         }
       })();
+      trackPendingQuizSubmitPromise(backgroundPersistPromise);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交答案失敗。");
+      const submitErrorMessage = getErrorMessage(err) || "提交答案失敗。";
+      const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
+      logAntiMissingQuizSubmitLatency("submit-error-nonblocking", {
+        session_id: sessionId,
+        question_order: currentIndex + 1,
+        retryable,
+        error_message: submitErrorMessage.slice(0, 160),
+      });
+      if (submitErrorMessage.includes("重新登入")) {
+        setError(submitErrorMessage);
+      } else {
+        setQuizSubmitNotice(
+          retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1329,19 +1478,27 @@ export default function QuizApp() {
     await runSubmitWithAnswer(label);
   };
 
-  const finalizeQuizAndSummary = async (finalAnswers: AnswerRecord[]): Promise<string> => {
-    if (!selectedStudent || !selectedSubject) return "";
-    const summary = buildSessionPracticeSummary(finalAnswers, selectedSubject);
-    const summaryParent = buildSessionPracticeSummaryForParent(
-      finalAnswers,
-      selectedSubject,
-      selectedStudent.student_name || ""
-    );
-    if (sessionId) {
+  const finalizeQuizAndSummary = async ({
+    finalAnswers,
+    summary,
+    summaryParent,
+    sessionIdSnapshot,
+    studentSnapshot,
+    subjectSnapshot,
+  }: {
+    finalAnswers: AnswerRecord[];
+    summary: string;
+    summaryParent: string;
+    sessionIdSnapshot: string;
+    studentSnapshot: Student;
+    subjectSnapshot: string | null;
+  }): Promise<void> => {
+    if (!subjectSnapshot) return;
+    if (sessionIdSnapshot) {
       try {
         const { error: sumErr } = await supabase.rpc("save_session_practice_summaries", {
-          p_session_id: sessionId,
-          p_student_id: selectedStudent.id,
+          p_session_id: sessionIdSnapshot,
+          p_student_id: studentSnapshot.id,
           p_student_summary: summary,
           p_parent_summary: summaryParent,
         });
@@ -1352,10 +1509,10 @@ export default function QuizApp() {
     }
     try {
       /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
-      if (selectedStudent && selectedSubject) {
+      if (activeSessionIdRef.current === sessionIdSnapshot) {
         const balFresh = await fetchStudentBalanceWithFallback(
-          selectedStudent.id,
-          selectedSubject,
+          studentSnapshot.id,
+          subjectSnapshot,
           mobileNumber
         );
         if (balFresh) setBalance(balFresh as StudentBalance);
@@ -1371,10 +1528,11 @@ export default function QuizApp() {
         if (a.isCorrect) rankGroups[rank].correct++;
       }
 
-      for (const [rank, stats] of Object.entries(rankGroups)) {
+      const rankEntries = Object.entries(rankGroups);
+      for (const [rank, stats] of rankEntries) {
         await supabase.rpc("upsert_rank_performance", {
-          p_student_id: selectedStudent.id,
-          p_subject: selectedSubject,
+          p_student_id: studentSnapshot.id,
+          p_subject: subjectSnapshot,
           p_paper_rank: rank,
           p_attempted: stats.attempted,
           p_correct: stats.correct,
@@ -1385,36 +1543,40 @@ export default function QuizApp() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          student_id: selectedStudent.id,
-          session_id: sessionId,
+          student_id: studentSnapshot.id,
+          session_id: sessionIdSnapshot,
           session_summary_parent: summaryParent,
         }),
       }).catch(() => {});
     } catch {
       // non-critical: don't block results
     }
-    return summary;
   };
 
   const handleRestart = () => {
+    resetPendingQuizSubmitQueue();
     setScreen(selectedSubject ? "question_count_select" : "subject_select");
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    setQuizSubmitNotice(null);
     setError(null);
   };
 
   const handleBackToHome = () => {
+    resetPendingQuizSubmitQueue();
     setScreen("login_role");
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    setQuizSubmitNotice(null);
     setError(null);
   };
 
   const handleLogout = () => {
+    resetPendingQuizSubmitQueue();
     setScreen("login_mobile");
     setMobileNumber("");
     setStudents([]);
@@ -1426,6 +1588,7 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    setQuizSubmitNotice(null);
     setParentTierStatus({
       tier: "free",
       is_paid: false,
@@ -1746,6 +1909,8 @@ export default function QuizApp() {
           transitionKey={quizTransition}
           onSelectOption={handleSelectMcqOption}
           showSubmitButton={shortAnswer}
+          submitNotice={quizSubmitNotice}
+          onClearSubmitNotice={() => setQuizSubmitNotice(null)}
         />
       </div>
       {showSpeedReminder && (
