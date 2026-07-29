@@ -413,8 +413,6 @@ type SubmitAnswerRpcArgs = {
 
 const INSUFFICIENT_BALANCE_ERROR_RE = /(餘額不足|配額不足|quota|insufficient)/i;
 const QUIZ_LATENCY_POLICY_VERSION = "quiz-fast-path-v1";
-const QUIZ_SUBMIT_MAX_RETRIES = 1;
-const QUIZ_SUBMIT_RETRY_BASE_DELAY_MS = 220;
 const QUIZ_SUBMIT_RETRYABLE_ERROR_RE =
   /(timeout|timed out|network|failed to fetch|fetch failed|connection|econnreset|etimedout|service unavailable|bad gateway|gateway timeout|temporarily unavailable|too many requests|rate limit)/i;
 
@@ -427,34 +425,10 @@ function logAntiMissingQuizSubmitLatency(event: string, payload: Record<string, 
   );
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "";
-}
-
-function isRetryableQuizSubmitError(error: unknown): boolean {
-  const status = Number((error as { status?: number } | null)?.status ?? 0);
-  if ([429, 500, 502, 503, 504].includes(status)) return true;
-  const code = String((error as { code?: string } | null)?.code ?? "").toUpperCase();
-  if (
-    code === "57014" ||
-    code === "ECONNRESET" ||
-    code === "ETIMEDOUT" ||
-    code === "ECONNREFUSED" ||
-    code === "UND_ERR_CONNECT_TIMEOUT"
-  ) {
-    return true;
-  }
-  return QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(getErrorMessage(error));
-}
-
-function retryDelayMs(attempt: number) {
-  return QUIZ_SUBMIT_RETRY_BASE_DELAY_MS * attempt;
 }
 
 type MobileQuotaSummaryRequest = {
@@ -532,108 +506,41 @@ async function submitAnswerWithQuotaFallback(
   params: SubmitAnswerRpcArgs & { studentId: string }
 ): Promise<void> {
   const { studentId, ...rpcParams } = params;
-  const totalAttempts = QUIZ_SUBMIT_MAX_RETRIES + 1;
+  const { error: ansErr } = await supabase.rpc("submit_answer", rpcParams);
+  if (!ansErr) return;
 
-  for (let primaryAttempt = 1; primaryAttempt <= totalAttempts; primaryAttempt++) {
-    const { error: ansErr } = await supabase.rpc("submit_answer", rpcParams);
-    if (!ansErr) {
-      if (primaryAttempt > 1) {
-        logAntiMissingQuizSubmitLatency("primary-retry-succeeded", {
-          session_id: rpcParams.p_session_id,
-          question_order: rpcParams.p_question_order,
-          attempt: primaryAttempt,
-        });
-      }
-      return;
-    }
-
-    const message = String(ansErr.message || "");
-    const isSharedPoolFallbackError =
-      message.includes(FREE_TIER_MONTHLY_CAP_ERROR) || INSUFFICIENT_BALANCE_ERROR_RE.test(message);
-    if (!isSharedPoolFallbackError) {
-      const retryable = isRetryableQuizSubmitError(ansErr);
-      logAntiMissingQuizSubmitLatency("primary-submit-failed", {
-        session_id: rpcParams.p_session_id,
-        question_order: rpcParams.p_question_order,
-        attempt: primaryAttempt,
-        retryable,
-        error_message: message.slice(0, 160),
-      });
-      if (retryable && primaryAttempt < totalAttempts) {
-        const delayMs = retryDelayMs(primaryAttempt);
-        logAntiMissingQuizSubmitLatency("primary-submit-retry-scheduled", {
-          session_id: rpcParams.p_session_id,
-          question_order: rpcParams.p_question_order,
-          next_attempt: primaryAttempt + 1,
-          delay_ms: delayMs,
-        });
-        await sleep(delayMs);
-        continue;
-      }
-      throw ansErr;
-    }
-
-    for (let fallbackAttempt = 1; fallbackAttempt <= totalAttempts; fallbackAttempt++) {
-      try {
-        const res = await fetch("/api/quiz/submit-answer-bonus", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: rpcParams.p_session_id,
-            studentId,
-            questionId: rpcParams.p_question_id,
-            studentAnswer: rpcParams.p_student_answer,
-            isCorrect: rpcParams.p_is_correct,
-            questionOrder: rpcParams.p_question_order,
-          }),
-        });
-
-        const payload = (await res.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        if (!res.ok) {
-          const fallbackErr = new Error(payload?.error || "提交答案失敗。") as Error & {
-            status?: number;
-          };
-          fallbackErr.status = res.status;
-          throw fallbackErr;
-        }
-
-        if (fallbackAttempt > 1) {
-          logAntiMissingQuizSubmitLatency("shared-fallback-retry-succeeded", {
-            session_id: rpcParams.p_session_id,
-            question_order: rpcParams.p_question_order,
-            attempt: fallbackAttempt,
-          });
-        }
-        return;
-      } catch (fallbackErr) {
-        const fallbackMessage = getErrorMessage(fallbackErr);
-        const retryable = isRetryableQuizSubmitError(fallbackErr);
-        logAntiMissingQuizSubmitLatency("shared-fallback-failed", {
-          session_id: rpcParams.p_session_id,
-          question_order: rpcParams.p_question_order,
-          attempt: fallbackAttempt,
-          retryable,
-          error_message: fallbackMessage.slice(0, 160),
-        });
-        if (retryable && fallbackAttempt < totalAttempts) {
-          const delayMs = retryDelayMs(fallbackAttempt);
-          logAntiMissingQuizSubmitLatency("shared-fallback-retry-scheduled", {
-            session_id: rpcParams.p_session_id,
-            question_order: rpcParams.p_question_order,
-            next_attempt: fallbackAttempt + 1,
-            delay_ms: delayMs,
-          });
-          await sleep(delayMs);
-          continue;
-        }
-        throw fallbackErr;
-      }
-    }
+  const message = String(ansErr.message || "");
+  const isSharedPoolFallbackError =
+    message.includes(FREE_TIER_MONTHLY_CAP_ERROR) || INSUFFICIENT_BALANCE_ERROR_RE.test(message);
+  if (!isSharedPoolFallbackError) {
+    throw ansErr;
   }
 
-  throw new Error("提交答案失敗。");
+  const res = await fetch("/api/quiz/submit-answer-bonus", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: rpcParams.p_session_id,
+      studentId,
+      questionId: rpcParams.p_question_id,
+      studentAnswer: rpcParams.p_student_answer,
+      isCorrect: rpcParams.p_is_correct,
+      questionOrder: rpcParams.p_question_order,
+    }),
+  });
+  const payload = (await res.json().catch(() => null)) as
+    | { error?: string }
+    | null;
+  if (!res.ok) {
+    const errMsg = payload?.error || "提交答案失敗。";
+    logAntiMissingQuizSubmitLatency("shared-fallback-failed", {
+      session_id: rpcParams.p_session_id,
+      question_order: rpcParams.p_question_order,
+      retryable: QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(errMsg),
+      error_message: errMsg.slice(0, 160),
+    });
+    throw new Error(errMsg);
+  }
 }
 
 async function fetchParentBalanceViewWithFallback(
@@ -1419,7 +1326,7 @@ export default function QuizApp() {
       })();
     } catch (err) {
       const submitErrorMessage = getErrorMessage(err) || "提交答案失敗。";
-      const retryable = isRetryableQuizSubmitError(err);
+      const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
       logAntiMissingQuizSubmitLatency("submit-error-nonblocking", {
         session_id: sessionId,
         question_order: currentIndex + 1,

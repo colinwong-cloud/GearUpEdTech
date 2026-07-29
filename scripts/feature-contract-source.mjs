@@ -340,7 +340,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "logAntiMissingQuizSubmitLatency(\"shared-fallback-retry-scheduled\"",
+          snippet: "logAntiMissingQuizSubmitLatency(\"submit-error-nonblocking\"",
         },
         {
           type: "file_contains",
