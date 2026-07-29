@@ -599,9 +599,23 @@
           "path": "src/app/api/quota/mobile-remaining/route.ts"
         },
         {
+          "type": "file_exists",
+          "path": "supabase_wednesday_quiz_latency_indexes.sql"
+        },
+        {
           "type": "file_contains",
           "path": "src/app/api/quota/mobile-remaining/route.ts",
           "snippet": "mobile-remaining-read"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quota/mobile-remaining/route.ts",
+          "snippet": "QUOTA_RELEVANT_DESCRIPTIONS"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/quota/mobile-summary/route.ts",
+          "snippet": "QUOTA_RELEVANT_DESCRIPTIONS"
         },
         {
           "type": "file_contains",
@@ -612,6 +626,11 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "logAntiMissingQuizSubmitLatency(\"submit-error-nonblocking\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"result-background-finalize-finished\""
         },
         {
           "type": "file_contains",
@@ -1679,8 +1698,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T05:16:17.726Z",
+  "generated_at": "2026-07-29T06:06:53.530Z",
   "commit_inventory": [
+    {
+      "sha": "a493bf9297474e0960d5da1ae667e180196af4ec",
+      "date": "2026-07-29",
+      "summary": "Complete Wednesday phase4 performance hardening"
+    },
+    {
+      "sha": "4a53391a9ee16a274b4f9d4b369d5c9557289923",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory after instant-result patch"
+    },
     {
       "sha": "f8b750a70f95f402fd046ae71c9e62c1a133c5f1",
       "date": "2026-07-29",
@@ -3443,7 +3472,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 352,
+    "total_commits_since_start": 354,
     "total_feature_rows": 56
   }
 }

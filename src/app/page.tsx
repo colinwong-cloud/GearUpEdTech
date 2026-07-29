@@ -1494,7 +1494,14 @@ export default function QuizApp() {
     subjectSnapshot: string | null;
   }): Promise<void> => {
     if (!subjectSnapshot) return;
+    const finalizeStartedAt = Date.now();
+    let rankGroupCount = 0;
+    let rankUpsertFailures = 0;
+    let summarySaveMs = 0;
+    let balanceRefreshMs = 0;
+    let rankUpsertMs = 0;
     if (sessionIdSnapshot) {
+      const summarySaveStartedAt = Date.now();
       try {
         const { error: sumErr } = await supabase.rpc("save_session_practice_summaries", {
           p_session_id: sessionIdSnapshot,
@@ -1502,20 +1509,28 @@ export default function QuizApp() {
           p_student_summary: summary,
           p_parent_summary: summaryParent,
         });
-        if (sumErr) console.error("save_session_practice_summaries", sumErr);
+        if (sumErr) {
+          rankUpsertFailures += 1;
+          console.error("save_session_practice_summaries", sumErr);
+        }
       } catch (e) {
+        rankUpsertFailures += 1;
         console.error(e);
+      } finally {
+        summarySaveMs = Date.now() - summarySaveStartedAt;
       }
     }
     try {
       /* Balance is deducted per answered question in submit_answer (see supabase_question_balance_per_answer.sql). */
       if (activeSessionIdRef.current === sessionIdSnapshot) {
+        const balanceRefreshStartedAt = Date.now();
         const balFresh = await fetchStudentBalanceWithFallback(
           studentSnapshot.id,
           subjectSnapshot,
           mobileNumber
         );
         if (balFresh) setBalance(balFresh as StudentBalance);
+        balanceRefreshMs = Date.now() - balanceRefreshStartedAt;
       }
 
       const rankGroups: Record<string, { attempted: number; correct: number }> =
@@ -1529,14 +1544,23 @@ export default function QuizApp() {
       }
 
       const rankEntries = Object.entries(rankGroups);
-      for (const [rank, stats] of rankEntries) {
-        await supabase.rpc("upsert_rank_performance", {
-          p_student_id: studentSnapshot.id,
-          p_subject: subjectSnapshot,
-          p_paper_rank: rank,
-          p_attempted: stats.attempted,
-          p_correct: stats.correct,
-        });
+      rankGroupCount = rankEntries.length;
+      if (rankEntries.length > 0) {
+        const rankUpsertStartedAt = Date.now();
+        const rankResults = await Promise.allSettled(
+          rankEntries.map(async ([rank, stats]) => {
+            const { error: rankErr } = await supabase.rpc("upsert_rank_performance", {
+              p_student_id: studentSnapshot.id,
+              p_subject: subjectSnapshot,
+              p_paper_rank: rank,
+              p_attempted: stats.attempted,
+              p_correct: stats.correct,
+            });
+            if (rankErr) throw rankErr;
+          })
+        );
+        rankUpsertMs = Date.now() - rankUpsertStartedAt;
+        rankUpsertFailures += rankResults.filter((result) => result.status === "rejected").length;
       }
 
       fetch("/api/send-quiz-email", {
@@ -1550,6 +1574,16 @@ export default function QuizApp() {
       }).catch(() => {});
     } catch {
       // non-critical: don't block results
+    } finally {
+      logAntiMissingQuizSubmitLatency("result-background-finalize-finished", {
+        session_id: sessionIdSnapshot,
+        elapsed_ms_total: Date.now() - finalizeStartedAt,
+        elapsed_ms_summary_save: summarySaveMs,
+        elapsed_ms_balance_refresh: balanceRefreshMs,
+        elapsed_ms_rank_upsert: rankUpsertMs,
+        rank_group_count: rankGroupCount,
+        rank_upsert_failures: rankUpsertFailures,
+      });
     }
   };
 
