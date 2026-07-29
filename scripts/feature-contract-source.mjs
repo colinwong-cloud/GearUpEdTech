@@ -327,10 +327,21 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/page.tsx", snippet: "題目餘額" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "題目餘額（共享）" },
         { type: "file_exists", path: "src/app/api/quota/mobile-remaining/route.ts" },
+        { type: "file_exists", path: "supabase_wednesday_quiz_latency_indexes.sql" },
         {
           type: "file_contains",
           path: "src/app/api/quota/mobile-remaining/route.ts",
           snippet: "mobile-remaining-read",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/quota/mobile-remaining/route.ts",
+          snippet: "QUOTA_RELEVANT_DESCRIPTIONS",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/quota/mobile-summary/route.ts",
+          snippet: "QUOTA_RELEVANT_DESCRIPTIONS",
         },
         {
           type: "file_contains",
@@ -341,6 +352,11 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/page.tsx",
           snippet: "logAntiMissingQuizSubmitLatency(\"submit-error-nonblocking\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "logAntiMissingQuizSubmitLatency(\"result-background-finalize-finished\"",
         },
         {
           type: "file_contains",

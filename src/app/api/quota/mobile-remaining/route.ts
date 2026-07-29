@@ -9,6 +9,9 @@ const USAGE_DESCRIPTIONS_FOR_QUOTA = new Set([
   "ADMIN_QUOTA_USAGE",
   "練習作答扣除",
 ]);
+const QUOTA_RELEVANT_DESCRIPTIONS = Array.from(
+  new Set([...TOPUP_DESCRIPTIONS, ...USAGE_DESCRIPTIONS_FOR_QUOTA])
+);
 
 type RequestBody = {
   mobile_number?: string;
@@ -146,6 +149,7 @@ export async function POST(req: NextRequest) {
     .from("balance_transactions")
     .select("change_amount,description")
     .in("student_id", studentIds)
+    .in("description", QUOTA_RELEVANT_DESCRIPTIONS)
     .gte("created_at", startIso)
     .lt("created_at", endIso);
   if (txErr) {

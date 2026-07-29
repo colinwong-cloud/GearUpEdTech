@@ -17,6 +17,9 @@ const USAGE_DESCRIPTIONS_FOR_RECORD = new Set([
   ...USAGE_DESCRIPTIONS_FOR_QUOTA,
   "PAID_TIER_USAGE",
 ]);
+const QUOTA_RELEVANT_DESCRIPTIONS = Array.from(
+  new Set([...TOPUP_DESCRIPTIONS, ...USAGE_DESCRIPTIONS_FOR_RECORD])
+);
 
 type QuotaRequestBody = {
   mobile_number?: string;
@@ -184,9 +187,9 @@ export async function POST(req: NextRequest) {
       .from("balance_transactions")
       .select("id,student_id,subject,change_amount,description,created_at")
       .in("student_id", studentIds)
+      .in("description", QUOTA_RELEVANT_DESCRIPTIONS)
       .gte("created_at", startIso)
-      .lt("created_at", endIso)
-      .order("created_at", { ascending: false });
+      .lt("created_at", endIso);
     if (txErr) {
       return NextResponse.json({ error: txErr.message || "查詢配額紀錄失敗" }, { status: 500 });
     }
