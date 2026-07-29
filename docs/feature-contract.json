@@ -635,6 +635,16 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"result-screen-latency-warning\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "logAntiMissingQuizSubmitLatency(\"result-background-finalize-latency-warning\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
           "snippet": "網絡稍慢，系統已重試。請再按一次提交。"
         },
         {
@@ -1698,8 +1708,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T06:06:53.530Z",
+  "generated_at": "2026-07-29T08:12:50.919Z",
   "commit_inventory": [
+    {
+      "sha": "0e5b14c7491e0871883c2b53f082900bf366e726",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory for phase4 commit"
+    },
     {
       "sha": "a493bf9297474e0960d5da1ae667e180196af4ec",
       "date": "2026-07-29",
@@ -3472,7 +3487,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 354,
+    "total_commits_since_start": 355,
     "total_feature_rows": 56
   }
 }
