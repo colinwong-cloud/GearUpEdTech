@@ -326,6 +326,17 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "supabase_question_balance_per_answer.sql" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "題目餘額" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "題目餘額（共享）" },
+        { type: "file_exists", path: "src/app/api/quota/mobile-remaining/route.ts" },
+        {
+          type: "file_contains",
+          path: "src/app/api/quota/mobile-remaining/route.ts",
+          snippet: "mobile-remaining-read",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "[anti-missing][quiz][submit-latency] fast-path-advanced",
+        },
         { type: "file_exists", path: "src/lib/balance-transactions.ts" },
         {
           type: "file_contains",
