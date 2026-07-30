@@ -90,7 +90,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Quiz star progress keeps grey stars trailing after yellow in LTR grid",
-      evidence_commits: ["6717a93"],
+      evidence_commits: ["22c0654"],
       checks: [
         {
           type: "file_exists",

@@ -173,6 +173,47 @@
       ]
     },
     {
+      "id": "quiz-star-progress-ltr-grid",
+      "month": "2026-07",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Quiz star progress keeps grey stars trailing after yellow in LTR grid",
+      "evidence_commits": [
+        "22c0654"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/student-quiz-experience.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-progress-ltr-grid-v1\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "STAR_PROGRESS_COLUMNS = 10"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "[anti-missing][quiz][star-progress]"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}"
+        }
+      ]
+    },
+    {
       "id": "quiz-short-answer-and-image-support",
       "month": "2026-04",
       "category": "quiz-core",
@@ -1708,8 +1749,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-29T08:16:45.831Z",
+  "generated_at": "2026-07-30T03:43:13.988Z",
   "commit_inventory": [
+    {
+      "sha": "22c065494ef67b8c5537965129a1a22039a83feb",
+      "date": "2026-07-30",
+      "summary": "fix quiz star progress to trailing grey LTR grid layout."
+    },
+    {
+      "sha": "bcefce185bb261b00d976eb8472549aa8902fc0f",
+      "date": "2026-07-29",
+      "summary": "Refresh feature contract inventory for telemetry follow-up"
+    },
     {
       "sha": "db0c9238815537ec927e60b6c9ed3544873634ff",
       "date": "2026-07-29",
@@ -3492,7 +3543,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 356,
-    "total_feature_rows": 56
+    "total_commits_since_start": 358,
+    "total_feature_rows": 57
   }
 }
