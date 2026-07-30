@@ -1186,6 +1186,26 @@
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
           "snippet": "首次登入請更新密碼"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "返回主頁"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "data-anti-missing=\"tutor-login-back-to-main\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "[anti-missing][tutor][login] back-to-main-clicked"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "className=\"mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110\""
         }
       ]
     },
@@ -1765,8 +1785,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T04:55:09.614Z",
+  "generated_at": "2026-07-30T05:22:41.471Z",
   "commit_inventory": [
+    {
+      "sha": "4334d8d0716e28e132a473a225b85612747ad64b",
+      "date": "2026-07-30",
+      "summary": "Add tutor login back button to main page."
+    },
+    {
+      "sha": "34573485635f82e3e0fa4575b89edbf74274e68b",
+      "date": "2026-07-30",
+      "summary": "chore: sync feature contract inventory for answered-circle stars"
+    },
     {
       "sha": "cdb4ae98e4b25cf4fb166b18b4da844ba2ffabdb",
       "date": "2026-07-30",
@@ -3579,7 +3609,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 362,
+    "total_commits_since_start": 364,
     "total_feature_rows": 57
   }
 }
