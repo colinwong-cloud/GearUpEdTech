@@ -85,6 +85,12 @@ describe("anti-missing regression guards", () => {
     expect(tutorPageSource).toContain("GearUp Tutor");
     expect(tutorPageSource).toContain("導師登入");
     expect(tutorPageSource).toContain("首次登入請更新密碼");
+    expect(tutorPageSource).toContain("返回主頁");
+    expect(tutorPageSource).toContain('data-anti-missing="tutor-login-back-to-main"');
+    expect(tutorPageSource).toContain("[anti-missing][tutor][login] back-to-main-clicked");
+    expect(tutorPageSource).toContain(
+      'className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"'
+    );
     expect(tutorPageSource).toContain("bg-slate-950");
     expect(tutorPageSource).toContain("rounded-xl border border-sky-200 bg-sky-100");
 

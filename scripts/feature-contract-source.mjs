@@ -672,6 +672,23 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "GearUp Tutor" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "導師登入" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "首次登入請更新密碼" },
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "返回主頁" },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/page.tsx",
+          snippet: 'data-anti-missing="tutor-login-back-to-main"',
+        },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/page.tsx",
+          snippet: "[anti-missing][tutor][login] back-to-main-clicked",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/page.tsx",
+          snippet:
+            'className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"',
+        },
       ],
     },
     {

@@ -280,6 +280,19 @@ export default function TutorPortalPage() {
             {loginLoading ? "登入中..." : "登入"}
           </button>
 
+          <Link
+            href="/"
+            data-anti-missing="tutor-login-back-to-main"
+            onClick={() => {
+              console.info(
+                '[anti-missing][tutor][login] back-to-main-clicked {"policy_version":"tutor-login-back-v1","target":"/"}'
+              );
+            }}
+            className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+          >
+            返回主頁
+          </Link>
+
           <div className="mt-4 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-slate-200">
             忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。
           </div>
