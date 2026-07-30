@@ -1805,8 +1805,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T10:04:10.397Z",
+  "generated_at": "2026-07-30T10:10:29.588Z",
   "commit_inventory": [
+    {
+      "sha": "e16c4646d9f0b4459fe26a136cdb3014063fe7ad",
+      "date": "2026-07-30",
+      "summary": "fix: send question-report emails to CS only"
+    },
     {
       "sha": "5aac2a7d2bf897a52de3bb8458249c3fb0c7f72b",
       "date": "2026-07-30",
@@ -3644,7 +3649,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 367,
+    "total_commits_since_start": 368,
     "total_feature_rows": 57
   }
 }
