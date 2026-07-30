@@ -20,7 +20,7 @@ const ENCOURAGE = [
 ] as const;
 
 const SOUND_KEY = "gearup-quiz-sound-enabled";
-const STAR_PROGRESS_POLICY_VERSION = "quiz-star-progress-ltr-grid-v1";
+const STAR_PROGRESS_POLICY_VERSION = "quiz-star-answered-circle-v2";
 const STAR_PROGRESS_COLUMNS = 10;
 
 function logAntiMissingStarProgress(event: string, payload: Record<string, unknown>) {
@@ -54,40 +54,49 @@ function playClickSound() {
   }
 }
 
-function StarProgress({ onQuestion, total }: { onQuestion: number; total: number }) {
+function StarProgress({
+  answeredCount,
+  total,
+}: {
+  answeredCount: number;
+  total: number;
+}) {
   const safeTotal = Math.max(0, Math.trunc(total));
-  const n = Math.min(Math.max(0, Math.trunc(onQuestion)), safeTotal);
+  const answered = Math.min(Math.max(0, Math.trunc(answeredCount)), safeTotal);
+  const remainingCircles = Math.max(safeTotal - answered, 0);
 
-  // Fixed-column LTR grid keeps filled (yellow) stars first and remaining (grey)
-  // stars trailing at the end across wrapped mobile rows.
+  // Fixed-column LTR grid: answered = yellow star, not answered = plain circle.
   useEffect(() => {
     logAntiMissingStarProgress("layout-applied", {
-      on_question: n,
+      answered_count: answered,
       total: safeTotal,
       columns: STAR_PROGRESS_COLUMNS,
-      filled_yellow: n,
-      remaining_grey: Math.max(safeTotal - n, 0),
+      filled_yellow: answered,
+      remaining_circles: remainingCircles,
+      marker_rule: "answered-yellow-unanswered-circle",
     });
-  }, [n, safeTotal]);
+  }, [answered, remainingCircles, safeTotal]);
 
   return (
     <div
       className="mx-auto grid w-full max-w-xl justify-items-center gap-x-1.5 gap-y-1.5"
       style={{ gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))` }}
       role="img"
-      aria-label={`第 ${n} 題，共 ${safeTotal} 題`}
+      aria-label={`已完成 ${answered} 題，共 ${safeTotal} 題`}
       data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}
     >
       {Array.from({ length: safeTotal }, (_, i) => {
-        const filled = i < n;
+        const isAnswered = i < answered;
         return (
           <span
             key={i}
             className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
-              filled ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
+              isAnswered
+                ? "scale-100 drop-shadow-sm"
+                : "scale-100 text-slate-400"
             }`}
           >
-            {filled ? "⭐" : "○"}
+            {isAnswered ? "⭐" : "○"}
           </span>
         );
       })}
@@ -213,7 +222,7 @@ export function StudentQuizExperience({
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-3 pb-6 sm:px-4 sm:pb-8">
         <div className="mb-2">
-          <StarProgress onQuestion={currentIndex + 1} total={totalQuestions} />
+          <StarProgress answeredCount={currentIndex} total={totalQuestions} />
         </div>
 
         <AnimatePresence mode="wait">

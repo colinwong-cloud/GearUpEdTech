@@ -127,15 +127,23 @@ describe("anti-missing regression guards", () => {
     expect(adminApiSource).toContain("mtd_parent_questions_summary");
   });
 
-  it("keeps quiz star progress LTR grid so grey stars trail after yellow", () => {
+  it("keeps quiz star progress answered=yellow and unanswered=circle", () => {
     const quizUiSource = readSource("src/components/student-quiz-experience.tsx");
-    expect(quizUiSource).toContain('STAR_PROGRESS_POLICY_VERSION = "quiz-star-progress-ltr-grid-v1"');
+    expect(quizUiSource).toContain(
+      'STAR_PROGRESS_POLICY_VERSION = "quiz-star-answered-circle-v2"'
+    );
     expect(quizUiSource).toContain("STAR_PROGRESS_COLUMNS = 10");
     expect(quizUiSource).toContain("[anti-missing][quiz][star-progress]");
+    expect(quizUiSource).toContain('marker_rule: "answered-yellow-unanswered-circle"');
     expect(quizUiSource).toContain(
       "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`"
     );
     expect(quizUiSource).toContain("data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}");
+    expect(quizUiSource).toContain(
+      "<StarProgress answeredCount={currentIndex} total={totalQuestions} />"
+    );
+    expect(quizUiSource).toContain("scale-100 text-slate-400");
+    expect(quizUiSource).not.toContain("opacity-35 grayscale");
     expect(quizUiSource).not.toContain("flex flex-wrap items-center justify-center gap-1.5");
   });
 

@@ -89,7 +89,7 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-07",
       category: "quiz-core",
       priority: "critical",
-      title: "Quiz star progress keeps grey stars trailing after yellow in LTR grid",
+      title: "Quiz star progress: answered yellow star, unanswered plain circle (LTR grid)",
       evidence_commits: ["22c0654"],
       checks: [
         {
@@ -99,7 +99,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-progress-ltr-grid-v1\"",
+          snippet: "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-answered-circle-v2\"",
         },
         {
           type: "file_contains",
@@ -114,12 +114,27 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
+          snippet: "marker_rule: \"answered-yellow-unanswered-circle\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
           snippet: "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`",
         },
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
           snippet: "data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "<StarProgress answeredCount={currentIndex} total={totalQuestions} />",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "scale-100 text-slate-400",
         },
       ],
     },
