@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Question } from "@/lib/types";
 import { OPTION_KEYS, OPTION_LABELS } from "@/lib/student-quiz-constants";
@@ -19,6 +20,17 @@ const ENCOURAGE = [
 ] as const;
 
 const SOUND_KEY = "gearup-quiz-sound-enabled";
+const STAR_PROGRESS_POLICY_VERSION = "quiz-star-progress-ltr-grid-v1";
+const STAR_PROGRESS_COLUMNS = 10;
+
+function logAntiMissingStarProgress(event: string, payload: Record<string, unknown>) {
+  console.info(
+    `[anti-missing][quiz][star-progress] ${event} ${JSON.stringify({
+      policy_version: STAR_PROGRESS_POLICY_VERSION,
+      ...payload,
+    })}`
+  );
+}
 
 function playClickSound() {
   try {
@@ -43,23 +55,42 @@ function playClickSound() {
 }
 
 function StarProgress({ onQuestion, total }: { onQuestion: number; total: number }) {
-  const n = Math.min(onQuestion, total);
+  const safeTotal = Math.max(0, Math.trunc(total));
+  const n = Math.min(Math.max(0, Math.trunc(onQuestion)), safeTotal);
+
+  // Fixed-column LTR grid keeps filled (yellow) stars first and remaining (grey)
+  // stars trailing at the end across wrapped mobile rows.
+  useEffect(() => {
+    logAntiMissingStarProgress("layout-applied", {
+      on_question: n,
+      total: safeTotal,
+      columns: STAR_PROGRESS_COLUMNS,
+      filled_yellow: n,
+      remaining_grey: Math.max(safeTotal - n, 0),
+    });
+  }, [n, safeTotal]);
+
   return (
     <div
-      className="flex flex-wrap items-center justify-center gap-1.5"
+      className="mx-auto grid w-full max-w-xl justify-items-center gap-x-1.5 gap-y-1.5"
+      style={{ gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))` }}
       role="img"
-      aria-label={`第 ${n} 題，共 ${total} 題`}
+      aria-label={`第 ${n} 題，共 ${safeTotal} 題`}
+      data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}
     >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
-            i < n ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
-          }`}
-        >
-          {i < n ? "⭐" : "○"}
-        </span>
-      ))}
+      {Array.from({ length: safeTotal }, (_, i) => {
+        const filled = i < n;
+        return (
+          <span
+            key={i}
+            className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
+              filled ? "scale-100 drop-shadow-sm" : "scale-90 opacity-35 grayscale"
+            }`}
+          >
+            {filled ? "⭐" : "○"}
+          </span>
+        );
+      })}
     </div>
   );
 }

@@ -127,6 +127,18 @@ describe("anti-missing regression guards", () => {
     expect(adminApiSource).toContain("mtd_parent_questions_summary");
   });
 
+  it("keeps quiz star progress LTR grid so grey stars trail after yellow", () => {
+    const quizUiSource = readSource("src/components/student-quiz-experience.tsx");
+    expect(quizUiSource).toContain('STAR_PROGRESS_POLICY_VERSION = "quiz-star-progress-ltr-grid-v1"');
+    expect(quizUiSource).toContain("STAR_PROGRESS_COLUMNS = 10");
+    expect(quizUiSource).toContain("[anti-missing][quiz][star-progress]");
+    expect(quizUiSource).toContain(
+      "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`"
+    );
+    expect(quizUiSource).toContain("data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}");
+    expect(quizUiSource).not.toContain("flex flex-wrap items-center justify-center gap-1.5");
+  });
+
   it("keeps release SOP fresh-branch safety rule", () => {
     const releaseSopSource = readSource("docs/release-sop.md");
     expect(releaseSopSource).toContain("create a fresh branch **for every new task**");

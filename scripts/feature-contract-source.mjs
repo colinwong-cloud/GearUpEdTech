@@ -85,6 +85,45 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "quiz-star-progress-ltr-grid",
+      month: "2026-07",
+      category: "quiz-core",
+      priority: "critical",
+      title: "Quiz star progress keeps grey stars trailing after yellow in LTR grid",
+      evidence_commits: ["6717a93"],
+      checks: [
+        {
+          type: "file_exists",
+          path: "src/components/student-quiz-experience.tsx",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-progress-ltr-grid-v1\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "STAR_PROGRESS_COLUMNS = 10",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "[anti-missing][quiz][star-progress]",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/student-quiz-experience.tsx",
+          snippet: "data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}",
+        },
+      ],
+    },
+    {
       id: "quiz-short-answer-and-image-support",
       month: "2026-04",
       category: "quiz-core",
