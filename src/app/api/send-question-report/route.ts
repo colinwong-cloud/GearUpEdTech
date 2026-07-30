@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+
+const QUESTION_REPORT_NOTIFY_POLICY_VERSION = "question-report-cs-only-v1";
 
 type QuestionReportPayload = {
   student_id?: string | null;
@@ -43,6 +44,15 @@ function parseNotifyRecipients(): string[] {
   return [single.toLowerCase()];
 }
 
+function logAntiMissingQuestionReport(event: string, payload: Record<string, unknown>) {
+  console.info(
+    `[anti-missing][quiz][question-report] ${event} ${JSON.stringify({
+      policy_version: QUESTION_REPORT_NOTIFY_POLICY_VERSION,
+      ...payload,
+    })}`
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = (await req.json()) as QuestionReportPayload;
@@ -63,28 +73,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ skipped: true, reason: "no_resend_api_key" });
     }
 
-    const recipients = new Set(parseNotifyRecipients());
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
-    if (supabaseUrl && serviceRole) {
-      try {
-        const admin = createClient(supabaseUrl, serviceRole);
-        const { data: studentRow } = await admin
-          .from("students")
-          .select("student_name,parent:parents(email,parent_name,mobile_number)")
-          .eq("id", studentId)
-          .maybeSingle();
-
-        const parent = studentRow?.parent as
-          | { email?: string | null; parent_name?: string | null; mobile_number?: string | null }
-          | null
-          | undefined;
-        const parentEmail = safeText(parent?.email);
-        if (parentEmail) recipients.add(parentEmail.toLowerCase());
-      } catch {
-        // fall back to default recipients only
-      }
-    }
+    // CS-only recipients. Do not include parent email for question-report notices.
+    const recipients = parseNotifyRecipients();
+    logAntiMissingQuestionReport("recipients-resolved", {
+      recipient_count: recipients.length,
+      includes_parent_lookup: false,
+      notify_policy: "cs-only",
+    });
 
     const subject = `【題目反映通知】${studentName || "學生"} 已提交題目反映`;
     const questionSubject = safeText(payload.question_subject) || "—";
@@ -124,7 +119,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(resendApiKey);
     const { error } = await resend.emails.send({
       from: "GearUp Quiz <noreply@updates.hkedutech.com>",
-      to: Array.from(recipients),
+      to: recipients,
       subject,
       html,
     });
@@ -135,6 +130,14 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    logAntiMissingQuestionReport("notification-sent", {
+      recipient_count: recipients.length,
+      includes_parent_lookup: false,
+      notify_policy: "cs-only",
+      question_id: questionId,
+      session_id: sessionId,
+    });
 
     return NextResponse.json({ sent: true });
   } catch (err) {
@@ -147,4 +150,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

@@ -152,6 +152,26 @@
           "type": "file_contains",
           "path": "src/app/api/send-question-report/route.ts",
           "snippet": "題目反映通知"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-question-report/route.ts",
+          "snippet": "QUESTION_REPORT_NOTIFY_POLICY_VERSION = \"question-report-cs-only-v1\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-question-report/route.ts",
+          "snippet": "[anti-missing][quiz][question-report]"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-question-report/route.ts",
+          "snippet": "includes_parent_lookup: false"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/send-question-report/route.ts",
+          "snippet": "notify_policy: \"cs-only\""
         }
       ]
     },
@@ -1785,8 +1805,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T05:25:35.522Z",
+  "generated_at": "2026-07-30T10:04:10.397Z",
   "commit_inventory": [
+    {
+      "sha": "5aac2a7d2bf897a52de3bb8458249c3fb0c7f72b",
+      "date": "2026-07-30",
+      "summary": "chore: sync feature contract inventory for tutor back button"
+    },
     {
       "sha": "6076097164d4e66ae09cd60982677e2284402daf",
       "date": "2026-07-30",
@@ -3619,7 +3644,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 366,
+    "total_commits_since_start": 367,
     "total_feature_rows": 57
   }
 }
