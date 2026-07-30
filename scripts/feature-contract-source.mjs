@@ -71,6 +71,26 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/page.tsx", snippet: "fetch(\"/api/send-question-report\"" },
         { type: "file_exists", path: "src/app/api/send-question-report/route.ts" },
         { type: "file_contains", path: "src/app/api/send-question-report/route.ts", snippet: "題目反映通知" },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-question-report/route.ts",
+          snippet: "QUESTION_REPORT_NOTIFY_POLICY_VERSION = \"question-report-cs-only-v1\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-question-report/route.ts",
+          snippet: "[anti-missing][quiz][question-report]",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-question-report/route.ts",
+          snippet: "includes_parent_lookup: false",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/send-question-report/route.ts",
+          snippet: "notify_policy: \"cs-only\"",
+        },
       ],
     },
     {

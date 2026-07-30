@@ -29,6 +29,14 @@ describe("anti-missing regression guards", () => {
     expect(reportApiSource).toContain("題目反映通知");
     expect(reportApiSource).toContain("QUESTION_REPORT_NOTIFY_EMAIL");
     expect(reportApiSource).toContain("GearUp Quiz <noreply@updates.hkedutech.com>");
+    expect(reportApiSource).toContain(
+      'QUESTION_REPORT_NOTIFY_POLICY_VERSION = "question-report-cs-only-v1"'
+    );
+    expect(reportApiSource).toContain("[anti-missing][quiz][question-report]");
+    expect(reportApiSource).toContain("includes_parent_lookup: false");
+    expect(reportApiSource).toContain('notify_policy: "cs-only"');
+    expect(reportApiSource).not.toContain("parents(email");
+    expect(reportApiSource).not.toContain("parentEmail");
   });
 
   it("keeps student registration CTA placement and tutor referral field", () => {
