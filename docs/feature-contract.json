@@ -1785,8 +1785,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T05:22:56.239Z",
+  "generated_at": "2026-07-30T05:25:35.522Z",
   "commit_inventory": [
+    {
+      "sha": "6076097164d4e66ae09cd60982677e2284402daf",
+      "date": "2026-07-30",
+      "summary": "fix tutor back control to Next.js Link for lint compliance"
+    },
     {
       "sha": "15de22a2cff5fec9e982669c0719dbccdabb802c",
       "date": "2026-07-30",
@@ -3614,7 +3619,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 365,
+    "total_commits_since_start": 366,
     "total_feature_rows": 57
   }
 }
