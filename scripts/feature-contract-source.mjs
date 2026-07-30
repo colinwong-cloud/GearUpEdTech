@@ -90,7 +90,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Quiz star progress: answered yellow star, unanswered plain circle (LTR grid)",
-      evidence_commits: ["22c0654"],
+      evidence_commits: ["5d0cea8", "22c0654"],
       checks: [
         {
           type: "file_exists",

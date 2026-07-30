@@ -177,8 +177,9 @@
       "month": "2026-07",
       "category": "quiz-core",
       "priority": "critical",
-      "title": "Quiz star progress keeps grey stars trailing after yellow in LTR grid",
+      "title": "Quiz star progress: answered yellow star, unanswered plain circle (LTR grid)",
       "evidence_commits": [
+        "5d0cea8",
         "22c0654"
       ],
       "checks": [
@@ -189,7 +190,7 @@
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-progress-ltr-grid-v1\""
+          "snippet": "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-answered-circle-v2\""
         },
         {
           "type": "file_contains",
@@ -204,12 +205,27 @@
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "marker_rule: \"answered-yellow-unanswered-circle\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
           "snippet": "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`"
         },
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
           "snippet": "data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "<StarProgress answeredCount={currentIndex} total={totalQuestions} />"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "scale-100 text-slate-400"
         }
       ]
     },
@@ -1749,8 +1765,18 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T03:43:29.752Z",
+  "generated_at": "2026-07-30T04:55:07.225Z",
   "commit_inventory": [
+    {
+      "sha": "5d0cea826e9906bd779fc9a89caeb0950b1c07f6",
+      "date": "2026-07-30",
+      "summary": "fix quiz stars to answered yellow and unanswered circles."
+    },
+    {
+      "sha": "f906ffdb45e84eb3d42907cea8d1997b7a950902",
+      "date": "2026-07-30",
+      "summary": "chore: sync feature contract inventory for star progress PR"
+    },
     {
       "sha": "13f6f4a532f930a42a31178074f9ebc27779d7ad",
       "date": "2026-07-30",
@@ -3548,7 +3574,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 359,
+    "total_commits_since_start": 361,
     "total_feature_rows": 57
   }
 }
