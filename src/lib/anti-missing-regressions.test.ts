@@ -158,6 +158,21 @@ describe("anti-missing regression guards", () => {
     expect(finalizeSource).toContain(
       "[anti-missing][payment][mit-policy] payment-consent-list-matched"
     );
+
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("buildMitHppRedirectProps");
+    expect(pageSource).toContain("payment_consent");
+    expect(pageSource).toContain("airwallex_customer_id");
+    expect(pageSource).toContain("缺少 customer_id");
+
+    const hppMitSource = readSource("src/lib/airwallex-hpp-mit.ts");
+    expect(hppMitSource).toContain('mode: "recurring"');
+    expect(hppMitSource).toContain('next_triggered_by: "merchant"');
+    expect(hppMitSource).toContain('merchant_trigger_reason: "scheduled"');
+
+    const checkoutApiSource = readSource("src/app/api/payment/checkout/route.ts");
+    expect(checkoutApiSource).toContain("hpp_mit_fields_required: true");
+    expect(checkoutApiSource).toContain("payment_consent: paymentConsentForHpp");
   });
 
   it("keeps quiz star progress answered=yellow and unanswered=circle", () => {

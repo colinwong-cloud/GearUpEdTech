@@ -786,6 +786,13 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "next_triggered_by: \"merchant\"" },
         { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
         { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "[anti-missing][payment][mit-policy]" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "hpp_mit_fields_required: true" },
+        { type: "file_contains", path: "src/app/api/payment/checkout/route.ts", snippet: "payment_consent: paymentConsentForHpp" },
+        { type: "file_exists", path: "src/lib/airwallex-hpp-mit.ts" },
+        { type: "file_contains", path: "src/lib/airwallex-hpp-mit.ts", snippet: "mode: \"recurring\"" },
+        { type: "file_contains", path: "src/lib/airwallex-hpp-mit.ts", snippet: "buildMitHppRedirectProps" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "buildMitHppRedirectProps" },
+        { type: "file_contains", path: "src/app/payment-airwallex/page.tsx", snippet: "buildMitHppRedirectProps" },
       ],
     },
     {

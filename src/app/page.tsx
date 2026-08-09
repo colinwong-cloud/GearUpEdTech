@@ -38,6 +38,10 @@ import {
   playClickSound,
 } from "@/components/student-quiz-experience";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
+import {
+  buildMitHppRedirectProps,
+  type MitRecurringTermsOfUse,
+} from "@/lib/airwallex-hpp-mit";
 const MAX_SHORT_ANSWER = 2;
 const MAX_IMAGE = 1;
 const SUPABASE_PAGE_SIZE = 1000;
@@ -5341,7 +5345,15 @@ function PaymentScreen({
         currency?: string;
         country_code?: string;
         final_amount_hkd?: number;
+        mode?: string;
+        customer_id?: string;
         airwallex_customer_id?: string;
+        payment_consent?: {
+          next_triggered_by?: string;
+          merchant_trigger_reason?: string;
+          terms_of_use?: MitRecurringTermsOfUse;
+        };
+        recurring_terms_of_use?: MitRecurringTermsOfUse;
         airwallex_env?: "demo" | "prod";
         airwallex_locale?: string;
         airwallex_available_methods?: string[];
@@ -5447,23 +5459,38 @@ function PaymentScreen({
               ],
             }
           : undefined;
+        const resolvedCustomerId =
+          (payload.customer_id || "").trim() ||
+          (payload.airwallex_customer_id || "").trim();
+        if (!resolvedCustomerId) {
+          throw new Error("付款設定不完整：缺少 customer_id，無法建立下月自動續費授權。");
+        }
+        const termsOfUse =
+          payload.payment_consent?.terms_of_use ||
+          payload.recurring_terms_of_use ||
+          null;
         const payments = await resolveAirwallexPaymentsApi(resolvedAirwallexEnv);
-        payments.redirectToCheckout({
-          intent_id: resolvedIntentId,
-          client_secret: resolvedClientSecret,
-          currency: resolvedCurrency,
-          country_code: resolvedCountryCode,
-          locale: resolvedLocale,
-          submitType: "subscribe",
-          methods,
-          applePayRequestOptions,
-          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
-            mobileNumber.trim()
-          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
-          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
-            mobileNumber.trim()
-          )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
-        });
+        // Critical: HPP must receive mode/customer_id/payment_consent or Apple Pay
+        // can succeed without a VERIFIED merchant-scheduled consent (#135/#136 gap).
+        payments.redirectToCheckout(
+          buildMitHppRedirectProps({
+            intentId: resolvedIntentId,
+            clientSecret: resolvedClientSecret,
+            currency: resolvedCurrency,
+            countryCode: resolvedCountryCode,
+            locale: resolvedLocale,
+            customerId: resolvedCustomerId,
+            methods,
+            termsOfUse,
+            applePayRequestOptions,
+            successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+              mobileNumber.trim()
+            )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+            cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+              mobileNumber.trim()
+            )}&intent_id=${encodeURIComponent(resolvedIntentId)}`,
+          })
+        );
         return;
       }
       if (payload.checkout_url) {

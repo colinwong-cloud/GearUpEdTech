@@ -1865,7 +1865,7 @@ export async function POST(req: NextRequest) {
         const isPaidNow =
           paidUntilIso !== null && new Date(paidUntilIso).getTime() >= Date.now();
 
-        const recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+        let recurringProfile = await getRecurringProfileByMobile(admin, mobile);
 
         const now = new Date();
         const historyStartIso = new Date(
@@ -1912,6 +1912,29 @@ export async function POST(req: NextRequest) {
         }
 
         const latestPaidOrder = paidOrders[0] ?? null;
+
+        // Repair incomplete MIT linkage when admin looks up this parent.
+        const linkageReadyNow = Boolean(
+          recurringProfile?.airwallex_payment_consent_id &&
+            recurringProfile?.airwallex_payment_method_id &&
+            recurringProfile?.payment_method_type
+        );
+        const repairIntentId = readString(latestPaidOrder?.airwallex_payment_intent_id);
+        if (isPaidNow && !linkageReadyNow && repairIntentId) {
+          await finalizePaymentByIntent({
+            supabaseAdmin: admin,
+            paymentIntentId: repairIntentId,
+            merchantOrderId: null,
+            paid: true,
+            paymentAttemptId: readString(latestPaidOrder?.airwallex_payment_attempt_id),
+            rawPayload: {
+              source: "admin_payment_status_enquiry_repair",
+              mobile_number: mobile,
+            },
+          });
+          recurringProfile = await getRecurringProfileByMobile(admin, mobile);
+        }
+
         const recurringStatus = recurringProfile?.status
           ? String(recurringProfile.status).toLowerCase()
           : null;
@@ -2203,11 +2226,27 @@ export async function POST(req: NextRequest) {
         const repairedMobiles = new Set<string>();
         for (const mobile of mobilesNeedingRepair.slice(0, 50)) {
           const monthOrders = monthOrdersByMobile.get(mobile) ?? [];
-          const latestPaidRecurringOrder = monthOrders.find(
+          let latestPaidRecurringOrder = monthOrders.find(
             (row) =>
               String(row.status || "").trim().toLowerCase() === "paid" &&
               Boolean(readString(row.airwallex_payment_intent_id))
           );
+          // Fallback: any recent paid order with an intent (not only is_recurring_payment).
+          if (!latestPaidRecurringOrder) {
+            const anyPaidRes = await admin
+              .from("parent_payment_orders")
+              .select(
+                "id,mobile_number,status,created_at,paid_at,merchant_order_id,airwallex_payment_intent_id,is_recurring_payment,payment_method,final_amount_hkd"
+              )
+              .eq("mobile_number", mobile)
+              .eq("status", "paid")
+              .not("airwallex_payment_intent_id", "is", null)
+              .order("paid_at", { ascending: false })
+              .limit(1);
+            if (!anyPaidRes.error && anyPaidRes.data?.[0]) {
+              latestPaidRecurringOrder = anyPaidRes.data[0] as RecurringMonitorOrderRow;
+            }
+          }
           if (!latestPaidRecurringOrder) continue;
           const paymentIntentId = readString(latestPaidRecurringOrder.airwallex_payment_intent_id);
           if (!paymentIntentId) continue;

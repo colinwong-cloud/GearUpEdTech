@@ -4,6 +4,7 @@ import Script from "next/script";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { buildMitHppRedirectProps } from "@/lib/airwallex-hpp-mit";
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
 
 type AirwallexPaymentsApi = {
@@ -127,6 +128,10 @@ function PaymentAirwallexContent() {
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
   const checkoutLocale = searchParams.get("airwallex_locale") || "zh-HK";
+  const customerId =
+    searchParams.get("customer_id") ||
+    searchParams.get("airwallex_customer_id") ||
+    "";
   const finalAmountRaw = Number(searchParams.get("final_amount_hkd") || "99");
   const finalAmount = Number.isFinite(finalAmountRaw) ? Math.max(finalAmountRaw, 0) : 99;
   const envOverride = (searchParams.get("airwallex_env") || "").toLowerCase();
@@ -177,6 +182,10 @@ function PaymentAirwallexContent() {
       setError("缺少付款參數，請返回重試。");
       return;
     }
+    if (!customerId.trim()) {
+      setError("缺少 customer_id，無法建立下月自動續費授權。請返回重新發起付款。");
+      return;
+    }
     const ready = await waitForAirwallexSdkReady();
     if (!ready) {
       setError("付款 SDK 載入失敗，請重新整理再試。");
@@ -216,22 +225,30 @@ function PaymentAirwallexContent() {
             ],
           }
         : undefined;
-      payments.redirectToCheckout({
-        intent_id: intentId,
-        client_secret: clientSecret,
-        currency,
-        country_code: countryCode,
-        locale: checkoutLocale,
-        submitType: "subscribe",
-        methods,
-        applePayRequestOptions,
-        successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
-          mobile
-        )}&intent_id=${encodeURIComponent(intentId)}`,
-        cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
-          mobile
-        )}&intent_id=${encodeURIComponent(intentId)}`,
-      });
+      payments.redirectToCheckout(
+        buildMitHppRedirectProps({
+          intentId,
+          clientSecret,
+          currency,
+          countryCode,
+          locale: checkoutLocale,
+          customerId,
+          methods,
+          termsOfUse: {
+            payment_amount_type: "FIXED",
+            fixed_payment_amount: finalAmount,
+            payment_currency: "HKD",
+            payment_schedule: { period: 1, period_unit: "MONTH" },
+          },
+          applePayRequestOptions,
+          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+            mobile
+          )}&intent_id=${encodeURIComponent(intentId)}`,
+          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+            mobile
+          )}&intent_id=${encodeURIComponent(intentId)}`,
+        })
+      );
     } catch {
       setError("未能啟動付款頁，請稍後重試。");
     } finally {
