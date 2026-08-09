@@ -122,6 +122,10 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("重設導師登入密碼");
     expect(adminPageSource).toContain("今日需發起 MIT");
     expect(adminPageSource).toContain("今日已發起 MIT");
+    expect(adminPageSource).toContain("Consent 已捕捉");
+    expect(adminPageSource).toContain("可下月自動續費");
+    expect(adminPageSource).toContain("consent_captured");
+    expect(adminPageSource).toContain("recurring_linkage_ready");
     expect(adminPageSource).toContain("今日練習明細");
     expect(adminPageSource).toContain("今日練習時間");
     expect(adminPageSource).toContain("家長電話");
@@ -137,8 +141,18 @@ describe("anti-missing regression guards", () => {
     expect(adminApiSource).toContain("tutor_referral_code_summary");
     expect(adminApiSource).toContain("tutor_referral_password_reset");
     expect(adminApiSource).toContain("payment_recurring_monitor_summary");
+    expect(adminApiSource).toContain("consent_captured");
+    expect(adminApiSource).toContain("recurring_linkage_ready");
     expect(adminApiSource).toContain("today_practice_details_summary");
     expect(adminApiSource).toContain("mtd_parent_questions_summary");
+
+    const finalizeSource = readSource("src/lib/server/payment-finalize.ts");
+    expect(finalizeSource).toContain("getAirwallexPaymentConsent");
+    expect(finalizeSource).toContain("mergeSnapshotWithConsentFallback");
+    expect(finalizeSource).toContain("snapshotHasRecurringLinkage");
+    expect(finalizeSource).toContain(
+      "[anti-missing][payment][mit-policy] missing-payment-consent-id"
+    );
   });
 
   it("keeps quiz star progress answered=yellow and unanswered=circle", () => {

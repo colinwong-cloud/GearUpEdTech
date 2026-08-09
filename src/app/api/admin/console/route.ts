@@ -464,7 +464,7 @@ async function getRecurringProfileByMobile(
   const { data, error } = await admin
     .from("parent_recurring_profiles")
     .select(
-      "id,parent_id,status,airwallex_payment_consent_id,payment_method_label,payment_method_type,payment_method_brand"
+      "id,parent_id,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand"
     )
     .eq("mobile_number", mobile)
     .maybeSingle();
@@ -1974,6 +1974,13 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const consentCaptured = Boolean(recurringProfile?.airwallex_payment_consent_id);
+        const recurringLinkageReady = Boolean(
+          recurringProfile?.airwallex_payment_consent_id &&
+            recurringProfile?.airwallex_payment_method_id &&
+            recurringProfile?.payment_method_type
+        );
+
         return NextResponse.json({
           data: {
             found: true,
@@ -1986,6 +1993,13 @@ export async function POST(req: NextRequest) {
               paid_started_at: normalizeIsoDateTime(parent.paid_started_at),
               paid_until: paidUntilIso,
             },
+            recurring: {
+              consent_captured: consentCaptured,
+              recurring_linkage_ready: recurringLinkageReady,
+              recurring_status: recurringStatus,
+              payment_method: paymentMethod,
+              is_recurring: isRecurring,
+            },
             payment: isPaidNow
               ? {
                   current_payment_start_date: normalizeIsoDateTime(parent.paid_started_at),
@@ -1993,6 +2007,8 @@ export async function POST(req: NextRequest) {
                   payment_method: paymentMethod,
                   is_recurring: isRecurring,
                   recurring_status: recurringStatus,
+                  consent_captured: consentCaptured,
+                  recurring_linkage_ready: recurringLinkageReady,
                   billed_last_12_months_total_hkd: billedTotal,
                   billed_last_12_months_by_month: billedByMonth,
                   latest_paid_order: latestPaidOrder
@@ -2233,6 +2249,7 @@ export async function POST(req: NextRequest) {
           const recurringStatus = recurringProfile?.status
             ? String(recurringProfile.status).trim().toLowerCase()
             : "no_profile";
+          const consentCaptured = Boolean(recurringProfile?.airwallex_payment_consent_id);
           const recurringLinkageReady = Boolean(
             recurringProfile?.airwallex_payment_consent_id &&
               recurringProfile?.airwallex_payment_method_id &&
@@ -2290,6 +2307,7 @@ export async function POST(req: NextRequest) {
             paid_until: parent.paid_until,
             current_payment_status: recurringStatus,
             recurring_method_type: readString(recurringProfile?.payment_method_type),
+            consent_captured: consentCaptured,
             recurring_linkage_ready: recurringLinkageReady,
             next_payment_date: nextPaymentDate,
             this_month_payment_success: monthPaymentStatus === "success",

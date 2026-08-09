@@ -203,12 +203,21 @@ interface PaymentStatusEnquiryResult {
     paid_started_at: string | null;
     paid_until: string | null;
   };
+  recurring?: {
+    consent_captured: boolean;
+    recurring_linkage_ready: boolean;
+    recurring_status: string | null;
+    payment_method: string | null;
+    is_recurring: boolean;
+  } | null;
   payment?: {
     current_payment_start_date: string | null;
     current_payment_end_date: string | null;
     payment_method: string | null;
     is_recurring: boolean;
     recurring_status: string | null;
+    consent_captured?: boolean;
+    recurring_linkage_ready?: boolean;
     billed_last_12_months_total_hkd: number;
     billed_last_12_months_by_month: PaymentStatusMonthRow[];
     latest_paid_order?: {
@@ -298,6 +307,7 @@ interface PaymentRecurringMonitorUserRow {
   paid_until: string | null;
   current_payment_status: string;
   recurring_method_type: string | null;
+  consent_captured: boolean;
   recurring_linkage_ready: boolean;
   next_payment_date: string | null;
   this_month_payment_success: boolean;
@@ -1865,6 +1875,34 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
             </p>
           </div>
 
+          {result.recurring && (
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">Consent 已捕捉</p>
+                <p
+                  className={`font-semibold ${
+                    result.recurring.consent_captured ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {result.recurring.consent_captured ? "是" : "否"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">可下月自動續費</p>
+                <p
+                  className={`font-semibold ${
+                    result.recurring.recurring_linkage_ready ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {result.recurring.recurring_linkage_ready ? "是" : "否"}
+                  {result.recurring.recurring_status
+                    ? `（${result.recurring.recurring_status}）`
+                    : ""}
+                </p>
+              </div>
+            </div>
+          )}
+
           {result.parent.is_paid && result.payment && (
             <>
               <div className="flex flex-wrap gap-2">
@@ -1910,6 +1948,26 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     {result.payment.recurring_status
                       ? `（${result.payment.recurring_status}）`
                       : ""}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">Consent 已捕捉</p>
+                  <p
+                    className={`font-semibold ${
+                      result.payment.consent_captured ? "text-emerald-700" : "text-red-700"
+                    }`}
+                  >
+                    {result.payment.consent_captured ? "是" : "否"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">可下月自動續費</p>
+                  <p
+                    className={`font-semibold ${
+                      result.payment.recurring_linkage_ready ? "text-emerald-700" : "text-red-700"
+                    }`}
+                  >
+                    {result.payment.recurring_linkage_ready ? "是" : "否"}
                   </p>
                 </div>
               </div>
@@ -2088,6 +2146,8 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   <tr className="text-left text-gray-500 border-b">
                     <th className="py-2 pr-3">家長電話</th>
                     <th className="py-2 pr-3">家長姓名</th>
+                    <th className="py-2 pr-3">Consent 已捕捉</th>
+                    <th className="py-2 pr-3">可下月自動續費</th>
                     <th className="py-2 pr-3">今日需發起 MIT</th>
                     <th className="py-2 pr-3">今日已發起 MIT</th>
                     <th className="py-2 pr-3">今日 MIT 狀態</th>
@@ -2104,6 +2164,28 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     <tr key={row.parent_id} className="border-b border-gray-100">
                       <td className="py-2 pr-3 font-mono">{row.mobile_number}</td>
                       <td className="py-2 pr-3">{row.parent_name || "—"}</td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            row.consent_captured
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {row.consent_captured ? "是" : "否"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            row.recurring_linkage_ready
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {row.recurring_linkage_ready ? "是" : "否"}
+                        </span>
+                      </td>
                       <td className="py-2 pr-3">{row.daily_due_for_mit ? "是" : "否"}</td>
                       <td className="py-2 pr-3">{row.daily_mit_requested ? "是" : "否"}</td>
                       <td className="py-2 pr-3">{formatDailyMitStatusLabel(row.daily_mit_status)}</td>
@@ -2133,7 +2215,7 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                   ))}
                   {recurringMonitor.users.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="py-4 text-center text-gray-400">
+                      <td colSpan={13} className="py-4 text-center text-gray-400">
                         目前沒有有效月費家長資料
                       </td>
                     </tr>
