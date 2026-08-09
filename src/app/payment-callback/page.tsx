@@ -8,6 +8,9 @@ type VerifyResponse = {
   paid?: boolean;
   status?: string;
   already_finalized?: boolean;
+  consent_captured?: boolean;
+  recurring_linkage_ready?: boolean;
+  payment_method_type?: string | null;
   error?: string;
 };
 
@@ -54,7 +57,21 @@ function PaymentCallbackContent() {
         }
         if (payload.paid) {
           setMessage("付款成功，已升級為月費用戶。");
-          setDetail(payload.already_finalized ? "此訂單早前已完成處理。" : "會員資格已自動生效。");
+          if (payload.recurring_linkage_ready) {
+            setDetail(
+              payload.already_finalized
+                ? "此訂單早前已完成處理。下月自動續費授權已就緒。"
+                : "會員資格已自動生效。下月自動續費授權已就緒。"
+            );
+          } else if (payload.consent_captured) {
+            setDetail(
+              "會員資格已生效，但自動續費連結尚未完成。請聯絡客服，勿只依賴付款成功畫面。"
+            );
+          } else {
+            setDetail(
+              "會員資格已生效，但尚未捕捉到自動續費授權（Consent）。請聯絡客服處理，避免下月無法自動扣款。"
+            );
+          }
         } else {
           setMessage("付款尚未完成");
           setDetail(

@@ -5432,13 +5432,8 @@ function PaymentScreen({
               availableMethods
             );
           }
-          const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-          const isSafari = /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
-          if (!isSafari) {
-            console.warn(
-              "[Airwallex Apple Pay diagnostics] Apple Pay on web is only available on Safari browsers."
-            );
-          }
+          // Browser/OS only affects which wallet buttons Airwallex shows.
+          // MIT consent fields are always passed below for every browser.
         }
         const applePayRequestOptions = methods.includes("applepay")
           ? {

@@ -804,6 +804,10 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["4610f8d", "735977b"],
       checks: [
         { type: "file_exists", path: "src/app/api/payment/verify/route.ts" },
+        { type: "file_contains", path: "src/app/api/payment/verify/route.ts", snippet: "consent_captured" },
+        { type: "file_contains", path: "src/app/api/payment/verify/route.ts", snippet: "recurring_linkage_ready" },
+        { type: "file_contains", path: "src/app/api/payment/verify/route.ts", snippet: "postpay-consent-not-ready" },
+        { type: "file_contains", path: "src/app/payment-callback/page.tsx", snippet: "尚未捕捉到自動續費授權" },
         { type: "file_exists", path: "src/app/api/payment/webhook/route.ts" },
         { type: "file_exists", path: "src/lib/server/payment-finalize.ts" },
         {

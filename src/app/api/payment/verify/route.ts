@@ -133,10 +133,69 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Consent readiness is independent of browser/OS; surface it after every paid verify.
+    let consentCaptured = false;
+    let recurringLinkageReady = false;
+    let paymentMethodType: string | null = null;
+    if (finalized.orderId) {
+      const { data: orderRow } = await supabaseAdmin
+        .from("parent_payment_orders")
+        .select("mobile_number,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type")
+        .eq("id", finalized.orderId)
+        .maybeSingle();
+      const mobile = String(orderRow?.mobile_number || "").trim();
+      paymentMethodType =
+        orderRow?.payment_method_type == null
+          ? null
+          : String(orderRow.payment_method_type).trim() || null;
+      if (mobile) {
+        const { data: profile } = await supabaseAdmin
+          .from("parent_recurring_profiles")
+          .select(
+            "airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,status"
+          )
+          .eq("mobile_number", mobile)
+          .maybeSingle();
+        consentCaptured = Boolean(profile?.airwallex_payment_consent_id);
+        recurringLinkageReady = Boolean(
+          profile?.airwallex_payment_consent_id &&
+            profile?.airwallex_payment_method_id &&
+            profile?.payment_method_type
+        );
+      }
+      // Fallback to order-level linkage if profile row is still catching up.
+      if (!consentCaptured) {
+        consentCaptured = Boolean(orderRow?.airwallex_payment_consent_id);
+      }
+      if (!recurringLinkageReady) {
+        recurringLinkageReady = Boolean(
+          orderRow?.airwallex_payment_consent_id &&
+            orderRow?.airwallex_payment_method_id &&
+            orderRow?.payment_method_type
+        );
+      }
+    }
+
+    if (isPaid && !recurringLinkageReady) {
+      console.error(
+        "[anti-missing][payment][mit-policy] postpay-consent-not-ready",
+        JSON.stringify({
+          payment_intent_id: paymentIntentId,
+          order_id: finalized.orderId,
+          payment_method_type: paymentMethodType,
+          consent_captured: consentCaptured,
+          recurring_linkage_ready: recurringLinkageReady,
+        })
+      );
+    }
+
     return NextResponse.json({
       paid: isPaid,
       status: normalizedStatus || latestStatus || "UNKNOWN",
       already_finalized: finalized.alreadyFinalized,
+      consent_captured: consentCaptured,
+      recurring_linkage_ready: recurringLinkageReady,
+      payment_method_type: paymentMethodType,
     });
   } catch (err) {
     return NextResponse.json(
