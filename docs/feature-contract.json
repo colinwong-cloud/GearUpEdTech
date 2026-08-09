@@ -1420,6 +1420,40 @@
           "type": "file_contains",
           "path": "src/app/api/payment/checkout/route.ts",
           "snippet": "[anti-missing][payment][mit-policy]"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "hpp_mit_fields_required: true"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/payment/checkout/route.ts",
+          "snippet": "payment_consent: paymentConsentForHpp"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/airwallex-hpp-mit.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-hpp-mit.ts",
+          "snippet": "mode: \"recurring\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/airwallex-hpp-mit.ts",
+          "snippet": "buildMitHppRedirectProps"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "buildMitHppRedirectProps"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/payment-airwallex/page.tsx",
+          "snippet": "buildMitHppRedirectProps"
         }
       ]
     },
@@ -1855,8 +1889,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-09T16:06:02.497Z",
+  "generated_at": "2026-08-09T16:25:37.434Z",
   "commit_inventory": [
+    {
+      "sha": "230ff17ad67a630d5ef13fe0e652861b1c4ceb28",
+      "date": "2026-08-09",
+      "summary": "chore: sync feature contract inventory for consent list fallback"
+    },
     {
       "sha": "50008d475e482834afa75a23222c571936bc3bea",
       "date": "2026-08-09",
@@ -3719,7 +3758,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 372,
+    "total_commits_since_start": 373,
     "total_feature_rows": 57
   }
 }

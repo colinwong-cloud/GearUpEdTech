@@ -1092,6 +1092,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
+    const paymentConsentForHpp = {
+      next_triggered_by: "merchant" as const,
+      merchant_trigger_reason: "scheduled" as const,
+      terms_of_use: recurringTerms,
+    };
+
     return NextResponse.json({
       intent_id: resolvedIntentId,
       client_secret: createIntentPayload.client_secret,
@@ -1100,7 +1106,12 @@ export async function POST(req: Request) {
       currency: "HKD",
       country_code: "HK",
       final_amount_hkd: finalAmount,
+      // HPP redirectToCheckout must receive these MIT fields (not only Intent create).
+      mode: "recurring",
+      customer_id: customerId,
       airwallex_customer_id: customerId,
+      payment_consent: paymentConsentForHpp,
+      recurring_terms_of_use: recurringTerms,
       airwallex_env: airwallexEnv,
       airwallex_locale: checkoutLocale,
       airwallex_available_methods: oneoffMethodDiagnostics.availableMethods,
@@ -1112,6 +1123,7 @@ export async function POST(req: Request) {
       applepay_setup_warning: applePaySetupWarning,
       mit_enforced: true,
       mit_policy_version: MIT_POLICY_VERSION,
+      hpp_mit_fields_required: true,
     });
   } catch (err) {
     return NextResponse.json(

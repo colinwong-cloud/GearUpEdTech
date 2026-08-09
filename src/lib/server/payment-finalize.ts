@@ -503,17 +503,21 @@ async function listAirwallexPaymentConsentsByCustomer({
   baseUrl,
   accessToken,
   customerId,
+  mitScheduledOnly = true,
 }: {
   baseUrl: string;
   accessToken: string;
   customerId: string;
+  mitScheduledOnly?: boolean;
 }): Promise<AirwallexPaymentConsentResponse[]> {
   const url = new URL(`${baseUrl}/api/v1/pa/payment_consents`);
   url.searchParams.set("customer_id", customerId);
   url.searchParams.set("page_num", "0");
   url.searchParams.set("page_size", "50");
-  url.searchParams.set("next_triggered_by", "merchant");
-  url.searchParams.set("merchant_trigger_reason", "scheduled");
+  if (mitScheduledOnly) {
+    url.searchParams.set("next_triggered_by", "merchant");
+    url.searchParams.set("merchant_trigger_reason", "scheduled");
+  }
 
   const resp = await fetch(url.toString(), {
     method: "GET",
@@ -598,12 +602,27 @@ async function enrichSnapshotWithCustomerConsentList({
   if (snapshotHasRecurringLinkage(snapshot) || !snapshot.customerId) {
     return snapshot;
   }
-  const items = await listAirwallexPaymentConsentsByCustomer({
+  let items = await listAirwallexPaymentConsentsByCustomer({
     baseUrl,
     accessToken,
     customerId: snapshot.customerId,
+    mitScheduledOnly: true,
   });
-  const best = pickBestPaymentConsentForMit(items, paymentIntentId);
+  let best = pickBestPaymentConsentForMit(items, paymentIntentId);
+  // Some Apple Pay consents may omit/filter-mismatch merchant_trigger_reason.
+  // Retry unfiltered by customer, still requiring VERIFIED + merchant-scheduled score.
+  if (!best) {
+    const unfiltered = await listAirwallexPaymentConsentsByCustomer({
+      baseUrl,
+      accessToken,
+      customerId: snapshot.customerId,
+      mitScheduledOnly: false,
+    });
+    if (unfiltered.length > items.length) {
+      items = unfiltered;
+      best = pickBestPaymentConsentForMit(items, paymentIntentId);
+    }
+  }
   if (!best) {
     console.error(
       "[anti-missing][payment][mit-policy] payment-consent-list-empty-or-unverified",
@@ -614,6 +633,10 @@ async function enrichSnapshotWithCustomerConsentList({
         payment_intent_id: paymentIntentId,
         listed_count: items.length,
         statuses: items.map((item) => item.status || null),
+        next_triggered_by: items.map((item) => item.next_triggered_by || null),
+        merchant_trigger_reason: items.map(
+          (item) => item.merchant_trigger_reason || null
+        ),
       })
     );
     return snapshot;

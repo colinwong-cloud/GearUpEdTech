@@ -21,7 +21,22 @@ const checks = [
       "payment_consent",
       "merchant_trigger_reason: \"scheduled\"",
       "DEFAULT_AIRWALLEX_CHECKOUT_LOCALE = \"zh-HK\"",
+      "hpp_mit_fields_required: true",
+      "mode: \"recurring\"",
     ],
+  },
+  {
+    path: "src/lib/airwallex-hpp-mit.ts",
+    snippets: [
+      "mode: \"recurring\"",
+      "next_triggered_by: \"merchant\"",
+      "merchant_trigger_reason: \"scheduled\"",
+      "buildMitHppRedirectProps",
+    ],
+  },
+  {
+    path: "src/app/page.tsx",
+    snippets: ["buildMitHppRedirectProps", "payment_consent"],
   },
   {
     path: "src/app/api/payment/webhook/route.ts",
