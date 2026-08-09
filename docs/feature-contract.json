@@ -1465,6 +1465,21 @@
           "type": "file_contains",
           "path": "src/lib/server/payment-finalize.ts",
           "snippet": "snapshotHasRecurringLinkage"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "listAirwallexPaymentConsentsByCustomer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "pickBestPaymentConsentForMit"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "[anti-missing][payment][mit-policy] payment-consent-list-matched"
         }
       ]
     },
@@ -1840,8 +1855,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-09T15:43:21.390Z",
+  "generated_at": "2026-08-09T16:05:51.261Z",
   "commit_inventory": [
+    {
+      "sha": "1f97581cb4f77b35a7d17bf2b5bd42b8ee3bda19",
+      "date": "2026-08-09",
+      "summary": "chore: sync feature contract inventory for MIT consent capture"
+    },
     {
       "sha": "cd902d49e12545b0fb4dc0a208e1f2eac5332089",
       "date": "2026-08-09",
@@ -3694,7 +3714,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 370,
+    "total_commits_since_start": 371,
     "total_feature_rows": 57
   }
 }

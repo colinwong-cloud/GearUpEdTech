@@ -150,8 +150,13 @@ describe("anti-missing regression guards", () => {
     expect(finalizeSource).toContain("getAirwallexPaymentConsent");
     expect(finalizeSource).toContain("mergeSnapshotWithConsentFallback");
     expect(finalizeSource).toContain("snapshotHasRecurringLinkage");
+    expect(finalizeSource).toContain("listAirwallexPaymentConsentsByCustomer");
+    expect(finalizeSource).toContain("pickBestPaymentConsentForMit");
     expect(finalizeSource).toContain(
       "[anti-missing][payment][mit-policy] missing-payment-consent-id"
+    );
+    expect(finalizeSource).toContain(
+      "[anti-missing][payment][mit-policy] payment-consent-list-matched"
     );
   });
 

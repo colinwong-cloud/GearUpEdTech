@@ -97,6 +97,16 @@ type AirwallexPaymentConsentResponse = {
   payment_method_type?: string;
   payment_method_brand?: string;
   payment_method?: AirwallexPaymentMethod;
+  status?: string;
+  next_triggered_by?: string;
+  merchant_trigger_reason?: string;
+  initial_payment_intent_id?: string;
+  created_at?: string;
+};
+
+type AirwallexPaymentConsentListResponse = {
+  items?: AirwallexPaymentConsentResponse[];
+  has_more?: boolean;
 };
 
 type PaymentDetailSnapshot = {
@@ -489,6 +499,140 @@ async function getAirwallexPaymentConsent({
   return payload;
 }
 
+async function listAirwallexPaymentConsentsByCustomer({
+  baseUrl,
+  accessToken,
+  customerId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  customerId: string;
+}): Promise<AirwallexPaymentConsentResponse[]> {
+  const url = new URL(`${baseUrl}/api/v1/pa/payment_consents`);
+  url.searchParams.set("customer_id", customerId);
+  url.searchParams.set("page_num", "0");
+  url.searchParams.set("page_size", "50");
+  url.searchParams.set("next_triggered_by", "merchant");
+  url.searchParams.set("merchant_trigger_reason", "scheduled");
+
+  const resp = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+  const payload = (await resp.json()) as AirwallexPaymentConsentListResponse;
+  if (!resp.ok) {
+    throw new Error("Unable to list payment consents from Airwallex");
+  }
+  return Array.isArray(payload.items) ? payload.items : [];
+}
+
+/** Exported for unit tests: pick the best MIT consent from an Airwallex list response. */
+export function pickBestPaymentConsentForMit(
+  items: AirwallexPaymentConsentResponse[],
+  paymentIntentId?: string | null
+): AirwallexPaymentConsentResponse | null {
+  if (!items.length) return null;
+  const intentId = readString(paymentIntentId);
+  const scored = items
+    .map((item, index) => {
+      const status = String(item.status || "").trim().toUpperCase();
+      const hasMethod = Boolean(
+        readString(item.payment_method_id) || readString(item.payment_method?.id)
+      );
+      const matchesIntent = Boolean(
+        intentId && readString(item.initial_payment_intent_id) === intentId
+      );
+      const merchantScheduled =
+        String(item.next_triggered_by || "").trim().toLowerCase() === "merchant" &&
+        String(item.merchant_trigger_reason || "")
+          .trim()
+          .toLowerCase() === "scheduled";
+      let score = 0;
+      if (status === "VERIFIED") score += 100;
+      else if (status === "PENDING") score += 20;
+      if (matchesIntent) score += 50;
+      if (hasMethod) score += 25;
+      if (merchantScheduled) score += 10;
+      const createdAt = Date.parse(String(item.created_at || ""));
+      return {
+        item,
+        score,
+        createdAt: Number.isFinite(createdAt) ? createdAt : 0,
+        index,
+      };
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
+      return a.index - b.index;
+    });
+
+  const best = scored[0];
+  if (!best || best.score < 100) {
+    // Require VERIFIED for MIT recharge safety.
+    return null;
+  }
+  return best.item;
+}
+
+async function enrichSnapshotWithCustomerConsentList({
+  baseUrl,
+  accessToken,
+  snapshot,
+  paymentIntentId,
+  mobileNumber,
+  orderId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  snapshot: PaymentDetailSnapshot;
+  paymentIntentId: string | null;
+  mobileNumber: string;
+  orderId: string;
+}): Promise<PaymentDetailSnapshot> {
+  if (snapshotHasRecurringLinkage(snapshot) || !snapshot.customerId) {
+    return snapshot;
+  }
+  const items = await listAirwallexPaymentConsentsByCustomer({
+    baseUrl,
+    accessToken,
+    customerId: snapshot.customerId,
+  });
+  const best = pickBestPaymentConsentForMit(items, paymentIntentId);
+  if (!best) {
+    console.error(
+      "[anti-missing][payment][mit-policy] payment-consent-list-empty-or-unverified",
+      JSON.stringify({
+        order_id: orderId,
+        mobile_number: mobileNumber,
+        customer_id: snapshot.customerId,
+        payment_intent_id: paymentIntentId,
+        listed_count: items.length,
+        statuses: items.map((item) => item.status || null),
+      })
+    );
+    return snapshot;
+  }
+  console.info(
+    "[anti-missing][payment][mit-policy] payment-consent-list-matched",
+    JSON.stringify({
+      order_id: orderId,
+      mobile_number: mobileNumber,
+      customer_id: snapshot.customerId,
+      payment_intent_id: paymentIntentId,
+      consent_id: best.id || null,
+      consent_status: best.status || null,
+      initial_payment_intent_id: best.initial_payment_intent_id || null,
+    })
+  );
+  return mergeSnapshotWithConsentFallback(snapshot, best);
+}
+
 export function getSupabaseAdmin(): SupabaseClient | null {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -795,6 +939,16 @@ export async function verifyAndFinalizeParentPayment({
       });
       snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
     }
+    if (isPaid && !snapshotHasRecurringLinkage(snapshot)) {
+      snapshot = await enrichSnapshotWithCustomerConsentList({
+        baseUrl,
+        accessToken,
+        snapshot,
+        paymentIntentId: intentId,
+        mobileNumber: order.mobile_number,
+        orderId: order.id,
+      });
+    }
     await updateOrderPaymentDetails(
       supabaseAdmin,
       order.id,
@@ -977,6 +1131,16 @@ export async function finalizePaymentByIntent({
             paymentConsentId: snapshot.paymentConsentId,
           });
           snapshot = mergeSnapshotWithConsentFallback(snapshot, consent);
+        }
+        if (!snapshotHasRecurringLinkage(snapshot)) {
+          snapshot = await enrichSnapshotWithCustomerConsentList({
+            baseUrl: context.baseUrl,
+            accessToken: context.accessToken,
+            snapshot,
+            paymentIntentId,
+            mobileNumber: order.mobile_number,
+            orderId,
+          });
         }
       }
     }
