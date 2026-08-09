@@ -2113,6 +2113,8 @@ export async function POST(req: NextRequest) {
               throw richOrdersRes.error;
             }
           } else {
+            // Keep all paid recurring-tagged orders for repair candidates.
+            // MIT metrics below only count cron auto-charges (recurring_auto_charge).
             monthOrders = ((richOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
               if (row.is_recurring_payment === true) return true;
               return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
@@ -2156,10 +2158,11 @@ export async function POST(req: NextRequest) {
               throw richDayOrdersRes.error;
             }
           } else {
-            dayOrders = ((richDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter((row) => {
-              if (row.is_recurring_payment === true) return true;
-              return String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge";
-            });
+            // Initial checkout sets is_recurring_payment=true; do not count it as MIT.
+            dayOrders = ((richDayOrdersRes.data as RecurringMonitorOrderRow[] | null) ?? []).filter(
+              (row) =>
+                String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge"
+            );
           }
 
           for (const order of dayOrders) {
@@ -2188,7 +2191,15 @@ export async function POST(req: NextRequest) {
 
         const mobilesNeedingRepair = normalizedParents
           .map((row) => row.mobile_number)
-          .filter((mobile) => !recurringByMobile.has(mobile));
+          .filter((mobile) => {
+            const profile = recurringByMobile.get(mobile);
+            if (!profile) return true;
+            const hasConsent = Boolean(profile.airwallex_payment_consent_id);
+            const hasMethod = Boolean(profile.airwallex_payment_method_id);
+            const hasType = Boolean(readString(profile.payment_method_type));
+            const active = String(profile.status || "").trim().toLowerCase() === "active";
+            return !(active && hasConsent && hasMethod && hasType);
+          });
         const repairedMobiles = new Set<string>();
         for (const mobile of mobilesNeedingRepair.slice(0, 50)) {
           const monthOrders = monthOrdersByMobile.get(mobile) ?? [];
@@ -2257,10 +2268,14 @@ export async function POST(req: NextRequest) {
           );
 
           const monthOrders = monthOrdersByMobile.get(parent.mobile_number) ?? [];
-          const hasMonthPaid = monthOrders.some(
+          const monthMitOrders = monthOrders.filter(
+            (row) =>
+              String(row.payment_method || "").trim().toLowerCase() === "recurring_auto_charge"
+          );
+          const hasMonthPaid = monthMitOrders.some(
             (row) => String(row.status || "").trim().toLowerCase() === "paid"
           );
-          const hasMonthFailed = monthOrders.some((row) =>
+          const hasMonthFailed = monthMitOrders.some((row) =>
             ["failed", "cancelled"].includes(String(row.status || "").trim().toLowerCase())
           );
           const monthPaymentStatus = hasMonthPaid ? "success" : hasMonthFailed ? "failed" : "no_attempt";
@@ -2268,7 +2283,7 @@ export async function POST(req: NextRequest) {
           if (monthPaymentStatus === "success") totals.this_month_success += 1;
           if (monthPaymentStatus === "failed") totals.this_month_failed += 1;
 
-          const latestMonthOrder = monthOrders[0] ?? null;
+          const latestMonthOrder = monthMitOrders[0] ?? null;
           const dayOrders = dayOrdersByMobile.get(parent.mobile_number) ?? [];
           const latestDayOrder = dayOrders[0] ?? null;
           const nextPaymentDate = normalizeIsoDateTime(recurringProfile?.next_charge_at);

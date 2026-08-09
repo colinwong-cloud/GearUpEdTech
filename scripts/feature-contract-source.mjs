@@ -819,6 +819,21 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/lib/server/payment-finalize.ts",
           snippet: "snapshotHasRecurringLinkage",
         },
+        {
+          type: "file_contains",
+          path: "src/lib/server/payment-finalize.ts",
+          snippet: "listAirwallexPaymentConsentsByCustomer",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/payment-finalize.ts",
+          snippet: "pickBestPaymentConsentForMit",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/payment-finalize.ts",
+          snippet: "[anti-missing][payment][mit-policy] payment-consent-list-matched",
+        },
       ],
     },
     {

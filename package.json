@@ -11,7 +11,7 @@
     "feature:contract:refresh": "node scripts/refresh-feature-contract.mjs",
     "feature:contract": "node scripts/feature-contract-check.mjs",
     "payment:priority": "node scripts/payment-priority-check.mjs",
-    "feature:retention": "vitest run src/lib/anti-missing-regressions.test.ts src/lib/airwallex-checkout-methods.test.ts src/lib/session-practice-summary.test.ts src/lib/admin-paid-summary.test.ts src/lib/question-source.test.ts src/lib/quiz-subjects.test.ts",
+    "feature:retention": "vitest run src/lib/anti-missing-regressions.test.ts src/lib/airwallex-checkout-methods.test.ts src/lib/server/payment-finalize-consent.test.ts src/lib/session-practice-summary.test.ts src/lib/admin-paid-summary.test.ts src/lib/question-source.test.ts src/lib/quiz-subjects.test.ts",
     "release:gate": "node scripts/release-gate-check.mjs",
     "smoke": "playwright test"
   },
