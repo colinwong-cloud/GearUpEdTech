@@ -173,6 +173,15 @@ describe("anti-missing regression guards", () => {
     const checkoutApiSource = readSource("src/app/api/payment/checkout/route.ts");
     expect(checkoutApiSource).toContain("hpp_mit_fields_required: true");
     expect(checkoutApiSource).toContain("payment_consent: paymentConsentForHpp");
+
+    const verifySource = readSource("src/app/api/payment/verify/route.ts");
+    expect(verifySource).toContain("consent_captured");
+    expect(verifySource).toContain("recurring_linkage_ready");
+    expect(verifySource).toContain("postpay-consent-not-ready");
+
+    const callbackSource = readSource("src/app/payment-callback/page.tsx");
+    expect(callbackSource).toContain("recurring_linkage_ready");
+    expect(callbackSource).toContain("尚未捕捉到自動續費授權");
   });
 
   it("keeps quiz star progress answered=yellow and unanswered=circle", () => {

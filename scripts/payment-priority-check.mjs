@@ -44,7 +44,16 @@ const checks = [
   },
   {
     path: "src/app/api/payment/verify/route.ts",
-    snippets: ["finalizePaymentByIntent"],
+    snippets: [
+      "finalizePaymentByIntent",
+      "consent_captured",
+      "recurring_linkage_ready",
+      "postpay-consent-not-ready",
+    ],
+  },
+  {
+    path: "src/app/payment-callback/page.tsx",
+    snippets: ["recurring_linkage_ready", "尚未捕捉到自動續費授權"],
   },
   {
     path: "src/app/api/cron-recurring-payments/route.ts",
