@@ -1151,6 +1151,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "Consent 已捕捉"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "可下月自動續費"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "payment_recurring_monitor_summary"
         },
@@ -1158,6 +1168,16 @@
           "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "daily_mit_requested"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "consent_captured"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "recurring_linkage_ready"
         }
       ]
     },
@@ -1430,6 +1450,21 @@
           "type": "file_contains",
           "path": "src/lib/server/payment-finalize.ts",
           "snippet": "[anti-missing][payment][mit-policy] missing-payment-consent-id"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "getAirwallexPaymentConsent"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "mergeSnapshotWithConsentFallback"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/payment-finalize.ts",
+          "snippet": "snapshotHasRecurringLinkage"
         }
       ]
     },
@@ -1805,8 +1840,13 @@
       ]
     }
   ],
-  "generated_at": "2026-07-30T10:10:29.588Z",
+  "generated_at": "2026-08-09T15:43:01.861Z",
   "commit_inventory": [
+    {
+      "sha": "ac84e600af7b1aa3affed25c05d5291e9359b91d",
+      "date": "2026-07-30",
+      "summary": "chore: sync feature contract inventory for question-report CS-only"
+    },
     {
       "sha": "e16c4646d9f0b4459fe26a136cdb3014063fe7ad",
       "date": "2026-07-30",
@@ -3649,7 +3689,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 368,
+    "total_commits_since_start": 369,
     "total_feature_rows": 57
   }
 }
