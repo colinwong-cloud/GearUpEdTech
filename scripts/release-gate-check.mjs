@@ -16,6 +16,7 @@ runStep("npx", [
   "run",
   "src/lib/anti-missing-regressions.test.ts",
   "src/lib/airwallex-checkout-methods.test.ts",
+  "src/lib/airwallex-hpp-mit.test.ts",
   "src/lib/server/payment-finalize-consent.test.ts",
   "src/lib/session-practice-summary.test.ts",
   "src/lib/admin-paid-summary.test.ts",
