@@ -1909,8 +1909,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T09:48:56.465Z",
+  "generated_at": "2026-08-12T10:07:08.790Z",
   "commit_inventory": [
+    {
+      "sha": "0b2808ad377f261e5a536894c232b237f57cd1a2",
+      "date": "2026-08-12",
+      "summary": "ui: show paid upsell on subject select when free quota is empty"
+    },
+    {
+      "sha": "346204999880f7f40cf80c024e8c9190a3abad9f",
+      "date": "2026-08-12",
+      "summary": "chore: sync feature contract for subject-select back button"
+    },
     {
       "sha": "9eecf698c5ba18e831a2fd211fb930eae8dce50e",
       "date": "2026-08-12",
@@ -3828,7 +3838,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 383,
+    "total_commits_since_start": 385,
     "total_feature_rows": 57
   }
 }
