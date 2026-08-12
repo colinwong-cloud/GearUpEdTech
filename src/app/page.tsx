@@ -3798,7 +3798,12 @@ function AddStudentScreen({
             className={`w-full py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${canSubmit ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
             新增學生
           </button>
-          <button onClick={onBack} className="w-full text-center text-sm text-gray-500 hover:text-gray-700">返回</button>
+          <button
+            onClick={onBack}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+          >
+            返回
+          </button>
         </div>
       </div>
     </div>
@@ -4102,9 +4107,8 @@ function ProfileEditScreen({
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3">
         <span className="text-sm font-medium text-gray-700">更新資料</span>
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         <p className="text-sm text-gray-400">電話號碼：{mobileNumber}</p>
@@ -4374,9 +4378,8 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3">
         <span className="text-sm font-medium text-gray-700">題目餘額</span>
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">返回</button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -4452,6 +4455,12 @@ function BalanceViewScreen({ mobileNumber, onBack }: { mobileNumber: string; onB
           </div>
         )}
 
+        <button
+          onClick={onBack}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+        >
+          返回
+        </button>
         <ContactFooter />
       </div>
     </div>

@@ -1909,8 +1909,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T10:19:26.334Z",
+  "generated_at": "2026-08-12T10:34:23.898Z",
   "commit_inventory": [
+    {
+      "sha": "503d564854e84028bbf01effcb97e72262251959",
+      "date": "2026-08-12",
+      "summary": "ui: restyle back buttons on balance, profile, and add-student"
+    },
+    {
+      "sha": "3aae23c337655fbd7c360ef7b52b5f5c5bb1ee02",
+      "date": "2026-08-12",
+      "summary": "chore: sync feature contract for parent dashboard back button"
+    },
     {
       "sha": "33bcd4265d3938392b29afbd6d1e8d76709d909c",
       "date": "2026-08-12",
@@ -3848,7 +3858,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 387,
+    "total_commits_since_start": 389,
     "total_feature_rows": 57
   }
 }
