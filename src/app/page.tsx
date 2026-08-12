@@ -1908,6 +1908,11 @@ export default function QuizApp() {
           setError(null);
           setScreen("login_student");
         }}
+        onUpgrade={() => {
+          setError(null);
+          setScreen("payment");
+        }}
+        isPaid={parentTierStatus.is_paid}
         error={error}
       />
     );
@@ -3070,14 +3075,21 @@ function SubjectSelectScreen({
   studentName,
   onSelect,
   onBack,
+  onUpgrade,
+  isPaid,
   error,
 }: {
   studentName: string;
   onSelect: (s: string) => void;
   onBack: () => void;
+  onUpgrade: () => void;
+  isPaid: boolean;
   error: string | null;
 }) {
   const subjects = [...STUDENT_SUBJECT_OPTIONS];
+  const showPaidUpsell =
+    !isPaid &&
+    Boolean(error && /練習題目已用完|聯絡家長充值/.test(error));
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -3093,6 +3105,25 @@ function SubjectSelectScreen({
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600 text-center">
             {error}
+          </div>
+        )}
+        {showPaidUpsell && (
+          <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-700">
+              升級月費會員 ($99)，解鎖全港同級排名！助您精準掌握子女中英數實力水平。附設無限題庫，隨時按弱項強化，讓孩子在同儕中脫穎而出！
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getRankSampleImageUrl()}
+              alt="排名範例"
+              className="mt-3 w-full rounded-xl border border-gray-200"
+            />
+            <button
+              onClick={onUpgrade}
+              className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              取得排名資訊
+            </button>
           </div>
         )}
         <div className="space-y-3">

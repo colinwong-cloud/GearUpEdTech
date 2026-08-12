@@ -74,6 +74,15 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("cs@gearupquiz.com");
   });
 
+  it("shows paid upsell on subject select when free quota is exhausted", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("function SubjectSelectScreen(");
+    expect(pageSource).toContain("showPaidUpsell");
+    expect(pageSource).toContain("練習題目已用完|聯絡家長充值");
+    expect(pageSource).toContain("取得排名資訊");
+    expect(pageSource).toContain("getRankSampleImageUrl()");
+  });
+
   it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');
