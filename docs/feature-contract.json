@@ -1909,8 +1909,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T09:36:47.848Z",
+  "generated_at": "2026-08-12T09:36:49.218Z",
   "commit_inventory": [
+    {
+      "sha": "d15dddc4f33ebd0b808f4936dd7515c56561d7b0",
+      "date": "2026-08-12",
+      "summary": "ui: match student-select back button to role-selection style"
+    },
     {
       "sha": "13e8a3683a64597d1d8f1be2e3d835e2f0af9340",
       "date": "2026-08-12",
@@ -3813,7 +3818,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 380,
+    "total_commits_since_start": 381,
     "total_feature_rows": 57
   }
 }
