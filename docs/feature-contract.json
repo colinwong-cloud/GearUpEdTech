@@ -1909,8 +1909,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T09:21:14.923Z",
+  "generated_at": "2026-08-12T09:21:22.429Z",
   "commit_inventory": [
+    {
+      "sha": "ac0268dee04a03d53663cf196f8b47f076d04d0b",
+      "date": "2026-08-12",
+      "summary": "ui: move role-select back button up and refresh CS email block"
+    },
     {
       "sha": "b250d34f7501a56d6e02de98b4fd877e5e6091e1",
       "date": "2026-08-09",
@@ -3803,7 +3808,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 378,
+    "total_commits_since_start": 379,
     "total_feature_rows": 57
   }
 }
