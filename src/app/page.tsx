@@ -4704,23 +4704,23 @@ function RoleSelectScreen({
             </a>
           )}
         </div>
-        {!tierStatus.is_paid && (
-          <p className="mt-4 text-center text-sm text-gray-500">
-            有問題或意見? 歡迎電郵至{" "}
-            <a
-              href="mailto:cs@gearupquiz.com"
-              className="font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              cs@gearupquiz.com
-            </a>
-          </p>
-        )}
         <button
           onClick={onBack}
           className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
         >
           返回
         </button>
+        {!tierStatus.is_paid && (
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
+            有問題或意見？歡迎電郵至{" "}
+            <a
+              href="mailto:cs@gearupquiz.com"
+              className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900"
+            >
+              cs@gearupquiz.com
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
