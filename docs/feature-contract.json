@@ -1909,8 +1909,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T10:07:08.790Z",
+  "generated_at": "2026-08-12T10:19:24.948Z",
   "commit_inventory": [
+    {
+      "sha": "4b1b93c9e8394aa9b4dbf0510a0cfbe02ba3a638",
+      "date": "2026-08-12",
+      "summary": "chore: sync feature contract for subject quota paid upsell"
+    },
     {
       "sha": "0b2808ad377f261e5a536894c232b237f57cd1a2",
       "date": "2026-08-12",
@@ -3838,7 +3843,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 385,
+    "total_commits_since_start": 386,
     "total_feature_rows": 57
   }
 }

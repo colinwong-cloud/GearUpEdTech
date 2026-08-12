@@ -1832,8 +1832,7 @@ export default function QuizApp() {
         onViewDetail={handleViewSessionDetail}
         tierStatus={parentTierStatus}
         onUpgrade={() => setScreen("payment")}
-        onBack={() => setScreen("login_role")}
-        onLogout={handleLogout}
+        onBack={() => setScreen("parent_student_select")}
       />
     );
   }
@@ -4890,7 +4889,6 @@ function ParentDashboard({
   tierStatus,
   onUpgrade,
   onBack,
-  onLogout,
 }: {
   studentName: string;
   gradeRank: ParentGradeRankPayload | null;
@@ -4905,7 +4903,6 @@ function ParentDashboard({
   tierStatus: ParentTierStatus;
   onUpgrade: () => void;
   onBack: () => void;
-  onLogout: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [chartsExpanded, setChartsExpanded] = useState(false);
@@ -4931,12 +4928,8 @@ function ParentDashboard({
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3">
         <span className="text-sm font-medium text-gray-700">{studentName} 的練習報告</span>
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600 transition-colors">返回</button>
-          <button onClick={onLogout} className="text-sm text-gray-500 hover:text-red-500 transition-colors">登出</button>
-        </div>
       </div>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-wrap gap-2 mb-4">
@@ -5089,6 +5082,13 @@ function ParentDashboard({
             </button>
           </div>
         )}
+
+        <button
+          onClick={onBack}
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+        >
+          返回
+        </button>
 
         <ContactFooter />
       </div>
