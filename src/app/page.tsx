@@ -3054,7 +3054,7 @@ function StudentSelectScreen({
         </div>
         <button
           onClick={onBack}
-          className="mt-6 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
         >
           返回
         </button>
