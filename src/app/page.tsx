@@ -4549,11 +4549,8 @@ function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; 
 
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
-      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3">
         <span className="text-sm font-medium text-gray-700">消費紀錄</span>
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-indigo-600">
-          返回
-        </button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -4611,6 +4608,12 @@ function PaymentHistoryScreen({ mobileNumber, onBack }: { mobileNumber: string; 
           </div>
         )}
 
+        <button
+          onClick={onBack}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+        >
+          返回
+        </button>
         <ContactFooter />
       </div>
     </div>
