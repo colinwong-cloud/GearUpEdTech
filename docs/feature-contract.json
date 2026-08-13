@@ -1909,8 +1909,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-12T10:34:23.898Z",
+  "generated_at": "2026-08-13T01:38:20.057Z",
   "commit_inventory": [
+    {
+      "sha": "4eb664d04e3e637661103660ba4a67aa5aef7cd2",
+      "date": "2026-08-13",
+      "summary": "ui: match question-count back button to earlier pages"
+    },
+    {
+      "sha": "edbfddf25e3e082b33caa3ffe9261e1f191d1034",
+      "date": "2026-08-12",
+      "summary": "chore: refresh feature contract after back-button UI update"
+    },
     {
       "sha": "503d564854e84028bbf01effcb97e72262251959",
       "date": "2026-08-12",
@@ -3858,7 +3868,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 389,
+    "total_commits_since_start": 391,
     "total_feature_rows": 57
   }
 }
