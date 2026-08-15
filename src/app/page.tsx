@@ -3121,7 +3121,7 @@ function SubjectSelectScreen({
               onClick={onUpgrade}
               className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              取得排名資訊
+              解鎖無限題庫，取得排名資訊
             </button>
           </div>
         )}
@@ -3850,7 +3850,7 @@ function AccountMenuScreen({
                 onClick={onUpgrade}
                 className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               >
-                取得排名資訊
+                解鎖無限題庫，取得排名資訊
               </button>
             </div>
           )}
@@ -4680,7 +4680,7 @@ function RoleSelectScreen({
               onClick={onUpgrade}
               className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              取得排名資訊
+              解鎖無限題庫，取得排名資訊
             </button>
           </div>
         )}
@@ -4978,7 +4978,7 @@ function ParentDashboard({
               onClick={onUpgrade}
               className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              取得排名資訊
+              解鎖無限題庫，取得排名資訊
             </button>
           </div>
         )}
