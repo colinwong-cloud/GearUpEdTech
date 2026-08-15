@@ -1909,8 +1909,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-13T02:44:49.303Z",
+  "generated_at": "2026-08-15T09:36:32.689Z",
   "commit_inventory": [
+    {
+      "sha": "6af21e5458cd8ba6598d249dfc119af1b3dcef02",
+      "date": "2026-08-15",
+      "summary": "ui: expand free-tier paid invite CTA button copy"
+    },
+    {
+      "sha": "eeb06b5c731ec355dfb5473821428ca64d8ec556",
+      "date": "2026-08-13",
+      "summary": "chore: sync feature contract after vercel retrigger commit"
+    },
     {
       "sha": "8f2b8d441693c9bed8e3834028ac776f82852cd6",
       "date": "2026-08-13",
@@ -3888,7 +3898,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 395,
+    "total_commits_since_start": 397,
     "total_feature_rows": 57
   }
 }
