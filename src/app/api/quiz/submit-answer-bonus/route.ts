@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
   const allowance = BASE_MONTHLY_MOBILE_QUOTA + topupInMonth;
   const familyTotalBefore = isPaidTier ? -1 : Math.max(allowance - usageInMonth, 0);
   if (!isPaidTier && familyTotalBefore <= 0) {
-    return NextResponse.json({ error: "你的練習題目已用完，請聯絡家長充值。" }, { status: 400 });
+    return NextResponse.json({ error: "你的免費練習題目額度已用完，請聯絡家長升級成為月費用戶以繼續使用。" }, { status: 400 });
   }
 
   const { error: insertAnswerErr } = await admin.from("session_answers").insert({
