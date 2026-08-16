@@ -1909,8 +1909,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-15T09:36:32.689Z",
+  "generated_at": "2026-08-16T08:00:14.025Z",
   "commit_inventory": [
+    {
+      "sha": "6e2e722ddd4011c4dc425c82db64e48ea5cc2f10",
+      "date": "2026-08-16",
+      "summary": "ui: clarify free-tier exhausted quota reminder copy"
+    },
+    {
+      "sha": "193c5ec7762d1cd8df6f888936b6dd80bf3a6e6e",
+      "date": "2026-08-15",
+      "summary": "chore: refresh feature contract after paid invite CTA copy"
+    },
     {
       "sha": "6af21e5458cd8ba6598d249dfc119af1b3dcef02",
       "date": "2026-08-15",
@@ -3898,7 +3908,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 397,
+    "total_commits_since_start": 399,
     "total_feature_rows": 57
   }
 }

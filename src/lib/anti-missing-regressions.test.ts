@@ -78,7 +78,7 @@ describe("anti-missing regression guards", () => {
     const pageSource = readSource("src/app/page.tsx");
     expect(pageSource).toContain("function SubjectSelectScreen(");
     expect(pageSource).toContain("showPaidUpsell");
-    expect(pageSource).toContain("練習題目已用完|聯絡家長充值");
+    expect(pageSource).toContain("免費練習題目額度已用完|升級成為月費用戶");
     expect(pageSource).toContain("解鎖無限題庫，取得排名資訊");
     expect(pageSource).toContain("getRankSampleImageUrl()");
   });

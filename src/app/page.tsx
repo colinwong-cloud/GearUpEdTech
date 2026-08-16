@@ -1173,7 +1173,7 @@ export default function QuizApp() {
           mobileNumber
         );
         if (balRecord && balRecord.remaining_questions >= 0 && balRecord.remaining_questions <= 0) {
-          throw new Error("你的練習題目已用完，請聯絡家長充值。");
+          throw new Error("你的免費練習題目額度已用完，請聯絡家長升級成為月費用戶以繼續使用。");
         }
 
         setBalance(balRecord);
@@ -3088,7 +3088,7 @@ function SubjectSelectScreen({
   const subjects = [...STUDENT_SUBJECT_OPTIONS];
   const showPaidUpsell =
     !isPaid &&
-    Boolean(error && /練習題目已用完|聯絡家長充值/.test(error));
+    Boolean(error && /免費練習題目額度已用完|升級成為月費用戶/.test(error));
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
