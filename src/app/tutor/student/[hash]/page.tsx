@@ -100,6 +100,7 @@ export default function TutorStudentDetailPage() {
   const studentHash = String(params?.hash || "").trim();
 
   const [registeredMobile, setRegisteredMobile] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [subject, setSubject] = useState<string>(PRIMARY_QUIZ_SUBJECT);
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
@@ -150,6 +151,7 @@ export default function TutorStudentDetailPage() {
             data?: {
               sessions?: TutorSessionSummary[];
               registered_mobile?: string;
+              student_name?: string;
               charts?: TutorStudentChart[];
             };
             error?: string;
@@ -163,10 +165,14 @@ export default function TutorStudentDetailPage() {
       if (payload?.data?.registered_mobile) {
         setRegisteredMobile(String(payload.data.registered_mobile));
       }
+      if (payload?.data?.student_name) {
+        setStudentName(String(payload.data.student_name));
+      }
       setDetail(null);
     } catch (err) {
       setSessions([]);
       setCharts([]);
+      setStudentName("");
       setDetail(null);
       setMsg(err instanceof Error ? err.message : "無法載入練習紀錄。");
     } finally {
@@ -189,10 +195,15 @@ export default function TutorStudentDetailPage() {
     try {
       const ok = await ensureTutorSession();
       if (!ok) return;
-      const res = await fetch(`/api/tutor/session-detail?session_id=${encodeURIComponent(sessionId)}`, {
-        method: "GET",
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/tutor/session-detail?session_id=${encodeURIComponent(sessionId)}&hash=${encodeURIComponent(
+          studentHash
+        )}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
       const payload = (await res.json().catch(() => null)) as
         | { data?: TutorSessionDetailPayload; error?: string }
         | null;
@@ -228,7 +239,9 @@ export default function TutorStudentDetailPage() {
             >
               ← 返回導師主頁
             </button>
-            <h1 className="text-xl font-bold text-gray-800">練習記錄（登記手機：{registeredMobile}）</h1>
+            <h1 className="text-xl font-bold text-gray-800">
+              練習記錄（學生：{studentName || "—"}｜登記手機：{registeredMobile || "—"}）
+            </h1>
           </div>
           <button
             onClick={handleLogout}
