@@ -175,14 +175,22 @@ function optionLabel(question: AnswerLike["question"], answer: string | undefine
     D: question.opt_d,
   };
   const value = optionMap[key];
-  if (value && value.trim()) return `${key}（${clipText(value.trim(), 18)}）`;
+  if (value && value.trim()) return `${key} (${clipText(value.trim(), 18)})`;
   return clipText(raw, 18);
+}
+
+function withEndingPeriod(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+  if (/[。．.！？!?]$/.test(t)) return t;
+  return `${t}。`;
 }
 
 function thinkingFromExplanation(explanation: string | null | undefined, typeName: string, forParent: boolean): string {
   const cleaned = normalizeReadableText(explanation);
   if (cleaned) {
-    return forParent ? `思路：${cleaned}` : `想一想：${cleaned}`;
+    const body = withEndingPeriod(cleaned);
+    return forParent ? `思路：${body}` : `想一想：${body}`;
   }
   if (forParent) return tipForParentWeak(typeName);
   if (/應用|文字|讀解/.test(typeName)) return "想一想：先搵題目問緊乜，再先計數。";
@@ -261,7 +269,7 @@ export function buildSessionPracticeSummary(
   }
 
   s += coachQuote(answers, false);
-  s += "下次再一齊加油！";
+  s += " 下次再一齊加油！";
   return finishSummary(s, TARGET_LO, TARGET_HI);
 }
 
@@ -286,7 +294,7 @@ export function buildSessionPracticeSummaryForParent(
 
   let s = parentTrendLine(name, cmp);
   s += coachQuote(answers, true);
-  s += "如有疑問歡迎回覆與我們聯絡，謝謝。";
+  s += " 如有疑問歡迎回覆與我們聯絡，謝謝。";
   return finishSummary(s, TARGET_LO, TARGET_PARENT_HI);
 }
 

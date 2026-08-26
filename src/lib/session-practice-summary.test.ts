@@ -138,11 +138,12 @@ describe("buildSessionPracticeSummary", () => {
 
   it("quotes the student wrong option and a thinking step", () => {
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT);
-    expect(s).toContain("你答咗 A（長方體）");
-    expect(s).toContain("正確係 B（正方體）");
+    expect(s).toContain("你答咗 A (長方體)");
+    expect(s).toContain("正確係 B (正方體)");
     expect(s).toContain("題型既");
     expect(s).toContain("一個立體的長闊高分別是3cm、3cm、5cm，它是什麼形狀？");
     expect(s).toContain("想一想：先睇長闊高係咪全部相等，先決定係正方體定長方體。");
+    expect(s).toContain("。 下次再一齊加油！");
     expect(s).not.toContain("…");
   });
 
@@ -166,8 +167,8 @@ describe("buildSessionPracticeSummary", () => {
     );
     expect(s).toContain('Choose the correct preposition: "We had lunch ___ noon."');
     expect(s).toContain('We often use "at" for eating at a specific time, such as at noon.');
-    expect(s).toContain("你答咗 B（on）");
-    expect(s).toContain("正確係 C（at）");
+    expect(s).toContain("你答咗 B (on)");
+    expect(s).toContain("正確係 C (at)");
     expect(s).not.toContain("Choosethecorrect");
     expect(s).not.toContain("…");
   });
@@ -207,5 +208,6 @@ describe("buildSessionPracticeSummaryForParent", () => {
     expect(parent).toContain("正確為");
     expect(parent).toContain("思路");
     expect(parent).toContain("一個立體的長闊高分別是3cm、3cm、5cm");
+    expect(parent).toMatch(/思路：.+[。．.！？!?]/);
   });
 });
