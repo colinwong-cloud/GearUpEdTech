@@ -92,6 +92,8 @@ for (const check of checks) {
 
 requireFile("src/lib/airwallex-checkout-methods.test.ts");
 requireFile("src/lib/admin-paid-summary.test.ts");
+requireFile("src/lib/airwallex-hpp-mit.test.ts");
+requireFile("src/lib/server/payment-finalize-consent.test.ts");
 
 console.log(`[payment-priority] OK: ${checks.length} payment guard files validated`);
 

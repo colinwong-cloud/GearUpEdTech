@@ -389,6 +389,7 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "\"payment_history\"" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "onPaymentHistory" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "消費紀錄" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "查看付款日期、金額及付款方式" },
         { type: "file_exists", path: "src/app/api/payment/history/route.ts" },
         { type: "file_contains", path: "src/app/api/payment/history/route.ts", snippet: "get_parent_tier_status" },
@@ -668,6 +669,25 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "subject-select-free-quota-paid-upsell",
+      month: "2026-08",
+      category: "payment",
+      priority: "payment-critical",
+      title: "Subject select shows paid upsell when free quota is exhausted",
+      evidence_commits: ["0b2808a", "6af21e5", "6e2e722"],
+      checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "function SubjectSelectScreen(" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "showPaidUpsell" },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "免費練習題目額度已用完|升級成為月費用戶",
+        },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "解鎖無限題庫，取得排名資訊" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "getRankSampleImageUrl()" },
+      ],
+    },
+    {
       id: "admin-mit-payment-monitoring-module",
       month: "2026-07",
       category: "payment",
@@ -837,6 +857,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/airwallex-hpp-mit.ts", snippet: "buildMitHppRedirectProps" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "buildMitHppRedirectProps" },
         { type: "file_contains", path: "src/app/payment-airwallex/page.tsx", snippet: "buildMitHppRedirectProps" },
+        { type: "file_exists", path: "src/lib/airwallex-hpp-mit.test.ts" },
       ],
     },
     {
@@ -889,6 +910,7 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/lib/server/payment-finalize.ts",
           snippet: "[anti-missing][payment][mit-policy] payment-consent-list-matched",
         },
+        { type: "file_exists", path: "src/lib/server/payment-finalize-consent.test.ts" },
       ],
     },
     {
@@ -1068,6 +1090,17 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["4b4ad35", "c38c510"],
       checks: [
         { type: "file_exists", path: "src/lib/anti-missing-regressions.test.ts" },
+        { type: "file_contains", path: "src/lib/anti-missing-regressions.test.ts", snippet: "showPaidUpsell" },
+        {
+          type: "file_contains",
+          path: "src/lib/anti-missing-regressions.test.ts",
+          snippet: "hpp_mit_fields_required: true",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/anti-missing-regressions.test.ts",
+          snippet: "tutor-student-v2",
+        },
       ],
     },
     {
