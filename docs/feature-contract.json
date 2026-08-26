@@ -2058,8 +2058,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T06:58:33.826Z",
+  "generated_at": "2026-08-26T06:58:43.240Z",
   "commit_inventory": [
+    {
+      "sha": "2da42f38a89c2abb814599cf5adb1a1e94216f37",
+      "date": "2026-08-26",
+      "summary": "chore: lock paid upsell and payment tests into anti-missing gates"
+    },
     {
       "sha": "d05d4bf7c592f04e7e27c9409351b4cda980a382",
       "date": "2026-08-26",
@@ -4127,7 +4132,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 413,
+    "total_commits_since_start": 414,
     "total_feature_rows": 59
   }
 }
