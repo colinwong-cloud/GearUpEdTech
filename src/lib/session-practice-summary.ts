@@ -142,18 +142,24 @@ function parentTrendLine(name: string, comparison: PracticeComparison): string {
 }
 
 function finishSummary(text: string, lo: number, hi: number): string {
-  let s = text.replace(/[ \t]+/g, "").trim();
-  if (s.length > hi) {
-    const lastPeriod = s.lastIndexOf("。", hi);
-    if (lastPeriod >= lo - 8) s = s.slice(0, lastPeriod + 1);
-    else s = s.slice(0, hi);
-  }
-  if (s.length < lo) s = (s + "繼續加油。").slice(0, hi);
+  let s = text.replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, " ").trim();
+  if (s.length > hi) s = s.slice(0, hi);
+  if (s.length < lo) s = `${s}繼續加油。`;
   return s;
 }
 
+function normalizeReadableText(text: string | null | undefined): string {
+  return String(text || "")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n+/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
 function clipText(text: string, maxLen: number): string {
-  const t = text.replace(/\s+/g, " ").trim();
+  const t = normalizeReadableText(text);
   if (t.length <= maxLen) return t;
   return `${t.slice(0, Math.max(1, maxLen - 1))}…`;
 }
@@ -174,14 +180,9 @@ function optionLabel(question: AnswerLike["question"], answer: string | undefine
 }
 
 function thinkingFromExplanation(explanation: string | null | undefined, typeName: string, forParent: boolean): string {
-  const cleaned = String(explanation || "")
-    .replace(/\\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleaned = normalizeReadableText(explanation);
   if (cleaned) {
-    const first = cleaned.split(/[。！？!?]/).map((part) => part.trim()).find(Boolean) || cleaned;
-    const clipped = clipText(first, forParent ? 56 : 42);
-    return forParent ? `思路：${clipped}。` : `想一想：${clipped}。`;
+    return forParent ? `思路：${cleaned}` : `想一想：${cleaned}`;
   }
   if (forParent) return tipForParentWeak(typeName);
   if (/應用|文字|讀解/.test(typeName)) return "想一想：先搵題目問緊乜，再先計數。";
@@ -203,13 +204,8 @@ export function pickCoachWrongAnswer(answers: AnswerLike[]): AnswerLike | null {
   return withExp[0] || pool[0];
 }
 
-function questionContentClip(content: string | null | undefined, maxLen: number): string {
-  const cleaned = String(content || "")
-    .replace(/\\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!cleaned) return "呢題";
-  return clipText(cleaned, maxLen);
+function fullQuestionContent(content: string | null | undefined): string {
+  return normalizeReadableText(content) || "呢題";
 }
 
 function coachQuote(answers: AnswerLike[], forParent: boolean): string {
@@ -218,13 +214,14 @@ function coachQuote(answers: AnswerLike[], forParent: boolean): string {
     return forParent ? "今節全部答對，宜保持節奏。" : "今次全部答啱，繼續保持！";
   }
   const typeName = (coach.question.question_type || "呢題").trim() || "呢題";
-  const stem = questionContentClip(coach.question.content, forParent ? 80 : 48);
+  const stem = fullQuestionContent(coach.question.content);
   const yours = optionLabel(coach.question, coach.studentAnswer);
   const right = optionLabel(coach.question, coach.question.correct_answer);
+  const thinking = thinkingFromExplanation(coach.question.explanation, typeName, forParent);
   if (forParent) {
-    return `今節有一題係「${typeName}」題型的「${stem}」，答了${yours}，正確為${right}。${thinkingFromExplanation(coach.question.explanation, typeName, true)}`;
+    return `今節有一題係「${typeName}」題型的「${stem}」，答了 ${yours}，正確為 ${right}。${thinking}`;
   }
-  return `有一題係「${typeName}」題型既「${stem}」你答咗${yours}，正確係${right}。${thinkingFromExplanation(coach.question.explanation, typeName, false)}`;
+  return `有一題係「${typeName}」題型既「${stem}」你答咗 ${yours}，正確係 ${right}。${thinking}`;
 }
 function topicBits(answers: AnswerLike[]): { strongName: string; weakName: string; overallR: number } {
   const list = computeTypeStats(answers);
