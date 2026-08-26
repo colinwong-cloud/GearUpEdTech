@@ -97,6 +97,24 @@ describe("anti-missing regression guards", () => {
     expect(emailSource).toContain("Keep up the great work! 繼續加油！ 💪");
   });
 
+  it("keeps practice summary comparison for first / last-one / last-10", () => {
+    const summarySource = readSource("src/lib/session-practice-summary.ts");
+    expect(summarySource).toContain("buildPracticeComparison");
+    expect(summarySource).toContain("第一次完成練習");
+    expect(summarySource).toContain("比上次");
+    expect(summarySource).toContain("近10次平均");
+    expect(summarySource).toContain("進步喇");
+    expect(summarySource).toContain("低少少都唔緊要");
+    expect(summarySource).toContain("今次正確率有");
+    expect(summarySource).toContain("題型既");
+    expect(summarySource).toContain("你答咗");
+    expect(summarySource).toContain("想一想");
+    expect(summarySource).toContain("pickCoachWrongAnswer");
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("priorSessionsFromChart");
+    expect(pageSource).toContain("get_student_chart_data");
+  });
+
   it("keeps tutor portal and admin tutor+MIT modules", () => {
     const tutorPageSource = readSource("src/app/tutor/page.tsx");
     expect(tutorPageSource).toContain("GearUp Tutor");
