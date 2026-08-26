@@ -108,20 +108,20 @@ function studentTrendLine(comparison: PracticeComparison): string {
   const { currentPct: c } = comparison;
   if (comparison.mode === "first") {
     if (comparison.historyKnown) {
-      return `第一次完成練習，做得好！今次 ${c}%。`;
+      return `第一次完成練習，做得好！今次正確率有 ${c}%。`;
     }
     return "";
   }
   const b = comparison.baselinePct ?? 0;
   const trend = comparison.trend || "similar";
   if (comparison.mode === "last_one") {
-    if (trend === "up") return `今次 ${c}%，比上次 ${b}% 進步喇！`;
-    if (trend === "down") return `今次 ${c}%，比上次 ${b}% 低少少都唔緊要。`;
-    return `今次 ${c}%，同上次 ${b}% 差唔多，穩陣！`;
+    if (trend === "up") return `今次正確率有 ${c}%，比上次 ${b}% 進步喇！`;
+    if (trend === "down") return `今次正確率有 ${c}%，比上次 ${b}% 低少少都唔緊要。`;
+    return `今次正確率有 ${c}%，同上次 ${b}% 差唔多，穩陣！`;
   }
-  if (trend === "up") return `今次 ${c}%，比近10次平均 ${b}% 進步喇！`;
-  if (trend === "down") return `今次 ${c}%，比近10次平均 ${b}% 低少少都唔緊要。`;
-  return `今次 ${c}%，同近10次平均 ${b}% 差唔多，穩陣！`;
+  if (trend === "up") return `今次正確率有 ${c}%，比近10次平均 ${b}% 進步喇！`;
+  if (trend === "down") return `今次正確率有 ${c}%，比近10次平均 ${b}% 低少少都唔緊要。`;
+  return `今次正確率有 ${c}%，同近10次平均 ${b}% 差唔多，穩陣！`;
 }
 
 function parentTrendLine(name: string, comparison: PracticeComparison): string {
@@ -203,18 +203,28 @@ export function pickCoachWrongAnswer(answers: AnswerLike[]): AnswerLike | null {
   return withExp[0] || pool[0];
 }
 
+function questionContentClip(content: string | null | undefined, maxLen: number): string {
+  const cleaned = String(content || "")
+    .replace(/\\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "呢題";
+  return clipText(cleaned, maxLen);
+}
+
 function coachQuote(answers: AnswerLike[], forParent: boolean): string {
   const coach = pickCoachWrongAnswer(answers);
   if (!coach) {
     return forParent ? "今節全部答對，宜保持節奏。" : "今次全部答啱，繼續保持！";
   }
   const typeName = (coach.question.question_type || "呢題").trim() || "呢題";
+  const stem = questionContentClip(coach.question.content, forParent ? 80 : 48);
   const yours = optionLabel(coach.question, coach.studentAnswer);
   const right = optionLabel(coach.question, coach.question.correct_answer);
   if (forParent) {
-    return `今節有一題「${typeName}」答了${yours}，正確為${right}。${thinkingFromExplanation(coach.question.explanation, typeName, true)}`;
+    return `今節有一題係「${typeName}」題型的「${stem}」，答了${yours}，正確為${right}。${thinkingFromExplanation(coach.question.explanation, typeName, true)}`;
   }
-  return `有一題「${typeName}」你答咗${yours}，正確係${right}。${thinkingFromExplanation(coach.question.explanation, typeName, false)}`;
+  return `有一題係「${typeName}」題型既「${stem}」你答咗${yours}，正確係${right}。${thinkingFromExplanation(coach.question.explanation, typeName, false)}`;
 }
 function topicBits(answers: AnswerLike[]): { strongName: string; weakName: string; overallR: number } {
   const list = computeTypeStats(answers);
@@ -248,9 +258,9 @@ export function buildSessionPracticeSummary(
 
   let s = trendLine;
   if (!s) {
-    if (overallR >= 0.8) s = `叻呀！今次 ${cmp.currentPct}%。`;
-    else if (overallR >= 0.55) s = `做得好！今次 ${cmp.currentPct}%。`;
-    else s = `唔使灰心，今次 ${cmp.currentPct}%，慢慢嚟都得。`;
+    if (overallR >= 0.8) s = `叻呀！今次正確率有 ${cmp.currentPct}%。`;
+    else if (overallR >= 0.55) s = `做得好！今次正確率有 ${cmp.currentPct}%。`;
+    else s = `唔使灰心，今次正確率有 ${cmp.currentPct}%，慢慢嚟都得。`;
   }
 
   s += coachQuote(answers, false);

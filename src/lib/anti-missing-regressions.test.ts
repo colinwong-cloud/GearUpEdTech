@@ -105,6 +105,8 @@ describe("anti-missing regression guards", () => {
     expect(summarySource).toContain("近10次平均");
     expect(summarySource).toContain("進步喇");
     expect(summarySource).toContain("低少少都唔緊要");
+    expect(summarySource).toContain("今次正確率有");
+    expect(summarySource).toContain("題型既");
     expect(summarySource).toContain("你答咗");
     expect(summarySource).toContain("想一想");
     expect(summarySource).toContain("pickCoachWrongAnswer");

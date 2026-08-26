@@ -9,8 +9,8 @@ export interface AnswerLike {
 export type TypeStats = { type: string; total: number; correct: number };
 
 export const TARGET_LO = 50;
-export const TARGET_HI = 200;
-export const TARGET_PARENT_HI = 240;
+export const TARGET_HI = 260;
+export const TARGET_PARENT_HI = 320;
 /** Percentage-point gap before calling a result "improving" or "down". */
 export const TREND_GAP_PCT = 5;
 

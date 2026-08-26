@@ -16,7 +16,7 @@ const q = (type: string, id: string, extra?: Partial<Question>): Question => ({
   question_type: type,
   paper_rank: "1",
   grade_level: "P4",
-  content: "q",
+  content: extra?.content ?? "一個立體的長闊高分別是3cm、3cm、5cm，它是什麼形狀？",
   opt_a: "長方體",
   opt_b: "正方體",
   opt_c: null,
@@ -103,12 +103,13 @@ describe("buildSessionPracticeSummary", () => {
     const cmp = buildPracticeComparison(50, [], { historyKnown: true });
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT, cmp);
     expect(s).toContain("第一次完成練習");
-    expect(s).toContain("50%");
+    expect(s).toContain("今次正確率有50%");
     expect(s).toContain("體積（二）");
+    expect(s).toContain("題型既");
     expect(s).toContain("你答咗");
     expect(s).toContain("想一想");
     expect(s.length).toBeGreaterThanOrEqual(20);
-    expect(s.length).toBeLessThanOrEqual(200);
+    expect(s.length).toBeLessThanOrEqual(260);
   });
 
   it("compares to the last practice when history is short", () => {
@@ -139,6 +140,8 @@ describe("buildSessionPracticeSummary", () => {
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT);
     expect(s).toContain("你答咗A（長方體）");
     expect(s).toContain("正確係B（正方體）");
+    expect(s).toContain("題型既");
+    expect(s).toContain("一個立體的長闊高分別是3cm、3cm、5cm");
     expect(s).toContain("想一想：先睇長闊高係咪全部相等");
   });
 
@@ -168,13 +171,15 @@ describe("buildSessionPracticeSummaryForParent", () => {
     expect(parent).toContain("70%");
     expect(parent).toMatch(/關於|敬啟/);
     expect(parent.length).toBeGreaterThanOrEqual(40);
-    expect(parent.length).toBeLessThanOrEqual(240);
+    expect(parent.length).toBeLessThanOrEqual(320);
   });
 
   it("quotes a wrong answer and thinking for parents too", () => {
     const parent = buildSessionPracticeSummaryForParent(mixedAnswers, PRIMARY_QUIZ_SUBJECT, "小明");
+    expect(parent).toContain("題型的");
     expect(parent).toContain("答了");
     expect(parent).toContain("正確為");
     expect(parent).toContain("思路");
+    expect(parent).toContain("一個立體的長闊高分別是3cm、3cm、5cm");
   });
 });
