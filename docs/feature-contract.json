@@ -1345,7 +1345,7 @@
       "priority": "critical",
       "title": "Tutor list is one row per student; View opens that student only",
       "evidence_commits": [
-        "88f36ec"
+        "9bc8f73"
       ],
       "checks": [
         {
@@ -1991,8 +1991,13 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T06:46:11.479Z",
+  "generated_at": "2026-08-26T06:46:25.903Z",
   "commit_inventory": [
+    {
+      "sha": "9bc8f731b1b185703486d00c9e589103b3ee8bee",
+      "date": "2026-08-26",
+      "summary": "feat: tutor portal lists one row per student"
+    },
     {
       "sha": "27b7549cc4ee9099eff62f07c5204dbde1aafc18",
       "date": "2026-08-26",
@@ -4045,7 +4050,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 410,
+    "total_commits_since_start": 411,
     "total_feature_rows": 58
   }
 }

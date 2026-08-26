@@ -754,7 +754,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "tutor",
       priority: "critical",
       title: "Tutor list is one row per student; View opens that student only",
-      evidence_commits: ["88f36ec"],
+      evidence_commits: ["9bc8f73"],
       checks: [
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "學生姓名" },
         {
