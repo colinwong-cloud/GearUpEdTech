@@ -367,6 +367,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/session-practice-summary.ts",
+          "snippet": "你答咗"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/session-practice-summary.ts",
+          "snippet": "想一想"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "priorSessionsFromChart"
         }
@@ -1924,8 +1934,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T04:34:10.474Z",
+  "generated_at": "2026-08-26T04:46:47.771Z",
   "commit_inventory": [
+    {
+      "sha": "a63a7fc57da3d6c518c5e204e52e62458fa9519e",
+      "date": "2026-08-26",
+      "summary": "feat: quote one wrong answer and thinking in practice comments"
+    },
+    {
+      "sha": "739f81dc02c60df1e434329cd1df7736c009bfd6",
+      "date": "2026-08-26",
+      "summary": "chore: refresh feature contract after practice comparison comments"
+    },
     {
       "sha": "9d348369f44e79f8b1936c954d3fae8824be1ba5",
       "date": "2026-08-26",
@@ -3933,7 +3953,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 401,
+    "total_commits_since_start": 403,
     "total_feature_rows": 57
   }
 }
