@@ -368,7 +368,12 @@
         {
           "type": "file_contains",
           "path": "src/lib/session-practice-summary.ts",
-          "snippet": "你答咗"
+          "snippet": "今次正確率有"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/session-practice-summary.ts",
+          "snippet": "題型既"
         },
         {
           "type": "file_contains",
@@ -1934,8 +1939,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T04:46:47.771Z",
+  "generated_at": "2026-08-26T04:53:09.302Z",
   "commit_inventory": [
+    {
+      "sha": "cb07fdee37c9994a510170b7c0d0777a0bc3a40f",
+      "date": "2026-08-26",
+      "summary": "ui: include question content in practice comments"
+    },
+    {
+      "sha": "7a771ed1f21297d394e4058abad556b23d0122e4",
+      "date": "2026-08-26",
+      "summary": "chore: refresh feature contract after wrong-answer comment quotes"
+    },
     {
       "sha": "a63a7fc57da3d6c518c5e204e52e62458fa9519e",
       "date": "2026-08-26",
@@ -3953,7 +3968,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 403,
+    "total_commits_since_start": 405,
     "total_feature_rows": 57
   }
 }
