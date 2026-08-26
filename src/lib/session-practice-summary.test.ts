@@ -9,7 +9,7 @@ import {
 import { PRIMARY_QUIZ_SUBJECT } from "@/lib/quiz-subjects";
 import type { Question } from "@/lib/types";
 
-const q = (t: string, type: string, id: string): Question => ({
+const q = (type: string, id: string, extra?: Partial<Question>): Question => ({
   id,
   past_paper_id: null,
   subject: PRIMARY_QUIZ_SUBJECT,
@@ -17,21 +17,23 @@ const q = (t: string, type: string, id: string): Question => ({
   paper_rank: "1",
   grade_level: "P4",
   content: "q",
-  opt_a: "A",
-  opt_b: "B",
+  opt_a: "長方體",
+  opt_b: "正方體",
   opt_c: null,
   opt_d: null,
-  correct_answer: "A",
-  explanation: null,
+  correct_answer: "B",
+  explanation: extra?.explanation ?? "先睇長闊高係咪全部相等，先決定係正方體定長方體。",
   image_url: null,
   created_at: "",
   question_key: null,
   source: null,
+  ...extra,
 });
 
-const mk = (type: string, id: string, correct: boolean): AnswerLike => ({
-  question: q("x", type, id),
+const mk = (type: string, id: string, correct: boolean, studentAnswer = "A"): AnswerLike => ({
+  question: q(type, id, { correct_answer: correct ? studentAnswer : "B" }),
   isCorrect: correct,
+  studentAnswer,
 });
 
 const mixedAnswers: AnswerLike[] = [
@@ -102,10 +104,11 @@ describe("buildSessionPracticeSummary", () => {
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT, cmp);
     expect(s).toContain("第一次完成練習");
     expect(s).toContain("50%");
-    expect(s).toContain("簡易方程（二）");
     expect(s).toContain("體積（二）");
+    expect(s).toContain("你答咗");
+    expect(s).toContain("想一想");
     expect(s.length).toBeGreaterThanOrEqual(20);
-    expect(s.length).toBeLessThanOrEqual(140);
+    expect(s.length).toBeLessThanOrEqual(200);
   });
 
   it("compares to the last practice when history is short", () => {
@@ -130,6 +133,13 @@ describe("buildSessionPracticeSummary", () => {
     const cmp = buildPracticeComparison(50, [prior(80, "a", "2026-08-01")], { historyKnown: true });
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT, cmp);
     expect(s).toContain("低少少都唔緊要");
+  });
+
+  it("quotes the student wrong option and a thinking step", () => {
+    const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT);
+    expect(s).toContain("你答咗A（長方體）");
+    expect(s).toContain("正確係B（正方體）");
+    expect(s).toContain("想一想：先睇長闊高係咪全部相等");
   });
 
   it("empty returns short fallback", () => {
@@ -158,6 +168,13 @@ describe("buildSessionPracticeSummaryForParent", () => {
     expect(parent).toContain("70%");
     expect(parent).toMatch(/關於|敬啟/);
     expect(parent.length).toBeGreaterThanOrEqual(40);
-    expect(parent.length).toBeLessThanOrEqual(180);
+    expect(parent.length).toBeLessThanOrEqual(240);
+  });
+
+  it("quotes a wrong answer and thinking for parents too", () => {
+    const parent = buildSessionPracticeSummaryForParent(mixedAnswers, PRIMARY_QUIZ_SUBJECT, "小明");
+    expect(parent).toContain("答了");
+    expect(parent).toContain("正確為");
+    expect(parent).toContain("思路");
   });
 });

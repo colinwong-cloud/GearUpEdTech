@@ -218,6 +218,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/page.tsx", snippet: "小香蕉的練習小結" },
         { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "buildPracticeComparison" },
         { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "近10次平均" },
+        { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "你答咗" },
+        { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "想一想" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "priorSessionsFromChart" },
       ],
     },

@@ -152,6 +152,70 @@ function finishSummary(text: string, lo: number, hi: number): string {
   return s;
 }
 
+function clipText(text: string, maxLen: number): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, Math.max(1, maxLen - 1))}…`;
+}
+
+function optionLabel(question: AnswerLike["question"], answer: string | undefined): string {
+  const raw = String(answer || "").trim();
+  if (!raw) return "空白";
+  const key = raw.toUpperCase();
+  const optionMap: Record<string, string | null> = {
+    A: question.opt_a,
+    B: question.opt_b,
+    C: question.opt_c,
+    D: question.opt_d,
+  };
+  const value = optionMap[key];
+  if (value && value.trim()) return `${key}（${clipText(value.trim(), 18)}）`;
+  return clipText(raw, 18);
+}
+
+function thinkingFromExplanation(explanation: string | null | undefined, typeName: string, forParent: boolean): string {
+  const cleaned = String(explanation || "")
+    .replace(/\\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned) {
+    const first = cleaned.split(/[。！？!?]/).map((part) => part.trim()).find(Boolean) || cleaned;
+    const clipped = clipText(first, forParent ? 56 : 42);
+    return forParent ? `思路：${clipped}。` : `想一想：${clipped}。`;
+  }
+  if (forParent) return tipForParentWeak(typeName);
+  if (/應用|文字|讀解/.test(typeName)) return "想一想：先搵題目問緊乜，再先計數。";
+  if (/圖形|空間|面積|周界|體積/.test(typeName)) return "想一想：先認形狀同單位，再套公式。";
+  if (/分數|小數|百/.test(typeName)) return "想一想：對一對單位同小數點，先估一估合唔合理。";
+  if (/方程/.test(typeName)) return "想一想：兩邊做同樣嘢，慢慢搬項。";
+  return "想一想：圈關鍵字，對一對答案係咪答緊題目問嘅嘢。";
+}
+
+export function pickCoachWrongAnswer(answers: AnswerLike[]): AnswerLike | null {
+  const wrong = answers.filter((a) => !a.isCorrect);
+  if (wrong.length === 0) return null;
+  const { weakName } = topicBits(answers);
+  const inWeak = weakName
+    ? wrong.filter((a) => ((a.question.question_type || "").trim() || "綜合") === weakName)
+    : [];
+  const pool = inWeak.length > 0 ? inWeak : wrong;
+  const withExp = pool.filter((a) => Boolean((a.question.explanation || "").trim()));
+  return withExp[0] || pool[0];
+}
+
+function coachQuote(answers: AnswerLike[], forParent: boolean): string {
+  const coach = pickCoachWrongAnswer(answers);
+  if (!coach) {
+    return forParent ? "今節全部答對，宜保持節奏。" : "今次全部答啱，繼續保持！";
+  }
+  const typeName = (coach.question.question_type || "呢題").trim() || "呢題";
+  const yours = optionLabel(coach.question, coach.studentAnswer);
+  const right = optionLabel(coach.question, coach.question.correct_answer);
+  if (forParent) {
+    return `今節有一題「${typeName}」答了${yours}，正確為${right}。${thinkingFromExplanation(coach.question.explanation, typeName, true)}`;
+  }
+  return `有一題「${typeName}」你答咗${yours}，正確係${right}。${thinkingFromExplanation(coach.question.explanation, typeName, false)}`;
+}
 function topicBits(answers: AnswerLike[]): { strongName: string; weakName: string; overallR: number } {
   const list = computeTypeStats(answers);
   list.sort((a, b) => rate(b) - rate(a));
@@ -176,7 +240,7 @@ export function buildSessionPracticeSummary(
     return "今次沒有作答，下次再一齊加油，小步也會是進步！";
   }
 
-  const { strongName, weakName, overallR } = topicBits(answers);
+  const { overallR } = topicBits(answers);
   const cmp =
     comparison ??
     buildPracticeComparison(currentAnswersPercent(answers), [], { historyKnown: false });
@@ -184,17 +248,12 @@ export function buildSessionPracticeSummary(
 
   let s = trendLine;
   if (!s) {
-    if (overallR >= 0.8) s = `叻呀！今次 ${cmp.currentPct}%，在「${strongName}」特別有把握。`;
-    else if (overallR >= 0.55) s = `做得好！今次 ${cmp.currentPct}%，在「${strongName}」有唔錯的基礎。`;
-    else s = `唔使灰心，學習有上有落好正常。今次 ${cmp.currentPct}%，你喺「${strongName}」都仲有可以發揮的位。`;
-  } else if (strongName) {
-    s += `你喺「${strongName}」${overallR >= 0.55 ? "有把握" : "都仲有可以發揮的位"}。`;
+    if (overallR >= 0.8) s = `叻呀！今次 ${cmp.currentPct}%。`;
+    else if (overallR >= 0.55) s = `做得好！今次 ${cmp.currentPct}%。`;
+    else s = `唔使灰心，今次 ${cmp.currentPct}%，慢慢嚟都得。`;
   }
 
-  if (weakName && weakName !== strongName) {
-    s += `要留意「${weakName}」可以多練少少。`;
-  }
-
+  s += coachQuote(answers, false);
   s += "下次再一齊加油！";
   return finishSummary(s, TARGET_LO, TARGET_HI);
 }
@@ -214,18 +273,12 @@ export function buildSessionPracticeSummaryForParent(
     return `敬啟者：${name}今節未有作答紀錄，建議下次預留完整時間完成，以便檢視學習狀況。`;
   }
 
-  const { strongName, weakName } = topicBits(answers);
   const cmp =
     comparison ??
     buildPracticeComparison(currentAnswersPercent(answers), [], { historyKnown: false });
 
   let s = parentTrendLine(name, cmp);
-  s += `「${strongName}」掌握較穩。`;
-  if (weakName && weakName !== strongName) {
-    s += `較需留意「${weakName}」。${tipForParentWeak(weakName)}`;
-  } else {
-    s += "建議維持規律練習，並留意審題習慣。";
-  }
+  s += coachQuote(answers, true);
   s += "如有疑問歡迎回覆與我們聯絡，謝謝。";
   return finishSummary(s, TARGET_LO, TARGET_PARENT_HI);
 }

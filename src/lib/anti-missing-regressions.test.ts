@@ -105,6 +105,9 @@ describe("anti-missing regression guards", () => {
     expect(summarySource).toContain("近10次平均");
     expect(summarySource).toContain("進步喇");
     expect(summarySource).toContain("低少少都唔緊要");
+    expect(summarySource).toContain("你答咗");
+    expect(summarySource).toContain("想一想");
+    expect(summarySource).toContain("pickCoachWrongAnswer");
     const pageSource = readSource("src/app/page.tsx");
     expect(pageSource).toContain("priorSessionsFromChart");
     expect(pageSource).toContain("get_student_chart_data");
