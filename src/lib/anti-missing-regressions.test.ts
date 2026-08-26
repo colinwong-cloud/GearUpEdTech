@@ -128,6 +128,9 @@ describe("anti-missing regression guards", () => {
     );
     expect(tutorPageSource).toContain("bg-slate-950");
     expect(tutorPageSource).toContain("rounded-xl border border-sky-200 bg-sky-100");
+    expect(tutorPageSource).toContain("學生姓名");
+    expect(tutorPageSource).toContain("同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。");
+    expect(tutorPageSource).toContain("row.student_id");
 
     const tutorDetailSource = readSource("src/app/tutor/student/[hash]/page.tsx");
     expect(tutorDetailSource).toContain("OverallChart");
@@ -135,14 +138,25 @@ describe("anti-missing regression guards", () => {
     expect(tutorDetailSource).toContain("各題型正確率趨勢");
     expect(tutorDetailSource).toContain("錯題解析");
     expect(tutorDetailSource).toContain("你的答案（含值）");
+    expect(tutorDetailSource).toContain("練習記錄（學生：");
+    expect(tutorDetailSource).toContain("/api/tutor/session-detail?session_id=");
+    expect(tutorDetailSource).toContain("&hash=");
 
     const tutorSessionsApiSource = readSource("src/app/api/tutor/sessions/route.ts");
     expect(tutorSessionsApiSource).toContain("get_student_chart_data");
+    expect(tutorSessionsApiSource).toContain("resolveTutorBoundStudentFromHash");
+    expect(tutorSessionsApiSource).toContain(".eq(\"student_id\", studentId)");
+
+    const tutorStudentsApiSource = readSource("src/app/api/tutor/students/route.ts");
+    expect(tutorStudentsApiSource).toContain("student_name");
+    expect(tutorStudentsApiSource).toContain("computeTutorStudentScopeHash");
 
     const tutorHashSource = readSource("src/lib/server/tutor-student-hash.ts");
     expect(tutorHashSource).toContain("computeTutorStudentHash");
+    expect(tutorHashSource).toContain("computeTutorStudentScopeHash");
     expect(tutorHashSource).toContain("getTutorHashSecret");
     expect(tutorHashSource).toContain("TUTOR_SESSION_SECRET");
+    expect(tutorHashSource).toContain("tutor-student-v2");
 
     const adminPageSource = readSource("src/app/admin/page.tsx");
     expect(adminPageSource).toContain("教師編號維護");

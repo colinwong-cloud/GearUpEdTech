@@ -749,6 +749,44 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "tutor-portal-per-student-rows-and-view",
+      month: "2026-08",
+      category: "tutor",
+      priority: "critical",
+      title: "Tutor list is one row per student; View opens that student only",
+      evidence_commits: ["9bc8f73"],
+      checks: [
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "學生姓名" },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/page.tsx",
+          snippet: "同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。",
+        },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "練習記錄（學生：" },
+        {
+          type: "file_contains",
+          path: "src/lib/server/tutor-student-hash.ts",
+          snippet: "computeTutorStudentScopeHash",
+        },
+        { type: "file_contains", path: "src/lib/server/tutor-student-hash.ts", snippet: "tutor-student-v2" },
+        {
+          type: "file_contains",
+          path: "src/app/api/tutor/students/route.ts",
+          snippet: "computeTutorStudentScopeHash",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/tutor/sessions/route.ts",
+          snippet: "resolveTutorBoundStudentFromHash",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/tutor/session-detail/route.ts",
+          snippet: "你只能查看所選學生的練習紀錄。",
+        },
+      ],
+    },
+    {
       id: "admin-tutor-referral-maintenance-and-password-reset",
       month: "2026-07",
       category: "admin",
