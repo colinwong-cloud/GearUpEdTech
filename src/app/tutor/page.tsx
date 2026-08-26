@@ -11,6 +11,8 @@ type TutorSessionPayload = {
 };
 
 type TutorStudentRow = {
+  student_id: string;
+  student_name: string;
   registered_mobile: string;
   hash: string;
   linked_at: string;
@@ -381,6 +383,7 @@ export default function TutorPortalPage() {
             <p className="text-sm text-gray-500">
               教師編號：<span className="font-mono">{session.code || "-"}</span>
             </p>
+            <p className="text-xs text-gray-400">同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。</p>
           </div>
         </div>
 
@@ -410,15 +413,17 @@ export default function TutorPortalPage() {
               <tr className="border-b text-left text-gray-500">
                 <th className="py-2 pr-3 w-20">#</th>
                 <th className="py-2 pr-3">登記手機</th>
+                <th className="py-2 pr-3">學生姓名</th>
                 <th className="py-2 pr-3">最後練習日期時間</th>
                 <th className="py-2 pr-3">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row, index) => (
-                <tr key={row.registered_mobile} className="border-b border-gray-100">
+                <tr key={row.student_id || row.hash} className="border-b border-gray-100">
                   <td className="py-2 pr-3">{index + 1}</td>
                   <td className="py-2 pr-3 font-mono">{row.registered_mobile}</td>
+                  <td className="py-2 pr-3">{row.student_name || "學生"}</td>
                   <td className="py-2 pr-3">{formatDateTime(row.last_practice_at)}</td>
                   <td className="py-2 pr-3">
                     <Link
@@ -432,7 +437,7 @@ export default function TutorPortalPage() {
               ))}
               {filteredRows.length === 0 && !listLoading && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-400">
+                  <td colSpan={5} className="py-6 text-center text-gray-400">
                     沒有符合條件的資料
                   </td>
                 </tr>

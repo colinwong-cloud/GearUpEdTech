@@ -1339,6 +1339,58 @@
       ]
     },
     {
+      "id": "tutor-portal-per-student-rows-and-view",
+      "month": "2026-08",
+      "category": "tutor",
+      "priority": "critical",
+      "title": "Tutor list is one row per student; View opens that student only",
+      "evidence_commits": [
+        "9bc8f73"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "學生姓名"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "練習記錄（學生："
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-student-hash.ts",
+          "snippet": "computeTutorStudentScopeHash"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-student-hash.ts",
+          "snippet": "tutor-student-v2"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/students/route.ts",
+          "snippet": "computeTutorStudentScopeHash"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/sessions/route.ts",
+          "snippet": "resolveTutorBoundStudentFromHash"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/session-detail/route.ts",
+          "snippet": "你只能查看所選學生的練習紀錄。"
+        }
+      ]
+    },
+    {
       "id": "admin-tutor-referral-maintenance-and-password-reset",
       "month": "2026-07",
       "category": "admin",
@@ -1939,8 +1991,23 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T05:43:10.843Z",
+  "generated_at": "2026-08-26T06:48:06.811Z",
   "commit_inventory": [
+    {
+      "sha": "fe0d62a29b8dbeeb34ada772520b63f2f4dc5357",
+      "date": "2026-08-26",
+      "summary": "chore: refresh feature contract after tutor per-student rows"
+    },
+    {
+      "sha": "9bc8f731b1b185703486d00c9e589103b3ee8bee",
+      "date": "2026-08-26",
+      "summary": "feat: tutor portal lists one row per student"
+    },
+    {
+      "sha": "27b7549cc4ee9099eff62f07c5204dbde1aafc18",
+      "date": "2026-08-26",
+      "summary": "chore: refresh feature contract after comment punctuation"
+    },
     {
       "sha": "c70263bf5f1ac0e818794017c99a57cdf381fedb",
       "date": "2026-08-26",
@@ -3988,7 +4055,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 409,
-    "total_feature_rows": 57
+    "total_commits_since_start": 412,
+    "total_feature_rows": 58
   }
 }
