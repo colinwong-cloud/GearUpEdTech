@@ -412,8 +412,8 @@ export default function TutorPortalPage() {
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="py-2 pr-3 w-20">#</th>
-                <th className="py-2 pr-3">登記手機</th>
                 <th className="py-2 pr-3">學生姓名</th>
+                <th className="py-2 pr-3">登記手機</th>
                 <th className="py-2 pr-3">最後練習日期時間</th>
                 <th className="py-2 pr-3">操作</th>
               </tr>
@@ -422,8 +422,8 @@ export default function TutorPortalPage() {
               {filteredRows.map((row, index) => (
                 <tr key={row.student_id || row.hash} className="border-b border-gray-100">
                   <td className="py-2 pr-3">{index + 1}</td>
-                  <td className="py-2 pr-3 font-mono">{row.registered_mobile}</td>
                   <td className="py-2 pr-3">{row.student_name || "學生"}</td>
+                  <td className="py-2 pr-3 font-mono">{row.registered_mobile}</td>
                   <td className="py-2 pr-3">{formatDateTime(row.last_practice_at)}</td>
                   <td className="py-2 pr-3">
                     <Link

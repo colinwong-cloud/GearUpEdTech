@@ -344,7 +344,6 @@ export default function TutorStudentDetailPage() {
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="py-2 pr-3">日期時間</th>
-                <th className="py-2 pr-3">學生</th>
                 <th className="py-2 pr-3">分數</th>
                 <th className="py-2 pr-3">正確率</th>
                 <th className="py-2 pr-3">用時</th>
@@ -360,7 +359,6 @@ export default function TutorStudentDetailPage() {
                 return (
                   <tr key={row.id} className="border-b border-gray-100">
                     <td className="py-2 pr-3">{formatDateTime(row.created_at)}</td>
-                    <td className="py-2 pr-3">{row.student_name}</td>
                     <td className="py-2 pr-3">
                       {row.score} / {row.questions_attempted}
                     </td>
@@ -380,7 +378,7 @@ export default function TutorStudentDetailPage() {
               })}
               {sessions.length === 0 && !loadingSessions && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-400">
+                  <td colSpan={5} className="py-6 text-center text-gray-400">
                     本月暫無練習紀錄
                   </td>
                 </tr>
