@@ -22,6 +22,8 @@ runStep("npx", [
   "src/lib/admin-paid-summary.test.ts",
   "src/lib/question-source.test.ts",
   "src/lib/quiz-subjects.test.ts",
+  "src/lib/server/tutor-student-hash.test.ts",
+  "src/lib/server/tutor-bound-students.test.ts",
 ]);
 
 console.log("[release-gate] OK");

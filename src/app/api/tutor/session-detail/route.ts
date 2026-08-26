@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireTutorSession } from "@/lib/server/tutor-session";
+import {
+  computeTutorStudentScopeHash,
+  getTutorHashSecret,
+  tutorHashesEqual,
+} from "@/lib/server/tutor-student-hash";
 
 function getSupabaseAdmin() {
   const url =
@@ -25,6 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   const sessionId = String(req.nextUrl.searchParams.get("session_id") || "").trim();
+  const hashParam = String(req.nextUrl.searchParams.get("hash") || "").trim();
   if (!sessionId) {
     return NextResponse.json({ error: "缺少 session_id。" }, { status: 400 });
   }
@@ -74,6 +80,20 @@ export async function GET(req: NextRequest) {
   }
   if (!usageRes.data) {
     return NextResponse.json({ error: "你只能查看已綁定在此教師編號下的練習紀錄。" }, { status: 403 });
+  }
+
+  if (hashParam) {
+    const expectedHash = computeTutorStudentScopeHash(
+      registeredMobile,
+      studentId,
+      getTutorHashSecret()
+    );
+    if (!tutorHashesEqual(expectedHash, hashParam)) {
+      return NextResponse.json(
+        { error: "你只能查看所選學生的練習紀錄。" },
+        { status: 403 }
+      );
+    }
   }
 
   const detailRes = await admin.rpc("get_session_detail", {

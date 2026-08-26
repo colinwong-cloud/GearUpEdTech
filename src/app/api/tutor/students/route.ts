@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { listTutorBoundStudents } from "@/lib/server/tutor-bound-students";
 import { requireTutorSession } from "@/lib/server/tutor-session";
-import { computeTutorStudentHash, getTutorHashSecret } from "@/lib/server/tutor-student-hash";
+import {
+  computeTutorStudentScopeHash,
+  getTutorHashSecret,
+} from "@/lib/server/tutor-student-hash";
 
 function getSupabaseAdmin() {
   const url =
@@ -22,6 +26,18 @@ function chunkArray<T>(values: T[], size: number): T[][] {
   return result;
 }
 
+function compareTutorStudentRows(
+  a: { registered_mobile: string; student_name: string; last_practice_at: string | null },
+  b: { registered_mobile: string; student_name: string; last_practice_at: string | null }
+): number {
+  const aTs = a.last_practice_at ? new Date(a.last_practice_at).getTime() : 0;
+  const bTs = b.last_practice_at ? new Date(b.last_practice_at).getTime() : 0;
+  if (aTs !== bTs) return bTs - aTs;
+  const mobileCmp = a.registered_mobile.localeCompare(b.registered_mobile);
+  if (mobileCmp !== 0) return mobileCmp;
+  return a.student_name.localeCompare(b.student_name, "zh-Hant");
+}
+
 export async function GET(req: NextRequest) {
   const sessionRes = await requireTutorSession(req, { requirePasswordChanged: true });
   if (sessionRes.response || !sessionRes.profile) {
@@ -35,117 +51,51 @@ export async function GET(req: NextRequest) {
   }
 
   const keyword = (req.nextUrl.searchParams.get("q") || "").trim();
-
-  const usageRes = await admin
-    .from("tutor_referral_usages")
-    .select("mobile_number,used_at")
-    .eq("code_id", profile.codeId)
-    .order("used_at", { ascending: false })
-    .limit(10000);
-  if (usageRes.error) {
-    return NextResponse.json({ error: usageRes.error.message || "無法載入學生清單。" }, { status: 500 });
+  const listed = await listTutorBoundStudents(admin, profile.codeId, keyword);
+  if ("error" in listed) {
+    return NextResponse.json({ error: listed.error }, { status: listed.status });
   }
 
-  const linkedAtByMobile = new Map<string, string>();
-  for (const row of usageRes.data ?? []) {
-    const mobile = String(row.mobile_number ?? "").trim();
-    if (!mobile) continue;
-    if (!linkedAtByMobile.has(mobile)) {
-      linkedAtByMobile.set(mobile, row.used_at ? String(row.used_at) : "");
-    }
-  }
-
-  const linkedMobiles = Array.from(linkedAtByMobile.keys())
-    .filter((mobile) => (keyword ? mobile.includes(keyword) : true))
-    .sort((a, b) => a.localeCompare(b));
-
-  if (linkedMobiles.length === 0) {
-    return NextResponse.json({ data: [] });
-  }
-
-  const parentIdByMobile = new Map<string, string>();
-  const mobileByParentId = new Map<string, string>();
-  for (const chunk of chunkArray(linkedMobiles, 500)) {
-    const parentRes = await admin
-      .from("parents")
-      .select("id,mobile_number")
-      .in("mobile_number", chunk)
-      .limit(5000);
-    if (parentRes.error) {
-      return NextResponse.json(
-        { error: parentRes.error.message || "無法讀取家長資料。" },
-        { status: 500 }
-      );
-    }
-    for (const parentRow of parentRes.data ?? []) {
-      const parentId = String(parentRow.id ?? "").trim();
-      const mobile = String(parentRow.mobile_number ?? "").trim();
-      if (!parentId || !mobile) continue;
-      parentIdByMobile.set(mobile, parentId);
-      mobileByParentId.set(parentId, mobile);
-    }
-  }
-
-  const parentIds = Array.from(mobileByParentId.keys());
-  const studentIds: string[] = [];
-  const parentIdByStudentId = new Map<string, string>();
-  for (const chunk of chunkArray(parentIds, 500)) {
-    const studentRes = await admin
-      .from("students")
-      .select("id,parent_id")
-      .in("parent_id", chunk)
-      .limit(10000);
-    if (studentRes.error) {
-      return NextResponse.json(
-        { error: studentRes.error.message || "無法讀取學生資料。" },
-        { status: 500 }
-      );
-    }
-    for (const studentRow of studentRes.data ?? []) {
-      const studentId = String(studentRow.id ?? "").trim();
-      const parentId = String(studentRow.parent_id ?? "").trim();
-      if (!studentId || !parentId) continue;
-      studentIds.push(studentId);
-      parentIdByStudentId.set(studentId, parentId);
-    }
-  }
-
-  const lastPracticeByMobile = new Map<string, string>();
+  const lastPracticeByStudentId = new Map<string, string>();
+  const studentIds = listed.students.map((row) => row.studentId);
   for (const chunk of chunkArray(studentIds, 500)) {
-    const sessionRes = await admin
+    if (chunk.length === 0) continue;
+    const sessionResForChunk = await admin
       .from("quiz_sessions")
       .select("student_id,created_at")
       .in("student_id", chunk)
       .order("created_at", { ascending: false })
       .limit(20000);
-    if (sessionRes.error) {
+    if (sessionResForChunk.error) {
       return NextResponse.json(
-        { error: sessionRes.error.message || "無法讀取練習紀錄。" },
+        { error: sessionResForChunk.error.message || "無法讀取練習紀錄。" },
         { status: 500 }
       );
     }
-    for (const sessionRow of sessionRes.data ?? []) {
+    for (const sessionRow of sessionResForChunk.data ?? []) {
       const studentId = String(sessionRow.student_id ?? "").trim();
       const createdAt = String(sessionRow.created_at ?? "").trim();
       if (!studentId || !createdAt) continue;
-      const parentId = parentIdByStudentId.get(studentId);
-      if (!parentId) continue;
-      const mobile = mobileByParentId.get(parentId);
-      if (!mobile) continue;
-      const existing = lastPracticeByMobile.get(mobile);
-      if (!existing || new Date(createdAt).getTime() > new Date(existing).getTime()) {
-        lastPracticeByMobile.set(mobile, createdAt);
-      }
+      if (lastPracticeByStudentId.has(studentId)) continue;
+      lastPracticeByStudentId.set(studentId, createdAt);
     }
   }
 
   const hashSecret = getTutorHashSecret();
-  const rows = linkedMobiles.map((mobile) => ({
-    registered_mobile: mobile,
-    hash: computeTutorStudentHash(mobile, hashSecret),
-    linked_at: linkedAtByMobile.get(mobile) || "",
-    last_practice_at: lastPracticeByMobile.get(mobile) || null,
-  }));
+  const rows = listed.students
+    .map((student) => ({
+      student_id: student.studentId,
+      student_name: student.studentName,
+      registered_mobile: student.registeredMobile,
+      hash: computeTutorStudentScopeHash(
+        student.registeredMobile,
+        student.studentId,
+        hashSecret
+      ),
+      linked_at: student.linkedAt,
+      last_practice_at: lastPracticeByStudentId.get(student.studentId) || null,
+    }))
+    .sort(compareTutorStudentRows);
 
   return NextResponse.json({ data: rows });
 }
