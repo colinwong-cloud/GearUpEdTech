@@ -30,6 +30,10 @@ import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
+  buildPracticeComparison,
+  currentAnswersPercent,
+  priorSessionsFromChart,
+  type PriorSessionScore,
 } from "@/lib/session-practice-summary";
 import {
   StudentQuizExperience,
@@ -797,6 +801,8 @@ export default function QuizApp() {
   const answerTimestampsRef = useRef<number[]>([]);
   const pendingQuizSubmitPromisesRef = useRef<Set<Promise<void>>>(new Set());
   const activeSessionIdRef = useRef<string | null>(null);
+  const priorPracticeSessionsRef = useRef<PriorSessionScore[]>([]);
+  const priorHistoryKnownRef = useRef(false);
   const [quizTransition, setQuizTransition] = useState(0);
   const [encourageIndex, setEncourageIndex] = useState(0);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
@@ -1255,6 +1261,23 @@ export default function QuizApp() {
     setEncourageIndex(Math.floor(Math.random() * 3));
     setQuizTransition(0);
     setSessionPracticeSummary(null);
+    priorPracticeSessionsRef.current = [];
+    priorHistoryKnownRef.current = false;
+    const createdSessionId = (session as { id: string }).id;
+    void (async () => {
+      try {
+        const { data, error: chartErr } = await supabase.rpc("get_student_chart_data", {
+          p_student_id: student.id,
+          p_subject: subject,
+        });
+        if (chartErr) return;
+        const payload = data as ChartDataPayload | null;
+        priorPracticeSessionsRef.current = priorSessionsFromChart(payload?.sessions, createdSessionId);
+        priorHistoryKnownRef.current = true;
+      } catch (e) {
+        console.error("practice comparison history", e);
+      }
+    })();
     setScreen("quiz");
     } catch (err) {
       setError(err instanceof Error ? err.message : "無法載入測驗。");
@@ -1332,15 +1355,22 @@ export default function QuizApp() {
         const finalSessionId = sessionId;
         const finalStudent = selectedStudent;
         const finalSubject = selectedSubject;
+        const currentPct = currentAnswersPercent(updatedAnswers);
+        const comparison = buildPracticeComparison(
+          currentPct,
+          priorPracticeSessionsRef.current,
+          { historyKnown: priorHistoryKnownRef.current }
+        );
         const summary = finalSubject
-          ? buildSessionPracticeSummary(updatedAnswers, finalSubject)
+          ? buildSessionPracticeSummary(updatedAnswers, finalSubject, comparison)
           : "";
         const summaryParent =
           finalSubject
             ? buildSessionPracticeSummaryForParent(
                 updatedAnswers,
                 finalSubject,
-                finalStudent.student_name || ""
+                finalStudent.student_name || "",
+                comparison
               )
             : "";
         setSessionPracticeSummary(summary);
@@ -1639,6 +1669,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    priorPracticeSessionsRef.current = [];
+    priorHistoryKnownRef.current = false;
     setQuizSubmitNotice(null);
     setError(null);
   };
@@ -1650,6 +1682,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    priorPracticeSessionsRef.current = [];
+    priorHistoryKnownRef.current = false;
     setQuizSubmitNotice(null);
     setError(null);
   };
@@ -1667,6 +1701,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionPracticeSummary(null);
+    priorPracticeSessionsRef.current = [];
+    priorHistoryKnownRef.current = false;
     setQuizSubmitNotice(null);
     setParentTierStatus({
       tier: "free",

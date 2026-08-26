@@ -3,79 +3,210 @@ import {
   rate,
   TARGET_LO,
   TARGET_HI,
+  TARGET_PARENT_HI,
+  TREND_GAP_PCT,
   tipForParentWeak,
   type AnswerLike,
 } from "./session-practice-summary-core";
 
 export type { AnswerLike } from "./session-practice-summary-core";
-export { computeTypeStats, rate, tipForParentWeak } from "./session-practice-summary-core";
+export { computeTypeStats, rate, tipForParentWeak, TREND_GAP_PCT } from "./session-practice-summary-core";
+
+export type PriorSessionScore = {
+  id?: string;
+  score: number;
+  questions_attempted: number;
+  correct_pct?: number;
+  created_at?: string;
+};
+
+export type PracticeComparisonMode = "first" | "last_one" | "last_ten";
+export type PracticeTrend = "up" | "similar" | "down";
+
+export type PracticeComparison = {
+  /** false when history could not be loaded; do not claim "first practice". */
+  historyKnown: boolean;
+  priorCount: number;
+  mode: PracticeComparisonMode;
+  currentPct: number;
+  baselinePct: number | null;
+  trend: PracticeTrend | null;
+};
+
+export function sessionPercent(session: PriorSessionScore): number {
+  if (typeof session.correct_pct === "number" && Number.isFinite(session.correct_pct)) {
+    return Math.round(session.correct_pct);
+  }
+  if (session.questions_attempted > 0) {
+    return Math.round((session.score / session.questions_attempted) * 100);
+  }
+  return 0;
+}
+
+export function currentAnswersPercent(answers: AnswerLike[]): number {
+  if (answers.length === 0) return 0;
+  return Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100);
+}
 
 /**
- * 學生結果頁：直接對學生說話，約 50–80 字、繁體、鼓勵。
+ * priorSessionsNewestFirst must already exclude the current session.
+ * 0 prior → first; 1–9 → vs last one; 10+ → vs last-10 session average.
  */
-export function buildSessionPracticeSummary(answers: AnswerLike[], _subjectKey: string): string {
+export function buildPracticeComparison(
+  currentPct: number,
+  priorSessionsNewestFirst: PriorSessionScore[],
+  options?: { historyKnown?: boolean }
+): PracticeComparison {
+  const current = Math.round(currentPct);
+  const historyKnown = options?.historyKnown !== false;
+  const prior = priorSessionsNewestFirst.filter((s) => s.questions_attempted > 0);
+  if (!historyKnown) {
+    return {
+      historyKnown: false,
+      priorCount: 0,
+      mode: "first",
+      currentPct: current,
+      baselinePct: null,
+      trend: null,
+    };
+  }
+  if (prior.length === 0) {
+    return {
+      historyKnown: true,
+      priorCount: 0,
+      mode: "first",
+      currentPct: current,
+      baselinePct: null,
+      trend: null,
+    };
+  }
+
+  const mode: PracticeComparisonMode = prior.length >= 10 ? "last_ten" : "last_one";
+  let baselinePct: number;
+  if (mode === "last_one") {
+    baselinePct = sessionPercent(prior[0]);
+  } else {
+    const lastTen = prior.slice(0, 10);
+    baselinePct = Math.round(
+      lastTen.reduce((sum, session) => sum + sessionPercent(session), 0) / lastTen.length
+    );
+  }
+  const delta = current - baselinePct;
+  const trend: PracticeTrend =
+    delta >= TREND_GAP_PCT ? "up" : delta <= -TREND_GAP_PCT ? "down" : "similar";
+  return {
+    historyKnown: true,
+    priorCount: prior.length,
+    mode,
+    currentPct: current,
+    baselinePct,
+    trend,
+  };
+}
+
+function studentTrendLine(comparison: PracticeComparison): string {
+  const { currentPct: c } = comparison;
+  if (comparison.mode === "first") {
+    if (comparison.historyKnown) {
+      return `第一次完成練習，做得好！今次 ${c}%。`;
+    }
+    return "";
+  }
+  const b = comparison.baselinePct ?? 0;
+  const trend = comparison.trend || "similar";
+  if (comparison.mode === "last_one") {
+    if (trend === "up") return `今次 ${c}%，比上次 ${b}% 進步喇！`;
+    if (trend === "down") return `今次 ${c}%，比上次 ${b}% 低少少都唔緊要。`;
+    return `今次 ${c}%，同上次 ${b}% 差唔多，穩陣！`;
+  }
+  if (trend === "up") return `今次 ${c}%，比近10次平均 ${b}% 進步喇！`;
+  if (trend === "down") return `今次 ${c}%，比近10次平均 ${b}% 低少少都唔緊要。`;
+  return `今次 ${c}%，同近10次平均 ${b}% 差唔多，穩陣！`;
+}
+
+function parentTrendLine(name: string, comparison: PracticeComparison): string {
+  const { currentPct: c } = comparison;
+  if (comparison.mode === "first") {
+    if (comparison.historyKnown) {
+      return `關於${name}今節練習（第一次完成），正確率 ${c}%。`;
+    }
+    return `關於${name}今節練習，正確率 ${c}%。`;
+  }
+  const b = comparison.baselinePct ?? 0;
+  const trend = comparison.trend || "similar";
+  const verb = trend === "up" ? "上升" : trend === "down" ? "稍為回落" : "相若";
+  if (comparison.mode === "last_one") {
+    return `關於${name}今節練習，正確率 ${c}%，較上節 ${b}% ${verb}。`;
+  }
+  return `關於${name}今節練習，正確率 ${c}%，較近10次平均 ${b}% ${verb}。`;
+}
+
+function finishSummary(text: string, lo: number, hi: number): string {
+  let s = text.replace(/[ \t]+/g, "").trim();
+  if (s.length > hi) {
+    const lastPeriod = s.lastIndexOf("。", hi);
+    if (lastPeriod >= lo - 8) s = s.slice(0, lastPeriod + 1);
+    else s = s.slice(0, hi);
+  }
+  if (s.length < lo) s = (s + "繼續加油。").slice(0, hi);
+  return s;
+}
+
+function topicBits(answers: AnswerLike[]): { strongName: string; weakName: string; overallR: number } {
+  const list = computeTypeStats(answers);
+  list.sort((a, b) => rate(b) - rate(a));
+  const best = list[0];
+  const worst = [...list].sort((a, b) => rate(a) - rate(b))[0];
+  const overallR = answers.filter((a) => a.isCorrect).length / answers.length;
+  const strongName = best && best.total ? best.type : "整體";
+  const weakName = worst && worst.total > 0 && rate(worst) < 0.6 ? worst.type : "";
+  return { strongName, weakName, overallR };
+}
+
+/**
+ * 學生結果頁：直接對學生說話，繁體、鼓勵；有歷史時加入今次 vs 上次／近10次比較。
+ */
+export function buildSessionPracticeSummary(
+  answers: AnswerLike[],
+  _subjectKey: string,
+  comparison?: PracticeComparison
+): string {
   void _subjectKey;
   if (answers.length === 0) {
     return "今次沒有作答，下次再一齊加油，小步也會是進步！";
   }
 
-  const list = computeTypeStats(answers);
-  list.sort((a, b) => rate(b) - rate(a));
+  const { strongName, weakName, overallR } = topicBits(answers);
+  const cmp =
+    comparison ??
+    buildPracticeComparison(currentAnswersPercent(answers), [], { historyKnown: false });
+  const trendLine = studentTrendLine(cmp);
 
-  const best = list[0];
-  const worst = [...list].sort((a, b) => rate(a) - rate(b))[0];
-  const overallR = answers.filter((a) => a.isCorrect).length / answers.length;
-  const strongName = best && best.total ? best.type : "整體";
-  const okStrong = best && best.total > 0 && rate(best) >= 0.5;
-  const weakName =
-    worst && worst.total > 0 && rate(worst) < 0.6 ? worst.type : "";
-  const needWeak = Boolean(weakName);
-
-  const tipStudent = (name: string): string => {
-    if (!name) return "每天幾分鐘小練，就像玩小關卡。";
-    if (/應用|文字|讀解/.test(name)) return "買餸找零、讀圖畫卡故事，都係小型應用，輕鬆幫手。";
-    if (/圖形|空間|面積|周界/.test(name)) return "街邊睇下招牌圓形、長方形，幫大腦認形狀。";
-    if (/分數|小數|百/.test(name)) return "睇下超市價格牌，幾多蚊幾多折，變成小小數學遊戲。";
-    if (/計算|四則/.test(name)) return "幫家長量杯、分零食，一邊數一邊練心算。";
-    return "讀題慢啲、諗生活例子，就易明白好多。";
-  };
-
-  let s = "";
-  if (overallR >= 0.8) {
-    s = `叻呀！今次成績好亮眼，在「${strongName}」特別有把握，`;
-  } else if (overallR >= 0.55) {
-    s = `做得好！你肯用心，在「${strongName}」${
-      okStrong ? "有唔錯的基礎" : "可以再加把勁"
-    }，`;
-  } else {
-    s = `唔使灰心，學習有上有落好正常。你喺「${strongName}」都仲有可以發揮的位，`;
+  let s = trendLine;
+  if (!s) {
+    if (overallR >= 0.8) s = `叻呀！今次 ${cmp.currentPct}%，在「${strongName}」特別有把握。`;
+    else if (overallR >= 0.55) s = `做得好！今次 ${cmp.currentPct}%，在「${strongName}」有唔錯的基礎。`;
+    else s = `唔使灰心，學習有上有落好正常。今次 ${cmp.currentPct}%，你喺「${strongName}」都仲有可以發揮的位。`;
+  } else if (strongName) {
+    s += `你喺「${strongName}」${overallR >= 0.55 ? "有把握" : "都仲有可以發揮的位"}。`;
   }
 
-  if (needWeak && weakName) {
-    s += `要留意「${weakName}」可以多練少少；${tipStudent(weakName)}`;
-  } else {
-    s += "之後可試專心睇清題意，慢慢答都無問題，";
+  if (weakName && weakName !== strongName) {
+    s += `要留意「${weakName}」可以多練少少。`;
   }
 
-  s += " 下次再一齊，相信自己，加油！";
-
-  s = s.replace(/\s+/g, "");
-  if (s.length < TARGET_LO) s += "慢慢嚟，你一定越來越好。";
-  if (s.length > TARGET_HI) s = s.slice(0, TARGET_HI);
-  const lastP = s.lastIndexOf("。");
-  if (lastP >= TARGET_LO - 5 && lastP < s.length) s = s.slice(0, lastP + 1);
-  if (s.length < TARGET_LO) s = (s + "繼續努力。").slice(0, TARGET_HI);
-  if (s.length < TARGET_LO) s += " 加油！";
-  return s;
+  s += "下次再一齊加油！";
+  return finishSummary(s, TARGET_LO, TARGET_HI);
 }
 
 /**
- * 家長電郵：老師視角、對家長說話，約 50–80 字，語氣專業而溫和。
+ * 家長電郵：老師視角、對家長說話；比較事實與學生小結一致。
  */
 export function buildSessionPracticeSummaryForParent(
   answers: AnswerLike[],
   _subjectKey: string,
-  studentName: string
+  studentName: string,
+  comparison?: PracticeComparison
 ): string {
   void _subjectKey;
   const name = studentName.trim() || "同學";
@@ -83,41 +214,32 @@ export function buildSessionPracticeSummaryForParent(
     return `敬啟者：${name}今節未有作答紀錄，建議下次預留完整時間完成，以便檢視學習狀況。`;
   }
 
-  const list = computeTypeStats(answers);
-  list.sort((a, b) => rate(b) - rate(a));
-  const best = list[0];
-  const worst = [...list].sort((a, b) => rate(a) - rate(b))[0];
-  const overallR = answers.filter((a) => a.isCorrect).length / answers.length;
-  const strongName = best && best.total ? best.type : "整體";
-  const weakName =
-    worst && worst.total > 0 && rate(worst) < 0.6 ? worst.type : "";
+  const { strongName, weakName } = topicBits(answers);
+  const cmp =
+    comparison ??
+    buildPracticeComparison(currentAnswersPercent(answers), [], { historyKnown: false });
 
-  let s = "";
-  if (overallR >= 0.8) {
-    s = `關於${name}今節練習，整體表現良好；「${strongName}」掌握較穩，值得肯定。`;
-  } else if (overallR >= 0.55) {
-    s = `關於${name}今節練習，表現尚可；「${strongName}」已有一定基礎，仍可依題型再加強。`;
+  let s = parentTrendLine(name, cmp);
+  s += `「${strongName}」掌握較穩。`;
+  if (weakName && weakName !== strongName) {
+    s += `較需留意「${weakName}」。${tipForParentWeak(weakName)}`;
   } else {
-    s = `關於${name}今節練習，顯示仍有進步空間；「${strongName}」尚可作為起點，宜循序鞏固。`;
+    s += "建議維持規律練習，並留意審題習慣。";
   }
-
-  if (weakName) {
-    s += ` 較需留意「${weakName}」。${tipForParentWeak(weakName)}`;
-  } else {
-    s += " 建議維持規律練習，並留意審題習慣。";
-  }
-
-  s += " 如有疑問歡迎回覆與我們聯絡，謝謝。";
-
-  s = s.replace(/\s+/g, "");
-  if (s.length < TARGET_LO) s += "祝學習愉快。";
-  if (s.length > TARGET_HI) s = s.slice(0, TARGET_HI);
-  const lastPeriod = s.lastIndexOf("。");
-  if (lastPeriod >= TARGET_LO - 8 && lastPeriod < s.length) s = s.slice(0, lastPeriod + 1);
-  if (s.length < TARGET_LO) s = (s + "祝好。").slice(0, TARGET_HI);
-  return s;
+  s += "如有疑問歡迎回覆與我們聯絡，謝謝。";
+  return finishSummary(s, TARGET_LO, TARGET_PARENT_HI);
 }
 
 export function charLenZh(s: string): number {
   return s.length;
+}
+
+export function priorSessionsFromChart(
+  sessions: PriorSessionScore[] | null | undefined,
+  currentSessionId?: string | null
+): PriorSessionScore[] {
+  return (sessions ?? [])
+    .filter((s) => s.questions_attempted > 0 && (!currentSessionId || s.id !== currentSessionId))
+    .slice()
+    .sort((a, b) => Date.parse(b.created_at || "") - Date.parse(a.created_at || ""));
 }

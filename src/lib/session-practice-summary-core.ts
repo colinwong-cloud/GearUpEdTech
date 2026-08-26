@@ -8,7 +8,10 @@ export interface AnswerLike {
 export type TypeStats = { type: string; total: number; correct: number };
 
 export const TARGET_LO = 50;
-export const TARGET_HI = 80;
+export const TARGET_HI = 140;
+export const TARGET_PARENT_HI = 180;
+/** Percentage-point gap before calling a result "improving" or "down". */
+export const TREND_GAP_PCT = 5;
 
 export function computeTypeStats(answers: AnswerLike[]): TypeStats[] {
   const byType: Record<string, TypeStats> = {};
