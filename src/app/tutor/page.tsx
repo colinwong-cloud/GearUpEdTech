@@ -383,7 +383,7 @@ export default function TutorPortalPage() {
             <p className="text-sm text-gray-500">
               教師編號：<span className="font-mono">{session.code || "-"}</span>
             </p>
-            <p className="text-xs text-gray-400">同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。</p>
+            <p className="text-xs text-gray-400">同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。列表先顯示最近有練習的學生。</p>
           </div>
         </div>
 

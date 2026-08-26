@@ -30,13 +30,12 @@ function compareTutorStudentRows(
   a: { registered_mobile: string; student_name: string; last_practice_at: string | null },
   b: { registered_mobile: string; student_name: string; last_practice_at: string | null }
 ): number {
-  const mobileCmp = a.registered_mobile.localeCompare(b.registered_mobile);
-  if (mobileCmp !== 0) return mobileCmp;
-  const nameCmp = a.student_name.localeCompare(b.student_name, "zh-Hant");
-  if (nameCmp !== 0) return nameCmp;
   const aTs = a.last_practice_at ? new Date(a.last_practice_at).getTime() : 0;
   const bTs = b.last_practice_at ? new Date(b.last_practice_at).getTime() : 0;
-  return bTs - aTs;
+  if (aTs !== bTs) return bTs - aTs;
+  const mobileCmp = a.registered_mobile.localeCompare(b.registered_mobile);
+  if (mobileCmp !== 0) return mobileCmp;
+  return a.student_name.localeCompare(b.student_name, "zh-Hant");
 }
 
 export async function GET(req: NextRequest) {
