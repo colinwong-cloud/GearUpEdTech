@@ -1746,6 +1746,16 @@
         {
           "type": "file_contains",
           "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "buildMitSubsequentConfirmPayload"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-confirm.ts",
+          "snippet": "triggered_by: \"merchant\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
           "snippet": "Missing recurring payment credentials (customer/payment_method/payment_consent)"
         },
         {
@@ -2058,8 +2068,18 @@
       ]
     }
   ],
-  "generated_at": "2026-08-26T06:58:43.240Z",
+  "generated_at": "2026-09-19T05:31:50.476Z",
   "commit_inventory": [
+    {
+      "sha": "dc16917a32c7639944f7000ce27802c999eb3d5c",
+      "date": "2026-09-19",
+      "summary": "fix: align MIT confirm with Airwallex consent and keep retryable failures active"
+    },
+    {
+      "sha": "e6e8767e2b8c9e54ce684008862bc71c309c75b3",
+      "date": "2026-08-26",
+      "summary": "chore: include latest commit in feature contract inventory"
+    },
     {
       "sha": "2da42f38a89c2abb814599cf5adb1a1e94216f37",
       "date": "2026-08-26",
@@ -4132,7 +4152,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 414,
+    "total_commits_since_start": 416,
     "total_feature_rows": 59
   }
 }

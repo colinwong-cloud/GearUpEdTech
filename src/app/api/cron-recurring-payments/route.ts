@@ -6,6 +6,12 @@ import {
   getAirwallexAccessToken,
   getAirwallexBaseUrl,
 } from "@/lib/server/payment-finalize";
+import {
+  buildMitSubsequentConfirmPayload,
+  classifyRecurringChargeFailure,
+  isConsentPermanentlyUnusable,
+  isConsentUsableForMit,
+} from "@/lib/server/recurring-mit-confirm";
 
 export const maxDuration = 300;
 
@@ -115,6 +121,66 @@ function isMissingOrderTrackingColumnError(message: string): boolean {
   return /payment_started_at|is_recurring_payment/i.test(message);
 }
 
+function recurringFailureUpdates(
+  reason: string,
+  extra: Record<string, unknown> = {},
+  consentStatus?: string | null
+) {
+  const kind = classifyRecurringChargeFailure({ reason, consentStatus });
+  return {
+    kind,
+    updates: {
+      status: kind === "permanent" ? "failed" : "active",
+      last_order_status: "failed",
+      last_error: reason,
+      ...extra,
+    } as Record<string, unknown>,
+  };
+}
+
+async function readConsentStatus({
+  airwallexBase,
+  accessToken,
+  paymentConsentId,
+}: {
+  airwallexBase: string;
+  accessToken: string;
+  paymentConsentId: string;
+}): Promise<{ ok: true; status: string | null } | { ok: false; reason: string }> {
+  try {
+    const res = await fetch(
+      `${airwallexBase}/api/v1/pa/payment_consents/${encodeURIComponent(paymentConsentId)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+    const body = await readApiBody(res);
+    if (!res.ok) {
+      return {
+        ok: false,
+        reason: formatAirwallexError({
+          action: "payment_consents/get",
+          status: res.status,
+          body,
+        }),
+      };
+    }
+    const status = readString(body.json?.status);
+    return { ok: true, status };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: err instanceof Error ? err.message : "Unable to retrieve payment consent",
+    };
+  }
+}
+
 async function insertParentPaymentOrder(
   supabase: ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never,
   payload: Record<string, unknown>
@@ -185,11 +251,52 @@ export async function GET(req: NextRequest) {
           })
         );
         failures.push({ mobile_number: profile.mobile_number, reason });
-        await markRecurringProfile(supabase, profile.id, {
-          status: "failed",
-          last_order_status: "failed",
-          last_error: reason,
-        });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(reason).updates
+        );
+        continue;
+      }
+
+      const customerId = profile.airwallex_customer_id;
+      const paymentConsentId = profile.airwallex_payment_consent_id;
+      const paymentMethodId = profile.airwallex_payment_method_id;
+      const paymentMethodType = profile.payment_method_type;
+
+      const consentLookup = await readConsentStatus({
+        airwallexBase,
+        accessToken,
+        paymentConsentId,
+      });
+      if (!consentLookup.ok) {
+        failed += 1;
+        failures.push({ mobile_number: profile.mobile_number, reason: consentLookup.reason });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(consentLookup.reason).updates
+        );
+        continue;
+      }
+      if (!isConsentUsableForMit(consentLookup.status)) {
+        failed += 1;
+        const reason = `Payment consent is not usable for MIT (status=${consentLookup.status || "UNKNOWN"})`;
+        console.error(
+          "[anti-missing][payment][mit-policy] consent-not-verified",
+          JSON.stringify({
+            profile_id: profile.id,
+            mobile_number: profile.mobile_number,
+            consent_status: consentLookup.status,
+            permanent: isConsentPermanentlyUnusable(consentLookup.status),
+          })
+        );
+        failures.push({ mobile_number: profile.mobile_number, reason });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(reason, {}, consentLookup.status).updates
+        );
         continue;
       }
 
@@ -198,11 +305,11 @@ export async function GET(req: NextRequest) {
         failed += 1;
         const reason = "Recurring amount is invalid";
         failures.push({ mobile_number: profile.mobile_number, reason });
-        await markRecurringProfile(supabase, profile.id, {
-          status: "failed",
-          last_order_status: "failed",
-          last_error: reason,
-        });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(reason).updates
+        );
         continue;
       }
 
@@ -222,9 +329,9 @@ export async function GET(req: NextRequest) {
         status: "created",
         payment_started_at: startedAt,
         is_recurring_payment: true,
-        airwallex_customer_id: profile.airwallex_customer_id,
-        airwallex_payment_consent_id: profile.airwallex_payment_consent_id,
-        airwallex_payment_method_id: profile.airwallex_payment_method_id,
+        airwallex_customer_id: customerId,
+        airwallex_payment_consent_id: paymentConsentId,
+        airwallex_payment_method_id: paymentMethodId,
       });
       if (createOrderErr) {
         failed += 1;
@@ -232,11 +339,11 @@ export async function GET(req: NextRequest) {
           mobile_number: profile.mobile_number,
           reason: createOrderErr.message,
         });
-        await markRecurringProfile(supabase, profile.id, {
-          status: "failed",
-          last_order_status: "failed",
-          last_error: createOrderErr.message,
-        });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(createOrderErr.message).updates
+        );
         continue;
       }
 
@@ -250,7 +357,7 @@ export async function GET(req: NextRequest) {
         body: JSON.stringify({
           amount,
           currency: profile.currency || "HKD",
-          customer_id: profile.airwallex_customer_id,
+          customer_id: customerId,
           merchant_order_id: merchantOrderId,
           request_id: requestId,
           metadata: {
@@ -272,11 +379,11 @@ export async function GET(req: NextRequest) {
         });
         failed += 1;
         failures.push({ mobile_number: profile.mobile_number, reason });
-        await markRecurringProfile(supabase, profile.id, {
-          status: "failed",
-          last_order_status: "failed",
-          last_error: reason,
-        });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(reason).updates
+        );
         await finalizePaymentByIntent({
           supabaseAdmin: supabase,
           paymentIntentId: "",
@@ -292,6 +399,27 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
+      const confirmPayloadBody = buildMitSubsequentConfirmPayload({
+        customerId,
+        paymentMethodId,
+        paymentMethodType,
+        paymentConsentId,
+        requestId: crypto.randomUUID(),
+        metadata: {
+          recurring_profile_id: profile.id,
+          mobile_number: profile.mobile_number,
+          merchant_trigger_reason: "scheduled",
+        },
+      });
+      console.info(
+        "[anti-missing][payment][mit-policy] subsequent-confirm-payload",
+        JSON.stringify({
+          profile_id: profile.id,
+          mobile_number: profile.mobile_number,
+          has_payment_consent_id: Boolean(confirmPayloadBody.payment_consent_id),
+          triggered_by: confirmPayloadBody.triggered_by,
+        })
+      );
       const confirmRes = await fetch(
         `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
         {
@@ -301,25 +429,7 @@ export async function GET(req: NextRequest) {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({
-            customer_id: profile.airwallex_customer_id,
-            payment_method: {
-              id: profile.airwallex_payment_method_id,
-              type: profile.payment_method_type,
-            },
-            payment_consent_id: profile.airwallex_payment_consent_id || undefined,
-            external_recurring_data: {
-              initial_payment: false,
-              triggered_by: "merchant",
-              merchant_trigger_reason: "scheduled",
-            },
-            request_id: crypto.randomUUID(),
-            metadata: {
-              recurring_profile_id: profile.id,
-              mobile_number: profile.mobile_number,
-              charge_type: "monthly_recurring",
-            },
-          }),
+          body: JSON.stringify(confirmPayloadBody),
           cache: "no-store",
         }
       );
@@ -354,12 +464,11 @@ export async function GET(req: NextRequest) {
             `Recurring charge failed (status=${normalizedStatus || latestAttemptStatus || "UNKNOWN"})`;
         failed += 1;
         failures.push({ mobile_number: profile.mobile_number, reason });
-        await markRecurringProfile(supabase, profile.id, {
-          status: "failed",
-          last_order_id: finalize.orderId,
-          last_order_status: "failed",
-          last_error: reason,
-        });
+        await markRecurringProfile(
+          supabase,
+          profile.id,
+          recurringFailureUpdates(reason, { last_order_id: finalize.orderId }).updates
+        );
         continue;
       }
 

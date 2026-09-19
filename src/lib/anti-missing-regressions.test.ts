@@ -165,6 +165,7 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("今日已發起 MIT");
     expect(adminPageSource).toContain("Consent 已捕捉");
     expect(adminPageSource).toContain("可下月自動續費");
+    expect(adminPageSource).toContain("MIT last_error");
     expect(adminPageSource).toContain("consent_captured");
     expect(adminPageSource).toContain("recurring_linkage_ready");
     expect(adminPageSource).toContain("今日練習明細");
@@ -178,6 +179,7 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("MTD 練習題數");
 
     const adminApiSource = readSource("src/app/api/admin/console/route.ts");
+    expect(adminApiSource).toContain("last_error: readString(recurringProfile?.last_error)");
     expect(adminApiSource).toContain("tutor_referral_code_create");
     expect(adminApiSource).toContain("tutor_referral_code_summary");
     expect(adminApiSource).toContain("tutor_referral_password_reset");
@@ -210,6 +212,18 @@ describe("anti-missing regression guards", () => {
     expect(hppMitSource).toContain('mode: "recurring"');
     expect(hppMitSource).toContain('next_triggered_by: "merchant"');
     expect(hppMitSource).toContain('merchant_trigger_reason: "scheduled"');
+
+    const cronSource = readSource("src/app/api/cron-recurring-payments/route.ts");
+    expect(cronSource).toContain("buildMitSubsequentConfirmPayload");
+    expect(cronSource).toContain("triggered_by");
+    expect(cronSource).toContain('merchant_trigger_reason: "scheduled"');
+    expect(cronSource).toContain("classifyRecurringChargeFailure");
+    expect(cronSource).not.toContain("external_recurring_data");
+
+    const mitConfirmSource = readSource("src/lib/server/recurring-mit-confirm.ts");
+    expect(mitConfirmSource).toContain('triggered_by: "merchant"');
+    expect(mitConfirmSource).toContain("payment_consent_id");
+    expect(mitConfirmSource).not.toContain("external_recurring_data");
 
     const checkoutApiSource = readSource("src/app/api/payment/checkout/route.ts");
     expect(checkoutApiSource).toContain("hpp_mit_fields_required: true");

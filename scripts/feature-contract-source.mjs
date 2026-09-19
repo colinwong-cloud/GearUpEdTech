@@ -941,6 +941,8 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_exists", path: "src/app/api/cron-recurring-payments/route.ts" },
         { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
+        { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "buildMitSubsequentConfirmPayload" },
+        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "triggered_by: \"merchant\"" },
         {
           type: "file_contains",
           path: "src/app/api/cron-recurring-payments/route.ts",
