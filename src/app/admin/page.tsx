@@ -209,6 +209,8 @@ interface PaymentStatusEnquiryResult {
     recurring_status: string | null;
     payment_method: string | null;
     is_recurring: boolean;
+    next_charge_at?: string | null;
+    last_error?: string | null;
   } | null;
   payment?: {
     current_payment_start_date: string | null;
@@ -1900,6 +1902,22 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
                     : ""}
                 </p>
               </div>
+              {result.recurring.next_charge_at && (
+                <div className="rounded-lg border border-gray-100 p-3">
+                  <p className="text-xs text-gray-500 mb-1">下次扣款時間</p>
+                  <p className="font-semibold text-gray-800">
+                    {formatDateTimeDisplay(result.recurring.next_charge_at)}
+                  </p>
+                </div>
+              )}
+              {result.recurring.last_error && (
+                <div className="rounded-lg border border-red-100 bg-red-50 p-3 sm:col-span-2">
+                  <p className="text-xs text-red-600 mb-1">MIT last_error</p>
+                  <p className="font-semibold text-red-700 break-words">
+                    {result.recurring.last_error}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

@@ -464,7 +464,7 @@ async function getRecurringProfileByMobile(
   const { data, error } = await admin
     .from("parent_recurring_profiles")
     .select(
-      "id,parent_id,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand"
+      "id,parent_id,status,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_label,payment_method_type,payment_method_brand,next_charge_at,last_error"
     )
     .eq("mobile_number", mobile)
     .maybeSingle();
@@ -2022,6 +2022,8 @@ export async function POST(req: NextRequest) {
               recurring_status: recurringStatus,
               payment_method: paymentMethod,
               is_recurring: isRecurring,
+              next_charge_at: normalizeIsoDateTime(recurringProfile?.next_charge_at),
+              last_error: readString(recurringProfile?.last_error),
             },
             payment: isPaidNow
               ? {

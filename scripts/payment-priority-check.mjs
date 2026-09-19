@@ -57,7 +57,15 @@ const checks = [
   },
   {
     path: "src/app/api/cron-recurring-payments/route.ts",
-    snippets: ["merchant_trigger_reason: \"scheduled\"", "airwallex_payment_consent_id"],
+    snippets: [
+      "merchant_trigger_reason: \"scheduled\"",
+      "airwallex_payment_consent_id",
+      "buildMitSubsequentConfirmPayload",
+    ],
+  },
+  {
+    path: "src/lib/server/recurring-mit-confirm.ts",
+    snippets: ['triggered_by: "merchant"', "payment_consent_id"],
   },
   {
     path: "src/lib/airwallex-checkout-methods.ts",
@@ -65,7 +73,7 @@ const checks = [
   },
   {
     path: "src/app/admin/page.tsx",
-    snippets: ["付款狀態查詢", "月費家長月度明細"],
+    snippets: ["付款狀態查詢", "月費家長月度明細", "MIT last_error"],
   },
   {
     path: "src/app/api/admin/console/route.ts",
@@ -94,6 +102,7 @@ requireFile("src/lib/airwallex-checkout-methods.test.ts");
 requireFile("src/lib/admin-paid-summary.test.ts");
 requireFile("src/lib/airwallex-hpp-mit.test.ts");
 requireFile("src/lib/server/payment-finalize-consent.test.ts");
+requireFile("src/lib/server/recurring-mit-confirm.test.ts");
 
 console.log(`[payment-priority] OK: ${checks.length} payment guard files validated`);
 
