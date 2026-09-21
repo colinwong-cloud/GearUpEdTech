@@ -163,6 +163,7 @@ describe("anti-missing regression guards", () => {
     expect(adminPageSource).toContain("重設導師登入密碼");
     expect(adminPageSource).toContain("今日需發起 MIT");
     expect(adminPageSource).toContain("今日已發起 MIT");
+    expect(adminPageSource).toContain("今日 MIT cron 執行");
     expect(adminPageSource).toContain("Consent 已捕捉");
     expect(adminPageSource).toContain("可下月自動續費");
     expect(adminPageSource).toContain("MIT last_error");
@@ -180,6 +181,9 @@ describe("anti-missing regression guards", () => {
 
     const adminApiSource = readSource("src/app/api/admin/console/route.ts");
     expect(adminApiSource).toContain("last_error: readString(recurringProfile?.last_error)");
+    expect(adminApiSource).toContain("payment_recurring_monitor_summary");
+    expect(adminApiSource).toContain("getLatestRecurringCronRun");
+    expect(adminApiSource).toContain("cron_run: cronRun");
     expect(adminApiSource).toContain("tutor_referral_code_create");
     expect(adminApiSource).toContain("tutor_referral_code_summary");
     expect(adminApiSource).toContain("tutor_referral_password_reset");
@@ -218,7 +222,11 @@ describe("anti-missing regression guards", () => {
     expect(cronSource).toContain("triggered_by");
     expect(cronSource).toContain('merchant_trigger_reason: "scheduled"');
     expect(cronSource).toContain("classifyRecurringChargeFailure");
+    expect(cronSource).toContain("filterEligibleMitCronProfiles");
+    expect(cronSource).toContain('.in("status", [...MIT_CRON_SELECT_STATUSES])');
+    expect(cronSource).toContain("recurring_cron_runs");
     expect(cronSource).not.toContain("external_recurring_data");
+    expect(cronSource).not.toContain('.eq("status", "active")');
 
     const mitConfirmSource = readSource("src/lib/server/recurring-mit-confirm.ts");
     expect(mitConfirmSource).toContain('triggered_by: "merchant"');

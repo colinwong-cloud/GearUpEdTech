@@ -23,7 +23,10 @@ import {
   LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   PRIMARY_QUIZ_SUBJECT,
 } from "@/lib/quiz-subjects";
-import { resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
+import {
+  isMissingCronRunTableError,
+  isMitCronRunOverdue,
+} from "@/lib/server/recurring-mit-cron";
 
 type AdminAction =
   | "search_parent"
@@ -477,6 +480,83 @@ async function getRecurringProfileByMobile(
     throw error;
   }
   return (data as RecurringProfileRow | null) ?? null;
+}
+
+type RecurringCronRunRow = {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  trigger_host: string | null;
+  vercel_cron_schedule: string | null;
+  processed: number | null;
+  paid: number | null;
+  failed: number | null;
+  skipped: number | null;
+  eligible_due: number | null;
+  status: string | null;
+  error: string | null;
+};
+
+async function getLatestRecurringCronRun(admin: AdminClient): Promise<{
+  table_ready: boolean;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_status: string | null;
+  last_processed: number | null;
+  last_paid: number | null;
+  last_failed: number | null;
+  last_skipped: number | null;
+  last_eligible_due: number | null;
+  last_error: string | null;
+  last_host: string | null;
+  overdue: boolean;
+}> {
+  const empty = {
+    table_ready: false,
+    last_started_at: null,
+    last_finished_at: null,
+    last_status: null,
+    last_processed: null,
+    last_paid: null,
+    last_failed: null,
+    last_skipped: null,
+    last_eligible_due: null,
+    last_error: null,
+    last_host: null,
+    overdue: true,
+  };
+  const { data, error } = await admin
+    .from("recurring_cron_runs")
+    .select(
+      "id,started_at,finished_at,trigger_host,vercel_cron_schedule,processed,paid,failed,skipped,eligible_due,status,error"
+    )
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (isMissingCronRunTableError(error.message || "")) {
+      return empty;
+    }
+    throw error;
+  }
+  const row = (data as RecurringCronRunRow | null) ?? null;
+  if (!row) {
+    return { ...empty, table_ready: true };
+  }
+  return {
+    table_ready: true,
+    last_started_at: normalizeIsoDateTime(row.started_at),
+    last_finished_at: normalizeIsoDateTime(row.finished_at),
+    last_status: readString(row.status),
+    last_processed: typeof row.processed === "number" ? row.processed : null,
+    last_paid: typeof row.paid === "number" ? row.paid : null,
+    last_failed: typeof row.failed === "number" ? row.failed : null,
+    last_skipped: typeof row.skipped === "number" ? row.skipped : null,
+    last_eligible_due: typeof row.eligible_due === "number" ? row.eligible_due : null,
+    last_error: readString(row.error),
+    last_host: readString(row.trigger_host),
+    overdue: isMitCronRunOverdue(row.started_at),
+  };
 }
 
 async function getLatestPaidOrder(admin: AdminClient, mobile: string): Promise<PaidOrderRow | null> {
@@ -2386,11 +2466,14 @@ export async function POST(req: NextRequest) {
           };
         });
 
+        const cronRun = await getLatestRecurringCronRun(admin);
+
         return NextResponse.json({
           data: {
             month: monthKey,
             day: dayKey,
             totals,
+            cron_run: cronRun,
             users: users.sort((a, b) => {
               const aNext = a.next_payment_date || "9999-12-31T23:59:59.000Z";
               const bNext = b.next_payment_date || "9999-12-31T23:59:59.000Z";

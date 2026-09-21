@@ -61,6 +61,9 @@ const checks = [
       "merchant_trigger_reason: \"scheduled\"",
       "airwallex_payment_consent_id",
       "buildMitSubsequentConfirmPayload",
+      "filterEligibleMitCronProfiles",
+      ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])",
+      "recurring_cron_runs",
     ],
   },
   {
@@ -73,11 +76,11 @@ const checks = [
   },
   {
     path: "src/app/admin/page.tsx",
-    snippets: ["付款狀態查詢", "月費家長月度明細", "MIT last_error"],
+    snippets: ["付款狀態查詢", "月費家長月度明細", "MIT last_error", "今日 MIT cron 執行"],
   },
   {
     path: "src/app/api/admin/console/route.ts",
-    snippets: ["payment_status_enquiry", "payment_monthly_paid_summary"],
+    snippets: ["payment_status_enquiry", "payment_monthly_paid_summary", "getLatestRecurringCronRun"],
   },
   {
     path: "src/lib/server/payment-finalize.ts",
@@ -103,6 +106,7 @@ requireFile("src/lib/admin-paid-summary.test.ts");
 requireFile("src/lib/airwallex-hpp-mit.test.ts");
 requireFile("src/lib/server/payment-finalize-consent.test.ts");
 requireFile("src/lib/server/recurring-mit-confirm.test.ts");
+requireFile("src/lib/server/recurring-mit-cron.test.ts");
 
 console.log(`[payment-priority] OK: ${checks.length} payment guard files validated`);
 

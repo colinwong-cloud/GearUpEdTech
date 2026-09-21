@@ -71,6 +71,11 @@ describe("classifyRecurringChargeFailure", () => {
     ).toBe("permanent");
     expect(
       classifyRecurringChargeFailure({
+        reason: "Payment consent is not usable for MIT (status=DISABLED)",
+      })
+    ).toBe("permanent");
+    expect(
+      classifyRecurringChargeFailure({
         reason: "Missing recurring payment credentials (customer/payment_method/payment_consent)",
       })
     ).toBe("permanent");

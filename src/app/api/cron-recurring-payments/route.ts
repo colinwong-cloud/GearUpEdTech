@@ -12,8 +12,14 @@ import {
   isConsentPermanentlyUnusable,
   isConsentUsableForMit,
 } from "@/lib/server/recurring-mit-confirm";
+import {
+  filterEligibleMitCronProfiles,
+  isMissingCronRunTableError,
+  MIT_CRON_SELECT_STATUSES,
+} from "@/lib/server/recurring-mit-cron";
 
 export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
 type RecurringProfileRow = {
   id: string;
@@ -27,6 +33,8 @@ type RecurringProfileRow = {
   recurring_amount_hkd: number;
   currency: string | null;
   next_charge_at: string;
+  last_error?: string | null;
+  last_charged_at?: string | null;
 };
 
 type ApiBody = {
@@ -195,9 +203,58 @@ async function insertParentPaymentOrder(
   return response;
 }
 
+type CronRunClient = ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never;
+
+async function startCronRun(
+  supabase: CronRunClient,
+  fields: { trigger_host: string | null; vercel_cron_schedule: string | null }
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("recurring_cron_runs")
+    .insert({
+      status: "running",
+      trigger_host: fields.trigger_host,
+      vercel_cron_schedule: fields.vercel_cron_schedule,
+    })
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    if (!isMissingCronRunTableError(error.message || "")) {
+      console.error(
+        "[anti-missing][payment][mit-cron] run-insert-failed",
+        JSON.stringify({ message: error.message })
+      );
+    }
+    return null;
+  }
+  return readString(data?.id) || null;
+}
+
+async function finishCronRun(
+  supabase: CronRunClient,
+  runId: string | null,
+  updates: Record<string, unknown>
+) {
+  if (!runId) return;
+  const { error } = await supabase
+    .from("recurring_cron_runs")
+    .update({
+      ...updates,
+      finished_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+  if (error && !isMissingCronRunTableError(error.message || "")) {
+    console.error(
+      "[anti-missing][payment][mit-cron] run-finish-failed",
+      JSON.stringify({ message: error.message, run_id: runId })
+    );
+  }
+}
+
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET?.trim() || "";
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -206,29 +263,52 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Supabase service role env missing" }, { status: 503 });
   }
 
+  const runId = await startCronRun(supabase, {
+    trigger_host: req.headers.get("host"),
+    vercel_cron_schedule: req.headers.get("x-vercel-cron-schedule"),
+  });
+  console.info(
+    "[anti-missing][payment][mit-cron] invocation-started",
+    JSON.stringify({
+      run_id: runId,
+      host: req.headers.get("host"),
+      vercel_cron_schedule: req.headers.get("x-vercel-cron-schedule"),
+    })
+  );
+
   let processed = 0;
   let paid = 0;
   let failed = 0;
+  let skipped = 0;
   const failures: Array<{ mobile_number: string; reason: string }> = [];
 
   try {
     const airwallexBase = getAirwallexBaseUrl();
     const accessToken = await getAirwallexAccessToken(airwallexBase);
+    const now = new Date();
     const { data: profiles, error: listErr } = await supabase
       .from("parent_recurring_profiles")
       .select(
-        "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at"
+        "id,parent_id,mobile_number,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at,last_error,last_charged_at"
       )
-      .eq("status", "active")
-      .lte("next_charge_at", new Date().toISOString())
+      .in("status", [...MIT_CRON_SELECT_STATUSES])
+      .lte("next_charge_at", now.toISOString())
       .order("next_charge_at", { ascending: true })
       .limit(100);
 
     if (listErr) {
+      await finishCronRun(supabase, runId, {
+        status: "error",
+        error: listErr.message,
+      });
       return NextResponse.json({ error: listErr.message }, { status: 500 });
     }
 
-    for (const profile of (profiles as RecurringProfileRow[] | null) ?? []) {
+    const dueRows = (profiles as RecurringProfileRow[] | null) ?? [];
+    const eligible = filterEligibleMitCronProfiles(dueRows, now);
+    skipped = dueRows.length - eligible.length;
+
+    for (const profile of eligible) {
       processed += 1;
       if (
         !profile.airwallex_customer_id ||
@@ -483,18 +563,37 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    const result = {
       success: true,
       processed,
       paid,
       failed,
+      skipped,
+      eligible_due: eligible.length,
       failures,
       generated_at: new Date().toISOString(),
+    };
+    await finishCronRun(supabase, runId, {
+      status: "success",
+      processed,
+      paid,
+      failed,
+      skipped,
+      eligible_due: result.eligible_due,
+      result_json: result,
+      error: null,
     });
+    return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Unknown error";
+    await finishCronRun(supabase, runId, {
+      status: "error",
+      processed,
+      paid,
+      failed,
+      skipped,
+      error: message,
+    });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
