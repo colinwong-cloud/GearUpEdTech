@@ -10,7 +10,7 @@ export type MitSubsequentConfirmInput = {
 export type RecurringFailureKind = "permanent" | "retryable";
 
 const PERMANENT_ERROR_RE =
-  /issuer_declined|card_expired|authentication_declined|risk_declined|payment_method_not_allowed|card_brand_not_supported|consent is disabled|consent_disabled|missing recurring payment credentials|recurring amount is invalid/i;
+  /issuer_declined|card_expired|authentication_declined|risk_declined|payment_method_not_allowed|card_brand_not_supported|consent is disabled|consent_disabled|status=DISABLED|consent is not usable|missing recurring payment credentials|recurring amount is invalid/i;
 
 export function buildMitSubsequentConfirmPayload(
   input: MitSubsequentConfirmInput

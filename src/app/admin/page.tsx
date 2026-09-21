@@ -337,6 +337,20 @@ interface PaymentRecurringMonitorResult {
     daily_pending: number;
     daily_missing: number;
   };
+  cron_run?: {
+    table_ready: boolean;
+    last_started_at: string | null;
+    last_finished_at: string | null;
+    last_status: string | null;
+    last_processed: number | null;
+    last_paid: number | null;
+    last_failed: number | null;
+    last_skipped: number | null;
+    last_eligible_due: number | null;
+    last_error: string | null;
+    last_host: string | null;
+    overdue: boolean;
+  };
   users: PaymentRecurringMonitorUserRow[];
 }
 
@@ -2123,6 +2137,38 @@ function PaymentStatusSection({ sessionToken }: { sessionToken: string }) {
 
         {recurringMonitor && (
           <>
+            {recurringMonitor.cron_run && (
+              <div
+                className={`rounded-lg border p-3 text-sm ${
+                  recurringMonitor.cron_run.overdue || !recurringMonitor.cron_run.table_ready
+                    ? "border-red-200 bg-red-50 text-red-800"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                }`}
+              >
+                <p className="font-semibold mb-1">今日 MIT cron 執行</p>
+                {!recurringMonitor.cron_run.table_ready ? (
+                  <p>
+                    尚未建立 `recurring_cron_runs` 紀錄表。請在 Supabase SQL Editor 執行
+                    supabase_recurring_cron_runs_and_retryable_reactivate.sql。
+                  </p>
+                ) : recurringMonitor.cron_run.overdue ? (
+                  <p>
+                    超過 26 小時沒有 cron 心跳。若 Vercel Authentication 擋了 `*.vercel.app`
+                    部署網址，每日 00:10 UTC 的 MIT 工作會回 401/302 而不會扣款。
+                  </p>
+                ) : (
+                  <p>
+                    最近一次：{formatDateTimeDisplay(recurringMonitor.cron_run.last_started_at)}
+                    {recurringMonitor.cron_run.last_status
+                      ? `（${recurringMonitor.cron_run.last_status}）`
+                      : ""}
+                    {typeof recurringMonitor.cron_run.last_paid === "number"
+                      ? `，成功 ${recurringMonitor.cron_run.last_paid} / 處理 ${recurringMonitor.cron_run.last_processed ?? 0}`
+                      : ""}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-sm">
               <div className="rounded-lg border border-gray-100 p-3">
                 <p className="text-xs text-gray-500 mb-1">目前有效月費家長</p>

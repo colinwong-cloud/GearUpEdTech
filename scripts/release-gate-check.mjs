@@ -18,6 +18,8 @@ runStep("npx", [
   "src/lib/airwallex-checkout-methods.test.ts",
   "src/lib/airwallex-hpp-mit.test.ts",
   "src/lib/server/payment-finalize-consent.test.ts",
+  "src/lib/server/recurring-mit-confirm.test.ts",
+  "src/lib/server/recurring-mit-cron.test.ts",
   "src/lib/session-practice-summary.test.ts",
   "src/lib/admin-paid-summary.test.ts",
   "src/lib/question-source.test.ts",

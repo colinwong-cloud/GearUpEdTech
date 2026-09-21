@@ -1756,6 +1756,21 @@
         {
           "type": "file_contains",
           "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "filterEligibleMitCronProfiles"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "recurring_cron_runs"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
           "snippet": "Missing recurring payment credentials (customer/payment_method/payment_consent)"
         },
         {
@@ -1767,6 +1782,45 @@
           "type": "file_contains",
           "path": "vercel.json",
           "snippet": "/api/cron-recurring-payments"
+        }
+      ]
+    },
+    {
+      "id": "payment-mit-cron-retry-and-audit",
+      "month": "2026-09",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "MIT cron retries failed validation rows and records each invocation",
+      "evidence_commits": [
+        "fc54777"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/recurring-mit-cron.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/recurring-mit-cron.test.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-cron.ts",
+          "snippet": "isEligibleForMitCronAttempt"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-cron.test.ts",
+          "snippet": "retries due failed profiles whose last_error is a confirm validation miss"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_recurring_cron_runs_and_retryable_reactivate.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "今日 MIT cron 執行"
         }
       ]
     },
@@ -2068,8 +2122,28 @@
       ]
     }
   ],
-  "generated_at": "2026-09-19T05:31:50.476Z",
+  "generated_at": "2026-09-21T12:03:31.322Z",
   "commit_inventory": [
+    {
+      "sha": "6f89a6d15a92830ac9a3fa380f11683e30c6d23e",
+      "date": "2026-09-21",
+      "summary": "fix: restore tutor password-reset import in admin console"
+    },
+    {
+      "sha": "bb94a80e886528532932ef6ae311902b9ae209f0",
+      "date": "2026-09-21",
+      "summary": "chore: include MIT cron retry commit in feature contract inventory"
+    },
+    {
+      "sha": "fc5477720bb34a24d02d995b8b54679c8949486d",
+      "date": "2026-09-21",
+      "summary": "fix: run MIT cron on due retryable failures and record each invocation"
+    },
+    {
+      "sha": "a8acfd84f3c69805bb31907321a56d995c9e6e6e",
+      "date": "2026-09-19",
+      "summary": "chore: include MIT confirm fix commit in feature contract inventory"
+    },
     {
       "sha": "dc16917a32c7639944f7000ce27802c999eb3d5c",
       "date": "2026-09-19",
@@ -4152,7 +4226,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 416,
-    "total_feature_rows": 59
+    "total_commits_since_start": 420,
+    "total_feature_rows": 60
   }
 }

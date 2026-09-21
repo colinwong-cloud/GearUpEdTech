@@ -946,6 +946,21 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "filterEligibleMitCronProfiles",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "recurring_cron_runs",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
           snippet: "Missing recurring payment credentials (customer/payment_method/payment_consent)",
         },
         {
@@ -954,6 +969,37 @@ export const FEATURE_CONTRACT_BASE = {
           snippet: "[anti-missing][payment][mit-policy] recurring-profile-missing-credentials",
         },
         { type: "file_contains", path: "vercel.json", snippet: "/api/cron-recurring-payments" },
+      ],
+    },
+    {
+      id: "payment-mit-cron-retry-and-audit",
+      month: "2026-09",
+      category: "payment",
+      priority: "payment-critical",
+      title: "MIT cron retries failed validation rows and records each invocation",
+      evidence_commits: ["fc54777"],
+      checks: [
+        { type: "file_exists", path: "src/lib/server/recurring-mit-cron.ts" },
+        { type: "file_exists", path: "src/lib/server/recurring-mit-cron.test.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/server/recurring-mit-cron.ts",
+          snippet: "isEligibleForMitCronAttempt",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/recurring-mit-cron.test.ts",
+          snippet: "retries due failed profiles whose last_error is a confirm validation miss",
+        },
+        {
+          type: "file_exists",
+          path: "supabase_recurring_cron_runs_and_retryable_reactivate.sql",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/page.tsx",
+          snippet: "今日 MIT cron 執行",
+        },
       ],
     },
     {
