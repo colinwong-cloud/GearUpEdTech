@@ -977,7 +977,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "MIT cron retries failed validation rows and records each invocation",
-      evidence_commits: ["f799597"],
+      evidence_commits: ["fc54777"],
       checks: [
         { type: "file_exists", path: "src/lib/server/recurring-mit-cron.ts" },
         { type: "file_exists", path: "src/lib/server/recurring-mit-cron.test.ts" },
