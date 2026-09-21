@@ -23,6 +23,7 @@ import {
   LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   PRIMARY_QUIZ_SUBJECT,
 } from "@/lib/quiz-subjects";
+import { resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
 import {
   isMissingCronRunTableError,
   isMitCronRunOverdue,
