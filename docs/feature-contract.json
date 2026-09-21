@@ -2122,8 +2122,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-21T12:01:55.251Z",
+  "generated_at": "2026-09-21T12:03:31.322Z",
   "commit_inventory": [
+    {
+      "sha": "6f89a6d15a92830ac9a3fa380f11683e30c6d23e",
+      "date": "2026-09-21",
+      "summary": "fix: restore tutor password-reset import in admin console"
+    },
+    {
+      "sha": "bb94a80e886528532932ef6ae311902b9ae209f0",
+      "date": "2026-09-21",
+      "summary": "chore: include MIT cron retry commit in feature contract inventory"
+    },
     {
       "sha": "fc5477720bb34a24d02d995b8b54679c8949486d",
       "date": "2026-09-21",
@@ -4216,7 +4226,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 418,
+    "total_commits_since_start": 420,
     "total_feature_rows": 60
   }
 }
