@@ -11,6 +11,7 @@ import {
   classifyRecurringChargeFailure,
   isConsentPermanentlyUnusable,
   isConsentUsableForMit,
+  nextMitConfirmTriggeredByRetry,
 } from "@/lib/server/recurring-mit-confirm";
 import {
   filterEligibleMitCronProfiles,
@@ -479,28 +480,30 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      const confirmPayloadBody = buildMitSubsequentConfirmPayload({
+      const confirmMeta = {
+        recurring_profile_id: profile.id,
+        mobile_number: profile.mobile_number,
+        merchant_trigger_reason: "scheduled",
+      };
+      let includeTriggeredBy = false;
+      let confirmPayloadBody = buildMitSubsequentConfirmPayload({
         customerId,
         paymentMethodId,
         paymentMethodType,
         paymentConsentId,
         requestId: crypto.randomUUID(),
-        metadata: {
-          recurring_profile_id: profile.id,
-          mobile_number: profile.mobile_number,
-          merchant_trigger_reason: "scheduled",
-        },
-      });
+        metadata: confirmMeta,
+      }, { includeTriggeredBy });
       console.info(
         "[anti-missing][payment][mit-policy] subsequent-confirm-payload",
         JSON.stringify({
           profile_id: profile.id,
           mobile_number: profile.mobile_number,
           has_payment_consent_id: Boolean(confirmPayloadBody.payment_consent_id),
-          triggered_by: confirmPayloadBody.triggered_by,
+          triggered_by: confirmPayloadBody.triggered_by ?? null,
         })
       );
-      const confirmRes = await fetch(
+      let confirmRes = await fetch(
         `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
         {
           method: "POST",
@@ -513,7 +516,49 @@ export async function GET(req: NextRequest) {
           cache: "no-store",
         }
       );
-      const confirmBody = await readApiBody(confirmRes);
+      let confirmBody = await readApiBody(confirmRes);
+      if (!confirmRes.ok) {
+        const firstReason = formatAirwallexError({
+          action: "payment_intents/confirm",
+          status: confirmRes.status,
+          body: confirmBody,
+        });
+        const retryTriggeredBy = nextMitConfirmTriggeredByRetry(firstReason, includeTriggeredBy);
+        if (retryTriggeredBy !== null) {
+          includeTriggeredBy = retryTriggeredBy;
+          confirmPayloadBody = buildMitSubsequentConfirmPayload({
+            customerId,
+            paymentMethodId,
+            paymentMethodType,
+            paymentConsentId,
+            requestId: crypto.randomUUID(),
+            metadata: confirmMeta,
+          }, { includeTriggeredBy });
+          console.info(
+            "[anti-missing][payment][mit-policy] subsequent-confirm-retry",
+            JSON.stringify({
+              profile_id: profile.id,
+              mobile_number: profile.mobile_number,
+              first_reason: firstReason,
+              retry_triggered_by: includeTriggeredBy,
+            })
+          );
+          confirmRes = await fetch(
+            `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(confirmPayloadBody),
+              cache: "no-store",
+            }
+          );
+          confirmBody = await readApiBody(confirmRes);
+        }
+      }
       const confirmPayload = (confirmBody.json || {}) as IntentCreatePayload;
       const normalizedStatus =
         readString(confirmPayload.status)?.toUpperCase() || "";

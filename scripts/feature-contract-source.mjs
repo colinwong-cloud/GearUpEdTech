@@ -942,7 +942,9 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/app/api/cron-recurring-payments/route.ts" },
         { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
         { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "buildMitSubsequentConfirmPayload" },
-        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "triggered_by: \"merchant\"" },
+        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "nextMitConfirmTriggeredByRetry" },
+        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "triggered_by should not be set" },
+        { type: "file_contains", path: "vercel.json", snippet: "20 1 * * *" },
         {
           type: "file_contains",
           path: "src/app/api/cron-recurring-payments/route.ts",
@@ -1000,6 +1002,32 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/app/admin/page.tsx",
           snippet: "今日 MIT cron 執行",
         },
+      ],
+    },
+    {
+      id: "payment-mit-consent-confirm-payload",
+      month: "2026-09",
+      category: "payment",
+      priority: "payment-critical",
+      title: "Subsequent MIT confirm omits triggered_by when consent id is present",
+      evidence_commits: ["5c84fc7"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/server/recurring-mit-confirm.ts",
+          snippet: "nextMitConfirmTriggeredByRetry",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/recurring-mit-confirm.test.ts",
+          snippet: "omits triggered_by when payment_consent_id is present",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "subsequent-confirm-retry",
+        },
+        { type: "file_contains", path: "vercel.json", snippet: "20 1 * * *" },
       ],
     },
     {
