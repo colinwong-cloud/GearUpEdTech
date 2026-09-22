@@ -2164,8 +2164,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-22T02:27:03.657Z",
+  "generated_at": "2026-09-22T02:29:47.100Z",
   "commit_inventory": [
+    {
+      "sha": "587727fbcd16a543cf7baba7d85863072f7fbb5a",
+      "date": "2026-09-22",
+      "summary": "ci: run release-gate build on Node 20 to avoid font fetch flake"
+    },
+    {
+      "sha": "48e1cb430cadfb7c0cc0efbf0b9cee2a145798a4",
+      "date": "2026-09-22",
+      "summary": "chore: include latest feature-contract inventory commit"
+    },
     {
       "sha": "8994739800659d0257b5f8528a8fad98909f9c0a",
       "date": "2026-09-22",
@@ -4283,7 +4293,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 423,
+    "total_commits_since_start": 425,
     "total_feature_rows": 61
   }
 }
