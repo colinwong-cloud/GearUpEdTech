@@ -1010,7 +1010,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "payment",
       priority: "payment-critical",
       title: "Subsequent MIT confirm omits triggered_by when consent id is present",
-      evidence_commits: ["5c84fc7"],
+      evidence_commits: ["e227790"],
       checks: [
         {
           type: "file_contains",
