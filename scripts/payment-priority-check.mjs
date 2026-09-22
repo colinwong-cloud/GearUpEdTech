@@ -61,6 +61,7 @@ const checks = [
       "merchant_trigger_reason: \"scheduled\"",
       "airwallex_payment_consent_id",
       "buildMitSubsequentConfirmPayload",
+      "nextMitConfirmTriggeredByRetry",
       "filterEligibleMitCronProfiles",
       ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])",
       "recurring_cron_runs",
@@ -68,7 +69,7 @@ const checks = [
   },
   {
     path: "src/lib/server/recurring-mit-confirm.ts",
-    snippets: ['triggered_by: "merchant"', "payment_consent_id"],
+    snippets: ["nextMitConfirmTriggeredByRetry", "payment_consent_id", "triggered_by should not be set"],
   },
   {
     path: "src/lib/airwallex-checkout-methods.ts",
@@ -88,7 +89,7 @@ const checks = [
   },
   {
     path: "vercel.json",
-    snippets: ["/api/cron-recurring-payments"],
+    snippets: ["/api/cron-recurring-payments", "20 1 * * *"],
   },
 ];
 

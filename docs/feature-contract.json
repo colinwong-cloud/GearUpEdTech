@@ -1751,7 +1751,17 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/recurring-mit-confirm.ts",
-          "snippet": "triggered_by: \"merchant\""
+          "snippet": "nextMitConfirmTriggeredByRetry"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-confirm.ts",
+          "snippet": "triggered_by should not be set"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "20 1 * * *"
         },
         {
           "type": "file_contains",
@@ -1821,6 +1831,38 @@
           "type": "file_contains",
           "path": "src/app/admin/page.tsx",
           "snippet": "今日 MIT cron 執行"
+        }
+      ]
+    },
+    {
+      "id": "payment-mit-consent-confirm-payload",
+      "month": "2026-09",
+      "category": "payment",
+      "priority": "payment-critical",
+      "title": "Subsequent MIT confirm omits triggered_by when consent id is present",
+      "evidence_commits": [
+        "e227790"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-confirm.ts",
+          "snippet": "nextMitConfirmTriggeredByRetry"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-confirm.test.ts",
+          "snippet": "omits triggered_by when payment_consent_id is present"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "subsequent-confirm-retry"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "20 1 * * *"
         }
       ]
     },
@@ -2122,8 +2164,33 @@
       ]
     }
   ],
-  "generated_at": "2026-09-21T12:03:31.322Z",
+  "generated_at": "2026-09-22T02:29:47.100Z",
   "commit_inventory": [
+    {
+      "sha": "587727fbcd16a543cf7baba7d85863072f7fbb5a",
+      "date": "2026-09-22",
+      "summary": "ci: run release-gate build on Node 20 to avoid font fetch flake"
+    },
+    {
+      "sha": "48e1cb430cadfb7c0cc0efbf0b9cee2a145798a4",
+      "date": "2026-09-22",
+      "summary": "chore: include latest feature-contract inventory commit"
+    },
+    {
+      "sha": "8994739800659d0257b5f8528a8fad98909f9c0a",
+      "date": "2026-09-22",
+      "summary": "chore: include MIT consent confirm payload commit in feature contract"
+    },
+    {
+      "sha": "e227790d332fdb4fa6611c6bce2c5786691d9553",
+      "date": "2026-09-22",
+      "summary": "fix: omit triggered_by on consent MIT confirm and add catch-up cron"
+    },
+    {
+      "sha": "45c1b46f2c5e6a01caba6d8bfdda969cb4b3f180",
+      "date": "2026-09-21",
+      "summary": "chore: refresh feature contract after admin import fix"
+    },
     {
       "sha": "6f89a6d15a92830ac9a3fa380f11683e30c6d23e",
       "date": "2026-09-21",
@@ -4226,7 +4293,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 420,
-    "total_feature_rows": 60
+    "total_commits_since_start": 425,
+    "total_feature_rows": 61
   }
 }

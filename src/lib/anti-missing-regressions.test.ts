@@ -222,6 +222,8 @@ describe("anti-missing regression guards", () => {
     expect(cronSource).toContain("triggered_by");
     expect(cronSource).toContain('merchant_trigger_reason: "scheduled"');
     expect(cronSource).toContain("classifyRecurringChargeFailure");
+    expect(cronSource).toContain("nextMitConfirmTriggeredByRetry");
+    expect(cronSource).toContain("subsequent-confirm-retry");
     expect(cronSource).toContain("filterEligibleMitCronProfiles");
     expect(cronSource).toContain('.in("status", [...MIT_CRON_SELECT_STATUSES])');
     expect(cronSource).toContain("recurring_cron_runs");
@@ -229,8 +231,10 @@ describe("anti-missing regression guards", () => {
     expect(cronSource).not.toContain('.eq("status", "active")');
 
     const mitConfirmSource = readSource("src/lib/server/recurring-mit-confirm.ts");
-    expect(mitConfirmSource).toContain('triggered_by: "merchant"');
+    expect(mitConfirmSource).toContain("MIT_TRIGGERED_BY_MERCHANT");
+    expect(mitConfirmSource).toContain("nextMitConfirmTriggeredByRetry");
     expect(mitConfirmSource).toContain("payment_consent_id");
+    expect(mitConfirmSource).toContain("triggered_by should not be set");
     expect(mitConfirmSource).not.toContain("external_recurring_data");
 
     const checkoutApiSource = readSource("src/app/api/payment/checkout/route.ts");
