@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
+import { triggerDueMitSweep } from "@/lib/server/recurring-mit-sweep";
+
+export const maxDuration = 60;
 
 type TodayPayload = {
   free_tier_new_users_today?: number;
@@ -41,6 +44,17 @@ export async function POST(req: NextRequest) {
     );
   }
   const admin = createClient(url, key);
+  try {
+    await triggerDueMitSweep("admin-business-today");
+  } catch (err) {
+    console.error(
+      "[anti-missing][payment][mit-cron] admin-sweep-failed",
+      JSON.stringify({
+        source: "admin-business-today",
+        message: err instanceof Error ? err.message : "unknown",
+      })
+    );
+  }
   const { data, error } = await admin.rpc("admin_today_business");
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

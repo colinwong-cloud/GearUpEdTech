@@ -941,8 +941,9 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_exists", path: "src/app/api/cron-recurring-payments/route.ts" },
         { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "merchant_trigger_reason: \"scheduled\"" },
-        { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "buildMitSubsequentConfirmPayload" },
-        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "nextMitConfirmTriggeredByRetry" },
+        { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "buildMitConfirmAttempts" },
+        { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "buildMitConfirmAttempts" },
+        { type: "file_contains", path: "src/app/api/cron-recurring-payments/route.ts", snippet: "shouldTryNextMitConfirmShape" },
         { type: "file_contains", path: "src/lib/server/recurring-mit-confirm.ts", snippet: "triggered_by should not be set" },
         { type: "file_contains", path: "vercel.json", snippet: "20 1 * * *" },
         {
@@ -1020,12 +1021,22 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/server/recurring-mit-confirm.test.ts",
-          snippet: "omits triggered_by when payment_consent_id is present",
+          snippet: "tries payment_method plus triggered_by before consent-only confirm",
         },
         {
           type: "file_contains",
           path: "src/app/api/cron-recurring-payments/route.ts",
           snippet: "subsequent-confirm-retry",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/recurring-mit-sweep.ts",
+          snippet: "triggerDueMitSweep",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/business-today/route.ts",
+          snippet: "triggerDueMitSweep",
         },
         { type: "file_contains", path: "vercel.json", snippet: "20 1 * * *" },
       ],

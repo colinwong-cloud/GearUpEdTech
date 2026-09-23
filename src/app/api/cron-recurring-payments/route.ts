@@ -7,11 +7,11 @@ import {
   getAirwallexBaseUrl,
 } from "@/lib/server/payment-finalize";
 import {
-  buildMitSubsequentConfirmPayload,
+  buildMitConfirmAttempts,
   classifyRecurringChargeFailure,
   isConsentPermanentlyUnusable,
   isConsentUsableForMit,
-  nextMitConfirmTriggeredByRetry,
+  shouldTryNextMitConfirmShape,
 } from "@/lib/server/recurring-mit-confirm";
 import {
   filterEligibleMitCronProfiles,
@@ -254,8 +254,19 @@ async function finishCronRun(
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET?.trim() || "";
-  const authHeader = req.headers.get("authorization");
+  const authHeader = req.headers.get("authorization")?.trim() || "";
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    const userAgent = req.headers.get("user-agent") || "";
+    if (/vercel-cron/i.test(userAgent)) {
+      console.error(
+        "[anti-missing][payment][mit-cron] cron-auth-rejected",
+        JSON.stringify({
+          has_schedule: Boolean(req.headers.get("x-vercel-cron-schedule")),
+          auth_present: Boolean(authHeader),
+          secret_present: Boolean(cronSecret),
+        })
+      );
+    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -485,79 +496,66 @@ export async function GET(req: NextRequest) {
         mobile_number: profile.mobile_number,
         merchant_trigger_reason: "scheduled",
       };
-      let includeTriggeredBy = false;
-      let confirmPayloadBody = buildMitSubsequentConfirmPayload({
-        customerId,
-        paymentMethodId,
-        paymentMethodType,
-        paymentConsentId,
-        requestId: crypto.randomUUID(),
-        metadata: confirmMeta,
-      }, { includeTriggeredBy });
-      console.info(
-        "[anti-missing][payment][mit-policy] subsequent-confirm-payload",
-        JSON.stringify({
-          profile_id: profile.id,
-          mobile_number: profile.mobile_number,
-          has_payment_consent_id: Boolean(confirmPayloadBody.payment_consent_id),
-          triggered_by: confirmPayloadBody.triggered_by ?? null,
-        })
-      );
-      let confirmRes = await fetch(
-        `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
+      const confirmAttempts = buildMitConfirmAttempts(
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(confirmPayloadBody),
-          cache: "no-store",
-        }
+          customerId,
+          paymentMethodId,
+          paymentMethodType,
+          paymentConsentId,
+          requestId: crypto.randomUUID(),
+          metadata: confirmMeta,
+        },
+        [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()]
       );
-      let confirmBody = await readApiBody(confirmRes);
-      if (!confirmRes.ok) {
-        const firstReason = formatAirwallexError({
+      let confirmRes: Response | null = null;
+      let confirmBody: ApiBody = { json: null, text: "" };
+      for (let attemptIndex = 0; attemptIndex < confirmAttempts.length; attemptIndex += 1) {
+        const attempt = confirmAttempts[attemptIndex];
+        console.info(
+          "[anti-missing][payment][mit-policy] subsequent-confirm-payload",
+          JSON.stringify({
+            profile_id: profile.id,
+            mobile_number: profile.mobile_number,
+            shape: attempt.shape,
+            has_payment_consent_id: Boolean(attempt.payload.payment_consent_id),
+            triggered_by: attempt.payload.triggered_by ?? null,
+          })
+        );
+        confirmRes = await fetch(
+          `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(attempt.payload),
+            cache: "no-store",
+          }
+        );
+        confirmBody = await readApiBody(confirmRes);
+        if (confirmRes.ok) break;
+        const attemptReason = formatAirwallexError({
           action: "payment_intents/confirm",
           status: confirmRes.status,
           body: confirmBody,
         });
-        const retryTriggeredBy = nextMitConfirmTriggeredByRetry(firstReason, includeTriggeredBy);
-        if (retryTriggeredBy !== null) {
-          includeTriggeredBy = retryTriggeredBy;
-          confirmPayloadBody = buildMitSubsequentConfirmPayload({
-            customerId,
-            paymentMethodId,
-            paymentMethodType,
-            paymentConsentId,
-            requestId: crypto.randomUUID(),
-            metadata: confirmMeta,
-          }, { includeTriggeredBy });
-          console.info(
-            "[anti-missing][payment][mit-policy] subsequent-confirm-retry",
-            JSON.stringify({
-              profile_id: profile.id,
-              mobile_number: profile.mobile_number,
-              first_reason: firstReason,
-              retry_triggered_by: includeTriggeredBy,
-            })
-          );
-          confirmRes = await fetch(
-            `${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-              body: JSON.stringify(confirmPayloadBody),
-              cache: "no-store",
-            }
-          );
-          confirmBody = await readApiBody(confirmRes);
-        }
+        const hasNextShape = attemptIndex < confirmAttempts.length - 1;
+        if (!hasNextShape || !shouldTryNextMitConfirmShape(attemptReason)) break;
+        console.info(
+          "[anti-missing][payment][mit-policy] subsequent-confirm-retry",
+          JSON.stringify({
+            profile_id: profile.id,
+            mobile_number: profile.mobile_number,
+            failed_shape: attempt.shape,
+            next_shape: confirmAttempts[attemptIndex + 1]?.shape ?? null,
+            first_reason: attemptReason,
+          })
+        );
+      }
+      if (!confirmRes) {
+        throw new Error("MIT confirm did not run");
       }
       const confirmPayload = (confirmBody.json || {}) as IntentCreatePayload;
       const normalizedStatus =

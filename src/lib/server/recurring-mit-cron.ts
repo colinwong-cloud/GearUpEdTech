@@ -9,6 +9,18 @@ export type MitCronCandidate = {
 
 export const MIT_CRON_SELECT_STATUSES = ["active", "failed"] as const;
 export const MIT_CRON_OVERDUE_MS = 26 * 60 * 60 * 1000;
+export const MIT_SWEEP_MIN_INTERVAL_MS = 20 * 60 * 1000;
+
+export function shouldStartMitSweep(
+  lastStartedAt: string | null | undefined,
+  now: Date = new Date(),
+  minIntervalMs: number = MIT_SWEEP_MIN_INTERVAL_MS
+): boolean {
+  if (!lastStartedAt) return true;
+  const started = new Date(lastStartedAt);
+  if (Number.isNaN(started.getTime())) return true;
+  return now.getTime() - started.getTime() >= minIntervalMs;
+}
 
 export function isDueForMitCharge(
   nextChargeAt: string | null | undefined,

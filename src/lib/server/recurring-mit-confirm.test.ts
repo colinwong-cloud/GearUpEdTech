@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMitConfirmAttempts,
   buildMitSubsequentConfirmPayload,
   classifyRecurringChargeFailure,
   isConsentPermanentlyUnusable,
   isConsentUsableForMit,
   MIT_TRIGGERED_BY_MERCHANT,
   nextMitConfirmTriggeredByRetry,
+  shouldTryNextMitConfirmShape,
 } from "./recurring-mit-confirm";
 
 describe("buildMitSubsequentConfirmPayload", () => {
@@ -57,6 +59,51 @@ describe("buildMitSubsequentConfirmPayload", () => {
     });
     expect(noConsent.triggered_by).toBe(MIT_TRIGGERED_BY_MERCHANT);
     expect(noConsent.payment_consent_id).toBeUndefined();
+  });
+});
+
+describe("buildMitConfirmAttempts", () => {
+  it("tries payment_method plus triggered_by before consent-only confirm", () => {
+    const attempts = buildMitConfirmAttempts(
+      {
+        customerId: "cus_1",
+        paymentMethodId: "mtd_1",
+        paymentMethodType: "card",
+        paymentConsentId: "cst_1",
+        requestId: "unused",
+        metadata: { mobile_number: "91917838" },
+      },
+      ["req_a", "req_b", "req_c"]
+    );
+    expect(attempts.map((attempt) => attempt.shape)).toEqual([
+      "method_triggered_by",
+      "consent_and_triggered_by",
+      "consent_only",
+    ]);
+    expect(attempts[0].payload.triggered_by).toBe(MIT_TRIGGERED_BY_MERCHANT);
+    expect(attempts[0].payload.payment_consent_id).toBeUndefined();
+    expect(attempts[1].payload.triggered_by).toBe(MIT_TRIGGERED_BY_MERCHANT);
+    expect(attempts[1].payload.payment_consent_id).toBe("cst_1");
+    expect(attempts[2].payload.triggered_by).toBeUndefined();
+    expect(attempts[2].payload.payment_consent_id).toBe("cst_1");
+    expect(attempts.every((attempt) => attempt.payload.external_recurring_data === undefined)).toBe(
+      true
+    );
+  });
+});
+
+describe("shouldTryNextMitConfirmShape", () => {
+  it("rotates shapes on the 91917838 validation error and stops on issuer decline", () => {
+    expect(
+      shouldTryNextMitConfirmShape(
+        "Airwallex payment_intents/confirm failed (400) [validation_error]: triggered_by should not be set"
+      )
+    ).toBe(true);
+    expect(
+      shouldTryNextMitConfirmShape(
+        "Airwallex payment_intents/confirm failed (400) [issuer_declined]: Insufficient funds"
+      )
+    ).toBe(false);
   });
 });
 
