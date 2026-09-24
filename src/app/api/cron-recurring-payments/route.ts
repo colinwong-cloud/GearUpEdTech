@@ -16,6 +16,7 @@ import {
 import {
   filterEligibleMitCronProfiles,
   isMissingCronRunTableError,
+  mitChargeLeaseIso,
   MIT_CRON_SELECT_STATUSES,
 } from "@/lib/server/recurring-mit-cron";
 
@@ -107,6 +108,30 @@ function addOneMonthIsoFrom(value: string): string {
   const next = Number.isNaN(source.getTime()) ? new Date() : source;
   next.setUTCMonth(next.getUTCMonth() + 1);
   return next.toISOString();
+}
+
+type CronRunClient = ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never;
+
+async function claimMitChargeCycle(
+  supabase: CronRunClient,
+  profile: Pick<RecurringProfileRow, "id" | "next_charge_at" | "last_charged_at">
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  let query = supabase
+    .from("parent_recurring_profiles")
+    .update({
+      next_charge_at: mitChargeLeaseIso(),
+      last_error: "mit-charge-in-progress",
+      updated_at: nowIso,
+    })
+    .eq("id", profile.id)
+    .eq("next_charge_at", profile.next_charge_at);
+  query = profile.last_charged_at
+    ? query.eq("last_charged_at", profile.last_charged_at)
+    : query.is("last_charged_at", null);
+  const { data, error } = await query.select("id");
+  if (error) throw error;
+  return Array.isArray(data) && data.length === 1;
 }
 
 async function markRecurringProfile(
@@ -203,8 +228,6 @@ async function insertParentPaymentOrder(
   }
   return response;
 }
-
-type CronRunClient = ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never;
 
 async function startCronRun(
   supabase: CronRunClient,
@@ -405,6 +428,14 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
+      const claimed = await claimMitChargeCycle(supabase, profile);
+      if (!claimed) {
+        processed -= 1;
+        skipped += 1;
+        continue;
+      }
+      const restoreDueAt = { next_charge_at: profile.next_charge_at };
+
       const merchantOrderId = `GU-R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       const requestId = crypto.randomUUID();
       const startedAt = new Date().toISOString();
@@ -434,7 +465,7 @@ export async function GET(req: NextRequest) {
         await markRecurringProfile(
           supabase,
           profile.id,
-          recurringFailureUpdates(createOrderErr.message).updates
+          recurringFailureUpdates(createOrderErr.message, restoreDueAt).updates
         );
         continue;
       }
@@ -474,7 +505,7 @@ export async function GET(req: NextRequest) {
         await markRecurringProfile(
           supabase,
           profile.id,
-          recurringFailureUpdates(reason).updates
+          recurringFailureUpdates(reason, restoreDueAt).updates
         );
         await finalizePaymentByIntent({
           supabaseAdmin: supabase,
@@ -590,7 +621,7 @@ export async function GET(req: NextRequest) {
         await markRecurringProfile(
           supabase,
           profile.id,
-          recurringFailureUpdates(reason, { last_order_id: finalize.orderId }).updates
+          recurringFailureUpdates(reason, { last_order_id: finalize.orderId, ...restoreDueAt }).updates
         );
         continue;
       }

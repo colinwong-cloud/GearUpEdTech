@@ -4,6 +4,8 @@ import {
   filterEligibleMitCronProfiles,
   isEligibleForMitCronAttempt,
   isMitCronRunOverdue,
+  mitChargeLeaseIso,
+  MIT_CHARGE_LEASE_MS,
   shouldStartMitSweep,
 } from "./recurring-mit-cron";
 
@@ -135,6 +137,13 @@ describe("shouldStartMitSweep", () => {
     expect(shouldStartMitSweep(null, NOW)).toBe(true);
     expect(shouldStartMitSweep("2026-09-20T00:00:00.000Z", NOW)).toBe(true);
     expect(shouldStartMitSweep("2026-09-20T00:10:00.000Z", NOW)).toBe(false);
+  });
+});
+
+describe("mitChargeLeaseIso", () => {
+  it("holds the due date for 20 minutes so a second sweep cannot charge the same cycle", () => {
+    expect(mitChargeLeaseIso(NOW)).toBe(new Date(NOW.getTime() + MIT_CHARGE_LEASE_MS).toISOString());
+    expect(MIT_CHARGE_LEASE_MS).toBe(20 * 60 * 1000);
   });
 });
 

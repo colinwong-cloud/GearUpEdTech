@@ -10,6 +10,11 @@ export type MitCronCandidate = {
 export const MIT_CRON_SELECT_STATUSES = ["active", "failed"] as const;
 export const MIT_CRON_OVERDUE_MS = 26 * 60 * 60 * 1000;
 export const MIT_SWEEP_MIN_INTERVAL_MS = 20 * 60 * 1000;
+export const MIT_CHARGE_LEASE_MS = 20 * 60 * 1000;
+
+export function mitChargeLeaseIso(now: Date = new Date()): string {
+  return new Date(now.getTime() + MIT_CHARGE_LEASE_MS).toISOString();
+}
 
 export function shouldStartMitSweep(
   lastStartedAt: string | null | undefined,
