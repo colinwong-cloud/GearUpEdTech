@@ -4,6 +4,7 @@ import {
   filterEligibleMitCronProfiles,
   isEligibleForMitCronAttempt,
   isMitCronRunOverdue,
+  shouldStartMitSweep,
 } from "./recurring-mit-cron";
 
 const NOW = new Date("2026-09-20T00:25:00.000Z");
@@ -126,6 +127,14 @@ describe("filterEligibleMitCronProfiles", () => {
       NOW
     );
     expect(eligible.map((row) => row.mobile_number)).toEqual(["91917838"]);
+  });
+});
+
+describe("shouldStartMitSweep", () => {
+  it("allows a sweep when the last run is missing or older than 20 minutes", () => {
+    expect(shouldStartMitSweep(null, NOW)).toBe(true);
+    expect(shouldStartMitSweep("2026-09-20T00:00:00.000Z", NOW)).toBe(true);
+    expect(shouldStartMitSweep("2026-09-20T00:10:00.000Z", NOW)).toBe(false);
   });
 });
 

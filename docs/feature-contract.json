@@ -1746,12 +1746,17 @@
         {
           "type": "file_contains",
           "path": "src/app/api/cron-recurring-payments/route.ts",
-          "snippet": "buildMitSubsequentConfirmPayload"
+          "snippet": "buildMitConfirmAttempts"
         },
         {
           "type": "file_contains",
           "path": "src/lib/server/recurring-mit-confirm.ts",
-          "snippet": "nextMitConfirmTriggeredByRetry"
+          "snippet": "buildMitConfirmAttempts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "shouldTryNextMitConfirmShape"
         },
         {
           "type": "file_contains",
@@ -1852,12 +1857,22 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/recurring-mit-confirm.test.ts",
-          "snippet": "omits triggered_by when payment_consent_id is present"
+          "snippet": "tries payment_method plus triggered_by before consent-only confirm"
         },
         {
           "type": "file_contains",
           "path": "src/app/api/cron-recurring-payments/route.ts",
           "snippet": "subsequent-confirm-retry"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-sweep.ts",
+          "snippet": "triggerDueMitSweep"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/business-today/route.ts",
+          "snippet": "triggerDueMitSweep"
         },
         {
           "type": "file_contains",
@@ -2164,8 +2179,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-22T02:29:47.100Z",
+  "generated_at": "2026-09-23T06:09:29.413Z",
   "commit_inventory": [
+    {
+      "sha": "26a774d0e522d568fc1c57c11086e1d4126093e2",
+      "date": "2026-09-23",
+      "summary": "fix: rotate MIT confirm shapes and sweep due charges from admin"
+    },
+    {
+      "sha": "f867b35856d1d05c1378992becdeba932c4e5b50",
+      "date": "2026-09-22",
+      "summary": "chore: include release-gate Node 20 commit in feature contract"
+    },
     {
       "sha": "587727fbcd16a543cf7baba7d85863072f7fbb5a",
       "date": "2026-09-22",
@@ -4293,7 +4318,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 425,
+    "total_commits_since_start": 427,
     "total_feature_rows": 61
   }
 }

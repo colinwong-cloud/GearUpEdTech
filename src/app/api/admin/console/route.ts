@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 60;
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession } from "@/lib/server/admin-session";
 import {
@@ -28,6 +30,7 @@ import {
   isMissingCronRunTableError,
   isMitCronRunOverdue,
 } from "@/lib/server/recurring-mit-cron";
+import { triggerDueMitSweep } from "@/lib/server/recurring-mit-sweep";
 
 type AdminAction =
   | "search_parent"
@@ -834,6 +837,24 @@ export async function POST(req: NextRequest) {
   const payload = body.payload ?? {};
   if (!action) {
     return NextResponse.json({ error: "Missing action" }, { status: 400 });
+  }
+
+  if (
+    action === "payment_status_enquiry" ||
+    action === "payment_recurring_monitor_summary" ||
+    action === "payment_monthly_paid_summary"
+  ) {
+    try {
+      await triggerDueMitSweep(`admin-${action}`);
+    } catch (err) {
+      console.error(
+        "[anti-missing][payment][mit-cron] admin-sweep-failed",
+        JSON.stringify({
+          action,
+          message: err instanceof Error ? err.message : "unknown",
+        })
+      );
+    }
   }
 
   try {

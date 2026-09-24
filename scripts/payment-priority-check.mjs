@@ -60,8 +60,8 @@ const checks = [
     snippets: [
       "merchant_trigger_reason: \"scheduled\"",
       "airwallex_payment_consent_id",
-      "buildMitSubsequentConfirmPayload",
-      "nextMitConfirmTriggeredByRetry",
+      "buildMitConfirmAttempts",
+      "shouldTryNextMitConfirmShape",
       "filterEligibleMitCronProfiles",
       ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])",
       "recurring_cron_runs",

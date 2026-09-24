@@ -218,12 +218,14 @@ describe("anti-missing regression guards", () => {
     expect(hppMitSource).toContain('merchant_trigger_reason: "scheduled"');
 
     const cronSource = readSource("src/app/api/cron-recurring-payments/route.ts");
-    expect(cronSource).toContain("buildMitSubsequentConfirmPayload");
+    expect(cronSource).toContain("buildMitConfirmAttempts");
     expect(cronSource).toContain("triggered_by");
     expect(cronSource).toContain('merchant_trigger_reason: "scheduled"');
     expect(cronSource).toContain("classifyRecurringChargeFailure");
-    expect(cronSource).toContain("nextMitConfirmTriggeredByRetry");
+    expect(cronSource).toContain("buildMitConfirmAttempts");
+    expect(cronSource).toContain("shouldTryNextMitConfirmShape");
     expect(cronSource).toContain("subsequent-confirm-retry");
+    expect(cronSource).toContain("cron-auth-rejected");
     expect(cronSource).toContain("filterEligibleMitCronProfiles");
     expect(cronSource).toContain('.in("status", [...MIT_CRON_SELECT_STATUSES])');
     expect(cronSource).toContain("recurring_cron_runs");
@@ -232,6 +234,8 @@ describe("anti-missing regression guards", () => {
 
     const mitConfirmSource = readSource("src/lib/server/recurring-mit-confirm.ts");
     expect(mitConfirmSource).toContain("MIT_TRIGGERED_BY_MERCHANT");
+    expect(mitConfirmSource).toContain("buildMitConfirmAttempts");
+    expect(mitConfirmSource).toContain("shouldTryNextMitConfirmShape");
     expect(mitConfirmSource).toContain("nextMitConfirmTriggeredByRetry");
     expect(mitConfirmSource).toContain("payment_consent_id");
     expect(mitConfirmSource).toContain("triggered_by should not be set");
