@@ -949,6 +949,11 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/api/cron-recurring-payments/route.ts",
+          snippet: "claimMitChargeCycle",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/cron-recurring-payments/route.ts",
           snippet: "filterEligibleMitCronProfiles",
         },
         {

@@ -839,11 +839,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing action" }, { status: 400 });
   }
 
-  if (
-    action === "payment_status_enquiry" ||
-    action === "payment_recurring_monitor_summary" ||
-    action === "payment_monthly_paid_summary"
-  ) {
+  if (action === "payment_recurring_monitor_summary") {
     try {
       await triggerDueMitSweep(`admin-${action}`);
     } catch (err) {

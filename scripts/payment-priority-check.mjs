@@ -63,6 +63,7 @@ const checks = [
       "buildMitConfirmAttempts",
       "shouldTryNextMitConfirmShape",
       "filterEligibleMitCronProfiles",
+      "claimMitChargeCycle",
       ".in(\"status\", [...MIT_CRON_SELECT_STATUSES])",
       "recurring_cron_runs",
     ],
