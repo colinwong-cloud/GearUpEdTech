@@ -2182,10 +2182,65 @@
           "snippet": "git checkout -b cursor/<task-name>-2d42 origin/main"
         }
       ]
+    },
+    {
+      "id": "merchant-trading-module",
+      "month": "2026-09",
+      "category": "merchant",
+      "priority": "critical",
+      "title": "Merchant trading module for vendors, invoices, cash flow, and statements",
+      "evidence_commits": [
+        "0855569"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/mer/page.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "GearUp Trading"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-auth.ts",
+          "snippet": "scrypt$"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "Cash with order"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "still unpaid"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_merchant_module.sql"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-09-24T08:51:36.805Z",
+  "generated_at": "2026-09-25T06:55:16.645Z",
   "commit_inventory": [
+    {
+      "sha": "2c72a93d526d1ff0c21a445ca93559d8f16077bb",
+      "date": "2026-09-25",
+      "summary": "chore: point merchant module contract evidence at its feature commit"
+    },
+    {
+      "sha": "0855569f40561bf2699afcd652ece77f3c1e9e37",
+      "date": "2026-09-25",
+      "summary": "feat: add merchant trading module at /mer"
+    },
+    {
+      "sha": "5cb82791b5f3959bee1bc0dbf3dd7078dcc7d53b",
+      "date": "2026-09-24",
+      "summary": "chore: include MIT single-charge lease commit in feature contract"
+    },
     {
       "sha": "a50aecdea68f7fe44fcb87d20e2b50a2f8c79f71",
       "date": "2026-09-24",
@@ -4333,7 +4388,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 429,
-    "total_feature_rows": 61
+    "total_commits_since_start": 432,
+    "total_feature_rows": 62
   }
 }

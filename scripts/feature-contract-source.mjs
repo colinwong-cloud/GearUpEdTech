@@ -1215,6 +1215,22 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "merchant-trading-module",
+      month: "2026-09",
+      category: "merchant",
+      priority: "critical",
+      title: "Merchant trading module for vendors, invoices, cash flow, and statements",
+      evidence_commits: ["0855569"],
+      checks: [
+        { type: "file_exists", path: "src/app/mer/page.tsx" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "GearUp Trading" },
+        { type: "file_contains", path: "src/lib/server/merchant-auth.ts", snippet: "scrypt$" },
+        { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "Cash with order" },
+        { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "still unpaid" },
+        { type: "file_exists", path: "supabase_merchant_module.sql" },
+      ],
+    },
   ],
 };
 
