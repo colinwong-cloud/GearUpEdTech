@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
-    "/api/mer/invoices/[id]/pdf": ["./src/lib/server/assets/gearup-stamp.png"],
-    "/api/mer/invoices/[id]/send": ["./src/lib/server/assets/gearup-stamp.png"],
+    "/api/mer/invoices/[id]/pdf": ["./public/mer/gearup-stamp.png"],
+    "/api/mer/invoices/[id]/send": ["./public/mer/gearup-stamp.png"],
   },
   /*
    * Expose Supabase URL + anon key to the browser bundle when only server-prefixed

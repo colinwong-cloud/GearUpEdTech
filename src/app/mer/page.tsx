@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MERCHANT_COMPANY_NAME,
   dueDateForTerm,
+  formatHkDate,
   isMerchantPaymentTerm,
   invoiceMatchesPaySearch,
   lineAmount,
@@ -14,6 +15,83 @@ import {
 
 const fieldClass = "rounded border border-slate-300 bg-white text-slate-900 p-2";
 const cardClass = "rounded border border-slate-200 bg-white p-4 text-slate-900";
+
+function InvoiceSheet(props: {
+  invoiceNumber: string;
+  vendorName: string;
+  address: string;
+  contactName: string;
+  email: string;
+  poNumber: string;
+  issueDate: string;
+  dueDate: string;
+  paymentTerms: string;
+  currency: string;
+  items: Array<{ description: string; qty: number; unitCost: number; amount: number }>;
+  notes: string;
+  total: number;
+}) {
+  return (
+    <div className="relative mt-3 overflow-hidden rounded border border-slate-200 bg-white text-slate-900">
+      <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-b from-lime-300 via-amber-200 to-sky-300" />
+      <div className="space-y-4 p-4 pl-6 text-sm">
+        <div>
+          <p className="text-xl font-bold text-[#1e3d66]">{MERCHANT_COMPANY_NAME}</p>
+          <p className="font-bold text-[#387399]">INVOICE</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold tracking-wide text-[#387399]">BILL TO</p>
+            <p className="font-semibold">{props.vendorName || "—"}</p>
+            <p>{props.address || "—"}</p>
+            <p>{props.contactName || "—"}</p>
+            <p>{props.email || "—"}</p>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            <dt className="font-bold text-[#387399]">INVOICE #</dt>
+            <dd className="text-right">{props.invoiceNumber}</dd>
+            <dt className="font-bold text-[#387399]">INVOICE DATE</dt>
+            <dd className="text-right">{formatHkDate(props.issueDate)}</dd>
+            <dt className="font-bold text-[#387399]">P.O.#</dt>
+            <dd className="text-right">{props.poNumber || "—"}</dd>
+            <dt className="font-bold text-[#387399]">DUE DATE</dt>
+            <dd className="text-right">{formatHkDate(props.dueDate)}</dd>
+          </dl>
+        </div>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-y border-slate-300 text-[#387399]">
+              <th className="py-1 font-bold">QTY</th>
+              <th className="font-bold">DESCRIPTION</th>
+              <th className="font-bold">UNIT PRICE</th>
+              <th className="text-right font-bold">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {props.items.map((item, index) => (
+              <tr key={`${item.description}-${index}`} className="border-b border-slate-200">
+                <td className="py-1">{item.qty}</td>
+                <td>{item.description}</td>
+                <td>{item.unitCost.toFixed(2)}</td>
+                <td className="text-right">{item.amount.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="ml-auto w-56 space-y-1">
+          <p className="flex justify-between"><span>Subtotal</span><span>{props.total.toFixed(2)}</span></p>
+          <p className="flex justify-between text-base font-bold text-[#1e3d66]"><span>TOTAL</span><span>{props.currency} {props.total.toFixed(2)}</span></p>
+        </div>
+        <div>
+          <p className="font-bold text-[#387399]">TERMS & CONDITIONS</p>
+          <p>Payment terms: {props.paymentTerms}.</p>
+          <p className="whitespace-pre-wrap">{props.notes || "Please arrange payment by the due date."}</p>
+        </div>
+        <img src="/mer/gearup-stamp.png" alt="GearUp EduTech Limited stamp" className="ml-auto h-28 w-28 object-contain" />
+      </div>
+    </div>
+  );
+}
 
 type Vendor = {
   id: string;
@@ -451,39 +529,26 @@ export default function MerchantPage() {
           </label>
           <details open className={cardClass}>
             <summary className="cursor-pointer font-semibold">Invoice preview</summary>
-            <div className="mt-3 space-y-2 text-sm">
-              <p className="text-lg font-semibold">{MERCHANT_COMPANY_NAME}</p>
-              <p>Invoice draft</p>
-              <p>Vendor: {previewVendor?.name || "Select a vendor"}</p>
-              <p>Address: {previewVendor?.address || "—"}</p>
-              <p>Contact: {previewVendor ? `${previewVendor.contact_name} · ${previewVendor.contact_phone} · ${previewVendor.contact_email}` : "—"}</p>
-              <p>Vendor PO number: {invoiceForm.vendor_po_number || "—"}</p>
-              <p>Issue date: {invoiceForm.issue_date}</p>
-              <p>Payment terms: {paymentTermLabel(previewTerm)}</p>
-              <p>Due date: {previewDue}</p>
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b">
-                    <th className="py-1">Item</th>
-                    <th>Qty</th>
-                    <th>Unit cost</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line, index) => (
-                    <tr key={`${line.description}-${index}`} className="border-b">
-                      <td className="py-1">{line.description}</td>
-                      <td>{line.qty}</td>
-                      <td>{Number(line.unit_cost).toFixed(2)}</td>
-                      <td>{lineAmount(line.qty, line.unit_cost).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="font-semibold">Total HKD {previewTotal.toFixed(2)}</p>
-              <p className="whitespace-pre-wrap">Notes: {invoiceForm.notes || "—"}</p>
-            </div>
+            <InvoiceSheet
+              invoiceNumber="Draft"
+              vendorName={previewVendor?.name || "Select a vendor"}
+              address={previewVendor?.address || ""}
+              contactName={previewVendor?.contact_name || ""}
+              email={previewVendor?.contact_email || ""}
+              poNumber={invoiceForm.vendor_po_number}
+              issueDate={invoiceForm.issue_date}
+              dueDate={previewDue}
+              paymentTerms={paymentTermLabel(previewTerm)}
+              currency="HKD"
+              total={Math.round(previewTotal * 100) / 100}
+              notes={invoiceForm.notes}
+              items={lines.map((line) => ({
+                description: line.description,
+                qty: line.qty,
+                unitCost: Number(line.unit_cost),
+                amount: lineAmount(line.qty, line.unit_cost),
+              }))}
+            />
           </details>
           <details open className={cardClass}>
             <summary className="cursor-pointer font-semibold">Email preview</summary>
@@ -546,18 +611,26 @@ export default function MerchantPage() {
                 </div>
                 <details className="mt-3 rounded border border-slate-200 p-3">
                   <summary className="cursor-pointer font-semibold">Invoice preview</summary>
-                  <div className="mt-2 space-y-1">
-                    <p className="font-semibold">{MERCHANT_COMPANY_NAME}</p>
-                    <p>{invoice.invoice_number}</p>
-                    <p>{invoice.vendor_name}</p>
-                    <p>{invoice.vendor_address}</p>
-                    <p>{invoice.vendor_contact_name} · {invoice.vendor_email}</p>
-                    {invoice.items.map((item, index) => (
-                      <p key={`${item.description}-${index}`}>{item.description} × {item.qty} @ {item.unit_cost.toFixed(2)} = {item.amount.toFixed(2)}</p>
-                    ))}
-                    <p className="font-semibold">Total {invoice.currency} {invoice.total.toFixed(2)}</p>
-                    <p className="whitespace-pre-wrap">Notes: {invoice.notes || "—"}</p>
-                  </div>
+                  <InvoiceSheet
+                    invoiceNumber={invoice.invoice_number}
+                    vendorName={invoice.vendor_name}
+                    address={invoice.vendor_address}
+                    contactName={invoice.vendor_contact_name}
+                    email={invoice.vendor_email}
+                    poNumber={invoice.vendor_po_number}
+                    issueDate={invoice.issue_date}
+                    dueDate={invoice.due_date}
+                    paymentTerms={paymentTermLabel(invoice.payment_terms)}
+                    currency={invoice.currency}
+                    total={invoice.total}
+                    notes={invoice.notes}
+                    items={invoice.items.map((item) => ({
+                      description: item.description,
+                      qty: item.qty,
+                      unitCost: item.unit_cost,
+                      amount: item.amount,
+                    }))}
+                  />
                 </details>
                 <details className="mt-2 rounded border border-slate-200 p-3">
                   <summary className="cursor-pointer font-semibold">Email preview</summary>

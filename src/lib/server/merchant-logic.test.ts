@@ -53,6 +53,10 @@ describe("merchant email templates", () => {
     expect(overdue.subject).toContain("Overdue invoice");
     expect(overdue.text).toContain("still unpaid");
     expect(overdue.text).not.toContain("Thank you for the business");
+    expect(initial.text).toContain("cs@gearupquiz.com");
+    expect(overdue.text).toContain("Please do not reply directly to this message");
+    expect(initial.text.trimEnd().endsWith("Thank you!")).toBe(true);
+    expect(overdue.text.trimEnd().endsWith("Thank you!")).toBe(true);
   });
 });
 

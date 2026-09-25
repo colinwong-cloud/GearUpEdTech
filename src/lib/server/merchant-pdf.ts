@@ -105,7 +105,7 @@ let stampImage: RgbImage | null = null;
 
 export function companyStampImage(): RgbImage {
   if (!stampImage) {
-    const png = readFileSync(new URL("./assets/gearup-stamp.png", import.meta.url));
+    const png = readFileSync(new URL("../../../public/mer/gearup-stamp.png", import.meta.url));
     stampImage = decodePngToRgb(png);
   }
   return stampImage;
