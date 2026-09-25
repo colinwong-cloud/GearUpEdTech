@@ -1227,6 +1227,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "GearUp EduTech Limited" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "MERCHANT_COMPANY_NAME" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Invoice preview" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Modify" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Send this email" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "bg-white text-slate-900" },
         { type: "file_contains", path: "src/lib/server/merchant-auth.ts", snippet: "scrypt$" },
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "Cash with order" },

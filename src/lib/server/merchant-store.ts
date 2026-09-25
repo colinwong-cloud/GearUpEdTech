@@ -84,6 +84,23 @@ export async function createVendor(input: Omit<MerchantVendor, "id">): Promise<M
   return data as MerchantVendor;
 }
 
+export async function updateVendor(id: string, input: Omit<MerchantVendor, "id">): Promise<void> {
+  const row = {
+    name: input.name.trim(),
+    address: input.address.trim(),
+    contact_name: input.contact_name.trim(),
+    contact_phone: input.contact_phone.trim(),
+    contact_email: input.contact_email.trim().toLowerCase(),
+    updated_at: new Date().toISOString(),
+  };
+  if (!id || !row.name || !row.address || !row.contact_name || !row.contact_phone || !row.contact_email) {
+    throw new Error("Vendor name, address, contact name, phone, and email are required");
+  }
+  const supabase = adminClient();
+  const { error } = await supabase.from("mer_vendors").update(row).eq("id", id);
+  if (error) throw error;
+}
+
 async function nextInvoiceNumber(supabase: SupabaseClient, issueDate: string): Promise<string> {
   const stamp = issueDate.replace(/-/g, "").slice(0, 6);
   const prefix = `GU-M-${stamp}-`;
