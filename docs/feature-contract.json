@@ -2239,8 +2239,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T07:25:39.101Z",
+  "generated_at": "2026-09-25T07:28:39.547Z",
   "commit_inventory": [
+    {
+      "sha": "ea69d19e32e7215bc4356c37e37f6269b8f911cc",
+      "date": "2026-09-25",
+      "summary": "ci: build release-gate with webpack to avoid the font lookup failure"
+    },
+    {
+      "sha": "93d0437c745241f92e579dfd678c5dc56ac67be9",
+      "date": "2026-09-25",
+      "summary": "chore: include merchant preview commit in feature contract"
+    },
     {
       "sha": "056bed07956c1759dfe77782f8dc2589f510d644",
       "date": "2026-09-25",
@@ -4413,7 +4423,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 434,
+    "total_commits_since_start": 436,
     "total_feature_rows": 62
   }
 }
