@@ -532,7 +532,8 @@ export default function MerchantPage() {
                             body: JSON.stringify({ template: sendTemplate }),
                           });
                           if (!res.ok) {
-                            setSendNotice((current) => ({ ...current, [invoice.id]: { ok: false, text: await readError(res) } }));
+                            const text = await readError(res);
+                            setSendNotice((current) => ({ ...current, [invoice.id]: { ok: false, text } }));
                             return;
                           }
                           const body = (await res.json()) as { to?: string };
