@@ -38,7 +38,7 @@ export type MerchantInvoice = {
   vendor_contact_name: string;
   vendor_email: string;
   issue_date: string;
-  due_date: string | null;
+  due_date: string;
   payment_terms: MerchantPaymentTerm;
   vendor_po_number: string;
   notes: string;
