@@ -88,6 +88,7 @@ export default function MerchantPage() {
   const [tab, setTab] = useState<"vendors" | "invoices" | "cash" | "report">("vendors");
   const [msg, setMsg] = useState("");
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorQuery, setVendorQuery] = useState("");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [vendorForm, setVendorForm] = useState({
     name: "",
@@ -173,6 +174,18 @@ export default function MerchantPage() {
     setAuthed(false);
   }
 
+  const sortedVendors = useMemo(
+    () => [...vendors].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+    [vendors]
+  );
+  const visibleVendors = sortedVendors.filter((vendor) => {
+    const query = vendorQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [vendor.name, vendor.address, vendor.contact_name, vendor.contact_phone, vendor.contact_email]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
   const previewVendor = vendors.find((vendor) => vendor.id === invoiceForm.vendor_id) || null;
   const previewTerm = isMerchantPaymentTerm(invoiceForm.payment_terms) ? invoiceForm.payment_terms : "net_30";
   const previewDue = useMemo(() => {
@@ -243,7 +256,11 @@ export default function MerchantPage() {
           </button>
         ))}
       </nav>
-      {msg && <p className={`text-sm ${msg.includes("updated") ? "text-emerald-700" : "text-red-600"}`}>{msg}</p>}
+      {msg && (
+        <p className={`inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm ${msg.includes("updated") ? "text-emerald-700" : "text-red-600"}`}>
+          {msg}
+        </p>
+      )}
 
       {tab === "vendors" && (
         <section className="space-y-4">
@@ -269,8 +286,17 @@ export default function MerchantPage() {
             <input className={`${fieldClass} sm:col-span-2`} placeholder="Contact email" type="email" required value={vendorForm.contact_email} onChange={(e) => setVendorForm({ ...vendorForm, contact_email: e.target.value })} />
             <button className="rounded bg-slate-900 px-4 py-2 text-white sm:col-span-2" type="submit">Create vendor</button>
           </form>
+          <details className={cardClass}>
+            <summary className="cursor-pointer font-semibold">Search vendors</summary>
+            <input
+              className={`mt-3 w-full ${fieldClass}`}
+              placeholder="Name, address, contact, phone, or email"
+              value={vendorQuery}
+              onChange={(e) => setVendorQuery(e.target.value)}
+            />
+          </details>
           <ul className="space-y-2">
-            {vendors.map((vendor) => (
+            {visibleVendors.map((vendor) => (
               <li key={vendor.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold">{vendor.name}</p>
@@ -353,7 +379,7 @@ export default function MerchantPage() {
           >
             <select className={`w-full ${fieldClass}`} required value={invoiceForm.vendor_id} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_id: e.target.value })}>
               <option value="">Select vendor</option>
-              {vendors.map((vendor) => (
+              {sortedVendors.map((vendor) => (
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
               ))}
             </select>
@@ -568,7 +594,7 @@ export default function MerchantPage() {
           <div className="grid gap-2 sm:grid-cols-4">
             <select className={fieldClass} value={cashVendor} onChange={(e) => setCashVendor(e.target.value)}>
               <option value="">Vendor</option>
-              {vendors.map((vendor) => (
+              {sortedVendors.map((vendor) => (
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
               ))}
             </select>
