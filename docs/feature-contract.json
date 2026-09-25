@@ -2225,6 +2225,25 @@
         {
           "type": "file_contains",
           "path": "src/app/mer/page.tsx",
+          "snippet": "Cheque number"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "Bank transfer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "bank_transfer"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_merchant_cash_payment.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
           "snippet": "Send this email"
         },
         {
@@ -2254,8 +2273,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T10:12:25.525Z",
+  "generated_at": "2026-09-25T10:31:20.106Z",
   "commit_inventory": [
+    {
+      "sha": "234b45ce5b89834e53dc7a8a674701e88150cb35",
+      "date": "2026-09-25",
+      "summary": "fix: record cash payment method, cheque number, and paid date"
+    },
+    {
+      "sha": "f88a2367bf3abc669c2e57c4489155d65d5eb75f",
+      "date": "2026-09-25",
+      "summary": "chore: include vendor search commit in feature contract"
+    },
     {
       "sha": "9178d066dcea6f4a50518a1fde204493b02ad155",
       "date": "2026-09-25",
@@ -4468,7 +4497,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 442,
+    "total_commits_since_start": 444,
     "total_feature_rows": 62
   }
 }
