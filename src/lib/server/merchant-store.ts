@@ -3,10 +3,14 @@ import {
   dueDateForTerm,
   invoiceTotal,
   isMerchantPaymentTerm,
+  isMerchantSettlementMethod,
+  normalizeChequeNumber,
   normalizeLines,
+  normalizePaidOn,
   type MerchantInvoiceStatus,
   type MerchantLineInput,
   type MerchantPaymentTerm,
+  type MerchantSettlementMethod,
 } from "@/lib/server/merchant-logic";
 
 export type MerchantVendor = {
@@ -39,6 +43,9 @@ export type MerchantInvoice = {
   notes: string;
   status: MerchantInvoiceStatus;
   paid_at: string | null;
+  payment_method: MerchantSettlementMethod | null;
+  cheque_number: string;
+  paid_on: string | null;
   currency: string;
   total: number;
   items: MerchantInvoiceItem[];
@@ -171,6 +178,9 @@ type InvoiceRow = {
   notes: string;
   status: MerchantInvoiceStatus;
   paid_at: string | null;
+  payment_method: string | null;
+  cheque_number: string | null;
+  paid_on: string | null;
   currency: string;
   mer_vendors: {
     name: string;
@@ -210,6 +220,9 @@ function mapInvoice(row: InvoiceRow): MerchantInvoice {
     notes: row.notes || "",
     status: row.status,
     paid_at: row.paid_at,
+    payment_method: row.payment_method && isMerchantSettlementMethod(row.payment_method) ? row.payment_method : null,
+    cheque_number: row.cheque_number || "",
+    paid_on: row.paid_on ? dateOnly(row.paid_on) : null,
     currency: row.currency || "HKD",
     total: invoiceTotal(items),
     items,
@@ -217,7 +230,7 @@ function mapInvoice(row: InvoiceRow): MerchantInvoice {
 }
 
 const INVOICE_SELECT =
-  "id,invoice_number,vendor_id,issue_date,due_date,payment_terms,notes,status,paid_at,currency,mer_vendors(name,address,contact_name,contact_email),mer_invoice_items(description,qty,unit_cost,amount,sort_order)";
+  "id,invoice_number,vendor_id,issue_date,due_date,payment_terms,notes,status,paid_at,payment_method,cheque_number,paid_on,currency,mer_vendors(name,address,contact_name,contact_email),mer_invoice_items(description,qty,unit_cost,amount,sort_order)";
 
 export async function listInvoices(): Promise<MerchantInvoice[]> {
   const supabase = adminClient();
@@ -237,13 +250,42 @@ export async function getInvoice(id: string): Promise<MerchantInvoice | null> {
   return mapInvoice(data as unknown as InvoiceRow);
 }
 
-export async function setInvoiceStatus(id: string, status: MerchantInvoiceStatus): Promise<void> {
+export async function markInvoicePaid(input: {
+  id: string;
+  method: string;
+  chequeNumber: string;
+  paidOn: string;
+}): Promise<void> {
+  if (!input.id) throw new Error("Invoice is required");
+  if (!isMerchantSettlementMethod(input.method)) throw new Error("Invalid payment method");
+  const chequeNumber = normalizeChequeNumber(input.method, input.chequeNumber);
+  const paidOn = normalizePaidOn(input.paidOn);
   const supabase = adminClient();
   const { error } = await supabase
     .from("mer_invoices")
     .update({
-      status,
-      paid_at: status === "paid" ? new Date().toISOString() : null,
+      status: "paid",
+      payment_method: input.method,
+      cheque_number: chequeNumber || null,
+      paid_on: paidOn,
+      paid_at: `${paidOn}T00:00:00.000Z`,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id);
+  if (error) throw error;
+}
+
+export async function markInvoiceUnpaid(id: string): Promise<void> {
+  if (!id) throw new Error("Invoice is required");
+  const supabase = adminClient();
+  const { error } = await supabase
+    .from("mer_invoices")
+    .update({
+      status: "unpaid",
+      payment_method: null,
+      cheque_number: null,
+      paid_on: null,
+      paid_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

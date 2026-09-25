@@ -3,6 +3,8 @@ export const MERCHANT_PAYMENT_TERMS = ["cash_with_order", "net_30", "net_60"] as
 export type MerchantPaymentTerm = (typeof MERCHANT_PAYMENT_TERMS)[number];
 export type MerchantInvoiceStatus = "unpaid" | "paid";
 export type MerchantEmailTemplate = "initial" | "overdue";
+export const MERCHANT_SETTLEMENT_METHODS = ["cash", "cheque", "bank_transfer"] as const;
+export type MerchantSettlementMethod = (typeof MERCHANT_SETTLEMENT_METHODS)[number];
 
 export type MerchantLineInput = {
   description: string;
@@ -28,6 +30,34 @@ export function paymentTermLabel(term: MerchantPaymentTerm): string {
   if (term === "cash_with_order") return "Cash with order";
   if (term === "net_30") return "Net 30";
   return "Net 60";
+}
+
+export function isMerchantSettlementMethod(value: string): value is MerchantSettlementMethod {
+  return (MERCHANT_SETTLEMENT_METHODS as readonly string[]).includes(value);
+}
+
+export function settlementMethodLabel(method: MerchantSettlementMethod): string {
+  if (method === "cash") return "Cash";
+  if (method === "cheque") return "Cheque";
+  return "Bank transfer";
+}
+
+export function invoiceMatchesPaySearch(invoiceNumber: string, vendorName: string, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return false;
+  return invoiceNumber.toLowerCase().includes(needle) || vendorName.toLowerCase().includes(needle);
+}
+
+export function normalizePaidOn(value: string): string {
+  const date = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Paid date is required");
+  return date;
+}
+
+export function normalizeChequeNumber(method: MerchantSettlementMethod, chequeNumber: string): string {
+  const number = chequeNumber.trim();
+  if (method === "cheque" && !number) throw new Error("Cheque number is required");
+  return method === "cheque" ? number : "";
 }
 
 export function dueDateForTerm(issueDateIso: string, term: MerchantPaymentTerm): string {
@@ -123,18 +153,32 @@ export function merchantEmailTemplate(input: {
   };
 }
 
-export function invoicesToCsv(
-  rows: Array<{
-    invoiceNumber: string;
-    vendorName: string;
-    issueDate: string;
-    dueDate: string;
-    status: string;
-    total: number;
-    currency: string;
-  }>
-): string {
-  const header = ["invoice_number", "vendor", "issue_date", "due_date", "status", "currency", "total"];
+export type MerchantCashRow = {
+  invoiceNumber: string;
+  vendorName: string;
+  issueDate: string;
+  dueDate: string;
+  status: string;
+  total: number;
+  currency: string;
+  paymentMethod: string;
+  chequeNumber: string;
+  paidOn: string;
+};
+
+export function invoicesToCsv(rows: MerchantCashRow[]): string {
+  const header = [
+    "invoice_number",
+    "vendor",
+    "issue_date",
+    "due_date",
+    "status",
+    "currency",
+    "total",
+    "payment_method",
+    "cheque_number",
+    "paid_on",
+  ];
   const body = rows.map((row) =>
     [
       row.invoiceNumber,
@@ -144,6 +188,9 @@ export function invoicesToCsv(
       row.status,
       row.currency,
       row.total.toFixed(2),
+      row.paymentMethod,
+      row.chequeNumber,
+      row.paidOn,
     ]
       .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
       .join(",")

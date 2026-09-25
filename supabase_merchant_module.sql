@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS public.mer_invoices (
   notes TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid')),
   paid_at TIMESTAMPTZ NULL,
+  payment_method TEXT NULL CHECK (payment_method IS NULL OR payment_method IN ('cash', 'cheque', 'bank_transfer')),
+  cheque_number TEXT NULL,
+  paid_on DATE NULL,
   currency TEXT NOT NULL DEFAULT 'HKD',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

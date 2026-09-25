@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { merchantPasswordHash, verifyMerchantPassword } from "./merchant-auth";
 import {
   dueDateForTerm,
+  invoiceMatchesPaySearch,
   invoicesToCsv,
   merchantEmailTemplate,
+  normalizeChequeNumber,
   normalizeLines,
   summarizeInvoiceAmounts,
 } from "./merchant-logic";
@@ -69,12 +71,35 @@ describe("merchant csv", () => {
         vendorName: 'Alpha "HK"',
         issueDate: "2026-09-25",
         dueDate: "2026-10-25",
-        status: "unpaid",
+        status: "paid",
         total: 19.8,
         currency: "HKD",
+        paymentMethod: "Cheque",
+        chequeNumber: "CHQ-19",
+        paidOn: "2026-09-25",
       },
     ]);
     expect(csv).toContain('"Alpha ""HK"""');
     expect(csv).toContain("19.80");
+    expect(csv).toContain("payment_method,cheque_number,paid_on");
+    expect(csv).toContain("Cheque");
+    expect(csv).toContain("CHQ-19");
+    expect(csv).toContain("2026-09-25");
+  });
+});
+
+describe("merchant cash payment search", () => {
+  it("matches a vendor or invoice number substring and ignores a blank query", () => {
+    expect(invoiceMatchesPaySearch("GU-M-202609-0001", "North Partner", "0001")).toBe(true);
+    expect(invoiceMatchesPaySearch("GU-M-202609-0001", "North Partner", "north")).toBe(true);
+    expect(invoiceMatchesPaySearch("GU-M-202609-0001", "North Partner", "south")).toBe(false);
+    expect(invoiceMatchesPaySearch("GU-M-202609-0001", "North Partner", "  ")).toBe(false);
+  });
+
+  it("requires a cheque number only for cheque payments", () => {
+    expect(normalizeChequeNumber("cash", "")).toBe("");
+    expect(normalizeChequeNumber("bank_transfer", "ignored")).toBe("");
+    expect(normalizeChequeNumber("cheque", " 88421 ")).toBe("88421");
+    expect(() => normalizeChequeNumber("cheque", " ")).toThrow(/Cheque number is required/);
   });
 });

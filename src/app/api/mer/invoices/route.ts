@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { merchantError, requireMerchant } from "@/lib/server/merchant-http";
-import { createInvoice, listInvoices, setInvoiceStatus } from "@/lib/server/merchant-store";
-import type { MerchantInvoiceStatus } from "@/lib/server/merchant-logic";
+import { createInvoice, listInvoices, markInvoicePaid, markInvoiceUnpaid } from "@/lib/server/merchant-store";
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +46,26 @@ export async function PATCH(req: NextRequest) {
   const denied = requireMerchant(req);
   if (denied) return denied;
   try {
-    const body = (await req.json()) as { id?: string; status?: MerchantInvoiceStatus };
+    const body = (await req.json()) as {
+      id?: string;
+      status?: string;
+      payment_method?: string;
+      cheque_number?: string;
+      paid_on?: string;
+    };
     if (!body.id || (body.status !== "paid" && body.status !== "unpaid")) {
       return NextResponse.json({ error: "Invalid invoice status" }, { status: 400 });
     }
-    await setInvoiceStatus(body.id, body.status);
+    if (body.status === "unpaid") {
+      await markInvoiceUnpaid(body.id);
+    } else {
+      await markInvoicePaid({
+        id: body.id,
+        method: String(body.payment_method || ""),
+        chequeNumber: String(body.cheque_number || ""),
+        paidOn: String(body.paid_on || ""),
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return merchantError(err);
