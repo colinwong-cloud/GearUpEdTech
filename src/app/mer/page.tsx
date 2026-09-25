@@ -29,6 +29,9 @@ type Invoice = {
   invoice_number: string;
   vendor_id: string;
   vendor_name: string;
+  vendor_address: string;
+  vendor_contact_name: string;
+  vendor_email: string;
   issue_date: string;
   due_date: string;
   payment_terms: "cash_with_order" | "net_30" | "net_60";
@@ -104,6 +107,17 @@ export default function MerchantPage() {
   });
   const [lines, setLines] = useState<Array<{ description: string; qty: number; unit_cost: number }>>([]);
   const [sendTemplate, setSendTemplate] = useState<"initial" | "overdue">("initial");
+  const [editingVendorId, setEditingVendorId] = useState<string | null>(null);
+  const [editVendor, setEditVendor] = useState({
+    name: "",
+    address: "",
+    contact_name: "",
+    contact_phone: "",
+    contact_email: "",
+  });
+  const [listFrom, setListFrom] = useState(new Date().toISOString().slice(0, 8) + "01");
+  const [listTo, setListTo] = useState(new Date().toISOString().slice(0, 10));
+  const [sendNotice, setSendNotice] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [cashVendor, setCashVendor] = useState("");
   const [cashFrom, setCashFrom] = useState(new Date().toISOString().slice(0, 8) + "01");
   const [cashTo, setCashTo] = useState(new Date().toISOString().slice(0, 10));
@@ -229,7 +243,7 @@ export default function MerchantPage() {
           </button>
         ))}
       </nav>
-      {msg && <p className="text-sm text-red-600">{msg}</p>}
+      {msg && <p className={`text-sm ${msg.includes("updated") ? "text-emerald-700" : "text-red-600"}`}>{msg}</p>}
 
       {tab === "vendors" && (
         <section className="space-y-4">
@@ -258,9 +272,55 @@ export default function MerchantPage() {
           <ul className="space-y-2">
             {vendors.map((vendor) => (
               <li key={vendor.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
-                <p className="font-semibold">{vendor.name}</p>
-                <p>{vendor.address}</p>
-                <p>{vendor.contact_name} · {vendor.contact_phone} · {vendor.contact_email}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold">{vendor.name}</p>
+                  <button
+                    className="rounded border px-2 py-1"
+                    type="button"
+                    onClick={() => {
+                      setEditingVendorId(vendor.id);
+                      setEditVendor({
+                        name: vendor.name,
+                        address: vendor.address,
+                        contact_name: vendor.contact_name,
+                        contact_phone: vendor.contact_phone,
+                        contact_email: vendor.contact_email,
+                      });
+                    }}
+                  >
+                    Modify
+                  </button>
+                </div>
+                {editingVendorId === vendor.id ? (
+                  <form
+                    className="mt-2 grid gap-2 sm:grid-cols-2"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      setMsg("");
+                      const res = await fetch("/api/mer/vendors", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: vendor.id, ...editVendor }),
+                      });
+                      if (!res.ok) return setMsg(await readError(res));
+                      setEditingVendorId(null);
+                      setMsg("Vendor updated");
+                      await loadData();
+                    }}
+                  >
+                    <input className={fieldClass} required value={editVendor.name} onChange={(e) => setEditVendor({ ...editVendor, name: e.target.value })} />
+                    <input className={fieldClass} required value={editVendor.address} onChange={(e) => setEditVendor({ ...editVendor, address: e.target.value })} />
+                    <input className={fieldClass} required value={editVendor.contact_name} onChange={(e) => setEditVendor({ ...editVendor, contact_name: e.target.value })} />
+                    <input className={fieldClass} required value={editVendor.contact_phone} onChange={(e) => setEditVendor({ ...editVendor, contact_phone: e.target.value })} />
+                    <input className={`${fieldClass} sm:col-span-2`} type="email" required value={editVendor.contact_email} onChange={(e) => setEditVendor({ ...editVendor, contact_email: e.target.value })} />
+                    <button className="rounded bg-slate-900 px-3 py-2 text-white" type="submit">Save vendor</button>
+                  </form>
+                ) : (
+                  <>
+                    <p>{vendor.address}</p>
+                    <p>{vendor.contact_name} · {vendor.contact_phone} · {vendor.contact_email}</p>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -321,9 +381,18 @@ export default function MerchantPage() {
             >
               Add item
             </button>
-            <ul className="text-sm">
+            <ul className="space-y-1 text-sm">
               {lines.map((line, index) => (
-                <li key={`${line.description}-${index}`}>{line.description} × {line.qty} @ {line.unit_cost}</li>
+                <li key={`${line.description}-${index}`} className="flex items-center justify-between gap-2">
+                  <span>{line.description} × {line.qty} @ {line.unit_cost}</span>
+                  <button
+                    className="rounded border px-2 py-1"
+                    type="button"
+                    onClick={() => setLines(lines.filter((_, lineIndex) => lineIndex !== index))}
+                  >
+                    Delete
+                  </button>
+                </li>
               ))}
             </ul>
             <textarea className={`w-full ${fieldClass}`} rows={3} placeholder="Notes printed at the bottom of the invoice" value={invoiceForm.notes} onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })} />
@@ -378,28 +447,37 @@ export default function MerchantPage() {
               <pre className="whitespace-pre-wrap rounded bg-slate-50 p-3">{emailPreview.text}</pre>
             </div>
           </details>
+          <div className={`${cardClass} flex flex-wrap items-end gap-2 text-sm`}>
+            <label>
+              From
+              <input className={`mt-1 block ${fieldClass}`} type="date" value={listFrom} onChange={(e) => setListFrom(e.target.value)} />
+            </label>
+            <label>
+              To
+              <input className={`mt-1 block ${fieldClass}`} type="date" value={listTo} onChange={(e) => setListTo(e.target.value)} />
+            </label>
+          </div>
           <ul className="space-y-3">
-            {invoices.map((invoice) => (
+            {invoices
+              .filter((invoice) => invoice.issue_date >= listFrom && invoice.issue_date <= listTo)
+              .map((invoice) => {
+                const savedEmail = merchantEmailTemplate({
+                  template: sendTemplate,
+                  invoiceNumber: invoice.invoice_number,
+                  vendorName: invoice.vendor_name,
+                  total: invoice.total,
+                  currency: invoice.currency,
+                  dueDate: invoice.due_date,
+                  paymentTerm: invoice.payment_terms,
+                });
+                const notice = sendNotice[invoice.id];
+                return (
               <li key={invoice.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
-                <p>{invoice.issue_date} due {invoice.due_date} · {invoice.payment_terms} · {invoice.status}</p>
+                <p>{invoice.issue_date} due {invoice.due_date} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
                 {invoice.notes && <p className="mt-1 whitespace-pre-wrap text-slate-600">{invoice.notes}</p>}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/invoices/${invoice.id}/pdf`, `${invoice.invoice_number}.pdf`)}>Download PDF</button>
-                  <button
-                    className="rounded border px-2 py-1"
-                    onClick={async () => {
-                      setMsg("");
-                      const res = await fetch(`/api/mer/invoices/${invoice.id}/send`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ template: sendTemplate }),
-                      });
-                      setMsg(res.ok ? `Sent ${invoice.invoice_number}` : await readError(res));
-                    }}
-                  >
-                    Send with selected template
-                  </button>
                   <button
                     className="rounded border px-2 py-1"
                     onClick={async () => {
@@ -414,8 +492,72 @@ export default function MerchantPage() {
                     Mark {invoice.status === "paid" ? "unpaid" : "paid"}
                   </button>
                 </div>
+                <details className="mt-3 rounded border border-slate-200 p-3">
+                  <summary className="cursor-pointer font-semibold">Invoice preview</summary>
+                  <div className="mt-2 space-y-1">
+                    <p className="font-semibold">{MERCHANT_COMPANY_NAME}</p>
+                    <p>{invoice.invoice_number}</p>
+                    <p>{invoice.vendor_name}</p>
+                    <p>{invoice.vendor_address}</p>
+                    <p>{invoice.vendor_contact_name} · {invoice.vendor_email}</p>
+                    {invoice.items.map((item, index) => (
+                      <p key={`${item.description}-${index}`}>{item.description} × {item.qty} @ {item.unit_cost.toFixed(2)} = {item.amount.toFixed(2)}</p>
+                    ))}
+                    <p className="font-semibold">Total {invoice.currency} {invoice.total.toFixed(2)}</p>
+                    <p className="whitespace-pre-wrap">Notes: {invoice.notes || "—"}</p>
+                  </div>
+                </details>
+                <details className="mt-2 rounded border border-slate-200 p-3">
+                  <summary className="cursor-pointer font-semibold">Email preview</summary>
+                  <div className="mt-2 space-y-2">
+                    <label>
+                      Template
+                      <select className={`ml-2 ${fieldClass}`} value={sendTemplate} onChange={(e) => setSendTemplate(e.target.value as "initial" | "overdue")}>
+                        <option value="initial">Initial invoice — polite</option>
+                        <option value="overdue">Overdue follow-up — serious</option>
+                      </select>
+                    </label>
+                    <p><span className="font-semibold">To:</span> {invoice.vendor_email || "No vendor email"}</p>
+                    <p><span className="font-semibold">Subject:</span> {savedEmail.subject}</p>
+                    <pre className="whitespace-pre-wrap rounded bg-slate-50 p-3">{savedEmail.text}</pre>
+                    <button
+                      className="rounded bg-slate-900 px-3 py-2 text-white"
+                      type="button"
+                      onClick={async () => {
+                        setSendNotice((current) => ({ ...current, [invoice.id]: { ok: true, text: "Sending…" } }));
+                        try {
+                          const res = await fetch(`/api/mer/invoices/${invoice.id}/send`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ template: sendTemplate }),
+                          });
+                          if (!res.ok) {
+                            setSendNotice((current) => ({ ...current, [invoice.id]: { ok: false, text: await readError(res) } }));
+                            return;
+                          }
+                          const body = (await res.json()) as { to?: string };
+                          setSendNotice((current) => ({
+                            ...current,
+                            [invoice.id]: { ok: true, text: `Sent to ${body.to || invoice.vendor_email}` },
+                          }));
+                        } catch (err) {
+                          setSendNotice((current) => ({
+                            ...current,
+                            [invoice.id]: { ok: false, text: err instanceof Error ? err.message : "Send failed" },
+                          }));
+                        }
+                      }}
+                    >
+                      Send this email
+                    </button>
+                    {notice && (
+                      <p className={notice.ok ? "text-emerald-700" : "text-red-600"}>{notice.text}</p>
+                    )}
+                  </div>
+                </details>
               </li>
-            ))}
+                );
+              })}
           </ul>
         </section>
       )}
