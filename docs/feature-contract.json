@@ -2199,8 +2199,23 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "GearUp EduTech Limited"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/mer/page.tsx",
-          "snippet": "GearUp Trading"
+          "snippet": "MERCHANT_COMPANY_NAME"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "Invoice preview"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "bg-white text-slate-900"
         },
         {
           "type": "file_contains",
@@ -2224,8 +2239,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T06:55:16.645Z",
+  "generated_at": "2026-09-25T07:25:39.101Z",
   "commit_inventory": [
+    {
+      "sha": "056bed07956c1759dfe77782f8dc2589f510d644",
+      "date": "2026-09-25",
+      "summary": "fix: show solid merchant inputs and invoice email previews"
+    },
+    {
+      "sha": "9830cdb5be2f45ecab8412a2eb5a2ce4b5e5376d",
+      "date": "2026-09-25",
+      "summary": "chore: include merchant module commits in feature contract"
+    },
     {
       "sha": "2c72a93d526d1ff0c21a445ca93559d8f16077bb",
       "date": "2026-09-25",
@@ -4388,7 +4413,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 432,
+    "total_commits_since_start": 434,
     "total_feature_rows": 62
   }
 }
