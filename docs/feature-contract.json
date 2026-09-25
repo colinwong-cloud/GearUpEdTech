@@ -2220,6 +2220,11 @@
         {
           "type": "file_contains",
           "path": "src/app/mer/page.tsx",
+          "snippet": "Search vendors"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
           "snippet": "Send this email"
         },
         {
@@ -2249,8 +2254,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T08:06:03.814Z",
+  "generated_at": "2026-09-25T10:12:25.525Z",
   "commit_inventory": [
+    {
+      "sha": "9178d066dcea6f4a50518a1fde204493b02ad155",
+      "date": "2026-09-25",
+      "summary": "fix: sort vendors alphabetically and add a collapsed search"
+    },
+    {
+      "sha": "aef3c2dcbda0e64941891f0014d9e1ffb7447a9c",
+      "date": "2026-09-25",
+      "summary": "chore: include invoice send-notice build fix in feature contract"
+    },
     {
       "sha": "18d26c12a060dc737d08aa9b5e89dd449d27c471",
       "date": "2026-09-25",
@@ -4453,7 +4468,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 440,
+    "total_commits_since_start": 442,
     "total_feature_rows": 62
   }
 }
