@@ -2234,7 +2234,17 @@
         },
         {
           "type": "file_exists",
-          "path": "src/lib/server/assets/gearup-stamp.png"
+          "path": "public/mer/gearup-stamp.png"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "BILL TO"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "cs@gearupquiz.com"
         },
         {
           "type": "file_exists",
@@ -2291,8 +2301,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T15:21:49.599Z",
+  "generated_at": "2026-09-25T15:35:55.921Z",
   "commit_inventory": [
+    {
+      "sha": "2751679537163f6bdaa59b8be843ecdf3d641a5a",
+      "date": "2026-09-25",
+      "summary": "fix: match the invoice preview to the PDF and add the email note"
+    },
+    {
+      "sha": "f265f82f8745836b91cdc0ccbad007bde4660981",
+      "date": "2026-09-25",
+      "summary": "chore: include company stamp replacement in feature contract"
+    },
     {
       "sha": "4763a3a047cd371532215588d47e44d318806873",
       "date": "2026-09-25",
@@ -4540,7 +4560,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 449,
+    "total_commits_since_start": 451,
     "total_feature_rows": 62
   }
 }
