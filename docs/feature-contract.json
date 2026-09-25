@@ -2249,8 +2249,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T08:03:14.130Z",
+  "generated_at": "2026-09-25T08:06:03.814Z",
   "commit_inventory": [
+    {
+      "sha": "18d26c12a060dc737d08aa9b5e89dd449d27c471",
+      "date": "2026-09-25",
+      "summary": "fix: read the invoice send error before updating the notice"
+    },
+    {
+      "sha": "56c1fbee0fed6bad0334742fef0bcc80cf4b13e2",
+      "date": "2026-09-25",
+      "summary": "chore: include merchant invoice control commit in feature contract"
+    },
     {
       "sha": "178b996f839f7efe199465e971cab7db5ddbef02",
       "date": "2026-09-25",
@@ -4443,7 +4453,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 438,
+    "total_commits_since_start": 440,
     "total_feature_rows": 62
   }
 }
