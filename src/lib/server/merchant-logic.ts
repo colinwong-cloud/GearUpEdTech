@@ -60,6 +60,12 @@ export function normalizeChequeNumber(method: MerchantSettlementMethod, chequeNu
   return method === "cheque" ? number : "";
 }
 
+export function formatHkDate(iso: string): string {
+  const [year, month, day] = String(iso || "").slice(0, 10).split("-");
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
+}
+
 export function dueDateForTerm(issueDateIso: string, term: MerchantPaymentTerm): string {
   const issue = new Date(`${issueDateIso.slice(0, 10)}T00:00:00.000Z`);
   if (Number.isNaN(issue.getTime())) {

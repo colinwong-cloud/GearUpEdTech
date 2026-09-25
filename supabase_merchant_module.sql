@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.mer_invoices (
   issue_date DATE NOT NULL,
   due_date DATE NOT NULL,
   payment_terms TEXT NOT NULL CHECK (payment_terms IN ('cash_with_order', 'net_30', 'net_60')),
+  vendor_po_number TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid')),
   paid_at TIMESTAMPTZ NULL,

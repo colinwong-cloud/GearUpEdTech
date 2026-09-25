@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       vendor_id?: string;
       issue_date?: string;
       payment_terms?: string;
+      vendor_po_number?: string;
       notes?: string;
       items?: Array<{ description?: string; qty?: number; unit_cost?: number }>;
     };
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
       vendorId: String(body.vendor_id || ""),
       issueDate: String(body.issue_date || ""),
       paymentTerms: String(body.payment_terms || ""),
+      vendorPoNumber: String(body.vendor_po_number || ""),
       notes: String(body.notes || ""),
       items: (body.items || []).map((item) => ({
         description: String(item.description || ""),

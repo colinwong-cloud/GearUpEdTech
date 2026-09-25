@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { merchantPasswordHash, verifyMerchantPassword } from "./merchant-auth";
 import {
   dueDateForTerm,
+  formatHkDate,
   invoiceMatchesPaySearch,
   invoicesToCsv,
   merchantEmailTemplate,
@@ -12,6 +13,7 @@ import {
 
 describe("merchant invoice math", () => {
   it("sets due dates from payment terms and totals the lines", () => {
+    expect(formatHkDate("2026-09-25")).toBe("25/09/2026");
     expect(dueDateForTerm("2026-09-25", "cash_with_order")).toBe("2026-09-25");
     expect(dueDateForTerm("2026-09-25", "net_30")).toBe("2026-10-25");
     expect(dueDateForTerm("2026-09-25", "net_60")).toBe("2026-11-24");

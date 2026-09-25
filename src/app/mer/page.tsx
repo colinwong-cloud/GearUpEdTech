@@ -37,6 +37,7 @@ type Invoice = {
   issue_date: string;
   due_date: string;
   payment_terms: "cash_with_order" | "net_30" | "net_60";
+  vendor_po_number: string;
   notes: string;
   status: "paid" | "unpaid";
   payment_method: "cash" | "cheque" | "bank_transfer" | null;
@@ -106,6 +107,7 @@ export default function MerchantPage() {
     vendor_id: "",
     issue_date: new Date().toISOString().slice(0, 10),
     payment_terms: "net_30",
+    vendor_po_number: "",
     notes: "",
     description: "",
     qty: "1",
@@ -381,13 +383,14 @@ export default function MerchantPage() {
                   vendor_id: invoiceForm.vendor_id,
                   issue_date: invoiceForm.issue_date,
                   payment_terms: invoiceForm.payment_terms,
+                  vendor_po_number: invoiceForm.vendor_po_number,
                   notes: invoiceForm.notes,
                   items: lines,
                 }),
               });
               if (!res.ok) return setMsg(await readError(res));
               setLines([]);
-              setInvoiceForm({ ...invoiceForm, notes: "" });
+              setInvoiceForm({ ...invoiceForm, notes: "", vendor_po_number: "" });
               await loadData();
             }}
           >
@@ -397,6 +400,7 @@ export default function MerchantPage() {
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
               ))}
             </select>
+            <input className={fieldClass} placeholder="Vendor PO number" value={invoiceForm.vendor_po_number} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_po_number: e.target.value })} />
             <div className="grid gap-2 sm:grid-cols-2">
               <input className={fieldClass} type="date" value={invoiceForm.issue_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, issue_date: e.target.value })} />
               <select className={fieldClass} value={invoiceForm.payment_terms} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_terms: e.target.value })}>
@@ -453,6 +457,7 @@ export default function MerchantPage() {
               <p>Vendor: {previewVendor?.name || "Select a vendor"}</p>
               <p>Address: {previewVendor?.address || "—"}</p>
               <p>Contact: {previewVendor ? `${previewVendor.contact_name} · ${previewVendor.contact_phone} · ${previewVendor.contact_email}` : "—"}</p>
+              <p>Vendor PO number: {invoiceForm.vendor_po_number || "—"}</p>
               <p>Issue date: {invoiceForm.issue_date}</p>
               <p>Payment terms: {paymentTermLabel(previewTerm)}</p>
               <p>Due date: {previewDue}</p>
@@ -514,7 +519,7 @@ export default function MerchantPage() {
                 return (
               <li key={invoice.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
-                <p>{invoice.issue_date} due {invoice.due_date} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
+                <p>{invoice.issue_date} due {invoice.due_date} · PO {invoice.vendor_po_number || "—"} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
                 {invoice.status === "paid" && (
                   <p>Paid {invoice.paid_on || "—"} · {invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"}{invoice.payment_method === "cheque" ? ` · Cheque ${invoice.cheque_number || "—"}` : ""}</p>
                 )}
