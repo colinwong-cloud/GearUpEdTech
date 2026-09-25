@@ -17,6 +17,8 @@ describe("merchant invoice math", () => {
     expect(dueDateForTerm("2026-09-25", "cash_with_order")).toBe("2026-09-25");
     expect(dueDateForTerm("2026-09-25", "net_30")).toBe("2026-10-25");
     expect(dueDateForTerm("2026-09-25", "net_60")).toBe("2026-11-24");
+    expect(dueDateForTerm("2026-09-25", "net_90")).toBe("2026-12-24");
+    expect(dueDateForTerm("2026-09-25", "blank")).toBeNull();
     const lines = normalizeLines([
       { description: "Widgets", qty: 2, unitCost: 9.9 },
       { description: "", qty: 1, unitCost: 5 },
@@ -53,6 +55,10 @@ describe("merchant email templates", () => {
     expect(overdue.subject).toContain("Overdue invoice");
     expect(overdue.text).toContain("still unpaid");
     expect(overdue.text).not.toContain("Thank you for the business");
+    const open = merchantEmailTemplate({ ...base, template: "initial", paymentTerm: "blank", dueDate: "" });
+    expect(open.text).toContain("Leave blank");
+    expect(open.text).toContain("No due date is set");
+    expect(open.text).not.toContain("Due date:");
     expect(initial.text).toContain("cs@gearupquiz.com");
     expect(overdue.text).toContain("Please do not reply directly to this message");
     expect(initial.text.trimEnd().endsWith("Thank you!")).toBe(true);

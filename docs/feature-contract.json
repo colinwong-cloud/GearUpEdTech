@@ -2292,6 +2292,20 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "Net 90"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
+          "snippet": "Leave blank"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_merchant_payment_terms.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
           "snippet": "still unpaid"
         },
         {
@@ -2301,8 +2315,28 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T15:35:55.921Z",
+  "generated_at": "2026-09-25T15:53:51.801Z",
   "commit_inventory": [
+    {
+      "sha": "c9ee8dcb41135983e23441d09bb38328ca15b62d",
+      "date": "2026-09-25",
+      "summary": "fix: keep a blank due date as an empty string on invoices"
+    },
+    {
+      "sha": "0612297e3f88047961f5dbca077eaeb5edf74533",
+      "date": "2026-09-25",
+      "summary": "chore: include Net 90 payment terms in feature contract"
+    },
+    {
+      "sha": "6f2bdcc561337130402b5740724e6b29a06d8da8",
+      "date": "2026-09-25",
+      "summary": "fix: add Net 90 and a blank payment term with no due date"
+    },
+    {
+      "sha": "35a3655a22fb0821a4f0ed94464cbbfc03869e06",
+      "date": "2026-09-25",
+      "summary": "chore: include invoice preview and email note in feature contract"
+    },
     {
       "sha": "2751679537163f6bdaa59b8be843ecdf3d641a5a",
       "date": "2026-09-25",
@@ -4560,7 +4594,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 451,
+    "total_commits_since_start": 455,
     "total_feature_rows": 62
   }
 }
