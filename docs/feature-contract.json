@@ -2315,8 +2315,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T15:50:24.050Z",
+  "generated_at": "2026-09-25T15:53:51.801Z",
   "commit_inventory": [
+    {
+      "sha": "c9ee8dcb41135983e23441d09bb38328ca15b62d",
+      "date": "2026-09-25",
+      "summary": "fix: keep a blank due date as an empty string on invoices"
+    },
+    {
+      "sha": "0612297e3f88047961f5dbca077eaeb5edf74533",
+      "date": "2026-09-25",
+      "summary": "chore: include Net 90 payment terms in feature contract"
+    },
     {
       "sha": "6f2bdcc561337130402b5740724e6b29a06d8da8",
       "date": "2026-09-25",
@@ -4584,7 +4594,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 453,
+    "total_commits_since_start": 455,
     "total_feature_rows": 62
   }
 }
