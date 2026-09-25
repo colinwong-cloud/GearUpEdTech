@@ -2225,6 +2225,24 @@
         {
           "type": "file_contains",
           "path": "src/app/mer/page.tsx",
+          "snippet": "Vendor PO number"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-documents.ts",
+          "snippet": "P.O.#"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/assets/gearup-stamp.png"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_merchant_invoice_po.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/mer/page.tsx",
           "snippet": "Cheque number"
         },
         {
@@ -2273,8 +2291,23 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T10:31:20.106Z",
+  "generated_at": "2026-09-25T10:43:19.495Z",
   "commit_inventory": [
+    {
+      "sha": "732ec33b368cf23c052f5bce5062168106dc251f",
+      "date": "2026-09-25",
+      "summary": "fix: include the company stamp in the invoice PDF deploy"
+    },
+    {
+      "sha": "cdf3226f44ccca207d500930d9ff6f6b95f4cab8",
+      "date": "2026-09-25",
+      "summary": "fix: lay out Hong Kong invoices with a vendor PO and company stamp"
+    },
+    {
+      "sha": "210c9e5a48cd865ba0bf61199927e5886af1f530",
+      "date": "2026-09-25",
+      "summary": "chore: include cash payment commit in feature contract"
+    },
     {
       "sha": "234b45ce5b89834e53dc7a8a674701e88150cb35",
       "date": "2026-09-25",
@@ -4497,7 +4530,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 444,
+    "total_commits_since_start": 447,
     "total_feature_rows": 62
   }
 }
