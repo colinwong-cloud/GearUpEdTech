@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const pdf = invoicePdf(invoice);
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
-      from: "GearUp Trading <noreply@updates.hkedutech.com>",
+      from: "GearUp EduTech Limited <noreply@updates.hkedutech.com>",
       to: invoice.vendor_email,
       subject: message.subject,
       text: message.text,

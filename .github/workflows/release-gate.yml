@@ -41,5 +41,7 @@ jobs:
         run: npm run lint
 
       - name: Build
-        run: npm run build
+        # Turbopack fails the Noto Sans TC lookup with "queries have exactly one entry".
+        # Webpack completes the same production build.
+        run: npx next build --webpack
 

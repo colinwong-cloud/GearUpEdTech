@@ -1224,7 +1224,10 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["0855569"],
       checks: [
         { type: "file_exists", path: "src/app/mer/page.tsx" },
-        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "GearUp Trading" },
+        { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "GearUp EduTech Limited" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "MERCHANT_COMPANY_NAME" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Invoice preview" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "bg-white text-slate-900" },
         { type: "file_contains", path: "src/lib/server/merchant-auth.ts", snippet: "scrypt$" },
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "Cash with order" },
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "still unpaid" },

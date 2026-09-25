@@ -1,6 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  MERCHANT_COMPANY_NAME,
+  dueDateForTerm,
+  isMerchantPaymentTerm,
+  lineAmount,
+  merchantEmailTemplate,
+  paymentTermLabel,
+} from "@/lib/server/merchant-logic";
+
+const fieldClass = "rounded border border-slate-300 bg-white text-slate-900 p-2";
+const cardClass = "rounded border border-slate-200 bg-white p-4 text-slate-900";
 
 type Vendor = {
   id: string;
@@ -148,22 +159,42 @@ export default function MerchantPage() {
     setAuthed(false);
   }
 
+  const previewVendor = vendors.find((vendor) => vendor.id === invoiceForm.vendor_id) || null;
+  const previewTerm = isMerchantPaymentTerm(invoiceForm.payment_terms) ? invoiceForm.payment_terms : "net_30";
+  const previewDue = useMemo(() => {
+    try {
+      return dueDateForTerm(invoiceForm.issue_date, previewTerm);
+    } catch {
+      return invoiceForm.issue_date;
+    }
+  }, [invoiceForm.issue_date, previewTerm]);
+  const previewTotal = lines.reduce((sum, line) => sum + lineAmount(line.qty, line.unit_cost), 0);
+  const emailPreview = merchantEmailTemplate({
+    template: sendTemplate,
+    invoiceNumber: "Draft",
+    vendorName: previewVendor?.name || "Vendor",
+    total: Math.round(previewTotal * 100) / 100,
+    currency: "HKD",
+    dueDate: previewDue,
+    paymentTerm: previewTerm,
+  });
+
   if (!ready) return <main className="p-8 text-sm text-slate-500">Loading merchant module…</main>;
 
   if (!authed) {
     return (
       <main className="mx-auto max-w-md p-8">
-        <h1 className="text-2xl font-semibold text-slate-900">GearUp Trading</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{MERCHANT_COMPANY_NAME}</h1>
         <p className="mt-2 text-sm text-slate-600">Merchant sign-in. There is no public registration.</p>
         <form
-          className="mt-6 space-y-3"
+          className="mt-6 space-y-3 rounded border border-slate-200 bg-white p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void login();
           }}
         >
-          <input className="w-full rounded border p-2" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <input className="w-full rounded border p-2" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className={`w-full ${fieldClass}`} placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input className={`w-full ${fieldClass}`} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <button className="rounded bg-slate-900 px-4 py-2 text-white" type="submit">Sign in</button>
         </form>
         {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
@@ -175,7 +206,7 @@ export default function MerchantPage() {
     <main className="mx-auto max-w-5xl space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">GearUp Trading</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">{MERCHANT_COMPANY_NAME}</h1>
           <p className="text-sm text-slate-500">Vendors, invoices, cash flow, and monthly statements.</p>
         </div>
         <button className="text-sm underline" onClick={() => void logout()}>Sign out</button>
@@ -203,7 +234,7 @@ export default function MerchantPage() {
       {tab === "vendors" && (
         <section className="space-y-4">
           <form
-            className="grid gap-2 rounded border p-4 sm:grid-cols-2"
+            className={`grid gap-2 sm:grid-cols-2 ${cardClass}`}
             onSubmit={async (event) => {
               event.preventDefault();
               setMsg("");
@@ -217,16 +248,16 @@ export default function MerchantPage() {
               await loadData();
             }}
           >
-            <input className="rounded border p-2" placeholder="Vendor name" required value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} />
-            <input className="rounded border p-2" placeholder="Vendor address" required value={vendorForm.address} onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })} />
-            <input className="rounded border p-2" placeholder="Contact person" required value={vendorForm.contact_name} onChange={(e) => setVendorForm({ ...vendorForm, contact_name: e.target.value })} />
-            <input className="rounded border p-2" placeholder="Contact phone" required value={vendorForm.contact_phone} onChange={(e) => setVendorForm({ ...vendorForm, contact_phone: e.target.value })} />
-            <input className="rounded border p-2 sm:col-span-2" placeholder="Contact email" type="email" required value={vendorForm.contact_email} onChange={(e) => setVendorForm({ ...vendorForm, contact_email: e.target.value })} />
+            <input className={fieldClass} placeholder="Vendor name" required value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} />
+            <input className={fieldClass} placeholder="Vendor address" required value={vendorForm.address} onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })} />
+            <input className={fieldClass} placeholder="Contact person" required value={vendorForm.contact_name} onChange={(e) => setVendorForm({ ...vendorForm, contact_name: e.target.value })} />
+            <input className={fieldClass} placeholder="Contact phone" required value={vendorForm.contact_phone} onChange={(e) => setVendorForm({ ...vendorForm, contact_phone: e.target.value })} />
+            <input className={`${fieldClass} sm:col-span-2`} placeholder="Contact email" type="email" required value={vendorForm.contact_email} onChange={(e) => setVendorForm({ ...vendorForm, contact_email: e.target.value })} />
             <button className="rounded bg-slate-900 px-4 py-2 text-white sm:col-span-2" type="submit">Create vendor</button>
           </form>
           <ul className="space-y-2">
             {vendors.map((vendor) => (
-              <li key={vendor.id} className="rounded border p-3 text-sm">
+              <li key={vendor.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{vendor.name}</p>
                 <p>{vendor.address}</p>
                 <p>{vendor.contact_name} · {vendor.contact_phone} · {vendor.contact_email}</p>
@@ -239,7 +270,7 @@ export default function MerchantPage() {
       {tab === "invoices" && (
         <section className="space-y-4">
           <form
-            className="space-y-2 rounded border p-4"
+            className={`space-y-2 ${cardClass}`}
             onSubmit={async (event) => {
               event.preventDefault();
               setMsg("");
@@ -260,24 +291,24 @@ export default function MerchantPage() {
               await loadData();
             }}
           >
-            <select className="w-full rounded border p-2" required value={invoiceForm.vendor_id} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_id: e.target.value })}>
+            <select className={`w-full ${fieldClass}`} required value={invoiceForm.vendor_id} onChange={(e) => setInvoiceForm({ ...invoiceForm, vendor_id: e.target.value })}>
               <option value="">Select vendor</option>
               {vendors.map((vendor) => (
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
               ))}
             </select>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className="rounded border p-2" type="date" value={invoiceForm.issue_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, issue_date: e.target.value })} />
-              <select className="rounded border p-2" value={invoiceForm.payment_terms} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_terms: e.target.value })}>
+              <input className={fieldClass} type="date" value={invoiceForm.issue_date} onChange={(e) => setInvoiceForm({ ...invoiceForm, issue_date: e.target.value })} />
+              <select className={fieldClass} value={invoiceForm.payment_terms} onChange={(e) => setInvoiceForm({ ...invoiceForm, payment_terms: e.target.value })}>
                 {TERMS.map((term) => (
                   <option key={term.value} value={term.value}>{term.label}</option>
                 ))}
               </select>
             </div>
             <div className="grid gap-2 sm:grid-cols-4">
-              <input className="rounded border p-2 sm:col-span-2" placeholder="Item purchased" value={invoiceForm.description} onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })} />
-              <input className="rounded border p-2" placeholder="Qty" value={invoiceForm.qty} onChange={(e) => setInvoiceForm({ ...invoiceForm, qty: e.target.value })} />
-              <input className="rounded border p-2" placeholder="Unit cost" value={invoiceForm.unit_cost} onChange={(e) => setInvoiceForm({ ...invoiceForm, unit_cost: e.target.value })} />
+              <input className={`${fieldClass} sm:col-span-2`} placeholder="Item purchased" value={invoiceForm.description} onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })} />
+              <input className={fieldClass} placeholder="Qty" value={invoiceForm.qty} onChange={(e) => setInvoiceForm({ ...invoiceForm, qty: e.target.value })} />
+              <input className={fieldClass} placeholder="Unit cost" value={invoiceForm.unit_cost} onChange={(e) => setInvoiceForm({ ...invoiceForm, unit_cost: e.target.value })} />
             </div>
             <button
               className="rounded border px-3 py-1 text-sm"
@@ -295,19 +326,61 @@ export default function MerchantPage() {
                 <li key={`${line.description}-${index}`}>{line.description} × {line.qty} @ {line.unit_cost}</li>
               ))}
             </ul>
-            <textarea className="w-full rounded border p-2" rows={3} placeholder="Notes printed at the bottom of the invoice" value={invoiceForm.notes} onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })} />
+            <textarea className={`w-full ${fieldClass}`} rows={3} placeholder="Notes printed at the bottom of the invoice" value={invoiceForm.notes} onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })} />
             <button className="rounded bg-slate-900 px-4 py-2 text-white" type="submit">Generate invoice</button>
           </form>
-          <label className="block text-sm">
+          <label className="block rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
             Email template
-            <select className="ml-2 rounded border p-1" value={sendTemplate} onChange={(e) => setSendTemplate(e.target.value as "initial" | "overdue")}>
+            <select className={`ml-2 ${fieldClass}`} value={sendTemplate} onChange={(e) => setSendTemplate(e.target.value as "initial" | "overdue")}>
               <option value="initial">Initial invoice — polite</option>
               <option value="overdue">Overdue follow-up — serious</option>
             </select>
           </label>
+          <details open className={cardClass}>
+            <summary className="cursor-pointer font-semibold">Invoice preview</summary>
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="text-lg font-semibold">{MERCHANT_COMPANY_NAME}</p>
+              <p>Invoice draft</p>
+              <p>Vendor: {previewVendor?.name || "Select a vendor"}</p>
+              <p>Address: {previewVendor?.address || "—"}</p>
+              <p>Contact: {previewVendor ? `${previewVendor.contact_name} · ${previewVendor.contact_phone} · ${previewVendor.contact_email}` : "—"}</p>
+              <p>Issue date: {invoiceForm.issue_date}</p>
+              <p>Payment terms: {paymentTermLabel(previewTerm)}</p>
+              <p>Due date: {previewDue}</p>
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b">
+                    <th className="py-1">Item</th>
+                    <th>Qty</th>
+                    <th>Unit cost</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line, index) => (
+                    <tr key={`${line.description}-${index}`} className="border-b">
+                      <td className="py-1">{line.description}</td>
+                      <td>{line.qty}</td>
+                      <td>{Number(line.unit_cost).toFixed(2)}</td>
+                      <td>{lineAmount(line.qty, line.unit_cost).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="font-semibold">Total HKD {previewTotal.toFixed(2)}</p>
+              <p className="whitespace-pre-wrap">Notes: {invoiceForm.notes || "—"}</p>
+            </div>
+          </details>
+          <details open className={cardClass}>
+            <summary className="cursor-pointer font-semibold">Email preview</summary>
+            <div className="mt-3 space-y-2 text-sm">
+              <p><span className="font-semibold">Subject:</span> {emailPreview.subject}</p>
+              <pre className="whitespace-pre-wrap rounded bg-slate-50 p-3">{emailPreview.text}</pre>
+            </div>
+          </details>
           <ul className="space-y-3">
             {invoices.map((invoice) => (
-              <li key={invoice.id} className="rounded border p-3 text-sm">
+              <li key={invoice.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
                 <p>{invoice.issue_date} due {invoice.due_date} · {invoice.payment_terms} · {invoice.status}</p>
                 {invoice.notes && <p className="mt-1 whitespace-pre-wrap text-slate-600">{invoice.notes}</p>}
@@ -350,14 +423,14 @@ export default function MerchantPage() {
       {tab === "cash" && (
         <section className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-4">
-            <select className="rounded border p-2" value={cashVendor} onChange={(e) => setCashVendor(e.target.value)}>
+            <select className={fieldClass} value={cashVendor} onChange={(e) => setCashVendor(e.target.value)}>
               <option value="">Vendor</option>
               {vendors.map((vendor) => (
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
               ))}
             </select>
-            <input className="rounded border p-2" type="date" value={cashFrom} onChange={(e) => setCashFrom(e.target.value)} />
-            <input className="rounded border p-2" type="date" value={cashTo} onChange={(e) => setCashTo(e.target.value)} />
+            <input className={fieldClass} type="date" value={cashFrom} onChange={(e) => setCashFrom(e.target.value)} />
+            <input className={fieldClass} type="date" value={cashTo} onChange={(e) => setCashTo(e.target.value)} />
             <button
               className="rounded bg-slate-900 px-3 py-2 text-white"
               onClick={async () => {
@@ -371,7 +444,7 @@ export default function MerchantPage() {
             </button>
           </div>
           {cash && (
-            <div className="rounded border p-4 text-sm">
+            <div className={`${cardClass} text-sm`}>
               <p className="font-semibold">{cash.vendor_name}</p>
               <p>Paid HKD {cash.paid.toFixed(2)}</p>
               <p>Unpaid HKD {cash.unpaid.toFixed(2)}</p>
@@ -387,7 +460,7 @@ export default function MerchantPage() {
       {tab === "report" && (
         <section className="space-y-3">
           <div className="flex gap-2">
-            <input className="rounded border p-2" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <input className={fieldClass} type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
             <button
               className="rounded bg-slate-900 px-3 py-2 text-white"
               onClick={async () => {
@@ -401,7 +474,7 @@ export default function MerchantPage() {
             </button>
             <button className="rounded border px-3 py-2" onClick={() => void download(`/api/mer/reports?month=${month}&format=pdf`, `statement-${month}.pdf`)}>Download PDF</button>
           </div>
-          <table className="w-full text-left text-sm">
+          <table className="w-full rounded border border-slate-200 bg-white p-3 text-left text-sm text-slate-900">
             <thead>
               <tr className="border-b">
                 <th className="py-2">Vendor</th>
