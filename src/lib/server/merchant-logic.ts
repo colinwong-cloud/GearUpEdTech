@@ -1,4 +1,6 @@
 export const MERCHANT_COMPANY_NAME = "GearUp EduTech Limited";
+export const MERCHANT_EMAIL_AUTOMATED_NOTE =
+  "Note: This is an automated email. Please do not reply directly to this message. If you have any questions or need assistance, feel free to reach out to our customer support team at cs@gearupquiz.com. Thank you!";
 export const MERCHANT_PAYMENT_TERMS = ["cash_with_order", "net_30", "net_60"] as const;
 export type MerchantPaymentTerm = (typeof MERCHANT_PAYMENT_TERMS)[number];
 export type MerchantInvoiceStatus = "unpaid" | "paid";
@@ -141,6 +143,8 @@ export function merchantEmailTemplate(input: {
         "If payment has already been sent, send the proof of payment so we can close this item.",
         "",
         MERCHANT_COMPANY_NAME,
+        "",
+        MERCHANT_EMAIL_AUTOMATED_NOTE,
       ].join("\n"),
     };
   }
@@ -155,6 +159,8 @@ export function merchantEmailTemplate(input: {
       "",
       "Kind regards,",
       MERCHANT_COMPANY_NAME,
+      "",
+      MERCHANT_EMAIL_AUTOMATED_NOTE,
     ].join("\n"),
   };
 }
