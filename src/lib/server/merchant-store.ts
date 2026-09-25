@@ -40,6 +40,7 @@ export type MerchantInvoice = {
   issue_date: string;
   due_date: string;
   payment_terms: MerchantPaymentTerm;
+  vendor_po_number: string;
   notes: string;
   status: MerchantInvoiceStatus;
   paid_at: string | null;
@@ -127,6 +128,7 @@ export async function createInvoice(input: {
   vendorId: string;
   issueDate: string;
   paymentTerms: string;
+  vendorPoNumber: string;
   notes: string;
   items: MerchantLineInput[];
 }): Promise<MerchantInvoice> {
@@ -145,6 +147,7 @@ export async function createInvoice(input: {
       issue_date: issueDate,
       due_date: dueDate,
       payment_terms: input.paymentTerms,
+      vendor_po_number: input.vendorPoNumber.trim(),
       notes: input.notes.trim(),
       status: "unpaid",
       currency: "HKD",
@@ -175,6 +178,7 @@ type InvoiceRow = {
   issue_date: string;
   due_date: string;
   payment_terms: MerchantPaymentTerm;
+  vendor_po_number: string | null;
   notes: string;
   status: MerchantInvoiceStatus;
   paid_at: string | null;
@@ -217,6 +221,7 @@ function mapInvoice(row: InvoiceRow): MerchantInvoice {
     issue_date: dateOnly(row.issue_date),
     due_date: dateOnly(row.due_date),
     payment_terms: row.payment_terms,
+    vendor_po_number: row.vendor_po_number || "",
     notes: row.notes || "",
     status: row.status,
     paid_at: row.paid_at,
@@ -230,7 +235,7 @@ function mapInvoice(row: InvoiceRow): MerchantInvoice {
 }
 
 const INVOICE_SELECT =
-  "id,invoice_number,vendor_id,issue_date,due_date,payment_terms,notes,status,paid_at,payment_method,cheque_number,paid_on,currency,mer_vendors(name,address,contact_name,contact_email),mer_invoice_items(description,qty,unit_cost,amount,sort_order)";
+  "id,invoice_number,vendor_id,issue_date,due_date,payment_terms,vendor_po_number,notes,status,paid_at,payment_method,cheque_number,paid_on,currency,mer_vendors(name,address,contact_name,contact_email),mer_invoice_items(description,qty,unit_cost,amount,sort_order)";
 
 export async function listInvoices(): Promise<MerchantInvoice[]> {
   const supabase = adminClient();
