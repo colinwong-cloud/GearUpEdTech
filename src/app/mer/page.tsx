@@ -55,7 +55,7 @@ function InvoiceSheet(props: {
             <dt className="font-bold text-[#387399]">P.O.#</dt>
             <dd className="text-right">{props.poNumber || "—"}</dd>
             <dt className="font-bold text-[#387399]">DUE DATE</dt>
-            <dd className="text-right">{formatHkDate(props.dueDate)}</dd>
+            <dd className="text-right">{props.dueDate ? formatHkDate(props.dueDate) : "—"}</dd>
           </dl>
         </div>
         <table className="w-full text-left">
@@ -114,7 +114,7 @@ type Invoice = {
   vendor_email: string;
   issue_date: string;
   due_date: string;
-  payment_terms: "cash_with_order" | "net_30" | "net_60";
+  payment_terms: "cash_with_order" | "net_30" | "net_60" | "net_90" | "blank";
   vendor_po_number: string;
   notes: string;
   status: "paid" | "unpaid";
@@ -145,6 +145,8 @@ const TERMS = [
   { value: "cash_with_order", label: "Cash with order" },
   { value: "net_30", label: "Net 30" },
   { value: "net_60", label: "Net 60" },
+  { value: "net_90", label: "Net 90" },
+  { value: "blank", label: "Leave blank" },
 ] as const;
 
 async function readError(res: Response): Promise<string> {
@@ -284,7 +286,7 @@ export default function MerchantPage() {
   const previewTerm = isMerchantPaymentTerm(invoiceForm.payment_terms) ? invoiceForm.payment_terms : "net_30";
   const previewDue = useMemo(() => {
     try {
-      return dueDateForTerm(invoiceForm.issue_date, previewTerm);
+      return dueDateForTerm(invoiceForm.issue_date, previewTerm) || "";
     } catch {
       return invoiceForm.issue_date;
     }
@@ -584,7 +586,7 @@ export default function MerchantPage() {
                 return (
               <li key={invoice.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
-                <p>{invoice.issue_date} due {invoice.due_date} · PO {invoice.vendor_po_number || "—"} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
+                <p>{invoice.issue_date}{invoice.due_date ? ` due ${invoice.due_date}` : " · no due date"} · PO {invoice.vendor_po_number || "—"} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
                 {invoice.status === "paid" && (
                   <p>Paid {invoice.paid_on || "—"} · {invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"}{invoice.payment_method === "cheque" ? ` · Cheque ${invoice.cheque_number || "—"}` : ""}</p>
                 )}

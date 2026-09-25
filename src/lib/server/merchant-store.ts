@@ -38,7 +38,7 @@ export type MerchantInvoice = {
   vendor_contact_name: string;
   vendor_email: string;
   issue_date: string;
-  due_date: string;
+  due_date: string | null;
   payment_terms: MerchantPaymentTerm;
   vendor_po_number: string;
   notes: string;
@@ -176,7 +176,7 @@ type InvoiceRow = {
   invoice_number: string;
   vendor_id: string;
   issue_date: string;
-  due_date: string;
+  due_date: string | null;
   payment_terms: MerchantPaymentTerm;
   vendor_po_number: string | null;
   notes: string;
@@ -219,7 +219,7 @@ function mapInvoice(row: InvoiceRow): MerchantInvoice {
     vendor_contact_name: row.mer_vendors?.contact_name || "",
     vendor_email: row.mer_vendors?.contact_email || "",
     issue_date: dateOnly(row.issue_date),
-    due_date: dateOnly(row.due_date),
+    due_date: row.due_date ? dateOnly(row.due_date) : "",
     payment_terms: row.payment_terms,
     vendor_po_number: row.vendor_po_number || "",
     notes: row.notes || "",

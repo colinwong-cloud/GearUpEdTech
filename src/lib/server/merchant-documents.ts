@@ -37,7 +37,7 @@ export function invoicePdf(invoice: MerchantInvoice): Buffer {
     { text: "P.O.#", x: 360, y: 688, size: 10, bold: true, color: TEAL },
     { text: invoice.vendor_po_number || "-", x: 540, y: 688, size: 10, color: INK, align: "right" },
     { text: "DUE DATE", x: 360, y: 670, size: 10, bold: true, color: TEAL },
-    { text: formatHkDate(invoice.due_date), x: 540, y: 670, size: 10, color: INK, align: "right" },
+    { text: invoice.due_date ? formatHkDate(invoice.due_date) : "-", x: 540, y: 670, size: 10, color: INK, align: "right" },
     { text: "QTY", x: 56, y: 596, size: 10, bold: true, color: TEAL },
     { text: "DESCRIPTION", x: 110, y: 596, size: 10, bold: true, color: TEAL },
     { text: "UNIT PRICE", x: 400, y: 596, size: 10, bold: true, color: TEAL },

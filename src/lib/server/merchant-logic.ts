@@ -1,7 +1,7 @@
 export const MERCHANT_COMPANY_NAME = "GearUp EduTech Limited";
 export const MERCHANT_EMAIL_AUTOMATED_NOTE =
   "Note: This is an automated email. Please do not reply directly to this message. If you have any questions or need assistance, feel free to reach out to our customer support team at cs@gearupquiz.com. Thank you!";
-export const MERCHANT_PAYMENT_TERMS = ["cash_with_order", "net_30", "net_60"] as const;
+export const MERCHANT_PAYMENT_TERMS = ["cash_with_order", "net_30", "net_60", "net_90", "blank"] as const;
 export type MerchantPaymentTerm = (typeof MERCHANT_PAYMENT_TERMS)[number];
 export type MerchantInvoiceStatus = "unpaid" | "paid";
 export type MerchantEmailTemplate = "initial" | "overdue";
@@ -18,10 +18,11 @@ export type MerchantMoneyLine = MerchantLineInput & {
   amount: number;
 };
 
-const TERM_DAYS: Record<MerchantPaymentTerm, number> = {
+const TERM_DAYS: Record<Exclude<MerchantPaymentTerm, "blank">, number> = {
   cash_with_order: 0,
   net_30: 30,
   net_60: 60,
+  net_90: 90,
 };
 
 export function isMerchantPaymentTerm(value: string): value is MerchantPaymentTerm {
@@ -31,7 +32,9 @@ export function isMerchantPaymentTerm(value: string): value is MerchantPaymentTe
 export function paymentTermLabel(term: MerchantPaymentTerm): string {
   if (term === "cash_with_order") return "Cash with order";
   if (term === "net_30") return "Net 30";
-  return "Net 60";
+  if (term === "net_60") return "Net 60";
+  if (term === "net_90") return "Net 90";
+  return "Leave blank";
 }
 
 export function isMerchantSettlementMethod(value: string): value is MerchantSettlementMethod {
@@ -68,7 +71,8 @@ export function formatHkDate(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export function dueDateForTerm(issueDateIso: string, term: MerchantPaymentTerm): string {
+export function dueDateForTerm(issueDateIso: string, term: MerchantPaymentTerm): string | null {
+  if (term === "blank") return null;
   const issue = new Date(`${issueDateIso.slice(0, 10)}T00:00:00.000Z`);
   if (Number.isNaN(issue.getTime())) {
     throw new Error("Invalid invoice date");
@@ -132,13 +136,16 @@ export function merchantEmailTemplate(input: {
 }): { subject: string; text: string } {
   const money = `${input.currency} ${input.total.toFixed(2)}`;
   const term = paymentTermLabel(input.paymentTerm);
+  const dueDate = String(input.dueDate || "").slice(0, 10);
   if (input.template === "overdue") {
     return {
       subject: `Overdue invoice ${input.invoiceNumber} — payment required`,
       text: [
         `Dear ${input.vendorName},`,
         "",
-        `Invoice ${input.invoiceNumber} for ${money} was due on ${input.dueDate} (${term}).`,
+        dueDate
+          ? `Invoice ${input.invoiceNumber} for ${money} was due on ${dueDate} (${term}).`
+          : `Invoice ${input.invoiceNumber} for ${money} has no due date (${term}) and is still unpaid.`,
         "Our records show this invoice is still unpaid. Please arrange payment immediately and reply with the payment reference.",
         "If payment has already been sent, send the proof of payment so we can close this item.",
         "",
@@ -154,7 +161,7 @@ export function merchantEmailTemplate(input: {
       `Dear ${input.vendorName},`,
       "",
       `Thank you for the business. Please find invoice ${input.invoiceNumber} for ${money}.`,
-      `Payment terms: ${term}. Due date: ${input.dueDate}.`,
+      dueDate ? `Payment terms: ${term}. Due date: ${dueDate}.` : `Payment terms: ${term}. No due date is set.`,
       "The invoice is attached. Please reply if you need any detail changed.",
       "",
       "Kind regards,",
