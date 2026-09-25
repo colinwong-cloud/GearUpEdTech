@@ -1,4 +1,4 @@
-import { MERCHANT_COMPANY_NAME, paymentTermLabel, type MerchantInvoiceStatus } from "@/lib/server/merchant-logic";
+import { MERCHANT_COMPANY_NAME, paymentTermLabel, type MerchantCashRow, type MerchantInvoiceStatus } from "@/lib/server/merchant-logic";
 import { buildTextPdf } from "@/lib/server/merchant-pdf";
 import type { MerchantInvoice } from "@/lib/server/merchant-store";
 
@@ -34,7 +34,7 @@ export function cashflowPdf(input: {
   to: string;
   paid: number;
   unpaid: number;
-  rows: Array<{ invoiceNumber: string; issueDate: string; status: string; total: number; currency: string }>;
+  rows: MerchantCashRow[];
 }): Buffer {
   const lines = [
     `${MERCHANT_COMPANY_NAME} cash flow`,
@@ -43,8 +43,10 @@ export function cashflowPdf(input: {
     `Paid: HKD ${input.paid.toFixed(2)}`,
     `Unpaid: HKD ${input.unpaid.toFixed(2)}`,
     "",
+    "Issue date | Invoice | Status | Currency | Total | Payment method | Cheque number | Paid date",
     ...input.rows.map(
-      (row) => `${row.issueDate} ${row.invoiceNumber} ${row.status} ${row.currency} ${row.total.toFixed(2)}`
+      (row) =>
+        `${row.issueDate} | ${row.invoiceNumber} | ${row.status} | ${row.currency} | ${row.total.toFixed(2)} | ${row.paymentMethod || "-"} | ${row.chequeNumber || "-"} | ${row.paidOn || "-"}`
     ),
   ];
   return buildTextPdf("Cash flow statement", lines);

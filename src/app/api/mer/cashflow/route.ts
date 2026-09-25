@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cashflowPdf, filterInvoicesForPeriod } from "@/lib/server/merchant-documents";
 import { merchantError, requireMerchant } from "@/lib/server/merchant-http";
-import { invoicesToCsv, summarizeInvoiceAmounts } from "@/lib/server/merchant-logic";
+import { invoicesToCsv, settlementMethodLabel, summarizeInvoiceAmounts, type MerchantCashRow } from "@/lib/server/merchant-logic";
 import { listInvoices } from "@/lib/server/merchant-store";
 
 export const dynamic = "force-dynamic";
@@ -21,18 +21,20 @@ export async function GET(req: NextRequest) {
     const rows = filterInvoicesForPeriod(invoices, vendorId, from, to);
     const summary = summarizeInvoiceAmounts(rows);
     const vendorName = rows[0]?.vendor_name || invoices.find((row) => row.vendor_id === vendorId)?.vendor_name || "";
+    const cashRows: MerchantCashRow[] = rows.map((row) => ({
+      invoiceNumber: row.invoice_number,
+      vendorName: row.vendor_name,
+      issueDate: row.issue_date,
+      dueDate: row.due_date,
+      status: row.status,
+      total: row.total,
+      currency: row.currency,
+      paymentMethod: row.payment_method ? settlementMethodLabel(row.payment_method) : "",
+      chequeNumber: row.cheque_number || "",
+      paidOn: row.paid_on || "",
+    }));
     if (format === "csv") {
-      const csv = invoicesToCsv(
-        rows.map((row) => ({
-          invoiceNumber: row.invoice_number,
-          vendorName: row.vendor_name,
-          issueDate: row.issue_date,
-          dueDate: row.due_date,
-          status: row.status,
-          total: row.total,
-          currency: row.currency,
-        }))
-      );
+      const csv = invoicesToCsv(cashRows);
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
@@ -47,13 +49,7 @@ export async function GET(req: NextRequest) {
         to,
         paid: summary.paid,
         unpaid: summary.unpaid,
-        rows: rows.map((row) => ({
-          invoiceNumber: row.invoice_number,
-          issueDate: row.issue_date,
-          status: row.status,
-          total: row.total,
-          currency: row.currency,
-        })),
+        rows: cashRows,
       });
       return new NextResponse(new Uint8Array(pdf), {
         headers: {

@@ -5,9 +5,11 @@ import {
   MERCHANT_COMPANY_NAME,
   dueDateForTerm,
   isMerchantPaymentTerm,
+  invoiceMatchesPaySearch,
   lineAmount,
   merchantEmailTemplate,
   paymentTermLabel,
+  settlementMethodLabel,
 } from "@/lib/server/merchant-logic";
 
 const fieldClass = "rounded border border-slate-300 bg-white text-slate-900 p-2";
@@ -37,6 +39,9 @@ type Invoice = {
   payment_terms: "cash_with_order" | "net_30" | "net_60";
   notes: string;
   status: "paid" | "unpaid";
+  payment_method: "cash" | "cheque" | "bank_transfer" | null;
+  cheque_number: string;
+  paid_on: string | null;
   currency: string;
   total: number;
   items: InvoiceItem[];
@@ -123,6 +128,10 @@ export default function MerchantPage() {
   const [cashFrom, setCashFrom] = useState(new Date().toISOString().slice(0, 8) + "01");
   const [cashTo, setCashTo] = useState(new Date().toISOString().slice(0, 10));
   const [cash, setCash] = useState<Cashflow | null>(null);
+  const [payQuery, setPayQuery] = useState("");
+  const [payMethod, setPayMethod] = useState<Record<string, "cash" | "cheque" | "bank_transfer">>({});
+  const [payCheque, setPayCheque] = useState<Record<string, string>>({});
+  const [payDate, setPayDate] = useState<Record<string, string>>({});
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [statement, setStatement] = useState<StatementRow[]>([]);
 
@@ -173,6 +182,11 @@ export default function MerchantPage() {
     await fetch("/api/mer/session", { method: "DELETE" });
     setAuthed(false);
   }
+
+  const payMatches = useMemo(
+    () => invoices.filter((invoice) => invoiceMatchesPaySearch(invoice.invoice_number, invoice.vendor_name, payQuery)),
+    [invoices, payQuery]
+  );
 
   const sortedVendors = useMemo(
     () => [...vendors].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
@@ -257,7 +271,7 @@ export default function MerchantPage() {
         ))}
       </nav>
       {msg && (
-        <p className={`inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm ${msg.includes("updated") ? "text-emerald-700" : "text-red-600"}`}>
+        <p className={`inline-block rounded border border-slate-300 bg-white px-3 py-2 text-sm ${msg.includes("updated") || msg.includes("marked paid") ? "text-emerald-700" : "text-red-600"}`}>
           {msg}
         </p>
       )}
@@ -501,22 +515,29 @@ export default function MerchantPage() {
               <li key={invoice.id} className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-900">
                 <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
                 <p>{invoice.issue_date} due {invoice.due_date} · {paymentTermLabel(invoice.payment_terms)} · {invoice.status}</p>
+                {invoice.status === "paid" && (
+                  <p>Paid {invoice.paid_on || "—"} · {invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"}{invoice.payment_method === "cheque" ? ` · Cheque ${invoice.cheque_number || "—"}` : ""}</p>
+                )}
                 {invoice.notes && <p className="mt-1 whitespace-pre-wrap text-slate-600">{invoice.notes}</p>}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/invoices/${invoice.id}/pdf`, `${invoice.invoice_number}.pdf`)}>Download PDF</button>
-                  <button
-                    className="rounded border px-2 py-1"
-                    onClick={async () => {
-                      await fetch("/api/mer/invoices", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: invoice.id, status: invoice.status === "paid" ? "unpaid" : "paid" }),
-                      });
-                      await loadData();
-                    }}
-                  >
-                    Mark {invoice.status === "paid" ? "unpaid" : "paid"}
-                  </button>
+                  {invoice.status === "paid" && (
+                    <button
+                      className="rounded border px-2 py-1"
+                      onClick={async () => {
+                        const res = await fetch("/api/mer/invoices", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: invoice.id, status: "unpaid" }),
+                        });
+                        if (!res.ok) return setMsg(await readError(res));
+                        setMsg("Invoice updated");
+                        await loadData();
+                      }}
+                    >
+                      Mark unpaid
+                    </button>
+                  )}
                 </div>
                 <details className="mt-3 rounded border border-slate-200 p-3">
                   <summary className="cursor-pointer font-semibold">Invoice preview</summary>
@@ -591,6 +612,109 @@ export default function MerchantPage() {
 
       {tab === "cash" && (
         <section className="space-y-3">
+          <div className={`${cardClass} space-y-3`}>
+            <label className="block text-sm">
+              Search vendor or invoice number
+              <input
+                className={`mt-1 block w-full ${fieldClass}`}
+                value={payQuery}
+                onChange={(e) => setPayQuery(e.target.value)}
+                placeholder="Substring of vendor or invoice number"
+              />
+            </label>
+            {payQuery.trim() && payMatches.length === 0 && <p className="text-sm">No matching invoices.</p>}
+            <ul className="space-y-3">
+              {payMatches.map((invoice) => {
+                const method = payMethod[invoice.id] || "cash";
+                const paidOn = payDate[invoice.id] || new Date().toISOString().slice(0, 10);
+                return (
+                  <li key={invoice.id} className="rounded border border-slate-200 p-3 text-sm">
+                    <p className="font-semibold">{invoice.invoice_number} · {invoice.vendor_name} · {invoice.currency} {invoice.total.toFixed(2)}</p>
+                    <p>{invoice.status}{invoice.status === "paid" ? ` · ${invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"} · ${invoice.paid_on || "—"}` : ""}{invoice.payment_method === "cheque" ? ` · Cheque ${invoice.cheque_number}` : ""}</p>
+                    {invoice.status === "unpaid" ? (
+                      <div className="mt-2 flex flex-wrap items-end gap-2">
+                        <label>
+                          Payment method
+                          <select
+                            className={`mt-1 block ${fieldClass}`}
+                            value={method}
+                            onChange={(e) => setPayMethod((current) => ({ ...current, [invoice.id]: e.target.value as "cash" | "cheque" | "bank_transfer" }))}
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="bank_transfer">Bank transfer</option>
+                          </select>
+                        </label>
+                        {method === "cheque" && (
+                          <label>
+                            Cheque number
+                            <input
+                              className={`mt-1 block ${fieldClass}`}
+                              value={payCheque[invoice.id] || ""}
+                              onChange={(e) => setPayCheque((current) => ({ ...current, [invoice.id]: e.target.value }))}
+                            />
+                          </label>
+                        )}
+                        <label>
+                          Paid date
+                          <input
+                            className={`mt-1 block ${fieldClass}`}
+                            type="date"
+                            value={paidOn}
+                            onChange={(e) => setPayDate((current) => ({ ...current, [invoice.id]: e.target.value }))}
+                          />
+                        </label>
+                        <button
+                          className="rounded bg-slate-900 px-3 py-2 text-white"
+                          type="button"
+                          onClick={async () => {
+                            setMsg("");
+                            const res = await fetch("/api/mer/invoices", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                id: invoice.id,
+                                status: "paid",
+                                payment_method: method,
+                                cheque_number: payCheque[invoice.id] || "",
+                                paid_on: paidOn,
+                              }),
+                            });
+                            if (!res.ok) return setMsg(await readError(res));
+                            setMsg("Invoice marked paid");
+                            await loadData();
+                            if (cashVendor && cashFrom && cashTo) {
+                              const summary = await fetch(`/api/mer/cashflow?vendor_id=${cashVendor}&from=${cashFrom}&to=${cashTo}`);
+                              if (summary.ok) setCash((await summary.json()) as Cashflow);
+                            }
+                          }}
+                        >
+                          Mark paid
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="mt-2 rounded border px-2 py-1"
+                        type="button"
+                        onClick={async () => {
+                          const res = await fetch("/api/mer/invoices", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: invoice.id, status: "unpaid" }),
+                          });
+                          if (!res.ok) return setMsg(await readError(res));
+                          setMsg("Invoice updated");
+                          await loadData();
+                        }}
+                      >
+                        Mark unpaid
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <div className="grid gap-2 sm:grid-cols-4">
             <select className={fieldClass} value={cashVendor} onChange={(e) => setCashVendor(e.target.value)}>
               <option value="">Vendor</option>
@@ -617,6 +741,16 @@ export default function MerchantPage() {
               <p className="font-semibold">{cash.vendor_name}</p>
               <p>Paid HKD {cash.paid.toFixed(2)}</p>
               <p>Unpaid HKD {cash.unpaid.toFixed(2)}</p>
+              <ul className="mt-3 space-y-2">
+                {cash.invoices.map((invoice) => (
+                  <li key={invoice.id}>
+                    {invoice.invoice_number} · {invoice.vendor_name} · {invoice.status} · {invoice.currency} {invoice.total.toFixed(2)}
+                    {" · "}{invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"}
+                    {" · Cheque "}{invoice.cheque_number || "—"}
+                    {" · Paid "}{invoice.paid_on || "—"}
+                  </li>
+                ))}
+              </ul>
               <div className="mt-2 flex gap-2">
                 <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/cashflow?vendor_id=${cashVendor}&from=${cashFrom}&to=${cashTo}&format=csv`, "cashflow.csv")}>CSV</button>
                 <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/cashflow?vendor_id=${cashVendor}&from=${cashFrom}&to=${cashTo}&format=pdf`, "cashflow.pdf")}>PDF</button>
