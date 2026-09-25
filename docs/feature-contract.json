@@ -2291,8 +2291,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T10:43:19.495Z",
+  "generated_at": "2026-09-25T15:21:49.599Z",
   "commit_inventory": [
+    {
+      "sha": "4763a3a047cd371532215588d47e44d318806873",
+      "date": "2026-09-25",
+      "summary": "fix: replace the company stamp on merchant invoices"
+    },
+    {
+      "sha": "d182d4a2de577e172750ebd2ee55428007f44178",
+      "date": "2026-09-25",
+      "summary": "chore: include Hong Kong invoice format commits in feature contract"
+    },
     {
       "sha": "732ec33b368cf23c052f5bce5062168106dc251f",
       "date": "2026-09-25",
@@ -4530,7 +4540,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 447,
+    "total_commits_since_start": 449,
     "total_feature_rows": 62
   }
 }
