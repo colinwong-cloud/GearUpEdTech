@@ -1221,7 +1221,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "merchant",
       priority: "critical",
       title: "Merchant trading module for vendors, invoices, cash flow, and statements",
-      evidence_commits: ["b9ed496"],
+      evidence_commits: ["0855569"],
       checks: [
         { type: "file_exists", path: "src/app/mer/page.tsx" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "GearUp Trading" },
