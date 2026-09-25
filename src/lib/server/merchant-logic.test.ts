@@ -44,7 +44,7 @@ describe("merchant email templates", () => {
   it("uses a polite first-send tone and a serious overdue tone", () => {
     const initial = merchantEmailTemplate({ ...base, template: "initial" });
     const overdue = merchantEmailTemplate({ ...base, template: "overdue" });
-    expect(initial.subject).toContain("Invoice GU-M-202609-0001");
+    expect(initial.subject).toContain("GearUp EduTech Limited");
     expect(initial.text).toContain("Thank you for the business");
     expect(overdue.subject).toContain("Overdue invoice");
     expect(overdue.text).toContain("still unpaid");

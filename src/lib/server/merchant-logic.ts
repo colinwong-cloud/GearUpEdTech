@@ -1,3 +1,4 @@
+export const MERCHANT_COMPANY_NAME = "GearUp EduTech Limited";
 export const MERCHANT_PAYMENT_TERMS = ["cash_with_order", "net_30", "net_60"] as const;
 export type MerchantPaymentTerm = (typeof MERCHANT_PAYMENT_TERMS)[number];
 export type MerchantInvoiceStatus = "unpaid" | "paid";
@@ -103,12 +104,12 @@ export function merchantEmailTemplate(input: {
         "Our records show this invoice is still unpaid. Please arrange payment immediately and reply with the payment reference.",
         "If payment has already been sent, send the proof of payment so we can close this item.",
         "",
-        "GearUp Trading",
+        MERCHANT_COMPANY_NAME,
       ].join("\n"),
     };
   }
   return {
-    subject: `Invoice ${input.invoiceNumber} from GearUp Trading`,
+    subject: `Invoice ${input.invoiceNumber} from ${MERCHANT_COMPANY_NAME}`,
     text: [
       `Dear ${input.vendorName},`,
       "",
@@ -117,7 +118,7 @@ export function merchantEmailTemplate(input: {
       "The invoice is attached. Please reply if you need any detail changed.",
       "",
       "Kind regards,",
-      "GearUp Trading",
+      MERCHANT_COMPANY_NAME,
     ].join("\n"),
   };
 }

@@ -1,10 +1,10 @@
-import { paymentTermLabel, type MerchantInvoiceStatus } from "@/lib/server/merchant-logic";
+import { MERCHANT_COMPANY_NAME, paymentTermLabel, type MerchantInvoiceStatus } from "@/lib/server/merchant-logic";
 import { buildTextPdf } from "@/lib/server/merchant-pdf";
 import type { MerchantInvoice } from "@/lib/server/merchant-store";
 
 export function invoicePdf(invoice: MerchantInvoice): Buffer {
   const lines = [
-    "GearUp Trading",
+    MERCHANT_COMPANY_NAME,
     `Invoice ${invoice.invoice_number}`,
     `Vendor: ${invoice.vendor_name}`,
     `Address: ${invoice.vendor_address}`,
@@ -37,7 +37,7 @@ export function cashflowPdf(input: {
   rows: Array<{ invoiceNumber: string; issueDate: string; status: string; total: number; currency: string }>;
 }): Buffer {
   const lines = [
-    "GearUp Trading cash flow",
+    `${MERCHANT_COMPANY_NAME} cash flow`,
     `Vendor: ${input.vendorName}`,
     `Period: ${input.from} to ${input.to}`,
     `Paid: HKD ${input.paid.toFixed(2)}`,
@@ -60,7 +60,7 @@ export function monthlyStatementPdf(input: {
   }>;
 }): Buffer {
   const lines = [
-    "GearUp Trading",
+    MERCHANT_COMPANY_NAME,
     `Monthly invoice statement ${input.month}`,
     "Prepared for internal audit. Amounts are HKD.",
     "",
