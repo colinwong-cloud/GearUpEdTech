@@ -2335,8 +2335,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-26T10:23:01.794Z",
+  "generated_at": "2026-09-26T10:26:35.423Z",
   "commit_inventory": [
+    {
+      "sha": "d41d7c4bb9396790b7ab0c3d594849741832dde3",
+      "date": "2026-09-26",
+      "summary": "fix: expect the main-app tutor shell in the regression guard"
+    },
+    {
+      "sha": "75338da559392f1daa249729a8257ec60dadf90a",
+      "date": "2026-09-26",
+      "summary": "chore: include tutor portal visual alignment in feature contract"
+    },
     {
       "sha": "666fdf31346b8ae93aa1a01599497573c83ea9f2",
       "date": "2026-09-26",
@@ -4664,7 +4674,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 465,
+    "total_commits_since_start": 467,
     "total_feature_rows": 62
   }
 }
