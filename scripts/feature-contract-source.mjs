@@ -737,7 +737,7 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/tutor/page.tsx",
           snippet:
-            'className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"',
+            'className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"',
         },
       ],
     },
@@ -749,7 +749,7 @@ export const FEATURE_CONTRACT_BASE = {
       title: "Tutor modern UI, light-blue actions, trending charts, and detailed wrong-answer explanation",
       evidence_commits: ["88f36ec", "28ab01d", "9285534", "8e9ac65"],
       checks: [
-        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "bg-slate-950" },
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "bg-white/60 backdrop-blur-sm" },
         {
           type: "file_contains",
           path: "src/app/tutor/page.tsx",
