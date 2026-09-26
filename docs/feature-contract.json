@@ -2320,8 +2320,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-26T05:37:17.734Z",
+  "generated_at": "2026-09-26T05:39:27.912Z",
   "commit_inventory": [
+    {
+      "sha": "db098359cbf16146f46e9882d414fcf34a227a5b",
+      "date": "2026-09-26",
+      "summary": "fix: retry the release-gate build when the font fetch fails"
+    },
+    {
+      "sha": "e800342f74f66cf1af46b7c1dc0246dc3bf523be",
+      "date": "2026-09-26",
+      "summary": "chore: include cash-flow summary clarity in feature contract"
+    },
     {
       "sha": "d509db729bb8cd71152086731f5cb21b769424cb",
       "date": "2026-09-26",
@@ -4609,7 +4619,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 457,
+    "total_commits_since_start": 459,
     "total_feature_rows": 62
   }
 }
