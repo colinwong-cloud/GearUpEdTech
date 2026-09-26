@@ -1240,6 +1240,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "bank_transfer" },
         { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "cashflowInvoiceSummary" },
         { type: "file_contains", path: "src/lib/server/merchant-documents.ts", snippet: "paidInPeriod" },
+        { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Issue date" },
+        { type: "file_contains", path: "src/lib/server/merchant-logic.ts", snippet: "sortInvoicesByIssueDate" },
         { type: "file_exists", path: "supabase_merchant_cash_payment.sql" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "Send this email" },
         { type: "file_contains", path: "src/app/mer/page.tsx", snippet: "bg-white text-slate-900" },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cashflowPdf, filterInvoicesForPeriod } from "@/lib/server/merchant-documents";
 import { merchantError, requireMerchant } from "@/lib/server/merchant-http";
-import { invoicesToCsv, settlementMethodLabel, summarizeInvoiceAmounts, type MerchantCashRow } from "@/lib/server/merchant-logic";
+import { invoicesToCsv, settlementMethodLabel, sortInvoicesByIssueDate, summarizeInvoiceAmounts, type MerchantCashRow } from "@/lib/server/merchant-logic";
 import { listInvoices } from "@/lib/server/merchant-store";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Vendor and period are required" }, { status: 400 });
     }
     const invoices = await listInvoices();
-    const rows = filterInvoicesForPeriod(invoices, vendorId, from, to);
+    const rows = sortInvoicesByIssueDate(filterInvoicesForPeriod(invoices, vendorId, from, to));
     const summary = summarizeInvoiceAmounts(rows);
     const vendorName = rows[0]?.vendor_name || invoices.find((row) => row.vendor_id === vendorId)?.vendor_name || "";
     const cashRows: MerchantCashRow[] = rows.map((row) => ({

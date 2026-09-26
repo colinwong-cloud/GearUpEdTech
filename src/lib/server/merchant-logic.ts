@@ -185,6 +185,13 @@ export type MerchantCashRow = {
   paidOn: string;
 };
 
+export function sortInvoicesByIssueDate<T extends { issue_date: string; invoice_number: string }>(invoices: T[]): T[] {
+  return [...invoices].sort((left, right) => {
+    const byDate = left.issue_date.localeCompare(right.issue_date);
+    return byDate === 0 ? left.invoice_number.localeCompare(right.invoice_number) : byDate;
+  });
+}
+
 export function cashflowInvoiceSummary(row: MerchantCashRow): string {
   const status = row.status === "paid" ? "Paid" : "Unpaid";
   const line = `${row.issueDate} · ${row.invoiceNumber} · ${status} · ${row.currency} ${row.total.toFixed(2)}`;
