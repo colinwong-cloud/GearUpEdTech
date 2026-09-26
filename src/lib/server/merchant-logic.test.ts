@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { merchantPasswordHash, verifyMerchantPassword } from "./merchant-auth";
 import {
   cashflowInvoiceSummary,
+  sortInvoicesByIssueDate,
   dueDateForTerm,
   formatHkDate,
   invoiceMatchesPaySearch,
@@ -98,6 +99,23 @@ describe("merchant csv", () => {
     expect(csv).toContain("Cheque");
     expect(csv).toContain("CHQ-19");
     expect(csv).toContain("2026-09-25");
+  });
+});
+
+describe("merchant cashflow issue date order", () => {
+  it("sorts invoices by issue date, then invoice number", () => {
+    const sorted = sortInvoicesByIssueDate([
+      { issue_date: "2026-09-30", invoice_number: "GU-M-202609-0004" },
+      { issue_date: "2026-09-01", invoice_number: "GU-M-202609-0002" },
+      { issue_date: "2026-09-01", invoice_number: "GU-M-202609-0001" },
+      { issue_date: "2026-09-22", invoice_number: "GU-M-202609-0006" },
+    ]);
+    expect(sorted.map((row) => row.invoice_number)).toEqual([
+      "GU-M-202609-0001",
+      "GU-M-202609-0002",
+      "GU-M-202609-0006",
+      "GU-M-202609-0004",
+    ]);
   });
 });
 

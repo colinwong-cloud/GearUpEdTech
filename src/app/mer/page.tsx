@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MERCHANT_COMPANY_NAME,
-  cashflowInvoiceSummary,
   dueDateForTerm,
   formatHkDate,
   isMerchantPaymentTerm,
@@ -822,24 +821,37 @@ export default function MerchantPage() {
               <p className="font-semibold">{cash.vendor_name}</p>
               <p>Paid HKD {cash.paid.toFixed(2)}</p>
               <p>Unpaid HKD {cash.unpaid.toFixed(2)}</p>
-              <ul className="mt-3 space-y-2">
-                {cash.invoices.map((invoice) => (
-                  <li key={invoice.id}>
-                    {cashflowInvoiceSummary({
-                      invoiceNumber: invoice.invoice_number,
-                      vendorName: invoice.vendor_name,
-                      issueDate: invoice.issue_date,
-                      dueDate: invoice.due_date,
-                      status: invoice.status,
-                      total: invoice.total,
-                      currency: invoice.currency,
-                      paymentMethod: invoice.status === "paid" && invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "",
-                      chequeNumber: invoice.status === "paid" && invoice.payment_method === "cheque" ? invoice.cheque_number : "",
-                      paidOn: invoice.status === "paid" ? invoice.paid_on || "" : "",
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-300">
+                      <th className="py-2 pr-3 font-semibold">Issue date</th>
+                      <th className="py-2 pr-3 font-semibold">Invoice</th>
+                      <th className="py-2 pr-3 font-semibold">Status</th>
+                      <th className="py-2 pr-3 font-semibold">Amount</th>
+                      <th className="py-2 font-semibold">Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cash.invoices.map((invoice) => {
+                      const paid = invoice.status === "paid";
+                      const method = paid && invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "";
+                      const cheque = paid && invoice.payment_method === "cheque" && invoice.cheque_number ? ` ${invoice.cheque_number}` : "";
+                      const paidOn = paid && invoice.paid_on ? `paid ${invoice.paid_on}` : "";
+                      const payment = [method ? `${method}${cheque}` : "", paidOn].filter(Boolean).join(" · ");
+                      return (
+                        <tr key={invoice.id} className="border-b border-slate-200">
+                          <td className="py-2 pr-3">{invoice.issue_date}</td>
+                          <td className="py-2 pr-3">{invoice.invoice_number}</td>
+                          <td className="py-2 pr-3">{paid ? "Paid" : "Unpaid"}</td>
+                          <td className="py-2 pr-3">{invoice.currency} {invoice.total.toFixed(2)}</td>
+                          <td className="py-2">{payment}</td>
+                        </tr>
+                      );
                     })}
-                  </li>
-                ))}
-              </ul>
+                  </tbody>
+                </table>
+              </div>
               <div className="mt-2 flex gap-2">
                 <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/cashflow?vendor_id=${cashVendor}&from=${cashFrom}&to=${cashTo}&format=csv`, "cashflow.csv")}>CSV</button>
                 <button className="rounded border px-2 py-1" onClick={() => void download(`/api/mer/cashflow?vendor_id=${cashVendor}&from=${cashFrom}&to=${cashTo}&format=pdf`, "cashflow.pdf")}>PDF</button>
