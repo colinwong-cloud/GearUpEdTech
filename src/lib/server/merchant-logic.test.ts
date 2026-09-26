@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { merchantPasswordHash, verifyMerchantPassword } from "./merchant-auth";
 import {
+  cashflowInvoiceSummary,
   dueDateForTerm,
   formatHkDate,
   invoiceMatchesPaySearch,
@@ -97,6 +98,38 @@ describe("merchant csv", () => {
     expect(csv).toContain("Cheque");
     expect(csv).toContain("CHQ-19");
     expect(csv).toContain("2026-09-25");
+  });
+});
+
+describe("merchant cashflow summary lines", () => {
+  const base = {
+    invoiceNumber: "GU-M-202609-0006",
+    vendorName: "GU Testing Unit",
+    issueDate: "2026-09-01",
+    dueDate: "2026-10-31",
+    currency: "HKD",
+    total: 154,
+    paymentMethod: "",
+    chequeNumber: "",
+    paidOn: "",
+  };
+
+  it("lists an unpaid invoice without payment method or paid date", () => {
+    const line = cashflowInvoiceSummary({ ...base, status: "unpaid" });
+    expect(line).toBe("2026-09-01 · GU-M-202609-0006 · Unpaid · HKD 154.00");
+    expect(line).not.toContain("Cheque");
+    expect(line).not.toContain("Paid");
+  });
+
+  it("adds cheque number and paid date only when the invoice is paid", () => {
+    const line = cashflowInvoiceSummary({
+      ...base,
+      status: "paid",
+      paymentMethod: "Cheque",
+      chequeNumber: "88421",
+      paidOn: "2026-09-26",
+    });
+    expect(line).toContain("Paid · HKD 154.00 · Cheque 88421 · paid 2026-09-26");
   });
 });
 
