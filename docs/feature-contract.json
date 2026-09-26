@@ -2271,6 +2271,11 @@
           "snippet": "cashflowInvoiceSummary"
         },
         {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-documents.ts",
+          "snippet": "paidInPeriod"
+        },
+        {
           "type": "file_exists",
           "path": "supabase_merchant_cash_payment.sql"
         },
@@ -2320,8 +2325,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-26T05:39:27.912Z",
+  "generated_at": "2026-09-26T06:01:50.754Z",
   "commit_inventory": [
+    {
+      "sha": "2e12633c667de30db7d85c948aaabcb7d29ddb5c",
+      "date": "2026-09-26",
+      "summary": "fix: include invoices paid during the cash-flow period"
+    },
+    {
+      "sha": "09b2d108f23e1fe5fd974628cc767cca7b3ac5d2",
+      "date": "2026-09-26",
+      "summary": "chore: include release-gate font retry in feature contract"
+    },
     {
       "sha": "db098359cbf16146f46e9882d414fcf34a227a5b",
       "date": "2026-09-26",
@@ -4619,7 +4634,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 459,
+    "total_commits_since_start": 461,
     "total_feature_rows": 62
   }
 }
