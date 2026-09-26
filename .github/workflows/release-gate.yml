@@ -42,6 +42,18 @@ jobs:
 
       - name: Build
         # Turbopack fails the Noto Sans TC lookup with "queries have exactly one entry".
-        # Webpack completes the same production build.
-        run: npx next build --webpack
+        # Webpack completes the same production build. The Google font CSS fetch
+        # sometimes returns a body the loader cannot parse, so retry that build.
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if npx next build --webpack; then
+              exit 0
+            fi
+            if [ "$attempt" = "3" ]; then
+              exit 1
+            fi
+            echo "Webpack build failed on attempt ${attempt}; retrying"
+            sleep 15
+          done
 
