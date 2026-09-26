@@ -109,16 +109,20 @@ export function monthlyStatementPdf(input: {
   return buildTextPdf(`Statement ${input.month}`, lines);
 }
 
-export function filterInvoicesForPeriod<T extends { vendor_id: string; issue_date: string; status: MerchantInvoiceStatus; total: number }>(
-  invoices: T[],
-  vendorId: string,
-  from: string,
-  to: string
-): T[] {
-  return invoices.filter(
-    (invoice) =>
-      invoice.vendor_id === vendorId &&
-      invoice.issue_date >= from &&
-      invoice.issue_date <= to
-  );
+export function filterInvoicesForPeriod<
+  T extends {
+    vendor_id: string;
+    issue_date: string;
+    status: MerchantInvoiceStatus;
+    total: number;
+    paid_on?: string | null;
+  },
+>(invoices: T[], vendorId: string, from: string, to: string): T[] {
+  return invoices.filter((invoice) => {
+    if (invoice.vendor_id !== vendorId) return false;
+    const issued = invoice.issue_date >= from && invoice.issue_date <= to;
+    const paidOn = String(invoice.paid_on || "").slice(0, 10);
+    const paidInPeriod = invoice.status === "paid" && paidOn >= from && paidOn <= to;
+    return issued || paidInPeriod;
+  });
 }

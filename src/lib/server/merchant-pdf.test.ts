@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoicePdf } from "./merchant-documents";
+import { filterInvoicesForPeriod, invoicePdf } from "./merchant-documents";
 import type { MerchantInvoice } from "./merchant-store";
 
 describe("merchant invoice pdf", () => {
@@ -34,5 +34,18 @@ describe("merchant invoice pdf", () => {
     expect(pdf).toContain("25/09/2026");
     expect(pdf).toContain("/Subtype /Image");
     expect(pdf).toContain("HKD 19.80");
+  });
+});
+
+describe("merchant cashflow period", () => {
+  const rows = [
+    { vendor_id: "v1", issue_date: "2026-09-30", status: "paid" as const, total: 88, paid_on: "2026-09-26" },
+    { vendor_id: "v1", issue_date: "2026-09-30", status: "unpaid" as const, total: 10, paid_on: null },
+    { vendor_id: "v1", issue_date: "2026-09-01", status: "unpaid" as const, total: 20, paid_on: null },
+  ];
+
+  it("includes an invoice paid inside the period even when it was issued later", () => {
+    const matched = filterInvoicesForPeriod(rows, "v1", "2026-09-01", "2026-09-26");
+    expect(matched.map((row) => row.total)).toEqual([88, 20]);
   });
 });
