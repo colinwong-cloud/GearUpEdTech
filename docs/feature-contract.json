@@ -2266,6 +2266,11 @@
           "snippet": "bank_transfer"
         },
         {
+          "type": "file_contains",
+          "path": "src/lib/server/merchant-logic.ts",
+          "snippet": "cashflowInvoiceSummary"
+        },
+        {
           "type": "file_exists",
           "path": "supabase_merchant_cash_payment.sql"
         },
@@ -2315,8 +2320,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-25T15:53:51.801Z",
+  "generated_at": "2026-09-26T05:37:17.734Z",
   "commit_inventory": [
+    {
+      "sha": "d509db729bb8cd71152086731f5cb21b769424cb",
+      "date": "2026-09-26",
+      "summary": "fix: show payment details only on paid cash-flow invoices"
+    },
+    {
+      "sha": "701691818f0d82c122124872f36672eb8842fdce",
+      "date": "2026-09-25",
+      "summary": "chore: include blank due date type fix in feature contract"
+    },
     {
       "sha": "c9ee8dcb41135983e23441d09bb38328ca15b62d",
       "date": "2026-09-25",
@@ -4594,7 +4609,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 455,
+    "total_commits_since_start": 457,
     "total_feature_rows": 62
   }
 }
