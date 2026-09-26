@@ -29,9 +29,9 @@ export async function GET(req: NextRequest) {
       status: row.status,
       total: row.total,
       currency: row.currency,
-      paymentMethod: row.payment_method ? settlementMethodLabel(row.payment_method) : "",
-      chequeNumber: row.cheque_number || "",
-      paidOn: row.paid_on || "",
+      paymentMethod: row.status === "paid" && row.payment_method ? settlementMethodLabel(row.payment_method) : "",
+      chequeNumber: row.status === "paid" && row.payment_method === "cheque" ? row.cheque_number || "" : "",
+      paidOn: row.status === "paid" ? row.paid_on || "" : "",
     }));
     if (format === "csv") {
       const csv = invoicesToCsv(cashRows);

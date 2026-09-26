@@ -185,6 +185,16 @@ export type MerchantCashRow = {
   paidOn: string;
 };
 
+export function cashflowInvoiceSummary(row: MerchantCashRow): string {
+  const status = row.status === "paid" ? "Paid" : "Unpaid";
+  const line = `${row.issueDate} · ${row.invoiceNumber} · ${status} · ${row.currency} ${row.total.toFixed(2)}`;
+  if (row.status !== "paid") return line;
+  const method =
+    row.paymentMethod === "Cheque" && row.chequeNumber ? `Cheque ${row.chequeNumber}` : row.paymentMethod;
+  const paidOn = row.paidOn ? `paid ${row.paidOn}` : "";
+  return [line, method, paidOn].filter(Boolean).join(" · ");
+}
+
 export function invoicesToCsv(rows: MerchantCashRow[]): string {
   const header = [
     "invoice_number",

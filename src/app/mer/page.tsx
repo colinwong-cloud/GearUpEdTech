@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MERCHANT_COMPANY_NAME,
+  cashflowInvoiceSummary,
   dueDateForTerm,
   formatHkDate,
   isMerchantPaymentTerm,
@@ -824,10 +825,18 @@ export default function MerchantPage() {
               <ul className="mt-3 space-y-2">
                 {cash.invoices.map((invoice) => (
                   <li key={invoice.id}>
-                    {invoice.invoice_number} · {invoice.vendor_name} · {invoice.status} · {invoice.currency} {invoice.total.toFixed(2)}
-                    {" · "}{invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "—"}
-                    {" · Cheque "}{invoice.cheque_number || "—"}
-                    {" · Paid "}{invoice.paid_on || "—"}
+                    {cashflowInvoiceSummary({
+                      invoiceNumber: invoice.invoice_number,
+                      vendorName: invoice.vendor_name,
+                      issueDate: invoice.issue_date,
+                      dueDate: invoice.due_date,
+                      status: invoice.status,
+                      total: invoice.total,
+                      currency: invoice.currency,
+                      paymentMethod: invoice.status === "paid" && invoice.payment_method ? settlementMethodLabel(invoice.payment_method) : "",
+                      chequeNumber: invoice.status === "paid" && invoice.payment_method === "cheque" ? invoice.cheque_number : "",
+                      paidOn: invoice.status === "paid" ? invoice.paid_on || "" : "",
+                    })}
                   </li>
                 ))}
               </ul>
