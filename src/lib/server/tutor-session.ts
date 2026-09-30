@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { tutorPasswordError } from "@/lib/tutor-registration";
 
 const TUTOR_SESSION_COOKIE = "tutor_session";
 const TUTOR_SESSION_TTL_SECONDS = 60 * 60 * 8;
@@ -220,6 +221,39 @@ async function ensureTutorAccountForCode({
   }
   if (!insertRes.data) throw new Error("Unable to create tutor portal account.");
   return insertRes.data;
+}
+
+export async function provisionTutorPortalAccount({
+  codeId,
+  code,
+  password,
+}: {
+  codeId: string;
+  code: string;
+  password: string;
+}): Promise<{ accountId: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured.");
+  const passwordError = tutorPasswordError(password);
+  if (passwordError) throw new Error(passwordError);
+  if (!/^\d{6}$/.test(code)) throw new Error("教師編號必須為 6 位數字");
+
+  const insertRes = await admin
+    .from("tutor_portal_accounts")
+    .insert({
+      code_id: codeId,
+      username_code: code,
+      password_hash: hashPassword(password),
+      must_change_password: true,
+      failed_attempts: 0,
+      is_active: true,
+      locked_until: null,
+    })
+    .select("id")
+    .maybeSingle();
+  if (insertRes.error) throw insertRes.error;
+  if (!insertRes.data) throw new Error("Unable to create tutor portal account.");
+  return { accountId: String(insertRes.data.id) };
 }
 
 async function incrementFailedAttempts({

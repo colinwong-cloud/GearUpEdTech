@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type TutorSessionPayload = {
@@ -55,6 +56,18 @@ export default function TutorPortalPage() {
   const [loginCode, setLoginCode] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [authView, setAuthView] = useState<"login" | "register" | "registered">("login");
+  const [regName, setRegName] = useState("");
+  const [regMobile, setRegMobile] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [regLoading, setRegLoading] = useState(false);
+  const [issuedLogin, setIssuedLogin] = useState<{
+    code: string;
+    temporaryPassword: string;
+    emailSent: boolean;
+  } | null>(null);
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -207,6 +220,51 @@ export default function TutorPortalPage() {
     }
   };
 
+  const handleRegister = async () => {
+    if (!regName.trim() || !/^\d{8}$/.test(regMobile) || !regEmail.trim()) {
+      setMsg("請填寫姓名、8 位數字手機及電郵。");
+      return;
+    }
+    if (!turnstileSiteKey || !turnstileToken) {
+      setMsg("請完成人機驗證。");
+      return;
+    }
+    setRegLoading(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/tutor/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tutor_name: regName.trim(),
+          tutor_mobile: regMobile,
+          tutor_email: regEmail.trim(),
+          turnstile_token: turnstileToken,
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; code?: string; temporary_password?: string; email_sent?: boolean }
+        | null;
+      if (!res.ok || !payload?.ok || !payload.code || !payload.temporary_password) {
+        throw new Error(payload?.error || "登記失敗。");
+      }
+      setIssuedLogin({
+        code: payload.code,
+        temporaryPassword: payload.temporary_password,
+        emailSent: Boolean(payload.email_sent),
+      });
+      setAuthView("registered");
+      setRegName("");
+      setRegMobile("");
+      setRegEmail("");
+      setTurnstileToken(null);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "登記失敗。");
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch("/api/tutor/session", { method: "DELETE" }).catch(() => null);
     setSession({ authenticated: false });
@@ -230,6 +288,131 @@ export default function TutorPortalPage() {
     );
   }
 
+  if (!isAuthenticated && authView === "registered" && issuedLogin) {
+    return (
+      <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
+            <h1 className="mt-2 text-2xl font-bold text-gray-800">登記完成</h1>
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              請抄下教師編號及首次密碼。首次登入後必須更新密碼。
+            </p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg space-y-3">
+            <p className="text-sm text-gray-700">
+              教師編號：<span className="font-mono font-semibold">{issuedLogin.code}</span>
+            </p>
+            <p className="text-sm text-gray-700">
+              首次密碼：<span className="font-mono font-semibold">{issuedLogin.temporaryPassword}</span>
+            </p>
+            <p className="text-sm text-gray-600">
+              {issuedLogin.emailSent
+                ? "我們亦已把資料寄到你的電郵。"
+                : "電郵暫時未能寄出，請先抄下以上資料。"}
+            </p>
+            <p className="text-sm text-gray-600">學生註冊時請填寫此教師編號。</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginCode(issuedLogin.code);
+              setIssuedLogin(null);
+              setAuthView("login");
+              setMsg("");
+            }}
+            className={primaryButtonClass}
+          >
+            前往登入
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && authView === "register") {
+    return (
+      <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
+            <h1 className="mt-2 text-2xl font-bold text-gray-800">導師自行登記</h1>
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              填寫姓名、手機及電郵。系統會分配教師編號及首次密碼。
+            </p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+            {msg && (
+              <p className={`mb-4 rounded-xl border px-3 py-2 text-sm ${messageClass}`}>{msg}</p>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-gray-700">導師姓名</label>
+                <input
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-gray-700">手機（8位數字）</label>
+                <input
+                  value={regMobile}
+                  onChange={(e) => setRegMobile(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  maxLength={8}
+                  inputMode="numeric"
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-gray-700">電郵</label>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              {turnstileSiteKey ? (
+                <div className="flex justify-center">
+                  <Turnstile
+                    siteKey={turnstileSiteKey}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={() => setTurnstileToken(null)}
+                    options={{ theme: "light", size: "normal" }}
+                  />
+                </div>
+              ) : (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  驗證服務未配置。
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleRegister}
+              disabled={regLoading}
+              className={primaryButtonClass}
+            >
+              {regLoading ? "登記中..." : "登記"}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthView("login");
+              setMsg("");
+            }}
+            className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+          >
+            返回登入
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
@@ -238,7 +421,7 @@ export default function TutorPortalPage() {
             <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
             <h1 className="mt-2 text-2xl font-bold text-gray-800">導師登入</h1>
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              以教師編號與密碼登入。首次密碼為 123456，首次登入後必須更新為新密碼。
+              以教師編號與密碼登入。首次登入後必須更新為新密碼。
             </p>
           </div>
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
@@ -295,6 +478,17 @@ export default function TutorPortalPage() {
           >
             返回主頁
           </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAuthView("register");
+              setMsg("");
+            }}
+            className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+          >
+            導師自行登記
+          </button>
 
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。
@@ -379,7 +573,7 @@ export default function TutorPortalPage() {
             <p className="text-sm text-gray-500">
               教師編號：<span className="font-mono">{session.code || "-"}</span>
             </p>
-            <p className="text-xs text-gray-400">同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。</p>
+            <p className="text-xs text-gray-400">學生註冊時請填寫此教師編號。同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。</p>
           </div>
         </div>
 
