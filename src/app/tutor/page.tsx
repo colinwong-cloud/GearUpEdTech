@@ -35,11 +35,17 @@ function resolveMessageTone(message: string): TutorMessageTone {
   return "error";
 }
 
+const pageShell = "min-h-screen bg-white/60 backdrop-blur-sm";
+const fieldClass =
+  "w-full rounded-xl border-2 border-gray-200 bg-white p-3 text-sm text-slate-900 outline-none transition-colors focus:border-indigo-400";
+const primaryButtonClass =
+  "mt-5 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700 disabled:opacity-50";
+
 function messageClassByTone(tone: TutorMessageTone): string {
-  if (tone === "success") return "border-emerald-300/40 bg-emerald-400/10 text-emerald-100";
-  if (tone === "warning") return "border-amber-300/40 bg-amber-400/10 text-amber-100";
-  if (tone === "error") return "border-rose-300/40 bg-rose-400/10 text-rose-100";
-  return "border-white/20 bg-white/10 text-slate-100";
+  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (tone === "error") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-indigo-100 bg-indigo-50 text-indigo-800";
 }
 
 export default function TutorPortalPage() {
@@ -218,7 +224,7 @@ export default function TutorPortalPage() {
 
   if (booting) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className={`${pageShell} flex items-center justify-center`}>
         <p className="text-sm text-gray-500">載入中...</p>
       </div>
     );
@@ -226,22 +232,16 @@ export default function TutorPortalPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-10">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-24 top-8 h-72 w-72 rounded-full bg-indigo-500/25 blur-3xl" />
-          <div className="absolute -right-12 bottom-6 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
-        </div>
-
-        <div className="relative mx-auto w-full max-w-lg rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-100">
-              GearUp Tutor
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white">導師登入</h1>
-            <p className="text-sm leading-6 text-slate-200">
+      <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
+            <h1 className="mt-2 text-2xl font-bold text-gray-800">導師登入</h1>
+            <p className="mt-2 text-sm leading-6 text-gray-600">
               以教師編號與密碼登入。首次密碼為 123456，首次登入後必須更新為新密碼。
             </p>
           </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
 
           {msg && (
             <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${messageClass}`}>
@@ -251,7 +251,7 @@ export default function TutorPortalPage() {
 
           <div className="mt-5 space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-200">
+              <label className="mb-1 block text-sm font-semibold text-gray-700">
                 教師編號（6位數字）
               </label>
               <input
@@ -259,17 +259,17 @@ export default function TutorPortalPage() {
                 onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 maxLength={6}
                 placeholder="例如 123456"
-                className="w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30"
+                className={fieldClass}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-200">密碼</label>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">密碼</label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="輸入密碼"
-                className="w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30"
+                className={fieldClass}
               />
             </div>
           </div>
@@ -277,10 +277,11 @@ export default function TutorPortalPage() {
           <button
             onClick={handleLogin}
             disabled={loginLoading}
-            className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {loginLoading ? "登入中..." : "登入"}
           </button>
+          </div>
 
           <Link
             href="/"
@@ -290,12 +291,12 @@ export default function TutorPortalPage() {
                 '[anti-missing][tutor][login] back-to-main-clicked {"policy_version":"tutor-login-back-v1","target":"/"}'
               );
             }}
-            className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
           >
             返回主頁
           </Link>
 
-          <div className="mt-4 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-slate-200">
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。
           </div>
         </div>
@@ -305,20 +306,14 @@ export default function TutorPortalPage() {
 
   if (mustChangePassword) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-10">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-24 top-8 h-72 w-72 rounded-full bg-indigo-500/25 blur-3xl" />
-          <div className="absolute -right-12 bottom-6 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
-        </div>
-
-        <div className="relative mx-auto w-full max-w-lg rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-100">
-              First Login Security
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white">首次登入請更新密碼</h1>
-            <p className="text-sm leading-6 text-slate-200">為保障帳戶安全，請先更新密碼後才可查看學生練習記錄。</p>
+      <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
+            <h1 className="mt-2 text-2xl font-bold text-gray-800">首次登入請更新密碼</h1>
+            <p className="mt-2 text-sm leading-6 text-gray-600">為保障帳戶安全，請先更新密碼後才可查看學生練習記錄。</p>
           </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
 
           {msg && (
             <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${messageClass}`}>
@@ -328,30 +323,30 @@ export default function TutorPortalPage() {
 
           <div className="mt-5 space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-200">目前密碼</label>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">目前密碼</label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30"
+                className={fieldClass}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-200">新密碼</label>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">新密碼</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30"
+                className={fieldClass}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-slate-200">確認新密碼</label>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">確認新密碼</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30"
+                className={fieldClass}
               />
             </div>
           </div>
@@ -359,23 +354,24 @@ export default function TutorPortalPage() {
           <button
             onClick={handleChangePassword}
             disabled={changeLoading}
-            className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {changeLoading ? "更新中..." : "更新密碼"}
           </button>
           <button
             onClick={handleLogout}
-            className="mt-3 w-full rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+            className="mt-3 w-full rounded-xl border border-sky-200 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-200"
           >
             登出
           </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={pageShell}>
       <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -395,12 +391,12 @@ export default function TutorPortalPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value.replace(/\D/g, "").slice(0, 8))}
               placeholder="輸入登記手機搜尋"
-              className="flex-1 rounded-lg border border-gray-200 p-2 text-sm outline-none focus:border-indigo-400"
+              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-indigo-400"
             />
             <button
               onClick={() => loadStudents(search)}
               disabled={listLoading}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
             >
               {listLoading ? "搜尋中..." : "搜尋"}
             </button>

@@ -124,9 +124,9 @@ describe("anti-missing regression guards", () => {
     expect(tutorPageSource).toContain('data-anti-missing="tutor-login-back-to-main"');
     expect(tutorPageSource).toContain("[anti-missing][tutor][login] back-to-main-clicked");
     expect(tutorPageSource).toContain(
-      'className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"'
+      'className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"'
     );
-    expect(tutorPageSource).toContain("bg-slate-950");
+    expect(tutorPageSource).toContain("bg-white/60 backdrop-blur-sm");
     expect(tutorPageSource).toContain("rounded-xl border border-sky-200 bg-sky-100");
     expect(tutorPageSource).toContain("學生姓名");
     expect(tutorPageSource).toContain("同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。");
