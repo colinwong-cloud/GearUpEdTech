@@ -7,9 +7,12 @@ import { gradeDisplayLabel, isPracticePaperSubject } from "@/lib/tutor-practice-
 import {
   TUTOR_COMPARISON_MONTHLY_PRICE_HKD,
   buildPeerComparison,
+  compareWithSelectedGroup,
   tutorComparisonUnlocked,
   type ComparisonMember,
 } from "@/lib/tutor-student-comparison";
+
+const COMPARE_GRADES = new Set(["P1", "P2", "P3", "P4", "P5", "P6"]);
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +46,10 @@ export async function GET(req: NextRequest) {
 
   const hash = String(req.nextUrl.searchParams.get("hash") || "").trim();
   const subject = String(req.nextUrl.searchParams.get("subject") || "").trim();
+  const compareGrade = String(req.nextUrl.searchParams.get("compareGrade") || "").trim().toUpperCase();
+  const compareSchoolId = String(req.nextUrl.searchParams.get("compareSchoolId") || "").trim();
+  const selectedGrade = COMPARE_GRADES.has(compareGrade) ? compareGrade : "";
+  const selectedSchoolId = /^[0-9a-f-]{36}$/i.test(compareSchoolId) ? compareSchoolId : "";
   if (!hash) return NextResponse.json({ error: "缺少學生連結。" }, { status: 400 });
   if (!isPracticePaperSubject(subject)) {
     return NextResponse.json({ error: "請選擇科目。" }, { status: 400 });
@@ -77,6 +84,8 @@ export async function GET(req: NextRequest) {
   const comparisonRes = await admin.rpc("tutor_student_peer_comparison", {
     p_student_id: resolved.student.studentId,
     p_subject: subject,
+    p_compare_grade: selectedGrade || null,
+    p_compare_school_id: selectedSchoolId || null,
   });
   if (comparisonRes.error) {
     const message = comparisonRes.error.message || "";
@@ -93,6 +102,14 @@ export async function GET(req: NextRequest) {
     school_name?: string | null;
     district?: string | null;
     members?: Array<{
+      student_id?: string;
+      school_id?: string | null;
+      district?: string | null;
+      accuracy?: number | null;
+    }>;
+    selected_grade?: string | null;
+    selected_school_name?: string | null;
+    selected_members?: Array<{
       student_id?: string;
       school_id?: string | null;
       district?: string | null;
@@ -131,6 +148,20 @@ export async function GET(req: NextRequest) {
     district,
     members,
   });
+  const selectedMembers: ComparisonMember[] = (raw.selected_members ?? []).map((member) => ({
+    studentId: String(member.student_id ?? ""),
+    schoolId: member.school_id ? String(member.school_id) : null,
+    district: member.district ? String(member.district) : null,
+    accuracy: member.accuracy === null || member.accuracy === undefined ? null : Number(member.accuracy),
+  }));
+  const selected =
+    selectedGrade && selectedSchoolId
+      ? compareWithSelectedGroup({
+          studentId: resolved.student.studentId,
+          studentAccuracy: comparison.studentAccuracy,
+          members: selectedMembers,
+        })
+      : null;
 
   return NextResponse.json({
     data: {
@@ -140,6 +171,9 @@ export async function GET(req: NextRequest) {
       schoolName,
       district,
       comparison,
+      selected,
+      selectedGradeLabel: selectedGrade ? gradeDisplayLabel(selectedGrade) : "",
+      selectedSchoolName: String(raw.selected_school_name ?? "").trim(),
     },
   });
 }

@@ -71,3 +71,29 @@ export function buildPeerComparison(input: {
     grade: cohortFor(input.members, input.studentId),
   };
 }
+
+/**
+ * Compare the student with a tutor-chosen school and grade.
+ * The group's average does not include this student unless they already belong to it.
+ * Rank is where their accuracy would sit in that group.
+ */
+export function compareWithSelectedGroup(input: {
+  studentId: string;
+  studentAccuracy: number | null;
+  members: ComparisonMember[];
+}): ComparisonCohort {
+  const scored = input.members.filter(
+    (member) => member.accuracy !== null && Number.isFinite(member.accuracy)
+  );
+  const inGroup = scored.some((member) => member.studentId === input.studentId);
+  if (inGroup) return cohortFor(scored, input.studentId);
+  const average =
+    scored.length > 0
+      ? roundAccuracy(scored.reduce((sum, member) => sum + (member.accuracy as number), 0) / scored.length)
+      : null;
+  if (input.studentAccuracy === null || !Number.isFinite(input.studentAccuracy)) {
+    return { average, count: scored.length, rank: null };
+  }
+  const ahead = scored.filter((member) => (member.accuracy as number) > input.studentAccuracy!).length;
+  return { average, count: scored.length, rank: ahead + 1 };
+}

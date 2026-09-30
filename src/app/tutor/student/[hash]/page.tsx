@@ -121,7 +121,26 @@ type StudentComparisonPayload = {
     district: ComparisonCohort | null;
     grade: ComparisonCohort;
   };
+  selected?: ComparisonCohort | null;
+  selectedGradeLabel?: string;
+  selectedSchoolName?: string;
 };
+
+type ComparisonSchool = {
+  id: string;
+  area: string;
+  district: string;
+  name: string;
+};
+
+const COMPARE_GRADES = [
+  ["P1", "小一"],
+  ["P2", "小二"],
+  ["P3", "小三"],
+  ["P4", "小四"],
+  ["P5", "小五"],
+  ["P6", "小六"],
+] as const;
 
 function formatComparisonPct(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
@@ -160,6 +179,11 @@ export default function TutorStudentDetailPage() {
   const [comparison, setComparison] = useState<StudentComparisonPayload | null>(null);
   const [comparisonMsg, setComparisonMsg] = useState("");
   const [loadingComparison, setLoadingComparison] = useState(false);
+  const [comparisonSchools, setComparisonSchools] = useState<ComparisonSchool[]>([]);
+  const [compareGrade, setCompareGrade] = useState("");
+  const [compareArea, setCompareArea] = useState("");
+  const [compareDistrict, setCompareDistrict] = useState("");
+  const [compareSchoolId, setCompareSchoolId] = useState("");
 
   const ensureTutorSession = useCallback(async (): Promise<boolean> => {
     const res = await fetch("/api/tutor/session", { method: "GET", cache: "no-store" });
@@ -260,10 +284,15 @@ export default function TutorStudentDetailPage() {
     setLoadingComparison(true);
     setComparisonMsg("");
     try {
-      const res = await fetch(
-        `/api/tutor/student-comparison?hash=${encodeURIComponent(studentHash)}&subject=${encodeURIComponent(subject)}`,
-        { method: "GET", cache: "no-store" }
-      );
+      const params = new URLSearchParams({ hash: studentHash, subject });
+      if (compareGrade && compareSchoolId) {
+        params.set("compareGrade", compareGrade);
+        params.set("compareSchoolId", compareSchoolId);
+      }
+      const res = await fetch(`/api/tutor/student-comparison?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
       const payload = (await res.json().catch(() => null)) as
         | { data?: StudentComparisonPayload; error?: string }
         | null;
@@ -277,7 +306,28 @@ export default function TutorStudentDetailPage() {
     } finally {
       setLoadingComparison(false);
     }
-  }, [studentHash, subject]);
+  }, [compareGrade, compareSchoolId, studentHash, subject]);
+
+  useEffect(() => {
+    if (!studentHash) return;
+    let cancelled = false;
+    const loadSchools = async () => {
+      try {
+        const res = await fetch("/api/tutor/comparison-schools", { method: "GET", cache: "no-store" });
+        const payload = (await res.json().catch(() => null)) as
+          | { data?: { schools?: ComparisonSchool[] } }
+          | null;
+        if (!res.ok || cancelled) return;
+        setComparisonSchools(payload?.data?.schools ?? []);
+      } catch {
+        if (!cancelled) setComparisonSchools([]);
+      }
+    };
+    void loadSchools();
+    return () => {
+      cancelled = true;
+    };
+  }, [studentHash]);
 
   useEffect(() => {
     loadComparison();
@@ -541,8 +591,84 @@ export default function TutorStudentDetailPage() {
           <div>
             <h2 className="text-base font-bold text-gray-800">同學對比</h2>
             <p className="mt-1 text-sm text-gray-500">
-              以最近 10 次練習的平均正確率，比較這位學生與同年級同學。範圍包括同校、同區，以及全部同年級。
+              以最近 10 次練習的平均正確率，比較這位學生與同年級同學。範圍包括同校、同區，以及全部同年級。亦可另選一個年級和學校來比較。
             </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-sm text-gray-600">
+              比較年級
+              <select
+                value={compareGrade}
+                onChange={(event) => setCompareGrade(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
+              >
+                <option value="">請選擇</option>
+                {COMPARE_GRADES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-600">
+              地區
+              <select
+                value={compareArea}
+                onChange={(event) => {
+                  setCompareArea(event.target.value);
+                  setCompareDistrict("");
+                  setCompareSchoolId("");
+                }}
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
+              >
+                <option value="">請選擇</option>
+                {[...new Set(comparisonSchools.map((school) => school.area).filter(Boolean))].map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-600">
+              分區
+              <select
+                value={compareDistrict}
+                onChange={(event) => {
+                  setCompareDistrict(event.target.value);
+                  setCompareSchoolId("");
+                }}
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
+              >
+                <option value="">請選擇</option>
+                {[...new Set(
+                  comparisonSchools
+                    .filter((school) => school.area === compareArea)
+                    .map((school) => school.district)
+                    .filter(Boolean)
+                )].map((districtName) => (
+                  <option key={districtName} value={districtName}>
+                    {districtName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-600">
+              比較學校
+              <select
+                value={compareSchoolId}
+                onChange={(event) => setCompareSchoolId(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
+              >
+                <option value="">請選擇</option>
+                {comparisonSchools
+                  .filter((school) => school.area === compareArea && school.district === compareDistrict)
+                  .map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
           </div>
           {loadingComparison && <p className="text-sm text-gray-400">載入同學對比中...</p>}
           {comparisonMsg && (
@@ -571,6 +697,17 @@ export default function TutorStudentDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {comparison.selected && (
+                    <tr className="border-b border-indigo-100 bg-indigo-50/60">
+                      <td className="py-2 pr-3 font-semibold text-indigo-900">
+                        所選{comparison.selectedGradeLabel || "年級"}
+                        {comparison.selectedSchoolName ? ` · ${comparison.selectedSchoolName}` : ""}
+                      </td>
+                      <td className="py-2 pr-3">{formatComparisonPct(comparison.selected.average)}</td>
+                      <td className="py-2 pr-3">{comparison.selected.count}</td>
+                      <td className="py-2 pr-3">{formatComparisonRank(comparison.selected)}</td>
+                    </tr>
+                  )}
                   <tr className="border-b border-gray-100">
                     <td className="py-2 pr-3 font-semibold text-gray-800">這位學生</td>
                     <td className="py-2 pr-3">{formatComparisonPct(comparison.comparison.studentAccuracy)}</td>

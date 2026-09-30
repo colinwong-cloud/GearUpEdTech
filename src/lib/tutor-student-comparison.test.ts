@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TUTOR_COMPARISON_MONTHLY_PRICE_HKD,
   buildPeerComparison,
+  compareWithSelectedGroup,
   tutorComparisonUnlocked,
 } from "./tutor-student-comparison";
 
@@ -45,6 +46,18 @@ describe("tutor student comparison", () => {
     expect(result.school).toBeNull();
     expect(result.district).toBeNull();
     expect(result.grade.rank).toBe(1);
+  });
+
+  it("places the student into a chosen school and grade without changing that group's average", () => {
+    const result = compareWithSelectedGroup({
+      studentId,
+      studentAccuracy: 70,
+      members: [
+        { studentId: "x", schoolId: "other", district: "九龍城", accuracy: 90 },
+        { studentId: "y", schoolId: "other", district: "九龍城", accuracy: 60 },
+      ],
+    });
+    expect(result).toEqual({ average: 75, count: 2, rank: 2 });
   });
 
   it("does not rank a student who has no practice yet", () => {
