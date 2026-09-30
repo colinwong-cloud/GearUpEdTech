@@ -55,7 +55,7 @@ function extractEmbeddedTrueType(pdf: Uint8Array): Buffer {
 }
 
 function missingGlyphs(ttf: Buffer, text: string): string[] {
-  const font = fontkit.create(ttf) as {
+  const font = fontkit.create(ttf) as unknown as {
     glyphForCodePoint(codePoint: number): { id: number; path: { commands: unknown[] } };
   };
   const missing: string[] = [];

@@ -10,15 +10,6 @@ import {
   type PracticePaperQuestion,
 } from "@/lib/tutor-practice-paper";
 
-declare module "subset-font" {
-  function subsetFont(
-    font: Uint8Array | Buffer,
-    text: string,
-    options?: { targetFormat?: string }
-  ): Promise<Uint8Array>;
-  export default subsetFont;
-}
-
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 48;
