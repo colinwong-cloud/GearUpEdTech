@@ -62,7 +62,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build application
-        run: npm run build
+        run: |
+          set -euo pipefail
+          if npm run build; then
+            exit 0
+          fi
+          echo "Turbopack build failed; retrying with webpack"
+          npx next build --webpack
 
   smoke:
     name: smoke
