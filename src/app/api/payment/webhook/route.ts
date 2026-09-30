@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { finalizePaymentByIntent } from "@/lib/server/payment-finalize";
+import { markTutorOrderPaid } from "@/lib/server/tutor-billing";
+import { isTutorMerchantOrderId } from "@/lib/tutor-billing";
 
 type AirwallexWebhookEnvelope = {
   id?: string;
@@ -262,6 +264,38 @@ export async function POST(req: NextRequest) {
         error_message: finalized.ok ? null : finalized.error ?? "Finalize failed",
       })
       .eq("id", webhookEventId);
+  }
+
+  if (!finalized.ok && isTutorMerchantOrderId(merchantOrderId)) {
+    const tutorFinalized = await markTutorOrderPaid({
+      supabase: supabaseAdmin,
+      paymentIntentId,
+      merchantOrderId,
+      paid: isPaid,
+      rawPayload: event as unknown as Record<string, unknown>,
+    });
+    if (webhookEventId) {
+      await supabaseAdmin
+        .from("airwallex_webhook_events")
+        .update({
+          status: tutorFinalized.ok ? "processed" : "failed",
+          processed_at: new Date().toISOString(),
+          error_message: tutorFinalized.ok ? null : tutorFinalized.error ?? "Tutor finalize failed",
+        })
+        .eq("id", webhookEventId);
+    }
+    if (!tutorFinalized.ok) {
+      return NextResponse.json(
+        { error: tutorFinalized.error || "Failed to finalize tutor payment" },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({
+      ok: true,
+      paid: isPaid,
+      tutor: true,
+      already_finalized: tutorFinalized.alreadyFinalized,
+    });
   }
 
   if (!finalized.ok) {
