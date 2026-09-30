@@ -2465,8 +2465,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T11:47:19.185Z",
+  "generated_at": "2026-09-30T11:51:38.261Z",
   "commit_inventory": [
+    {
+      "sha": "ea69b349aa6f68e695b0eedc3b81d5fabd07407e",
+      "date": "2026-09-30",
+      "summary": "fix: declare the subset-font module for the production typecheck"
+    },
+    {
+      "sha": "dba140efbb78dc928508dc65d7d2980de0b35af4",
+      "date": "2026-09-30",
+      "summary": "chore: record practice-paper font and layout updates in the feature contract"
+    },
     {
       "sha": "21729c331e11655161a4d4843b38cdc8ba86652f",
       "date": "2026-09-30",
@@ -4854,7 +4864,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 477,
+    "total_commits_since_start": 479,
     "total_feature_rows": 64
   }
 }
