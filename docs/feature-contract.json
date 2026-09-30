@@ -1621,6 +1621,30 @@
           "type": "file_contains",
           "path": "src/app/tutor/student/[hash]/page.tsx",
           "snippet": "filenameFromContentDisposition"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_tutor_student_comparison.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_tutor_student_comparison.sql",
+          "snippet": "tutor_student_peer_comparison"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_tutor_student_comparison.sql",
+          "snippet": "paid_until"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-student-comparison.ts",
+          "snippet": "buildPeerComparison"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "同學對比"
         }
       ]
     },
@@ -2480,8 +2504,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T12:58:23.872Z",
+  "generated_at": "2026-09-30T13:21:40.972Z",
   "commit_inventory": [
+    {
+      "sha": "9be87d5fde18fd7c8677bd4918ff25ba920971ef",
+      "date": "2026-09-30",
+      "summary": "feat: compare a tutor student with school and district peers"
+    },
+    {
+      "sha": "c7b37ce6b925797cdb45e6031d9f042be66921c3",
+      "date": "2026-09-30",
+      "summary": "chore: include the CI webpack fallback commit in the feature contract"
+    },
     {
       "sha": "8010e9d4d2bf75818692661c7173657dd2dafb55",
       "date": "2026-09-30",
@@ -4899,7 +4933,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 483,
+    "total_commits_since_start": 485,
     "total_feature_rows": 64
   }
 }
