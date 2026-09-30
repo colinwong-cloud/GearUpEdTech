@@ -859,9 +859,10 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "離線練習卷" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "學生卷" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "答案卷" },
-        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "NotoSansTC-subset.otf" },
-        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "installCjkCffSubsetFix" },
-        { type: "file_contains", path: "src/lib/server/cjk-cff-subset.ts", snippet: "this.cff.length = 4" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "NotoSansTC-subset.ttf" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "subsetFont" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "practicePaperDateLine" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "normalizeQuestionContentNewlines" },
       ],
     },
     {

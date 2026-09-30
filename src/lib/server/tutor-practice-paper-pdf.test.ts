@@ -1,8 +1,11 @@
-import { readFileSync } from "fs";
 import { inflateSync } from "zlib";
 import fontkit from "@pdf-lib/fontkit";
 import { describe, expect, it } from "vitest";
-import { buildPracticePaperPdf } from "./tutor-practice-paper-pdf";
+import {
+  buildPracticePaperPdf,
+  practicePaperDateLine,
+  practicePaperParagraphs,
+} from "./tutor-practice-paper-pdf";
 import type { PracticePaperQuestion } from "@/lib/tutor-practice-paper";
 
 const sample: PracticePaperQuestion = {
@@ -17,11 +20,11 @@ const sample: PracticePaperQuestion = {
   image_url: null,
 };
 
-const passage = "看到上人立刻信並寫一封道歉信，楚辭要提出改正方法。全班同學到老公布。";
-const studentGlyphs = `練習卷學生陳小明${passage}立刻相信並轉發提出改正方法查證資料思考是否合理完全不關生事`;
+const passage = "計算：9.6 × 4 + 1.8 = ?\\n\\n4又5/8 + 2又7/8 = ?\\n看到上人立刻信並寫一封道歉信，楚辭要提出改正方法。全班同學到老公布。";
+const studentGlyphs = "練習卷學生陳小明計算又看到上人立刻信並寫一封道歉信楚辭要提出改正方法全班同學到老公布立刻相信並轉發查證資料思考是否合理完全不關生事×";
 const answerGlyphs = `${studentGlyphs}答案解釋`;
 
-function extractEmbeddedCff(pdf: Uint8Array): Buffer {
+function extractEmbeddedTrueType(pdf: Uint8Array): Buffer {
   const data = Buffer.from(pdf);
   let offset = 0;
   while (offset < data.length) {
@@ -43,48 +46,37 @@ function extractEmbeddedCff(pdf: Uint8Array): Buffer {
     } catch {
       decoded = raw;
     }
-    if (decoded.length > 8 && decoded[0] === 1 && decoded[1] === 0 && decoded[2] >= 4) return decoded;
+    if (decoded.length > 12 && decoded[0] === 0 && decoded[1] === 1 && decoded[2] === 0 && decoded[3] === 0) {
+      return decoded;
+    }
     offset = end + "endstream".length;
   }
-  throw new Error("embedded CFF font not found");
+  throw new Error("embedded TrueType font not found");
 }
 
-function embeddedOutlineSvgs(cff: Buffer): Set<string> {
-  const fontBytes = readFileSync(new URL("./assets/NotoSansTC-subset.otf", import.meta.url));
-  const font = fontkit.create(fontBytes) as {
-    "CFF ": {
-      stream: { constructor: new (bytes: Uint8Array) => unknown };
-      constructor: new (stream: unknown) => { topDict: { CharStrings: { length: number } } };
-    };
-    getGlyph(gid: number): { constructor: new (gid: number, unicodes: number[], font: object) => { path: { toSVG(): string } } };
+function missingGlyphs(ttf: Buffer, text: string): string[] {
+  const font = fontkit.create(ttf) as {
+    glyphForCodePoint(codePoint: number): { id: number; path: { commands: unknown[] } };
   };
-  const parsedFont = font["CFF "];
-  const stream = new parsedFont.stream.constructor(cff);
-  const parsed = new parsedFont.constructor(stream);
-  const Glyph = font.getGlyph(1).constructor;
-  const outlines = new Set<string>();
-  for (let gid = 1; gid < parsed.topDict.CharStrings.length; gid += 1) {
-    outlines.add(new Glyph(gid, [], { stream, "CFF ": parsed }).path.toSVG());
-  }
-  return outlines;
-}
-
-function missingOutlines(cff: Buffer, text: string): string[] {
-  const fontBytes = readFileSync(new URL("./assets/NotoSansTC-subset.otf", import.meta.url));
-  const font = fontkit.create(fontBytes) as {
-    glyphForCodePoint(codePoint: number): { path: { toSVG(): string } };
-  };
-  const outlines = embeddedOutlineSvgs(cff);
   const missing: string[] = [];
   for (const character of new Set(text)) {
-    const svg = font.glyphForCodePoint(character.codePointAt(0) ?? 0).path.toSVG();
-    if (!outlines.has(svg)) missing.push(character);
+    const glyph = font.glyphForCodePoint(character.codePointAt(0) ?? 0);
+    if (!glyph.id || glyph.path.commands.length === 0) missing.push(character);
   }
   return missing;
 }
 
+describe("practice paper text", () => {
+  it("turns stored newlines into paragraphs and leaves the date blank", () => {
+    expect(practicePaperParagraphs("段落一\\n\\n段落二")).toEqual(["段落一", "", "段落二"]);
+    expect(practicePaperParagraphs("第一行\n第二行")).toEqual(["第一行", "第二行"]);
+    expect(practicePaperDateLine()).toBe("日期：________________");
+    expect(practicePaperDateLine()).not.toMatch(/\d/);
+  });
+});
+
 describe("buildPracticePaperPdf", () => {
-  it("builds a student paper and an answer paper in Chinese", async () => {
+  it("embeds a TrueType face whose Chinese and math glyphs have outlines", async () => {
     const questions = Array.from({ length: 2 }, (_, index) => ({
       ...sample,
       id: `q${index}`,
@@ -99,7 +91,7 @@ describe("buildPracticePaperPdf", () => {
       studentName: "陳小明",
       gradeLevel: "P4",
       subjectKey: "Math",
-      createdAt: new Date("2026-09-30T02:00:00.000Z"),
+      createdAt: new Date("2026-09-30T16:00:00.000Z"),
       questions,
     });
     const answer = await buildPracticePaperPdf({
@@ -107,19 +99,20 @@ describe("buildPracticePaperPdf", () => {
       studentName: "陳小明",
       gradeLevel: "P4",
       subjectKey: "Math",
-      createdAt: new Date("2026-09-30T02:00:00.000Z"),
+      createdAt: new Date("2026-09-30T16:00:00.000Z"),
       questions,
     });
     expect(Buffer.from(student).subarray(0, 5).toString()).toBe("%PDF-");
     expect(Buffer.from(answer).subarray(0, 5).toString()).toBe("%PDF-");
     expect(student.byteLength).toBeGreaterThan(1000);
+    expect(student.byteLength).toBeLessThan(500_000);
     expect(answer.byteLength).toBeGreaterThan(student.byteLength);
 
-    const studentCff = extractEmbeddedCff(student);
-    const answerCff = extractEmbeddedCff(answer);
-    expect(studentCff[3]).toBe(4);
-    expect(answerCff[3]).toBe(4);
-    expect(missingOutlines(studentCff, studentGlyphs)).toEqual([]);
-    expect(missingOutlines(answerCff, answerGlyphs)).toEqual([]);
+    const studentFont = extractEmbeddedTrueType(student);
+    const answerFont = extractEmbeddedTrueType(answer);
+    expect(missingGlyphs(studentFont, studentGlyphs)).toEqual([]);
+    expect(missingGlyphs(answerFont, answerGlyphs)).toEqual([]);
+    expect(Buffer.from(student).includes(Buffer.from("01/10/2026"))).toBe(false);
+    expect(Buffer.from(student).includes(Buffer.from("段落一\\n\\n"))).toBe(false);
   }, 20000);
 });

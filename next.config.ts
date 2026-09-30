@@ -1,10 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["subset-font", "harfbuzzjs", "fontverter"],
   outputFileTracingIncludes: {
     "/api/mer/invoices/[id]/pdf": ["./public/mer/gearup-stamp.png"],
     "/api/mer/invoices/[id]/send": ["./public/mer/gearup-stamp.png"],
-    "/api/tutor/practice-papers/[id]/pdf": ["./src/lib/server/assets/NotoSansTC-subset.otf"],
+    "/api/tutor/practice-papers/[id]/pdf": [
+      "./src/lib/server/assets/NotoSansTC-subset.ttf",
+      "./node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm",
+    ],
   },
   /*
    * Expose Supabase URL + anon key to the browser bundle when only server-prefixed
