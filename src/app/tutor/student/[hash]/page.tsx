@@ -49,6 +49,15 @@ type SessionDetailAnswer = {
   question: SessionDetailQuestion;
 };
 
+type PracticePaperRow = {
+  id: string;
+  student_name: string;
+  grade_level: string;
+  subject: string;
+  subject_label: string;
+  created_at: string;
+};
+
 type TutorSessionDetailPayload = {
   session: TutorSessionSummary;
   answers: SessionDetailAnswer[];
@@ -112,6 +121,11 @@ export default function TutorStudentDetailPage() {
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TutorSessionDetailPayload | null>(null);
   const [msg, setMsg] = useState("");
+  const [papers, setPapers] = useState<PracticePaperRow[]>([]);
+  const [paperUsed, setPaperUsed] = useState(0);
+  const [paperLimit, setPaperLimit] = useState(4);
+  const [paperMsg, setPaperMsg] = useState("");
+  const [generatingPaper, setGeneratingPaper] = useState(false);
 
   const ensureTutorSession = useCallback(async (): Promise<boolean> => {
     const res = await fetch("/api/tutor/session", { method: "GET", cache: "no-store" });
@@ -184,6 +198,78 @@ export default function TutorStudentDetailPage() {
     loadSessions();
   }, [loadSessions]);
 
+  const loadPapers = useCallback(async () => {
+    if (!studentHash) return;
+    try {
+      const res = await fetch(`/api/tutor/practice-papers?hash=${encodeURIComponent(studentHash)}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: { used?: number; limit?: number; papers?: PracticePaperRow[] }; error?: string }
+        | null;
+      if (!res.ok) throw new Error(payload?.error || "無法載入練習卷。");
+      setPapers(payload?.data?.papers ?? []);
+      setPaperUsed(Number(payload?.data?.used ?? 0));
+      setPaperLimit(Number(payload?.data?.limit ?? 4));
+    } catch (err) {
+      setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷。");
+    }
+  }, [studentHash]);
+
+  useEffect(() => {
+    loadPapers();
+  }, [loadPapers]);
+
+  const handleGeneratePaper = async () => {
+    setGeneratingPaper(true);
+    setPaperMsg("");
+    try {
+      const res = await fetch("/api/tutor/practice-papers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash: studentHash, subject }),
+      });
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: { used?: number; limit?: number }; error?: string }
+        | null;
+      if (!res.ok) throw new Error(payload?.error || "未能生成練習卷。");
+      setPaperUsed(Number(payload?.data?.used ?? paperUsed));
+      setPaperLimit(Number(payload?.data?.limit ?? paperLimit));
+      setPaperMsg("練習卷已生成，可下載學生卷及答案卷。");
+      await loadPapers();
+    } catch (err) {
+      setPaperMsg(err instanceof Error ? err.message : "未能生成練習卷。");
+    } finally {
+      setGeneratingPaper(false);
+    }
+  };
+
+  const downloadPaper = async (paperId: string, kind: "student" | "answer") => {
+    setPaperMsg("");
+    try {
+      const res = await fetch(`/api/tutor/practice-papers/${paperId}/pdf?kind=${kind}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "未能下載 PDF。");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = kind === "answer" ? "gearup-practice-answer.pdf" : "gearup-practice-student.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPaperMsg(err instanceof Error ? err.message : "未能下載 PDF。");
+    }
+  };
+
   const handleLogout = async () => {
     await fetch("/api/tutor/session", { method: "DELETE" }).catch(() => null);
     router.replace("/tutor");
@@ -252,6 +338,74 @@ export default function TutorStudentDetailPage() {
         </div>
 
         {msg && <p className="text-sm text-red-500">{msg}</p>}
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-gray-800">離線練習卷</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                按目前科目及學生年級抽出 30 題。每月可生成 {paperLimit} 份，學生卷及答案卷計作 1 份。本月尚餘{" "}
+                {Math.max(0, paperLimit - paperUsed)} 份。重新下載不會再計。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleGeneratePaper}
+              disabled={generatingPaper || paperUsed >= paperLimit}
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {generatingPaper ? "生成中..." : "生成練習卷"}
+            </button>
+          </div>
+          {paperMsg && (
+            <p
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                paperMsg.includes("已生成")
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {paperMsg}
+            </p>
+          )}
+          {papers.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2 pr-3">日期</th>
+                    <th className="py-2 pr-3">科目</th>
+                    <th className="py-2 pr-3">下載</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {papers.map((paper) => (
+                    <tr key={paper.id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
+                      <td className="py-2 pr-3">{paper.subject_label}</td>
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => downloadPaper(paper.id, "student")}
+                          className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                        >
+                          學生卷
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadPaper(paper.id, "answer")}
+                          className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
+                        >
+                          答案卷
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-4">
           <div className="flex flex-wrap gap-2">
