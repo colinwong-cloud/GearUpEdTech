@@ -677,12 +677,71 @@ export default function TutorStudentDetailPage() {
             </p>
           )}
           {comparison?.locked && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-              同學對比屬導師進階版（HK${comparison.monthlyPriceHkd}/月）。
-              {comparison.gradeLabel ? ` ${comparison.gradeLabel}` : ""}
-              {comparison.schoolName ? `、${comparison.schoolName}` : ""}
-              {comparison.district ? `、${comparison.district}` : ""}
-              的比較會在進階版生效後顯示。
+            <div className="space-y-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                同學對比屬導師進階版（HK${comparison.monthlyPriceHkd}/月）。以下是示例，並非這位學生的真實數據。進階版生效後會顯示
+                {comparison.gradeLabel ? ` ${comparison.gradeLabel}` : "同年級"}
+                {comparison.schoolName ? `、${comparison.schoolName}` : ""}
+                {comparison.district ? `、${comparison.district}` : ""}
+                的真實比較。
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-dashed border-amber-300">
+                <div className="bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">示例</div>
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="px-3 py-2 pr-3">範圍</th>
+                      <th className="py-2 pr-3">平均正確率</th>
+                      <th className="py-2 pr-3">人數</th>
+                      <th className="py-2 pr-3">這位學生排名</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-indigo-100 bg-indigo-50/60">
+                      <td className="px-3 py-2 pr-3 font-semibold text-indigo-900">
+                        所選
+                        {COMPARE_GRADES.find(([value]) => value === compareGrade)?.[1] || "年級"}
+                        {comparisonSchools.find((school) => school.id === compareSchoolId)?.name
+                          ? ` · ${comparisonSchools.find((school) => school.id === compareSchoolId)?.name}`
+                          : " · 所選學校"}
+                      </td>
+                      <td className="py-2 pr-3">71%</td>
+                      <td className="py-2 pr-3">36</td>
+                      <td className="py-2 pr-3">第 8 / 36</td>
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-3 py-2 pr-3 font-semibold text-gray-800">這位學生</td>
+                      <td className="py-2 pr-3">78%</td>
+                      <td className="py-2 pr-3">—</td>
+                      <td className="py-2 pr-3">—</td>
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-3 py-2 pr-3">
+                        同校同年級{comparison.schoolName ? `（${comparison.schoolName}）` : ""}
+                      </td>
+                      <td className="py-2 pr-3">74%</td>
+                      <td className="py-2 pr-3">28</td>
+                      <td className="py-2 pr-3">第 6 / 28</td>
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="px-3 py-2 pr-3">
+                        同區同年級{comparison.district ? `（${comparison.district}）` : ""}
+                      </td>
+                      <td className="py-2 pr-3">69%</td>
+                      <td className="py-2 pr-3">210</td>
+                      <td className="py-2 pr-3">第 40 / 210</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 pr-3">
+                        全部同年級{comparison.gradeLabel ? `（${comparison.gradeLabel}）` : ""}
+                      </td>
+                      <td className="py-2 pr-3">66%</td>
+                      <td className="py-2 pr-3">980</td>
+                      <td className="py-2 pr-3">第 180 / 980</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           {comparison && !comparison.locked && comparison.comparison && (
