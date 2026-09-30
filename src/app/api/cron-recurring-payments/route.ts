@@ -19,6 +19,7 @@ import {
   mitChargeLeaseIso,
   MIT_CRON_SELECT_STATUSES,
 } from "@/lib/server/recurring-mit-cron";
+import { chargeDueTutorPlans } from "@/lib/server/tutor-billing";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -637,6 +638,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    let tutorCharges = { processed: 0, paid: 0, failed: 0 };
+    try {
+      tutorCharges = await chargeDueTutorPlans(supabase);
+    } catch (tutorErr) {
+      console.error(
+        "[anti-missing][payment][mit-cron] tutor-charge-failed",
+        tutorErr instanceof Error ? tutorErr.message : "Unknown tutor charge error"
+      );
+    }
+
     const result = {
       success: true,
       processed,
@@ -644,6 +655,9 @@ export async function GET(req: NextRequest) {
       failed,
       skipped,
       eligible_due: eligible.length,
+      tutor_processed: tutorCharges.processed,
+      tutor_paid: tutorCharges.paid,
+      tutor_failed: tutorCharges.failed,
       failures,
       generated_at: new Date().toISOString(),
     };

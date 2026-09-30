@@ -124,6 +124,7 @@ function PaymentAirwallexContent() {
   const intentId = searchParams.get("intent_id") || "";
   const clientSecret = searchParams.get("client_secret") || "";
   const mobile = searchParams.get("mobile") || "";
+  const payer = searchParams.get("payer") || "";
   const paymentMethod = searchParams.get("payment_method") || "cards";
   const currency = searchParams.get("currency") || "HKD";
   const countryCode = searchParams.get("country_code") || "HK";
@@ -234,12 +235,18 @@ function PaymentAirwallexContent() {
             payment_schedule: { period: 1, period_unit: "MONTH" },
           },
           applePayRequestOptions,
-          successUrl: `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
-            mobile
-          )}&intent_id=${encodeURIComponent(intentId)}`,
-          cancelUrl: `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
-            mobile
-          )}&intent_id=${encodeURIComponent(intentId)}`,
+          successUrl:
+            payer === "tutor"
+              ? `${appBaseUrl}/tutor?billing=success&intent_id=${encodeURIComponent(intentId)}`
+              : `${appBaseUrl}/payment-callback?result=success&mobile=${encodeURIComponent(
+                  mobile
+                )}&intent_id=${encodeURIComponent(intentId)}`,
+          cancelUrl:
+            payer === "tutor"
+              ? `${appBaseUrl}/tutor?billing=cancel`
+              : `${appBaseUrl}/payment-callback?result=cancel&mobile=${encodeURIComponent(
+                  mobile
+                )}&intent_id=${encodeURIComponent(intentId)}`,
         })
       );
     } catch {

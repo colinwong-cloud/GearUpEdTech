@@ -78,6 +78,9 @@ export default function TutorPortalPage() {
   const [search, setSearch] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [planActive, setPlanActive] = useState(false);
+  const [planUntil, setPlanUntil] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
 
   const isAuthenticated = Boolean(session.authenticated);
   const mustChangePassword = Boolean(session.must_change_password);
@@ -138,6 +141,60 @@ export default function TutorPortalPage() {
     if (!isAuthenticated || mustChangePassword) return;
     loadStudents("");
   }, [isAuthenticated, mustChangePassword, loadStudents]);
+
+  const loadPlan = useCallback(async () => {
+    if (!isAuthenticated || mustChangePassword) return;
+    try {
+      const res = await fetch("/api/tutor/billing", { method: "GET", cache: "no-store" });
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: { active?: boolean; paidUntil?: string | null } }
+        | null;
+      if (!res.ok) return;
+      setPlanActive(Boolean(payload?.data?.active));
+      setPlanUntil(payload?.data?.paidUntil ?? null);
+    } catch {
+      setPlanActive(false);
+    }
+  }, [isAuthenticated, mustChangePassword]);
+
+  useEffect(() => {
+    loadPlan();
+  }, [loadPlan]);
+
+  useEffect(() => {
+    if (!isAuthenticated || mustChangePassword) return;
+    const params = new URLSearchParams(window.location.search);
+    const intentId = params.get("intent_id") || "";
+    if (params.get("billing") !== "success" || !intentId) return;
+    let cancelled = false;
+    const confirm = async () => {
+      setPlanLoading(true);
+      try {
+        const res = await fetch("/api/tutor/billing/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ intent_id: intentId }),
+        });
+        const payload = (await res.json().catch(() => null)) as
+          | { data?: { paid?: boolean; paid_until?: string | null }; error?: string }
+          | null;
+        if (!res.ok) throw new Error(payload?.error || "未能確認付款。");
+        if (!cancelled) {
+          setMsg(payload?.data?.paid ? "導師進階版已開通。" : "付款尚未完成。");
+          await loadPlan();
+          window.history.replaceState({}, "", "/tutor");
+        }
+      } catch (err) {
+        if (!cancelled) setMsg(err instanceof Error ? err.message : "未能確認付款。");
+      } finally {
+        if (!cancelled) setPlanLoading(false);
+      }
+    };
+    void confirm();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loadPlan, mustChangePassword]);
 
   const handleLogin = async () => {
     const code = loginCode.replace(/\D/g, "").slice(0, 6);
@@ -578,6 +635,63 @@ export default function TutorPortalPage() {
         </div>
 
         {msg && <p className="text-sm text-red-500">{msg}</p>}
+
+        <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-gray-800">導師進階版</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                HK$199/月。開通後可查看同學對比：同校、同區、同年級，以及自選學校及年級。每月由已授權的付款方式自動續費。
+              </p>
+              <p className="mt-1 text-sm text-gray-700">
+                {planActive && planUntil
+                  ? `已生效，至 ${formatDateTime(planUntil)}。`
+                  : "尚未開通。"}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={planLoading || planActive}
+              onClick={async () => {
+                setPlanLoading(true);
+                setMsg("");
+                try {
+                  const res = await fetch("/api/tutor/billing/checkout", { method: "POST" });
+                  const payload = (await res.json().catch(() => null)) as
+                    | {
+                        intent_id?: string;
+                        client_secret?: string;
+                        customer_id?: string;
+                        final_amount_hkd?: number;
+                        error?: string;
+                      }
+                    | null;
+                  if (!res.ok || !payload?.intent_id || !payload.client_secret || !payload.customer_id) {
+                    throw new Error(payload?.error || "未能建立付款。");
+                  }
+                  const params = new URLSearchParams({
+                    intent_id: payload.intent_id,
+                    client_secret: payload.client_secret,
+                    customer_id: payload.customer_id,
+                    final_amount_hkd: String(payload.final_amount_hkd ?? 199),
+                    currency: "HKD",
+                    country_code: "HK",
+                    payment_method: "all",
+                    airwallex_locale: "zh-HK",
+                    payer: "tutor",
+                  });
+                  window.location.href = `/payment-airwallex?${params.toString()}`;
+                } catch (err) {
+                  setMsg(err instanceof Error ? err.message : "未能建立付款。");
+                  setPlanLoading(false);
+                }
+              }}
+              className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {planActive ? "已開通" : planLoading ? "前往付款..." : "開通 HK$199/月"}
+            </button>
+          </div>
+        </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="flex flex-col sm:flex-row gap-2">
