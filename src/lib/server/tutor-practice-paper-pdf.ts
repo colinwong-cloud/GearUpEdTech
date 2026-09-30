@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFImage } from "pdf-lib";
+import { installCjkCffSubsetFix } from "@/lib/server/cjk-cff-subset";
 import { subjectDisplayLabel } from "@/lib/quiz-subjects";
 import {
   gradeDisplayLabel,
@@ -85,7 +86,9 @@ export async function buildPracticePaperPdf({
 }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
-  const font = await pdf.embedFont(loadFontBytes(), { subset: true });
+  const fontData = loadFontBytes();
+  installCjkCffSubsetFix(fontData);
+  const font = await pdf.embedFont(fontData, { subset: true });
   const glyphCache = new Map<string, boolean>();
   const contentWidth = PAGE_WIDTH - MARGIN * 2;
   let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
