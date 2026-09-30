@@ -41,6 +41,16 @@ input[type="text"] {
   user-select: text;
 }
 
+/* Tutor /tutor — allow copy and paste of teacher code, password, and student notes */
+.tutor-portal-root,
+.tutor-portal-root * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* Student quiz — discourage copying question text (short-answer input overrides below) */
 .student-quiz-root,
 .student-quiz-root * {
