@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/mer/invoices/[id]/pdf": ["./public/mer/gearup-stamp.png"],
     "/api/mer/invoices/[id]/send": ["./public/mer/gearup-stamp.png"],
+    "/api/tutor/practice-papers/[id]/pdf": ["./src/lib/server/assets/NotoSansTC-subset.otf"],
   },
   /*
    * Expose Supabase URL + anon key to the browser bundle when only server-prefixed

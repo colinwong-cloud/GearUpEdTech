@@ -143,6 +143,9 @@ describe("anti-missing regression guards", () => {
     expect(tutorDetailSource).toContain("各題型正確率趨勢");
     expect(tutorDetailSource).toContain("錯題解析");
     expect(tutorDetailSource).toContain("你的答案（含值）");
+    expect(tutorDetailSource).toContain("離線練習卷");
+    expect(tutorDetailSource).toContain("學生卷");
+    expect(tutorDetailSource).toContain("答案卷");
     expect(tutorDetailSource).toContain("練習記錄（學生：");
     expect(tutorDetailSource).toContain("/api/tutor/session-detail?session_id=");
     expect(tutorDetailSource).toContain("&hash=");

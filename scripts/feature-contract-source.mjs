@@ -846,6 +846,23 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "tutor-practice-paper-generator",
+      month: "2026-09",
+      category: "tutor",
+      priority: "critical",
+      title: "Tutor offline practice papers with a monthly limit of four pairs",
+      evidence_commits: ["5fd1606"],
+      checks: [
+        { type: "file_exists", path: "supabase_tutor_practice_papers.sql" },
+        { type: "file_contains", path: "supabase_tutor_practice_papers.sql", snippet: "tutor_practice_papers" },
+        { type: "file_contains", path: "src/lib/tutor-practice-paper.ts", snippet: "FREE_PRACTICE_PAPER_MONTHLY_LIMIT" },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "離線練習卷" },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "學生卷" },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "答案卷" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "NotoSansTC-subset.otf" },
+      ],
+    },
+    {
       id: "paid-tier-payment-module-foundation",
       month: "2026-05",
       category: "payment",
