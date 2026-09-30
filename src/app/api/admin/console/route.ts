@@ -25,7 +25,8 @@ import {
   LEGACY_PRIMARY_QUIZ_SUBJECT_KEY,
   PRIMARY_QUIZ_SUBJECT,
 } from "@/lib/quiz-subjects";
-import { resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
+import { provisionTutorPortalAccount, resetTutorPasswordByCodeForAdmin } from "@/lib/server/tutor-session";
+import { ADMIN_ASSIGNED_USAGE_LIMIT, tutorPasswordError } from "@/lib/tutor-registration";
 import {
   isMissingCronRunTableError,
   isMitCronRunOverdue,
@@ -87,6 +88,8 @@ const TUTOR_REFERRAL_TABLE_HINT =
   "缺少教師編號資料欄位，請先在 Supabase 執行 supabase_tutor_referral_contact_fields.sql（或最新版 supabase_tutor_referral_codes.sql）。";
 const TUTOR_PORTAL_TABLE_HINT =
   "缺少導師入口資料表，請先在 Supabase 執行 supabase_tutor_portal_auth.sql。";
+const TUTOR_SELF_REGISTRATION_HINT =
+  "缺少導師自行登記欄位，請先在 Supabase 執行 supabase_tutor_self_registration.sql。";
 
 function normalizeIsoDateTime(raw: unknown): string | null {
   if (raw === null || raw === undefined || String(raw).trim() === "") return null;
@@ -283,6 +286,7 @@ type ReferralDb = {
           usage_limit: number;
           current_uses: number;
           is_active: boolean;
+          registration_source: string;
           created_at: string;
           updated_at: string;
         };
@@ -295,6 +299,7 @@ type ReferralDb = {
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
+          registration_source?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -306,6 +311,7 @@ type ReferralDb = {
           usage_limit?: number;
           current_uses?: number;
           is_active?: boolean;
+          registration_source?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -452,6 +458,15 @@ async function ensureTutorReferralTables(admin: AdminClient) {
     throw new Error(TUTOR_REFERRAL_TABLE_HINT);
   }
   if (usageProbe.error) throw usageProbe.error;
+
+  const sourceProbe = await referralAdmin
+    .from("tutor_referral_codes")
+    .select("registration_source")
+    .limit(1);
+  if (sourceProbe.error && /registration_source/i.test(sourceProbe.error.message || "")) {
+    throw new Error(TUTOR_SELF_REGISTRATION_HINT);
+  }
+  if (sourceProbe.error) throw sourceProbe.error;
 }
 
 async function getParentByMobile(admin: AdminClient, mobile: string): Promise<ParentRow | null> {
@@ -1738,6 +1753,7 @@ export async function POST(req: NextRequest) {
         const tutorMobile = String(payload.tutor_mobile ?? "").trim();
         const tutorEmailRaw = String(payload.tutor_email ?? "").trim();
         const tutorEmail = tutorEmailRaw ? tutorEmailRaw.toLowerCase() : null;
+        const initialPassword = String(payload.initial_password ?? "");
         const createdAt = normalizeIsoDateTime(payload.created_at);
 
         if (!TUTOR_REFERRAL_CODE_RE.test(code)) {
@@ -1752,6 +1768,10 @@ export async function POST(req: NextRequest) {
         if (tutorEmail && !TUTOR_REFERRAL_EMAIL_RE.test(tutorEmail)) {
           return NextResponse.json({ error: "教師電郵格式不正確" }, { status: 400 });
         }
+        const passwordError = tutorPasswordError(initialPassword);
+        if (passwordError) {
+          return NextResponse.json({ error: passwordError }, { status: 400 });
+        }
         if (payload.created_at !== undefined && payload.created_at !== null && !createdAt) {
           return NextResponse.json({ error: "建立時間格式無效" }, { status: 400 });
         }
@@ -1761,20 +1781,27 @@ export async function POST(req: NextRequest) {
           tutor_name: tutorName,
           tutor_mobile: tutorMobile,
           tutor_email: tutorEmail,
-          usage_limit: 50,
+          usage_limit: ADMIN_ASSIGNED_USAGE_LIMIT,
           current_uses: 0,
           is_active: true,
+          registration_source: "admin",
         };
         if (createdAt) insertPayload.created_at = createdAt;
 
         const { data, error } = await referralAdmin
           .from("tutor_referral_codes")
           .insert(insertPayload)
-          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,registration_source,created_at")
           .single();
         if (error) {
+          if (/registration_source/i.test(error.message || "")) {
+            throw new Error(TUTOR_SELF_REGISTRATION_HINT);
+          }
           if (isMissingTutorReferralTableError(error.message || "")) {
             throw new Error(TUTOR_REFERRAL_TABLE_HINT);
+          }
+          if (/uq_tutor_referral_codes_active_email|tutor_email/i.test(error.message || "")) {
+            return NextResponse.json({ error: "此教師電郵已有啟用中的教師編號" }, { status: 409 });
           }
           if (/uq_tutor_referral_codes_active_mobile|tutor_mobile/i.test(error.message || "")) {
             return NextResponse.json({ error: "此教師手機已有啟用中的教師編號" }, { status: 409 });
@@ -1783,6 +1810,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "教師編號已存在" }, { status: 409 });
           }
           throw error;
+        }
+        try {
+          await provisionTutorPortalAccount({
+            codeId: String(data.id),
+            code,
+            password: initialPassword,
+          });
+        } catch (accountError) {
+          await referralAdmin.from("tutor_referral_codes").delete().eq("id", data.id);
+          const accountMessage = accountError instanceof Error ? accountError.message : "";
+          if (isMissingTutorPortalTableError(accountMessage)) {
+            throw new Error(TUTOR_PORTAL_TABLE_HINT);
+          }
+          throw accountError;
         }
         return NextResponse.json({ data });
       }
@@ -1793,7 +1834,7 @@ export async function POST(req: NextRequest) {
 
         let query = referralAdmin
           .from("tutor_referral_codes")
-          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,created_at")
+          .select("id,code,tutor_name,tutor_mobile,tutor_email,usage_limit,current_uses,is_active,registration_source,created_at")
           .order("created_at", { ascending: false })
           .limit(1000);
         if (q) {
@@ -1821,6 +1862,7 @@ export async function POST(req: NextRequest) {
               usage_limit: Number(row.usage_limit ?? 50),
               current_uses: Number(row.current_uses ?? 0),
               is_active: Boolean(row.is_active),
+              registration_source: String(row.registration_source ?? "admin"),
               created_at: normalizeIsoDateTime(row.created_at) || "",
             })) ?? [],
         });

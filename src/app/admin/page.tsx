@@ -7,6 +7,7 @@ import {
   getCurrentHktMonthKey,
   type PaidTransactionAuditRow,
 } from "@/lib/admin-paid-summary";
+import { formatTutorUsageCount, tutorPasswordError, tutorRegistrationSourceLabel } from "@/lib/tutor-registration";
 
 type AdminConsoleAction =
   | "search_parent"
@@ -175,6 +176,7 @@ interface TutorReferralCodeSummaryRow {
   usage_limit: number;
   current_uses: number;
   is_active: boolean;
+  registration_source?: string;
   created_at: string;
 }
 
@@ -2926,6 +2928,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
   const [createTutorName, setCreateTutorName] = useState("");
   const [createTutorMobile, setCreateTutorMobile] = useState("");
   const [createTutorEmail, setCreateTutorEmail] = useState("");
+  const [createInitialPassword, setCreateInitialPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
 
   const [detailCode, setDetailCode] = useState("");
@@ -2979,6 +2982,11 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       setMsg("教師電郵格式不正確");
       return;
     }
+    const passwordError = tutorPasswordError(createInitialPassword);
+    if (passwordError) {
+      setMsg(passwordError);
+      return;
+    }
     setSaveLoading(true);
     setMsg("");
     try {
@@ -2989,6 +2997,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
           tutor_name: tutorName,
           tutor_mobile: tutorMobile,
           tutor_email: tutorEmail,
+          initial_password: createInitialPassword,
         },
         sessionToken
       );
@@ -2997,6 +3006,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
       setCreateTutorName("");
       setCreateTutorMobile("");
       setCreateTutorEmail("");
+      setCreateInitialPassword("");
       await loadSummary();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "新增教師編號失敗");
@@ -3130,7 +3140,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               onChange={(e) => setCreateCode(normalizeReferralCodeInput(e.target.value))}
               placeholder="例如 123456"
               maxLength={6}
-              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+              className="w-full bg-white p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
           <div>
@@ -3139,7 +3149,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               value={createTutorName}
               onChange={(e) => setCreateTutorName(e.target.value)}
               placeholder="例如 陳老師"
-              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+              className="w-full bg-white p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
           <div>
@@ -3149,7 +3159,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               onChange={(e) => setCreateTutorMobile(e.target.value.replace(/\D/g, "").slice(0, 8))}
               placeholder="例如 91234567"
               maxLength={8}
-              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+              className="w-full bg-white p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
           <div>
@@ -3159,7 +3169,17 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
               value={createTutorEmail}
               onChange={(e) => setCreateTutorEmail(e.target.value)}
               placeholder="例如 tutor@example.com"
-              className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+              className="w-full bg-white p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">初始密碼</label>
+            <input
+              type="password"
+              value={createInitialPassword}
+              onChange={(e) => setCreateInitialPassword(e.target.value)}
+              placeholder="最少 6 個字元"
+              className="w-full bg-white p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
             />
           </div>
         </div>
@@ -3200,6 +3220,7 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
                 <th className="py-2 pr-3">教師手機</th>
                 <th className="py-2 pr-3">教師電郵</th>
                 <th className="py-2 pr-3">教師編號</th>
+                <th className="py-2 pr-3">來源</th>
                 <th className="py-2 pr-3">已使用次數 / 上限</th>
                 <th className="py-2 pr-3">操作</th>
               </tr>
@@ -3214,8 +3235,9 @@ function TutorReferralCodeSection({ sessionToken }: { sessionToken: string }) {
                   <td className="py-2 pr-3">{row.tutor_mobile || "-"}</td>
                   <td className="py-2 pr-3">{row.tutor_email || "-"}</td>
                   <td className="py-2 pr-3 font-mono">{row.code}</td>
+                  <td className="py-2 pr-3">{tutorRegistrationSourceLabel(row.registration_source)}</td>
                   <td className="py-2 pr-3">
-                    {row.current_uses} / {row.usage_limit}
+                    {formatTutorUsageCount(row.current_uses, row.usage_limit)}
                   </td>
                   <td className="py-2 pr-3">
                     <button

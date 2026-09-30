@@ -121,6 +121,8 @@ describe("anti-missing regression guards", () => {
     expect(tutorPageSource).toContain("導師登入");
     expect(tutorPageSource).toContain("首次登入請更新密碼");
     expect(tutorPageSource).toContain("返回主頁");
+    expect(tutorPageSource).toContain("導師自行登記");
+    expect(tutorPageSource).toContain("學生註冊時請填寫此教師編號");
     expect(tutorPageSource).toContain('data-anti-missing="tutor-login-back-to-main"');
     expect(tutorPageSource).toContain("[anti-missing][tutor][login] back-to-main-clicked");
     expect(tutorPageSource).toContain(
@@ -160,6 +162,7 @@ describe("anti-missing regression guards", () => {
 
     const adminPageSource = readSource("src/app/admin/page.tsx");
     expect(adminPageSource).toContain("教師編號維護");
+    expect(adminPageSource).toContain("初始密碼");
     expect(adminPageSource).toContain("重設導師登入密碼");
     expect(adminPageSource).toContain("今日需發起 MIT");
     expect(adminPageSource).toContain("今日已發起 MIT");
