@@ -1591,6 +1591,16 @@
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
           "snippet": "NotoSansTC-subset.otf"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "installCjkCffSubsetFix"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/cjk-cff-subset.ts",
+          "snippet": "this.cff.length = 4"
         }
       ]
     },
@@ -2450,8 +2460,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T11:04:34.346Z",
+  "generated_at": "2026-09-30T11:26:37.989Z",
   "commit_inventory": [
+    {
+      "sha": "a9f8dfe8c41c5e8a91576d8a767e71ba9797ed1f",
+      "date": "2026-09-30",
+      "summary": "fix: embed Traditional Chinese outlines in practice-paper PDFs"
+    },
+    {
+      "sha": "b1afa9b9fc5c8ebf96baacec57a5dd042d9cb9b7",
+      "date": "2026-09-30",
+      "summary": "chore: include tutor practice papers in feature contract"
+    },
     {
       "sha": "edb01aec2dfb94fc43b26e097716e40b3ebcce83",
       "date": "2026-09-30",
@@ -4819,7 +4839,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 473,
+    "total_commits_since_start": 475,
     "total_feature_rows": 64
   }
 }
