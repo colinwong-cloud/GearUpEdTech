@@ -840,6 +840,9 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "初始密碼" },
         { type: "file_contains", path: "src/app/api/admin/console/route.ts", snippet: "initial_password" },
         { type: "file_contains", path: "src/lib/tutor-registration.ts", snippet: "SELF_REGISTRATION_USAGE_LIMIT" },
+        { type: "file_exists", path: "src/app/tutor/layout.tsx" },
+        { type: "file_contains", path: "src/app/tutor/layout.tsx", snippet: "tutor-portal-root" },
+        { type: "file_contains", path: "src/app/globals.css", snippet: ".tutor-portal-root" },
       ],
     },
     {

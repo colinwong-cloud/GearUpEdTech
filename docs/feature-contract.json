@@ -1531,6 +1531,20 @@
           "type": "file_contains",
           "path": "src/lib/tutor-registration.ts",
           "snippet": "SELF_REGISTRATION_USAGE_LIMIT"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/tutor/layout.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/layout.tsx",
+          "snippet": "tutor-portal-root"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/globals.css",
+          "snippet": ".tutor-portal-root"
         }
       ]
     },
@@ -2390,8 +2404,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T10:23:10.930Z",
+  "generated_at": "2026-09-30T10:52:17.665Z",
   "commit_inventory": [
+    {
+      "sha": "c1863f03a755e274404899b03849065810398261",
+      "date": "2026-09-30",
+      "summary": "fix: allow copy and paste on tutor pages"
+    },
+    {
+      "sha": "2dba3f1412e9b50ed7464ece3b71bcc9981bd47d",
+      "date": "2026-09-30",
+      "summary": "chore: include tutor self-registration in feature contract"
+    },
     {
       "sha": "aeb08e7bd5fed6c79d86d82d501f88ebe0e05411",
       "date": "2026-09-30",
@@ -4739,7 +4763,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 469,
+    "total_commits_since_start": 471,
     "total_feature_rows": 63
   }
 }
