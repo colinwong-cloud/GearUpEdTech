@@ -873,6 +873,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/tutor-student-comparison.ts", snippet: "compareWithSelectedGroup" },
         { type: "file_contains", path: "supabase_tutor_student_comparison.sql", snippet: "p_compare_grade" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "比較學校" },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "以下是示例，並非這位學生的真實數據" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "同學對比" },
       ],
     },
