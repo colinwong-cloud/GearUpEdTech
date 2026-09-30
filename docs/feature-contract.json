@@ -1480,6 +1480,61 @@
       ]
     },
     {
+      "id": "tutor-self-registration",
+      "month": "2026-09",
+      "category": "tutor",
+      "priority": "critical",
+      "title": "Tutor self-registration with Cloudflare check and admin-assigned initial password",
+      "evidence_commits": [
+        "5fd1606"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_tutor_self_registration.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/tutor/register/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_tutor_self_registration.sql",
+          "snippet": "registration_source"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "導師自行登記"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "學生註冊時請填寫此教師編號"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/turnstile.ts",
+          "snippet": "challenges.cloudflare.com/turnstile/v0/siteverify"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "初始密碼"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "initial_password"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-registration.ts",
+          "snippet": "SELF_REGISTRATION_USAGE_LIMIT"
+        }
+      ]
+    },
+    {
       "id": "paid-tier-payment-module-foundation",
       "month": "2026-05",
       "category": "payment",
@@ -2335,8 +2390,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-26T10:26:35.423Z",
+  "generated_at": "2026-09-30T10:23:10.930Z",
   "commit_inventory": [
+    {
+      "sha": "aeb08e7bd5fed6c79d86d82d501f88ebe0e05411",
+      "date": "2026-09-30",
+      "summary": "feat: add tutor self-registration and an admin initial password"
+    },
+    {
+      "sha": "0d07a6152336aa011d514fc6dc0b122fca44c73a",
+      "date": "2026-09-26",
+      "summary": "chore: include tutor shell regression guard in feature contract"
+    },
     {
       "sha": "d41d7c4bb9396790b7ab0c3d594849741832dde3",
       "date": "2026-09-26",
@@ -4674,7 +4739,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 467,
-    "total_feature_rows": 62
+    "total_commits_since_start": 469,
+    "total_feature_rows": 63
   }
 }
