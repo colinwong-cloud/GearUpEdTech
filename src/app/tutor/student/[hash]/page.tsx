@@ -103,6 +103,36 @@ function formatAnswerWithValue(question: SessionDetailQuestion, answer: string):
 
 const SUBJECTS = [PRIMARY_QUIZ_SUBJECT, CHINESE_QUIZ_SUBJECT, ENGLISH_QUIZ_SUBJECT] as const;
 
+type ComparisonCohort = {
+  average: number | null;
+  count: number;
+  rank: number | null;
+};
+
+type StudentComparisonPayload = {
+  locked: boolean;
+  monthlyPriceHkd: number;
+  gradeLabel: string;
+  schoolName: string;
+  district: string;
+  comparison?: {
+    studentAccuracy: number | null;
+    school: ComparisonCohort | null;
+    district: ComparisonCohort | null;
+    grade: ComparisonCohort;
+  };
+};
+
+function formatComparisonPct(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return `${value}%`;
+}
+
+function formatComparisonRank(cohort: ComparisonCohort | null | undefined): string {
+  if (!cohort || cohort.rank === null) return "—";
+  return `第 ${cohort.rank} / ${cohort.count}`;
+}
+
 export default function TutorStudentDetailPage() {
   const params = useParams<{ hash: string }>();
   const router = useRouter();
@@ -127,6 +157,9 @@ export default function TutorStudentDetailPage() {
   const [paperLimit, setPaperLimit] = useState(4);
   const [paperMsg, setPaperMsg] = useState("");
   const [generatingPaper, setGeneratingPaper] = useState(false);
+  const [comparison, setComparison] = useState<StudentComparisonPayload | null>(null);
+  const [comparisonMsg, setComparisonMsg] = useState("");
+  const [loadingComparison, setLoadingComparison] = useState(false);
 
   const ensureTutorSession = useCallback(async (): Promise<boolean> => {
     const res = await fetch("/api/tutor/session", { method: "GET", cache: "no-store" });
@@ -221,6 +254,34 @@ export default function TutorStudentDetailPage() {
   useEffect(() => {
     loadPapers();
   }, [loadPapers]);
+
+  const loadComparison = useCallback(async () => {
+    if (!studentHash) return;
+    setLoadingComparison(true);
+    setComparisonMsg("");
+    try {
+      const res = await fetch(
+        `/api/tutor/student-comparison?hash=${encodeURIComponent(studentHash)}&subject=${encodeURIComponent(subject)}`,
+        { method: "GET", cache: "no-store" }
+      );
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: StudentComparisonPayload; error?: string }
+        | null;
+      if (!res.ok || !payload?.data) {
+        throw new Error(payload?.error || "無法載入同學對比。");
+      }
+      setComparison(payload.data);
+    } catch (err) {
+      setComparison(null);
+      setComparisonMsg(err instanceof Error ? err.message : "無法載入同學對比。");
+    } finally {
+      setLoadingComparison(false);
+    }
+  }, [studentHash, subject]);
+
+  useEffect(() => {
+    loadComparison();
+  }, [loadComparison]);
 
   const handleGeneratePaper = async () => {
     setGeneratingPaper(true);
@@ -474,6 +535,73 @@ export default function TutorStudentDetailPage() {
             <p className="text-xs text-gray-500">平均正確率</p>
             <p className="mt-1 text-2xl font-bold text-amber-600">{summary.accuracy}%</p>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-800">同學對比</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              以最近 10 次練習的平均正確率，比較這位學生與同年級同學。範圍包括同校、同區，以及全部同年級。
+            </p>
+          </div>
+          {loadingComparison && <p className="text-sm text-gray-400">載入同學對比中...</p>}
+          {comparisonMsg && (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {comparisonMsg}
+            </p>
+          )}
+          {comparison?.locked && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              同學對比屬導師進階版（HK${comparison.monthlyPriceHkd}/月）。
+              {comparison.gradeLabel ? ` ${comparison.gradeLabel}` : ""}
+              {comparison.schoolName ? `、${comparison.schoolName}` : ""}
+              {comparison.district ? `、${comparison.district}` : ""}
+              的比較會在進階版生效後顯示。
+            </div>
+          )}
+          {comparison && !comparison.locked && comparison.comparison && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2 pr-3">範圍</th>
+                    <th className="py-2 pr-3">平均正確率</th>
+                    <th className="py-2 pr-3">人數</th>
+                    <th className="py-2 pr-3">這位學生排名</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-2 pr-3 font-semibold text-gray-800">這位學生</td>
+                    <td className="py-2 pr-3">{formatComparisonPct(comparison.comparison.studentAccuracy)}</td>
+                    <td className="py-2 pr-3">—</td>
+                    <td className="py-2 pr-3">—</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-2 pr-3">同校同年級{comparison.schoolName ? `（${comparison.schoolName}）` : ""}</td>
+                    <td className="py-2 pr-3">{formatComparisonPct(comparison.comparison.school?.average)}</td>
+                    <td className="py-2 pr-3">{comparison.comparison.school?.count ?? "—"}</td>
+                    <td className="py-2 pr-3">{formatComparisonRank(comparison.comparison.school)}</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-2 pr-3">同區同年級{comparison.district ? `（${comparison.district}）` : ""}</td>
+                    <td className="py-2 pr-3">{formatComparisonPct(comparison.comparison.district?.average)}</td>
+                    <td className="py-2 pr-3">{comparison.comparison.district?.count ?? "—"}</td>
+                    <td className="py-2 pr-3">{formatComparisonRank(comparison.comparison.district)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-3">全部同年級{comparison.gradeLabel ? `（${comparison.gradeLabel}）` : ""}</td>
+                    <td className="py-2 pr-3">{formatComparisonPct(comparison.comparison.grade.average)}</td>
+                    <td className="py-2 pr-3">{comparison.comparison.grade.count}</td>
+                    <td className="py-2 pr-3">{formatComparisonRank(comparison.comparison.grade)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {!comparison.schoolName && (
+                <p className="mt-2 text-sm text-gray-500">這位學生尚未設定學校，所以未能比較同校或同區。</p>
+              )}
+            </div>
+          )}
         </div>
 
         {charts.length > 0 && (
