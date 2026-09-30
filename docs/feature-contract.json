@@ -1590,17 +1590,22 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
-          "snippet": "NotoSansTC-subset.otf"
+          "snippet": "NotoSansTC-subset.ttf"
         },
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
-          "snippet": "installCjkCffSubsetFix"
+          "snippet": "subsetFont"
         },
         {
           "type": "file_contains",
-          "path": "src/lib/server/cjk-cff-subset.ts",
-          "snippet": "this.cff.length = 4"
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "practicePaperDateLine"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "normalizeQuestionContentNewlines"
         }
       ]
     },
@@ -2460,8 +2465,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T11:26:37.989Z",
+  "generated_at": "2026-09-30T11:47:19.185Z",
   "commit_inventory": [
+    {
+      "sha": "21729c331e11655161a4d4843b38cdc8ba86652f",
+      "date": "2026-09-30",
+      "summary": "fix: make practice-paper Chinese printable and easier to fill in"
+    },
+    {
+      "sha": "90de4acdd13fbbc59f7bdab210df89123657295c",
+      "date": "2026-09-30",
+      "summary": "chore: include the practice-paper CJK font fix in the feature contract"
+    },
     {
       "sha": "a9f8dfe8c41c5e8a91576d8a767e71ba9797ed1f",
       "date": "2026-09-30",
@@ -4839,7 +4854,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 475,
+    "total_commits_since_start": 477,
     "total_feature_rows": 64
   }
 }
