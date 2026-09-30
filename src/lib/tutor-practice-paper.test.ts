@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
   PRACTICE_PAPER_QUESTION_COUNT,
+  filenameFromContentDisposition,
   gradeDisplayLabel,
   hktDateLabel,
   hktMonthKey,
   pickPracticeQuestions,
+  practicePaperDownloadFilename,
+  practicePaperMobileSuffix,
   practicePaperQuotaError,
   remainingPracticePapers,
 } from "./tutor-practice-paper";
@@ -28,6 +31,33 @@ describe("tutor practice paper rules", () => {
     expect(remainingPracticePapers(3)).toBe(1);
     expect(practicePaperQuotaError(4)).toContain("4");
     expect(remainingPracticePapers(4)).toBe(0);
+  });
+
+  it("names each download with the mobile tail and a Hong Kong timestamp", () => {
+    const createdAt = new Date("2026-09-30T16:00:00.000Z");
+    expect(practicePaperMobileSuffix("91234567")).toBe("4567");
+    expect(practicePaperMobileSuffix("+852 9123 4567")).toBe("4567");
+    expect(practicePaperMobileSuffix("")).toBe("0000");
+    const student = practicePaperDownloadFilename({
+      subjectLabel: "數學",
+      studentName: "陳小明",
+      mobile: "91234567",
+      kind: "student",
+      createdAt,
+    });
+    const answer = practicePaperDownloadFilename({
+      subjectLabel: "數學",
+      studentName: "陳小明",
+      mobile: "91234567",
+      kind: "answer",
+      createdAt,
+    });
+    expect(student.unicode).toBe("GearUp-數學-陳小明-4567-20261001-000000-學生卷.pdf");
+    expect(student.ascii).toBe("gearup-4567-20261001-000000-student.pdf");
+    expect(answer.unicode).toContain("答案卷");
+    expect(answer.ascii).not.toBe(student.ascii);
+    const header = `attachment; filename="${student.ascii}"; filename*=UTF-8''${encodeURIComponent(student.unicode)}`;
+    expect(filenameFromContentDisposition(header, "gearup-practice-student.pdf")).toBe(student.unicode);
   });
 
   it("picks exactly 30 questions and refuses a short pool", () => {

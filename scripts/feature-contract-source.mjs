@@ -863,6 +863,9 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "subsetFont" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "practicePaperDateLine" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "normalizeQuestionContentNewlines" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "BODY_SIZE = 14" },
+        { type: "file_contains", path: "src/lib/tutor-practice-paper.ts", snippet: "practicePaperDownloadFilename" },
+        { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "filenameFromContentDisposition" },
       ],
     },
     {

@@ -55,6 +55,78 @@ export function hktDateLabel(date = new Date()): string {
   }).format(date);
 }
 
+function hktStampPart(date: Date, type: Intl.DateTimeFormatPartTypes): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  return parts.find((part) => part.type === type)?.value ?? "";
+}
+
+/** `YYYYMMDD-HHmmss` in Hong Kong time, safe to put in a file name. */
+export function practicePaperFileStamp(date: Date): string {
+  const year = hktStampPart(date, "year");
+  const month = hktStampPart(date, "month");
+  const day = hktStampPart(date, "day");
+  const hour = hktStampPart(date, "hour");
+  const minute = hktStampPart(date, "minute");
+  const second = hktStampPart(date, "second");
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
+
+/** Last four digits of the registered mobile, so two students are not saved as the same file. */
+export function practicePaperMobileSuffix(mobile: string): string {
+  const digits = String(mobile ?? "").replace(/\D/g, "");
+  if (digits.length === 0) return "0000";
+  return digits.slice(-4).padStart(4, "0");
+}
+
+function safeDownloadSegment(value: string, fallback: string): string {
+  const cleaned = String(value ?? "")
+    .replace(/[\\/:*?"<>|\r\n]+/g, "")
+    .trim();
+  return cleaned || fallback;
+}
+
+export function practicePaperDownloadFilename(input: {
+  subjectLabel: string;
+  studentName: string;
+  mobile: string;
+  kind: "student" | "answer";
+  createdAt: Date;
+}): { ascii: string; unicode: string } {
+  const stamp = practicePaperFileStamp(input.createdAt);
+  const tail = practicePaperMobileSuffix(input.mobile);
+  const kindAscii = input.kind === "answer" ? "answer" : "student";
+  const kindLabel = input.kind === "answer" ? "答案卷" : "學生卷";
+  const subject = safeDownloadSegment(input.subjectLabel, "科目");
+  const student = safeDownloadSegment(input.studentName, "學生");
+  return {
+    ascii: `gearup-${tail}-${stamp}-${kindAscii}.pdf`,
+    unicode: `GearUp-${subject}-${student}-${tail}-${stamp}-${kindLabel}.pdf`,
+  };
+}
+
+export function filenameFromContentDisposition(header: string | null, fallback: string): string {
+  const value = String(header ?? "");
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(value);
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // Fall through to the plain filename.
+    }
+  }
+  const plain = /filename="([^"]+)"/i.exec(value);
+  return plain?.[1] || fallback;
+}
+
 export function gradeDisplayLabel(gradeLevel: string): string {
   const key = gradeLevel.trim().toUpperCase();
   return GRADE_LABELS[key] ?? gradeLevel.trim();

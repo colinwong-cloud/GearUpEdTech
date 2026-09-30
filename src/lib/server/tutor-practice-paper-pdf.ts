@@ -12,10 +12,18 @@ import {
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-const MARGIN = 48;
+const MARGIN = 54;
 const BODY = rgb(0.12, 0.14, 0.18);
 const MUTED = rgb(0.35, 0.38, 0.42);
-const PARAGRAPH_GAP = 8;
+const BODY_SIZE = 14;
+const BODY_LEADING = 12;
+const META_SIZE = 14;
+const META_LEADING = 10;
+const TITLE_SIZE = 22;
+const TITLE_LEADING = 14;
+const PARAGRAPH_GAP = 18;
+const QUESTION_GAP = 20;
+const CHOICE_INDENT = 28;
 
 let fontBytes: Buffer | null = null;
 
@@ -161,12 +169,12 @@ export async function buildPracticePaperPdf({
     page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     pageIndex += 1;
     y = PAGE_HEIGHT - MARGIN;
-    drawRaw(`GearUp 練習卷${kind === "answer" ? "（答案）" : ""}  續`, 11, BODY, 0);
-    drawRaw(`${studentName}  ·  第 ${pageIndex} 頁`, 10, MUTED, 0);
-    y -= 8;
+    drawRaw(`GearUp 練習卷${kind === "answer" ? "（答案）" : ""}  續`, META_SIZE, BODY, 0, META_LEADING);
+    drawRaw(`${studentName}  ·  第 ${pageIndex} 頁`, 12, MUTED, 0, META_LEADING);
+    y -= 10;
   };
 
-  const drawRaw = (text: string, size: number, color: ReturnType<typeof rgb>, indent: number) => {
+  const drawRaw = (text: string, size: number, color: ReturnType<typeof rgb>, indent: number, leading = BODY_LEADING) => {
     const safe = sanitizeText(font, normalizeQuestionContentNewlines(text), glyphCache);
     const paragraphs = safe.split("\n");
     for (const paragraph of paragraphs) {
@@ -177,7 +185,7 @@ export async function buildPracticePaperPdf({
       }
       const lines = wrapLine(font, paragraph, size, contentWidth - indent);
       for (const line of lines) {
-        ensureSpace(size + 5);
+        ensureSpace(size + leading);
         page.drawText(line, {
           x: MARGIN + indent,
           y: y - size,
@@ -185,22 +193,22 @@ export async function buildPracticePaperPdf({
           font,
           color,
         });
-        y -= size + 5;
+        y -= size + leading;
       }
     }
   };
 
   const title = kind === "answer" ? "GearUp 練習卷（答案）" : "GearUp 練習卷";
-  drawRaw(title, 18, BODY, 0);
-  drawRaw(`${subjectDisplayLabel(subjectKey)}    ${gradeDisplayLabel(gradeLevel)}`, 13, BODY, 0);
-  drawRaw(`學生：${studentName || "—"}`, 11, BODY, 0);
-  drawRaw(practicePaperDateLine(), 11, BODY, 0);
+  drawRaw(title, TITLE_SIZE, BODY, 0, TITLE_LEADING);
+  drawRaw(`${subjectDisplayLabel(subjectKey)}    ${gradeDisplayLabel(gradeLevel)}`, 16, BODY, 0, META_LEADING);
+  drawRaw(`學生：${studentName || "—"}`, META_SIZE, BODY, 0, META_LEADING);
+  drawRaw(practicePaperDateLine(), META_SIZE, BODY, 0, META_LEADING);
   if (kind === "student") {
-    drawRaw(`分數：__________ / ${questions.length}`, 11, BODY, 0);
+    drawRaw(`分數：__________ / ${questions.length}`, META_SIZE, BODY, 0, META_LEADING);
   } else {
-    drawRaw("導師參考。請勿派發給學生。", 11, MUTED, 0);
+    drawRaw("導師參考。請勿派發給學生。", META_SIZE, MUTED, 0, META_LEADING);
   }
-  y -= 8;
+  y -= 12;
   ensureSpace(2);
   page.drawLine({
     start: { x: MARGIN, y },
@@ -208,11 +216,11 @@ export async function buildPracticePaperPdf({
     thickness: 0.6,
     color: MUTED,
   });
-  y -= 16;
+  y -= 22;
 
   for (let index = 0; index < questions.length; index += 1) {
     const question = questions[index];
-    drawRaw(`${index + 1}. ${question.content || ""}`, 11, BODY, 0);
+    drawRaw(`${index + 1}. ${question.content || ""}`, BODY_SIZE, BODY, 0);
     const imageBytes = images[index];
     if (imageBytes) {
       const embedded = await embedQuestionImage(pdf, imageBytes);
@@ -227,19 +235,20 @@ export async function buildPracticePaperPdf({
         y -= 8;
       }
     }
+    y -= 8;
     const choices = practicePaperChoiceLines(question);
     if (choices.length > 0) {
-      for (const choice of choices) drawRaw(choice, 11, BODY, 16);
+      for (const choice of choices) drawRaw(choice, BODY_SIZE, BODY, CHOICE_INDENT);
     } else if (kind === "student") {
-      drawRaw("答：______________________________", 11, BODY, 16);
+      drawRaw("答：______________________________", BODY_SIZE, BODY, CHOICE_INDENT);
     }
     if (kind === "answer") {
-      drawRaw(`答案：${formatCorrectAnswer(question)}`, 11, BODY, 16);
+      drawRaw(`答案：${formatCorrectAnswer(question)}`, BODY_SIZE, BODY, CHOICE_INDENT);
       if (question.explanation?.trim()) {
-        drawRaw(`解釋：${question.explanation.trim()}`, 10, MUTED, 16);
+        drawRaw(`解釋：${question.explanation.trim()}`, 13, MUTED, CHOICE_INDENT, META_LEADING);
       }
     }
-    y -= 8;
+    y -= QUESTION_GAP;
   }
 
   return pdf.save();

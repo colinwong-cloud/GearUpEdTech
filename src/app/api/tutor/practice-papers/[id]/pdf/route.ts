@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { subjectDisplayLabel } from "@/lib/quiz-subjects";
+import { practicePaperDownloadFilename } from "@/lib/tutor-practice-paper";
 import { getPracticePaperForTutor, TUTOR_PRACTICE_PAPER_TABLE_HINT } from "@/lib/server/tutor-practice-paper-store";
 import { buildPracticePaperPdf } from "@/lib/server/tutor-practice-paper-pdf";
 import { requireTutorSession } from "@/lib/server/tutor-session";
@@ -52,12 +53,17 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       questions: paper.questions,
       images,
     });
-    const label = kindParam === "answer" ? "答案卷" : "學生卷";
-    const filename = `GearUp-${subjectDisplayLabel(paper.subject)}-${paper.studentName}-${label}.pdf`;
+    const names = practicePaperDownloadFilename({
+      subjectLabel: subjectDisplayLabel(paper.subject),
+      studentName: paper.studentName,
+      mobile: paper.registeredMobile,
+      kind: kindParam,
+      createdAt: paper.createdAt ? new Date(paper.createdAt) : new Date(),
+    });
     return new NextResponse(Buffer.from(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="gearup-practice.pdf"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Content-Disposition": `attachment; filename="${names.ascii}"; filename*=UTF-8''${encodeURIComponent(names.unicode)}`,
       },
     });
   } catch (error) {
