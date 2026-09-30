@@ -14,6 +14,7 @@ import {
   PRIMARY_QUIZ_SUBJECT,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
+import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
 
 type TutorStudentChart = {
   student_id: string;
@@ -260,7 +261,10 @@ export default function TutorStudentDetailPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = kind === "answer" ? "gearup-practice-answer.pdf" : "gearup-practice-student.pdf";
+      link.download = filenameFromContentDisposition(
+        res.headers.get("Content-Disposition"),
+        kind === "answer" ? "gearup-practice-answer.pdf" : "gearup-practice-student.pdf"
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();

@@ -1606,6 +1606,21 @@
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
           "snippet": "normalizeQuestionContentNewlines"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "BODY_SIZE = 14"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-practice-paper.ts",
+          "snippet": "practicePaperDownloadFilename"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/student/[hash]/page.tsx",
+          "snippet": "filenameFromContentDisposition"
         }
       ]
     },
@@ -2465,8 +2480,28 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T11:51:38.261Z",
+  "generated_at": "2026-09-30T12:58:23.872Z",
   "commit_inventory": [
+    {
+      "sha": "8010e9d4d2bf75818692661c7173657dd2dafb55",
+      "date": "2026-09-30",
+      "summary": "ci: fall back to webpack when the Turbopack font build fails"
+    },
+    {
+      "sha": "5870fe494f586b32dbe199acb51f19836986d66e",
+      "date": "2026-09-30",
+      "summary": "chore: record practice-paper filenames and spacing in the feature contract"
+    },
+    {
+      "sha": "a6e3391a7914d026875c02d5346f5fb2959aa662",
+      "date": "2026-09-30",
+      "summary": "fix: give each practice paper a unique name and roomier type"
+    },
+    {
+      "sha": "6df27dd2da9b4d6cabf37af5bd960f7c8525d5bf",
+      "date": "2026-09-30",
+      "summary": "chore: include the subset-font type declaration in the feature contract"
+    },
     {
       "sha": "ea69b349aa6f68e695b0eedc3b81d5fabd07407e",
       "date": "2026-09-30",
@@ -4864,7 +4899,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 479,
+    "total_commits_since_start": 483,
     "total_feature_rows": 64
   }
 }

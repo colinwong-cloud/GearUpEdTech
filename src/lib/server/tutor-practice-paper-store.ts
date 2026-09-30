@@ -23,6 +23,7 @@ export type PracticePaperRecord = {
   questions: PracticePaperQuestion[];
   monthKey: string;
   createdAt: string;
+  registeredMobile: string;
 };
 
 function getSupabaseAdmin() {
@@ -76,7 +77,19 @@ function mapRow(row: {
     questions: asQuestions(row.questions),
     monthKey: String(row.month_key ?? ""),
     createdAt: String(row.created_at ?? ""),
+    registeredMobile: "",
   };
+}
+
+async function loadRegisteredMobile(admin: SupabaseClient, studentId: string): Promise<string> {
+  if (!studentId) return "";
+  const studentRes = await admin.from("students").select("parent_id").eq("id", studentId).maybeSingle();
+  if (studentRes.error || !studentRes.data) return "";
+  const parentId = String(studentRes.data.parent_id ?? "").trim();
+  if (!parentId) return "";
+  const parentRes = await admin.from("parents").select("mobile_number").eq("id", parentId).maybeSingle();
+  if (parentRes.error || !parentRes.data) return "";
+  return String(parentRes.data.mobile_number ?? "").trim();
 }
 
 async function countMonthPapers(admin: SupabaseClient, codeId: string, monthKey: string): Promise<number> {
@@ -289,5 +302,7 @@ export async function getPracticePaperForTutor({
     throw paperRes.error;
   }
   if (!paperRes.data) return null;
-  return mapRow(paperRes.data);
+  const paper = mapRow(paperRes.data);
+  paper.registeredMobile = await loadRegisteredMobile(admin, paper.studentId);
+  return paper;
 }
