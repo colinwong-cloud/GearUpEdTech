@@ -220,6 +220,8 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.tutor_student_peer_comparison(uuid, text, text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.tutor_student_peer_comparison(uuid, text, text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.tutor_student_peer_comparison(uuid, text, text, uuid) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.tutor_student_peer_comparison(uuid, text, text, uuid) TO service_role;
 
 COMMIT;
