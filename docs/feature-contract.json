@@ -1693,12 +1693,12 @@
         {
           "type": "file_contains",
           "path": "src/lib/tutor-practice-paper.ts",
-          "snippet": "previousHktMonthKey"
+          "snippet": "PRACTICE_PAPER_OVERVIEW_DAYS = 180"
         },
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
-          "snippet": "較早月份的練習卷"
+          "snippet": "近 180 日"
         },
         {
           "type": "file_contains",
@@ -2573,8 +2573,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T04:30:40.395Z",
+  "generated_at": "2026-10-01T04:43:29.272Z",
   "commit_inventory": [
+    {
+      "sha": "89a2c40505b61994c5a999b71f24480abaa86064",
+      "date": "2026-10-01",
+      "summary": "fix: keep one practice-paper list for the last 180 days"
+    },
+    {
+      "sha": "a5a3b9060e286fc3c75565369dfe531a49b8041f",
+      "date": "2026-10-01",
+      "summary": "chore: record the monthly practice-paper balance labels in the feature contract"
+    },
     {
       "sha": "f189e5acd0da0cdfc06d7c1bd191b5ee04ebb6b4",
       "date": "2026-10-01",
@@ -5072,7 +5082,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 499,
+    "total_commits_since_start": 501,
     "total_feature_rows": 64
   }
 }
