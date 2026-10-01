@@ -860,6 +860,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "學生卷" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "答案卷" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "NotoSansTC-subset.ttf" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "gearup-edutech-logo.png" },
+        { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "gearup-banana-mascot.png" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "subsetFont" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "practicePaperDateLine" },
         { type: "file_contains", path: "src/lib/server/tutor-practice-paper-pdf.ts", snippet: "normalizeQuestionContentNewlines" },

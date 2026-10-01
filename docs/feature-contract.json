@@ -1595,6 +1595,16 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "gearup-edutech-logo.png"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "gearup-banana-mascot.png"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
           "snippet": "subsetFont"
         },
         {
@@ -2588,8 +2598,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T07:16:37.152Z",
+  "generated_at": "2026-10-01T07:35:45.700Z",
   "commit_inventory": [
+    {
+      "sha": "07581a96b18ced827d7a91c12b0cde3e7a3383d8",
+      "date": "2026-10-01",
+      "summary": "feat: add the GearUp logo and banana mascot to the first paper page"
+    },
+    {
+      "sha": "0cc82da5c7ebb33317ef57bd7b98574aded61553",
+      "date": "2026-10-01",
+      "summary": "chore: record the tutor student back button in the feature contract"
+    },
     {
       "sha": "fc7cb6ac83b43907442129ca8d949333044d9e80",
       "date": "2026-10-01",
@@ -5117,7 +5137,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 505,
+    "total_commits_since_start": 507,
     "total_feature_rows": 64
   }
 }

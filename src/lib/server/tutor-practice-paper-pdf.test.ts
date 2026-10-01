@@ -1,5 +1,6 @@
 import { inflateSync } from "zlib";
 import fontkit from "@pdf-lib/fontkit";
+import { PDFArray, PDFContentStream, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import {
   buildPracticePaperPdf,
@@ -115,4 +116,40 @@ describe("buildPracticePaperPdf", () => {
     expect(Buffer.from(student).includes(Buffer.from("01/10/2026"))).toBe(false);
     expect(Buffer.from(student).includes(Buffer.from("段落一\\n\\n"))).toBe(false);
   }, 20000);
+
+  it("draws the logo and mascot on the first page only", async () => {
+    const questions = Array.from({ length: 30 }, (_, index) => ({
+      ...sample,
+      id: `q${index}`,
+      content: `${passage} 第${index + 1}題`,
+    }));
+    const bytes = await buildPracticePaperPdf({
+      kind: "student",
+      studentName: "陳小明",
+      gradeLevel: "P4",
+      subjectKey: "Math",
+      createdAt: new Date("2026-09-30T16:00:00.000Z"),
+      questions,
+    });
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBeGreaterThan(1);
+    const draws = pdf.getPages().map((page) => pageContent(page).split(" Do").length - 1);
+    expect(draws[0]).toBe(2);
+    expect(draws.slice(1).every((count) => count === 0)).toBe(true);
+  }, 20000);
 });
+
+function pageContent(page: ReturnType<PDFDocument["getPages"]>[number]): string {
+  const contents = page.node.Contents();
+  if (!contents) return "";
+  const streams = contents instanceof PDFArray
+    ? Array.from({ length: contents.size() }, (_, index) => contents.lookup(index))
+    : [contents];
+  return streams
+    .map((stream) => {
+      if (stream instanceof PDFRawStream) return Buffer.from(decodePDFRawStream(stream).decode()).toString("latin1");
+      if (stream instanceof PDFContentStream) return Buffer.from(stream.getUnencodedContents()).toString("latin1");
+      return "";
+    })
+    .join("\n");
+}
