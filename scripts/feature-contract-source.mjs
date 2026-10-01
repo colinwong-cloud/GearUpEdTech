@@ -888,6 +888,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "尚餘" },
         { type: "file_contains", path: "src/lib/tutor-practice-paper.ts", snippet: "PRACTICE_PAPER_OVERVIEW_DAYS = 180" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "近 180 日" },
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "每月可免費生成 4 份練習" },
         { type: "file_contains", path: "src/app/api/tutor/practice-papers/overview/route.ts", snippet: "listTutorPracticePaperOverview" },
         { type: "file_contains", path: "src/app/api/tutor/billing/checkout/route.ts", snippet: "createTutorPlanCheckout" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "同學對比" },
