@@ -750,7 +750,7 @@ export default function TutorPortalPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
           <div>
             <h2 className="text-base font-bold text-gray-800">練習卷總覽</h2>
-            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。列表只顯示近 180 日的練習卷。</p>
+            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。每月可免費生成 4 份練習。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。列表只顯示近 180 日的練習卷。</p>
             <p className="mt-2 text-sm font-semibold text-indigo-800">
               {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
             </p>

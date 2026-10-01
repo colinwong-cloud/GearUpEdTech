@@ -1732,6 +1732,11 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "每月可免費生成 4 份練習"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/tutor/practice-papers/overview/route.ts",
           "snippet": "listTutorPracticePaperOverview"
         },
@@ -2603,8 +2608,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T08:01:11.876Z",
+  "generated_at": "2026-10-01T08:20:36.367Z",
   "commit_inventory": [
+    {
+      "sha": "ac299fcfccc26d80a798f45e5a5dddacf46e68c6",
+      "date": "2026-10-01",
+      "summary": "fix: state the free monthly practice-paper allowance in the overview"
+    },
+    {
+      "sha": "2695cb393c6bec7b1b6ef5e14ebf87c9698fc791",
+      "date": "2026-10-01",
+      "summary": "chore: record the practice-paper asset loader in the feature contract"
+    },
     {
       "sha": "810ba209ebaf5b57963c40a7710475690ac2894e",
       "date": "2026-10-01",
@@ -5152,7 +5167,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 509,
+    "total_commits_since_start": 511,
     "total_feature_rows": 64
   }
 }
