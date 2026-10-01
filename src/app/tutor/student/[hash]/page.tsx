@@ -15,6 +15,7 @@ import {
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
 import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
+import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
 
 type TutorStudentChart = {
   student_id: string;
@@ -181,6 +182,7 @@ export default function TutorStudentDetailPage() {
   const [generatingPaper, setGeneratingPaper] = useState(false);
   const [comparison, setComparison] = useState<StudentComparisonPayload | null>(null);
   const [comparisonMsg, setComparisonMsg] = useState("");
+  const [planLoading, setPlanLoading] = useState(false);
   const [loadingComparison, setLoadingComparison] = useState(false);
   const [comparisonSchools, setComparisonSchools] = useState<ComparisonSchool[]>([]);
   const [compareGrade, setCompareGrade] = useState("");
@@ -706,6 +708,23 @@ export default function TutorStudentDetailPage() {
                 {comparison.district ? `、${comparison.district}` : ""}
                 的真實比較。
               </div>
+              <button
+                type="button"
+                disabled={planLoading}
+                onClick={async () => {
+                  setPlanLoading(true);
+                  setComparisonMsg("");
+                  try {
+                    await redirectToTutorPlanCheckout();
+                  } catch (err) {
+                    setComparisonMsg(err instanceof Error ? err.message : "未能建立付款。");
+                    setPlanLoading(false);
+                  }
+                }}
+                className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {planLoading ? "前往付款..." : "前往 Airwallex 付款"}
+              </button>
               <div className="overflow-x-auto rounded-xl border border-dashed border-amber-300">
                 <div className="bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">示例</div>
                 <table className="min-w-full text-sm">

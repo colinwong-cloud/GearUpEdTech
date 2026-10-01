@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
+import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -733,31 +734,7 @@ export default function TutorPortalPage() {
                 setPlanLoading(true);
                 setMsg("");
                 try {
-                  const res = await fetch("/api/tutor/billing/checkout", { method: "POST" });
-                  const payload = (await res.json().catch(() => null)) as
-                    | {
-                        intent_id?: string;
-                        client_secret?: string;
-                        customer_id?: string;
-                        final_amount_hkd?: number;
-                        error?: string;
-                      }
-                    | null;
-                  if (!res.ok || !payload?.intent_id || !payload.client_secret || !payload.customer_id) {
-                    throw new Error(payload?.error || "未能建立付款。");
-                  }
-                  const params = new URLSearchParams({
-                    intent_id: payload.intent_id,
-                    client_secret: payload.client_secret,
-                    customer_id: payload.customer_id,
-                    final_amount_hkd: String(payload.final_amount_hkd ?? 199),
-                    currency: "HKD",
-                    country_code: "HK",
-                    payment_method: "all",
-                    airwallex_locale: "zh-HK",
-                    payer: "tutor",
-                  });
-                  window.location.href = `/payment-airwallex?${params.toString()}`;
+                  await redirectToTutorPlanCheckout();
                 } catch (err) {
                   setMsg(err instanceof Error ? err.message : "未能建立付款。");
                   setPlanLoading(false);
@@ -765,7 +742,7 @@ export default function TutorPortalPage() {
               }}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
             >
-              {planActive ? "已開通" : planLoading ? "前往付款..." : "開通 HK$199/月"}
+              {planActive ? "已開通" : planLoading ? "前往付款..." : "前往 Airwallex 付款"}
             </button>
           </div>
         </div>
