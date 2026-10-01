@@ -27,6 +27,7 @@ import {
   pushGtmEventOncePerSession,
 } from "@/lib/gtm-events";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
+import { getPaymentTermsUrl } from "@/lib/payment-terms";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -211,15 +212,6 @@ function getRankSampleImageUrl(): string {
   return base
     ? `${base}/storage/v1/object/public/Webpage_images/logo/rank_sample.png`
     : "/rank_sample.png";
-}
-
-function getPaymentTermsUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_PAYMENT_TERMS_URL?.trim();
-  if (explicit) return explicit;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-  return base
-    ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
-    : "/payment_terms_condition.txt";
 }
 
 function getAirwallexEnv(): "demo" | "prod" {

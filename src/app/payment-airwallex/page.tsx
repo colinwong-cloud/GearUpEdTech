@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { buildMitHppRedirectProps } from "@/lib/airwallex-hpp-mit";
+import { getPaymentTermsUrl } from "@/lib/payment-terms";
+import { TUTOR_PLAN_PRICE_HKD } from "@/lib/tutor-billing";
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
 
 type AirwallexPaymentsApi = {
@@ -139,6 +141,11 @@ function PaymentAirwallexContent() {
   const [booting, setBooting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(() => hasAirwallexSdk());
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsText, setTermsText] = useState("");
+  const [loadingTerms, setLoadingTerms] = useState(false);
+  const isTutor = payer === "tutor";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -178,7 +185,26 @@ function PaymentAirwallexContent() {
     (process.env.NEXT_PUBLIC_APP_BASE_URL || "").trim().replace(/\/$/, "") ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
+  async function openTerms() {
+    setShowTerms(true);
+    if (termsText || loadingTerms) return;
+    setLoadingTerms(true);
+    try {
+      const resp = await fetch(getPaymentTermsUrl(), { cache: "no-store" });
+      const text = await resp.text();
+      setTermsText(text || "未能載入付款條款，請稍後再試。");
+    } catch {
+      setTermsText("未能載入付款條款，請稍後再試。");
+    } finally {
+      setLoadingTerms(false);
+    }
+  }
+
   async function startCheckout() {
+    if (isTutor && !agreed) {
+      setError("請先同意付款條款。");
+      return;
+    }
     if (!intentId || !clientSecret) {
       setError("缺少付款參數，請返回重試。");
       return;
@@ -264,21 +290,58 @@ function PaymentAirwallexContent() {
         onLoad={() => setSdkReady(hasAirwallexSdk())}
         onReady={() => setSdkReady(hasAirwallexSdk())}
       />
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className={`w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm ${isTutor ? "max-w-lg" : "max-w-md"}`}>
         <h1 className="text-xl font-bold text-gray-900">前往 Airwallex 付款</h1>
-        <p className="mt-2 text-sm text-gray-600">請按下方按鈕進入安全付款頁面。</p>
-        <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 space-y-1">
-          <p>帳戶：{mobile || "—"}</p>
-          <p>付款方式：{paymentMethod}</p>
-          <p>幣別：{currency}</p>
-        </div>
+        <p className="mt-2 text-sm text-gray-600">
+          {isTutor ? "請先了解進階版內容，同意付款條款後進入安全付款頁面。" : "請按下方按鈕進入安全付款頁面。"}
+        </p>
+        {isTutor ? (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-3 text-sm text-indigo-950">
+              <p className="font-semibold">導師進階版 HK${TUTOR_PLAN_PRICE_HKD}/月</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-indigo-900">
+                <li>顯示這位學生最近 10 次練習的真實平均正確率，以及在同學中的排名。</li>
+                <li>比較同校同年級、同區同年級，以及全部同年級。</li>
+                <li>可另選一個年級和學校，查看該組的真實比較。</li>
+                <li>未付款時只看到示例，並非這位學生的真實數據。</li>
+                <li>每月由已授權的付款方式自動續費。</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-3">
+              <label className="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(event) => setAgreed(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  本人確認已閱讀並同意本平台的
+                  <button
+                    type="button"
+                    onClick={() => void openTerms()}
+                    className="ml-1 text-indigo-600 underline hover:text-indigo-700"
+                  >
+                    付款條款及細則
+                  </button>
+                </span>
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 space-y-1">
+            <p>帳戶：{mobile || "—"}</p>
+            <p>付款方式：{paymentMethod}</p>
+            <p>幣別：{currency}</p>
+          </div>
+        )}
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
         <button
           type="button"
           onClick={startCheckout}
-          disabled={booting || !sdkReady}
+          disabled={booting || !sdkReady || (isTutor && !agreed)}
           className={`mt-5 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
-            booting || !sdkReady
+            booting || !sdkReady || (isTutor && !agreed)
               ? "bg-gray-200 text-gray-400"
               : "bg-indigo-600 text-white hover:bg-indigo-700"
           }`}
@@ -286,12 +349,35 @@ function PaymentAirwallexContent() {
           {booting ? "載入中..." : "進入 Airwallex 付款"}
         </button>
         <Link
-          href="/"
+          href={isTutor ? "/tutor" : "/"}
           className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
         >
-          返回主頁
+          {isTutor ? "返回導師頁" : "返回主頁"}
         </Link>
       </div>
+      {isTutor && showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-800">付款條款及細則</h2>
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                關閉
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto px-4 py-3">
+              {loadingTerms ? (
+                <p className="text-sm text-gray-500">載入中...</p>
+              ) : (
+                <pre className="whitespace-pre-wrap text-sm text-gray-700">{termsText}</pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
