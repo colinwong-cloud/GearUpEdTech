@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+  PRACTICE_PAPER_OVERVIEW_DAYS,
   PRACTICE_PAPER_QUESTION_COUNT,
   filenameFromContentDisposition,
   gradeDisplayLabel,
   hktDateLabel,
   hktMonthKey,
   hktMonthLabel,
-  previousHktMonthKey,
   pickPracticeQuestions,
+  practicePaperOverviewSince,
   practicePaperDownloadFilename,
   practicePaperMobileSuffix,
   practicePaperQuotaError,
@@ -19,9 +20,11 @@ describe("tutor practice paper rules", () => {
   it("uses the Hong Kong calendar month", () => {
     expect(hktMonthKey(new Date("2026-09-30T15:59:00.000Z"))).toBe("2026-09");
     expect(hktMonthKey(new Date("2026-09-30T16:00:00.000Z"))).toBe("2026-10");
-    expect(previousHktMonthKey("2026-10")).toBe("2026-09");
-    expect(previousHktMonthKey("2026-01")).toBe("2025-12");
     expect(hktMonthLabel("2026-10")).toBe("2026年10月");
+    expect(PRACTICE_PAPER_OVERVIEW_DAYS).toBe(180);
+    expect(practicePaperOverviewSince(new Date("2026-10-01T04:00:00.000Z")).toISOString()).toBe(
+      "2026-04-04T04:00:00.000Z"
+    );
     expect(hktDateLabel(new Date("2026-09-30T16:00:00.000Z"))).toBe("01/10/2026");
   });
 

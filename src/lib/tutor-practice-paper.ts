@@ -7,6 +7,7 @@ import {
 
 export const PRACTICE_PAPER_QUESTION_COUNT = 30;
 export const FREE_PRACTICE_PAPER_MONTHLY_LIMIT = 4;
+export const PRACTICE_PAPER_OVERVIEW_DAYS = 180;
 
 const GRADE_LABELS: Record<string, string> = {
   P1: "小一",
@@ -46,13 +47,9 @@ export function hktMonthKey(date = new Date()): string {
   return parts.slice(0, 7);
 }
 
-export function previousHktMonthKey(monthKey: string): string {
-  const [yearText, monthText] = monthKey.split("-");
-  const year = Number(yearText);
-  const month = Number(monthText);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return monthKey;
-  if (month === 1) return `${year - 1}-12`;
-  return `${year}-${String(month - 1).padStart(2, "0")}`;
+/** Start of the overview window: papers older than this are left off the list. */
+export function practicePaperOverviewSince(date = new Date()): Date {
+  return new Date(date.getTime() - PRACTICE_PAPER_OVERVIEW_DAYS * 24 * 60 * 60 * 1000);
 }
 
 export function hktMonthLabel(monthKey: string): string {

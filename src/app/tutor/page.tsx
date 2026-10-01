@@ -95,8 +95,6 @@ export default function TutorPortalPage() {
   const [paperLimit, setPaperLimit] = useState(4);
   const [paperRemaining, setPaperRemaining] = useState(4);
   const [paperMonthKey, setPaperMonthKey] = useState("");
-  const [previousPaperMonthKey, setPreviousPaperMonthKey] = useState("");
-  const [previousPaperUsed, setPreviousPaperUsed] = useState(0);
   const [paperRows, setPaperRows] = useState<PracticePaperOverviewRow[]>([]);
   const [paperMsg, setPaperMsg] = useState("");
 
@@ -187,9 +185,7 @@ export default function TutorPortalPage() {
         | {
             data?: {
               month_key?: string;
-              previous_month_key?: string;
               used?: number;
-              previous_used?: number;
               limit?: number;
               remaining?: number;
               papers?: PracticePaperOverviewRow[];
@@ -202,8 +198,6 @@ export default function TutorPortalPage() {
       setPaperLimit(Number(payload?.data?.limit ?? 4));
       setPaperRemaining(Number(payload?.data?.remaining ?? 0));
       setPaperMonthKey(String(payload?.data?.month_key ?? ""));
-      setPreviousPaperMonthKey(String(payload?.data?.previous_month_key ?? ""));
-      setPreviousPaperUsed(Number(payload?.data?.previous_used ?? 0));
       setPaperRows(payload?.data?.papers ?? []);
       setPaperMsg("");
     } catch (err) {
@@ -779,22 +773,14 @@ export default function TutorPortalPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
           <div>
             <h2 className="text-base font-bold text-gray-800">練習卷總覽</h2>
-            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。</p>
+            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。列表只顯示近 180 日的練習卷。</p>
             <p className="mt-2 text-sm font-semibold text-indigo-800">
               {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
             </p>
-            {previousPaperMonthKey && (
-              <p className="text-sm text-gray-600">
-                {hktMonthLabel(previousPaperMonthKey)}已生成 {previousPaperUsed} / {paperLimit} 份
-                {previousPaperUsed >= paperLimit ? "，該月餘額已用完。" : `，該月尚餘 ${Math.max(0, paperLimit - previousPaperUsed)} 份。`}
-                該月的練習卷不計入本月餘額，仍可下載。
-              </p>
-            )}
           </div>
           {paperMsg && <p className="text-sm text-rose-600">{paperMsg}</p>}
-          <p className="text-sm font-semibold text-gray-700">本月練習卷</p>
-          {paperRows.filter((paper) => paper.month_key === paperMonthKey).length === 0 ? (
-            <p className="text-sm text-gray-400">本月尚未生成練習卷。</p>
+          {paperRows.length === 0 ? (
+            <p className="text-sm text-gray-400">近 180 日尚未生成練習卷。</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -808,80 +794,32 @@ export default function TutorPortalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paperRows
-                    .filter((paper) => paper.month_key === paperMonthKey)
-                    .map((paper) => (
-                      <tr key={paper.id} className="border-b border-gray-100">
-                        <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
-                        <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
-                        <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
-                        <td className="py-2 pr-3">{paper.subject_label}</td>
-                        <td className="py-2 pr-3">
-                          <button
-                            type="button"
-                            onClick={() => downloadOverviewPaper(paper.id, "student")}
-                            className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
-                          >
-                            學生卷
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => downloadOverviewPaper(paper.id, "answer")}
-                            className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
-                          >
-                            答案卷
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                  {paperRows.map((paper) => (
+                    <tr key={paper.id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
+                      <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
+                      <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
+                      <td className="py-2 pr-3">{paper.subject_label}</td>
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => downloadOverviewPaper(paper.id, "student")}
+                          className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                        >
+                          學生卷
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadOverviewPaper(paper.id, "answer")}
+                          className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
+                        >
+                          答案卷
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            </div>
-          )}
-          {paperRows.some((paper) => paper.month_key !== paperMonthKey) && (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700">較早月份的練習卷</p>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-gray-500">
-                      <th className="py-2 pr-3">日期</th>
-                      <th className="py-2 pr-3">學生</th>
-                      <th className="py-2 pr-3">登記手機</th>
-                      <th className="py-2 pr-3">科目</th>
-                      <th className="py-2 pr-3">下載</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paperRows
-                      .filter((paper) => paper.month_key !== paperMonthKey)
-                      .map((paper) => (
-                        <tr key={paper.id} className="border-b border-gray-100">
-                          <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
-                          <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
-                          <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
-                          <td className="py-2 pr-3">{paper.subject_label}</td>
-                          <td className="py-2 pr-3">
-                            <button
-                              type="button"
-                              onClick={() => downloadOverviewPaper(paper.id, "student")}
-                              className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
-                            >
-                              學生卷
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => downloadOverviewPaper(paper.id, "answer")}
-                              className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
-                            >
-                              答案卷
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
         </div>

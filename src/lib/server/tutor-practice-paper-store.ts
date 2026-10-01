@@ -5,8 +5,8 @@ import {
   FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
   PRACTICE_PAPER_QUESTION_COUNT,
   hktMonthKey,
-  previousHktMonthKey,
   isPracticePaperSubject,
+  practicePaperOverviewSince,
   pickPracticeQuestions,
   practicePaperQuotaError,
   type PracticePaperQuestion,
@@ -223,9 +223,7 @@ export async function listTutorPracticePaperOverview({
   | {
       ok: true;
       monthKey: string;
-      previousMonthKey: string;
       used: number;
-      previousUsed: number;
       limit: number;
       remaining: number;
       papers: PracticePaperOverviewRow[];
@@ -235,16 +233,14 @@ export async function listTutorPracticePaperOverview({
   const admin = getSupabaseAdmin();
   if (!admin) return { ok: false, status: 503, error: "系統未配置 Supabase 管理金鑰。" };
   const monthKey = hktMonthKey();
-  const previousMonthKey = previousHktMonthKey(monthKey);
   try {
     const used = await countMonthPapers(admin, codeId, monthKey);
-    const previousUsed = await countMonthPapers(admin, codeId, previousMonthKey);
     const listRes = await admin
       .from("tutor_practice_papers")
       .select("id,student_id,student_name,grade_level,subject,month_key,created_at")
       .eq("code_id", codeId)
-      .order("created_at", { ascending: false })
-      .limit(80);
+      .gte("created_at", practicePaperOverviewSince().toISOString())
+      .order("created_at", { ascending: false });
     if (listRes.error) {
       if (isMissingTable(listRes.error.message || "")) {
         return { ok: false, status: 503, error: TUTOR_PRACTICE_PAPER_TABLE_HINT };
@@ -260,9 +256,7 @@ export async function listTutorPracticePaperOverview({
     return {
       ok: true,
       monthKey,
-      previousMonthKey,
       used,
-      previousUsed,
       limit,
       remaining: Math.max(0, limit - used),
       papers: papers.map((paper) => ({
