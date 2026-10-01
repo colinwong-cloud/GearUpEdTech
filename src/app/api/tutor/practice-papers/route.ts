@@ -23,7 +23,7 @@ function paperJson(paper: {
   };
 }
 
-async function boundStudent(req: NextRequest, hash: string) {
+async function boundStudent(req: NextRequest, hash: string, studentIdHint = "") {
   const sessionRes = await requireTutorSession(req, { requirePasswordChanged: true });
   if (sessionRes.response || !sessionRes.profile) {
     return { response: sessionRes.response ?? NextResponse.json({ error: "未登入導師帳戶" }, { status: 401 }) };
@@ -34,11 +34,14 @@ async function boundStudent(req: NextRequest, hash: string) {
     return { response: NextResponse.json({ error: "系統未配置 Supabase 管理金鑰。" }, { status: 503 }) };
   }
   const admin = createClient(url, serviceRole);
+  const hintedStudentId =
+    studentIdHint.trim() || String(req.nextUrl.searchParams.get("sid") || "").trim();
   const resolved = await resolveTutorBoundStudentFromHash(
     admin,
     sessionRes.profile.codeId,
     hash,
-    getTutorHashSecret()
+    getTutorHashSecret(),
+    hintedStudentId
   );
   if ("error" in resolved) {
     return { response: NextResponse.json({ error: resolved.error }, { status: resolved.status }) };
@@ -74,15 +77,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { hash?: string; subject?: string };
+  let body: { hash?: string; subject?: string; sid?: string };
   try {
-    body = (await req.json()) as { hash?: string; subject?: string };
+    body = (await req.json()) as { hash?: string; subject?: string; sid?: string };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const hash = String(body.hash ?? "").trim();
   if (!hash) return NextResponse.json({ error: "缺少學生連結。" }, { status: 400 });
-  const bound = await boundStudent(req, hash);
+  const bound = await boundStudent(req, hash, String(body.sid ?? ""));
   if (!("student" in bound) || !bound.profile || !bound.student) {
     return bound.response ?? NextResponse.json({ error: "未登入導師帳戶" }, { status: 401 });
   }

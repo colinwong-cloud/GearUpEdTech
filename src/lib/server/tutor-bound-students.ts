@@ -4,6 +4,8 @@ import {
   tutorHashesEqual,
 } from "@/lib/server/tutor-student-hash";
 
+const STUDENT_ID_HINT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export type TutorBoundStudent = {
   studentId: string;
   studentName: string;
@@ -120,14 +122,70 @@ export async function listTutorBoundStudents(
   return { students };
 }
 
+async function resolveTutorBoundStudentById(
+  admin: SupabaseClient,
+  codeId: string,
+  hash: string,
+  secret: string,
+  studentIdHint: string
+): Promise<{ student: TutorBoundStudent } | { error: string; status: number } | null> {
+  const studentId = studentIdHint.trim();
+  if (!STUDENT_ID_HINT.test(studentId)) return null;
+  const studentRes = await admin
+    .from("students")
+    .select("id,parent_id,student_name")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (studentRes.error) return { error: studentRes.error.message || "無法讀取學生資料。", status: 500 };
+  if (!studentRes.data) {
+    return { error: "找不到該學生，或連結已失效。請返回導師主頁重新選擇。", status: 403 };
+  }
+  const parentId = String(studentRes.data.parent_id ?? "").trim();
+  const parentRes = await admin.from("parents").select("mobile_number").eq("id", parentId).maybeSingle();
+  if (parentRes.error) return { error: parentRes.error.message || "無法讀取家長資料。", status: 500 };
+  const mobile = String(parentRes.data?.mobile_number ?? "").trim();
+  if (!mobile) {
+    return { error: "找不到該學生，或連結已失效。請返回導師主頁重新選擇。", status: 403 };
+  }
+  const usageRes = await admin
+    .from("tutor_referral_usages")
+    .select("used_at")
+    .eq("code_id", codeId)
+    .eq("mobile_number", mobile)
+    .order("used_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (usageRes.error) return { error: usageRes.error.message || "無法驗證資料權限。", status: 500 };
+  if (!usageRes.data) {
+    return { error: "找不到該學生，或連結已失效。請返回導師主頁重新選擇。", status: 403 };
+  }
+  const expected = computeTutorStudentScopeHash(mobile, studentId, secret);
+  if (!tutorHashesEqual(expected, hash)) {
+    return { error: "找不到該學生，或連結已失效。請返回導師主頁重新選擇。", status: 403 };
+  }
+  return {
+    student: {
+      studentId,
+      studentName: String(studentRes.data.student_name ?? "").trim() || "學生",
+      registeredMobile: mobile,
+      linkedAt: usageRes.data.used_at ? String(usageRes.data.used_at) : "",
+    },
+  };
+}
+
 export async function resolveTutorBoundStudentFromHash(
   admin: SupabaseClient,
   codeId: string,
   hash: string,
-  secret: string
+  secret: string,
+  studentIdHint = ""
 ): Promise<
   { student: TutorBoundStudent } | { error: string; status: number }
 > {
+  if (studentIdHint.trim()) {
+    const direct = await resolveTutorBoundStudentById(admin, codeId, hash, secret, studentIdHint);
+    if (direct) return direct;
+  }
   const listed = await listTutorBoundStudents(admin, codeId);
   if ("error" in listed) return listed;
   const student = findBoundStudentByHash(listed.students, hash, secret);

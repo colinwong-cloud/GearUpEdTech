@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const hash = String(req.nextUrl.searchParams.get("hash") || "").trim();
+  const studentIdHint = String(req.nextUrl.searchParams.get("sid") || "").trim();
   const subject = String(req.nextUrl.searchParams.get("subject") || "").trim();
   const compareGrade = String(req.nextUrl.searchParams.get("compareGrade") || "").trim().toUpperCase();
   const compareSchoolId = String(req.nextUrl.searchParams.get("compareSchoolId") || "").trim();
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 503 });
   }
 
-  const resolved = await resolveTutorBoundStudentFromHash(admin, profile.codeId, hash, secret);
+  const resolved = await resolveTutorBoundStudentFromHash(admin, profile.codeId, hash, secret, studentIdHint);
   if ("error" in resolved) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
@@ -79,6 +80,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: COMPARISON_SQL_HINT }, { status: 503 });
     }
     return NextResponse.json({ error: message || "無法讀取導師方案。" }, { status: 500 });
+  }
+
+  const locked = !tutorComparisonUnlocked(paidRes.data?.paid_until ? String(paidRes.data.paid_until) : null);
+  if (locked) {
+    const labels = await loadLockedComparisonLabels(admin, resolved.student.studentId);
+    return NextResponse.json({
+      data: {
+        locked: true,
+        monthlyPriceHkd: TUTOR_COMPARISON_MONTHLY_PRICE_HKD,
+        gradeLabel: labels.gradeLabel,
+        schoolName: labels.schoolName,
+        district: labels.district,
+      },
+    });
   }
 
   const comparisonRes = await admin.rpc("tutor_student_peer_comparison", {
@@ -123,18 +138,6 @@ export async function GET(req: NextRequest) {
   const gradeLabel = gradeDisplayLabel(String(raw.grade_level ?? ""));
   const schoolName = String(raw.school_name ?? "").trim();
   const district = String(raw.district ?? "").trim();
-  const locked = !tutorComparisonUnlocked(paidRes.data?.paid_until ? String(paidRes.data.paid_until) : null);
-  if (locked) {
-    return NextResponse.json({
-      data: {
-        locked: true,
-        monthlyPriceHkd: TUTOR_COMPARISON_MONTHLY_PRICE_HKD,
-        gradeLabel,
-        schoolName,
-        district,
-      },
-    });
-  }
 
   const members: ComparisonMember[] = (raw.members ?? []).map((member) => ({
     studentId: String(member.student_id ?? ""),
@@ -176,4 +179,20 @@ export async function GET(req: NextRequest) {
       selectedSchoolName: String(raw.selected_school_name ?? "").trim(),
     },
   });
+}
+
+async function loadLockedComparisonLabels(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  studentId: string
+): Promise<{ gradeLabel: string; schoolName: string; district: string }> {
+  const studentRes = await admin.from("students").select("grade_level,school_id").eq("id", studentId).maybeSingle();
+  const gradeLabel = gradeDisplayLabel(String(studentRes.data?.grade_level ?? ""));
+  const schoolId = String(studentRes.data?.school_id ?? "").trim();
+  if (!schoolId) return { gradeLabel, schoolName: "", district: "" };
+  const schoolRes = await admin.from("schools").select("name_zh,name_en,district").eq("id", schoolId).maybeSingle();
+  return {
+    gradeLabel,
+    schoolName: String(schoolRes.data?.name_zh ?? "").trim() || String(schoolRes.data?.name_en ?? "").trim(),
+    district: String(schoolRes.data?.district ?? "").trim(),
+  };
 }
