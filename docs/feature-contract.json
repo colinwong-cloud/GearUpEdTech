@@ -1742,6 +1742,21 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "rememberTutorStudent"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/sessions/route.ts",
+          "snippet": ".limit(200)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-bound-students.ts",
+          "snippet": "resolveTutorBoundStudentById"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/payment-airwallex/page.tsx",
           "snippet": "可無限生成練習卷"
         },
@@ -2623,8 +2638,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T08:44:53.690Z",
+  "generated_at": "2026-10-01T09:09:34.525Z",
   "commit_inventory": [
+    {
+      "sha": "9f2c40feaf2d6b42189b614172c7a68bf66bcdc2",
+      "date": "2026-10-01",
+      "summary": "fix: open a tutor student without waiting on the full linked list"
+    },
+    {
+      "sha": "948f61935b3b04d24e249c6a13d2ad4ae38848a9",
+      "date": "2026-10-01",
+      "summary": "chore: record unlimited practice papers for paid tutors in the feature contract"
+    },
     {
       "sha": "ba96046a07c84fc6bb9a2e2d397a2e6c2b37afce",
       "date": "2026-10-01",
@@ -5192,7 +5217,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 513,
+    "total_commits_since_start": 515,
     "total_feature_rows": 64
   }
 }

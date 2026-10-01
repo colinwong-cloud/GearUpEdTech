@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
   OverallChart,
@@ -16,6 +16,16 @@ import {
 } from "@/lib/quiz-subjects";
 import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
+import {
+  clearPaperOverviewCache,
+  readComparisonSchoolCache,
+  readComparisonSchoolRequest,
+  readPaperOverviewCache,
+  readTutorStudentPreview,
+  rememberComparisonSchoolRequest,
+  writeComparisonSchoolCache,
+  writePaperOverviewCache,
+} from "@/lib/tutor-portal-cache";
 
 type TutorStudentChart = {
   student_id: string;
@@ -160,6 +170,7 @@ export default function TutorStudentDetailPage() {
   const router = useRouter();
 
   const studentHash = String(params?.hash || "").trim();
+  const studentIdHint = useRef("");
 
   const [registeredMobile, setRegisteredMobile] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -171,6 +182,7 @@ export default function TutorStudentDetailPage() {
   const [sessions, setSessions] = useState<TutorSessionSummary[]>([]);
   const [charts, setCharts] = useState<TutorStudentChart[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionTick, setSessionTick] = useState(0);
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TutorSessionDetailPayload | null>(null);
   const [msg, setMsg] = useState("");
@@ -190,6 +202,13 @@ export default function TutorStudentDetailPage() {
   const [compareArea, setCompareArea] = useState("");
   const [compareDistrict, setCompareDistrict] = useState("");
   const [compareSchoolId, setCompareSchoolId] = useState("");
+
+  useLayoutEffect(() => {
+    studentIdHint.current = new URLSearchParams(window.location.search).get("sid")?.trim() || "";
+    const preview = readTutorStudentPreview(studentHash);
+    if (preview?.name) setStudentName(preview.name);
+    if (preview?.mobile) setRegisteredMobile(preview.mobile);
+  }, [studentHash]);
 
   const ensureTutorSession = useCallback(async (): Promise<boolean> => {
     const res = await fetch("/api/tutor/session", { method: "GET", cache: "no-store" });
@@ -214,16 +233,22 @@ export default function TutorStudentDetailPage() {
       return;
     }
     setLoadingSessions(true);
+    setCharts([]);
     setMsg("");
     try {
-      const ok = await ensureTutorSession();
-      if (!ok) return;
-      const res = await fetch(
-        `/api/tutor/sessions?hash=${encodeURIComponent(studentHash)}&subject=${encodeURIComponent(
-          subject
-        )}&year=${monthCursor.year}&month=${monthCursor.month}`,
-        { method: "GET", cache: "no-store" }
-      );
+      const sid = studentIdHint.current;
+      const query = new URLSearchParams({
+        hash: studentHash,
+        subject,
+        year: String(monthCursor.year),
+        month: String(monthCursor.month),
+      });
+      if (sid) query.set("sid", sid);
+      const res = await fetch(`/api/tutor/sessions?${query.toString()}`, { method: "GET", cache: "no-store" });
+      if (res.status === 401) {
+        router.replace("/tutor");
+        return;
+      }
       const payload = (await res.json().catch(() => null)) as
         | {
             data?: {
@@ -239,7 +264,6 @@ export default function TutorStudentDetailPage() {
         throw new Error(payload?.error || "無法載入練習紀錄。");
       }
       setSessions(payload?.data?.sessions ?? []);
-      setCharts(payload?.data?.charts ?? []);
       if (payload?.data?.registered_mobile) {
         setRegisteredMobile(String(payload.data.registered_mobile));
       }
@@ -247,6 +271,18 @@ export default function TutorStudentDetailPage() {
         setStudentName(String(payload.data.student_name));
       }
       setDetail(null);
+      setSessionTick((value) => value + 1);
+      const chartQuery = new URLSearchParams(query);
+      chartQuery.set("chart", "1");
+      void fetch(`/api/tutor/sessions?${chartQuery.toString()}`, { method: "GET", cache: "no-store" })
+        .then(async (chartRes) => {
+          if (!chartRes.ok) return;
+          const chartPayload = (await chartRes.json().catch(() => null)) as
+            | { data?: { charts?: TutorStudentChart[] } }
+            | null;
+          setCharts(chartPayload?.data?.charts ?? []);
+        })
+        .catch(() => setCharts([]));
     } catch (err) {
       setSessions([]);
       setCharts([]);
@@ -256,14 +292,41 @@ export default function TutorStudentDetailPage() {
     } finally {
       setLoadingSessions(false);
     }
-  }, [ensureTutorSession, monthCursor.month, monthCursor.year, studentHash, subject]);
+  }, [monthCursor.month, monthCursor.year, router, studentHash, subject]);
 
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
 
+  const applyPaperOverview = useCallback((data: {
+    month_key?: string;
+    used?: number;
+    limit?: number;
+    remaining?: number | null;
+    unlimited?: boolean;
+    papers?: PracticePaperRow[];
+  }) => {
+    setPapers(data.papers ?? []);
+    setPaperUsed(Number(data.used ?? 0));
+    setPaperLimit(Number(data.limit ?? 4));
+    setPaperUnlimited(Boolean(data.unlimited));
+    setPaperMonthKey(String(data.month_key ?? ""));
+  }, []);
+
   const loadPapers = useCallback(async () => {
     if (!studentHash) return;
+    const cached = readPaperOverviewCache();
+    if (cached) {
+      applyPaperOverview({
+        month_key: cached.monthKey,
+        used: cached.used,
+        limit: cached.limit,
+        remaining: cached.remaining,
+        unlimited: cached.unlimited,
+        papers: cached.papers as PracticePaperRow[],
+      });
+      return;
+    }
     try {
       const res = await fetch("/api/tutor/practice-papers/overview", {
         method: "GET",
@@ -282,15 +345,26 @@ export default function TutorStudentDetailPage() {
           }
         | null;
       if (!res.ok) throw new Error(payload?.error || "無法載入練習卷。");
-      setPapers(payload?.data?.papers ?? []);
-      setPaperUsed(Number(payload?.data?.used ?? 0));
-      setPaperLimit(Number(payload?.data?.limit ?? 4));
-      setPaperUnlimited(Boolean(payload?.data?.unlimited));
-      setPaperMonthKey(String(payload?.data?.month_key ?? ""));
+      const data = payload?.data;
+      applyPaperOverview({
+        month_key: data?.month_key,
+        used: data?.used,
+        limit: data?.limit,
+        unlimited: data?.unlimited,
+        papers: data?.papers,
+      });
+      writePaperOverviewCache({
+        monthKey: String(data?.month_key ?? ""),
+        used: Number(data?.used ?? 0),
+        limit: Number(data?.limit ?? 4),
+        remaining: null,
+        unlimited: Boolean(data?.unlimited),
+        papers: data?.papers ?? [],
+      });
     } catch (err) {
       setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷。");
     }
-  }, [studentHash]);
+  }, [applyPaperOverview, studentHash]);
 
   useEffect(() => {
     loadPapers();
@@ -302,6 +376,7 @@ export default function TutorStudentDetailPage() {
     setComparisonMsg("");
     try {
       const params = new URLSearchParams({ hash: studentHash, subject });
+      if (studentIdHint.current) params.set("sid", studentIdHint.current);
       if (compareGrade && compareSchoolId) {
         params.set("compareGrade", compareGrade);
         params.set("compareSchoolId", compareSchoolId);
@@ -325,30 +400,35 @@ export default function TutorStudentDetailPage() {
     }
   }, [compareGrade, compareSchoolId, studentHash, subject]);
 
-  useEffect(() => {
-    if (!studentHash) return;
-    let cancelled = false;
-    const loadSchools = async () => {
-      try {
-        const res = await fetch("/api/tutor/comparison-schools", { method: "GET", cache: "no-store" });
-        const payload = (await res.json().catch(() => null)) as
-          | { data?: { schools?: ComparisonSchool[] } }
-          | null;
-        if (!res.ok || cancelled) return;
-        setComparisonSchools(payload?.data?.schools ?? []);
-      } catch {
-        if (!cancelled) setComparisonSchools([]);
-      }
-    };
-    void loadSchools();
-    return () => {
-      cancelled = true;
-    };
-  }, [studentHash]);
+  const ensureComparisonSchools = useCallback(() => {
+    if (comparisonSchools.length > 0) return;
+    const cached = readComparisonSchoolCache<ComparisonSchool>();
+    if (cached) {
+      setComparisonSchools(cached);
+      return;
+    }
+    const existing = readComparisonSchoolRequest();
+    const request =
+      existing ??
+      fetch("/api/tutor/comparison-schools", { method: "GET", cache: "no-store" })
+        .then(async (res) => {
+          const payload = (await res.json().catch(() => null)) as
+            | { data?: { schools?: ComparisonSchool[] } }
+            | null;
+          if (!res.ok) return [];
+          const schools = payload?.data?.schools ?? [];
+          writeComparisonSchoolCache(schools);
+          return schools;
+        })
+        .catch(() => []);
+    if (!existing) rememberComparisonSchoolRequest(request);
+    void request.then((schools) => setComparisonSchools(schools as ComparisonSchool[]));
+  }, [comparisonSchools.length]);
 
   useEffect(() => {
+    if (sessionTick === 0) return;
     loadComparison();
-  }, [loadComparison]);
+  }, [loadComparison, sessionTick]);
 
   const handleGeneratePaper = async () => {
     setGeneratingPaper(true);
@@ -357,7 +437,7 @@ export default function TutorStudentDetailPage() {
       const res = await fetch("/api/tutor/practice-papers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hash: studentHash, subject }),
+        body: JSON.stringify({ hash: studentHash, subject, sid: studentIdHint.current }),
       });
       const payload = (await res.json().catch(() => null)) as
         | { data?: { used?: number; limit?: number; unlimited?: boolean }; error?: string }
@@ -367,6 +447,7 @@ export default function TutorStudentDetailPage() {
       setPaperLimit(Number(payload?.data?.limit ?? paperLimit));
       setPaperUnlimited(Boolean(payload?.data?.unlimited));
       setPaperMsg("練習卷已生成，可下載學生卷及答案卷。");
+      clearPaperOverviewCache();
       await loadPapers();
     } catch (err) {
       setPaperMsg(err instanceof Error ? err.message : "未能生成練習卷。");
@@ -452,7 +533,8 @@ export default function TutorStudentDetailPage() {
       <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-bold text-gray-800">
-            練習記錄（學生：{studentName || "—"}｜登記手機：{registeredMobile || "—"}）
+            練習記錄（學生：{studentName || (loadingSessions ? "載入中" : "—")}｜登記手機：
+            {registeredMobile || (loadingSessions ? "載入中" : "—")}）
           </h1>
           <div className="flex justify-end gap-2">
             <button
@@ -603,19 +685,19 @@ export default function TutorStudentDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-xs text-gray-500">練習次數</p>
-            <p className="mt-1 text-2xl font-bold text-indigo-600">{summary.totalSessions}</p>
+            <p className="mt-1 text-2xl font-bold text-indigo-600">{loadingSessions && sessions.length === 0 ? "載入中" : summary.totalSessions}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-xs text-gray-500">總題數</p>
-            <p className="mt-1 text-2xl font-bold text-gray-800">{summary.totalQuestions}</p>
+            <p className="mt-1 text-2xl font-bold text-gray-800">{loadingSessions && sessions.length === 0 ? "載入中" : summary.totalQuestions}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-xs text-gray-500">答對題數</p>
-            <p className="mt-1 text-2xl font-bold text-emerald-600">{summary.totalCorrect}</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600">{loadingSessions && sessions.length === 0 ? "載入中" : summary.totalCorrect}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-xs text-gray-500">平均正確率</p>
-            <p className="mt-1 text-2xl font-bold text-amber-600">{summary.accuracy}%</p>
+            <p className="mt-1 text-2xl font-bold text-amber-600">{loadingSessions && sessions.length === 0 ? "載入中" : `${summary.accuracy}%`}</p>
           </div>
         </div>
 
@@ -631,6 +713,7 @@ export default function TutorStudentDetailPage() {
               比較年級
               <select
                 value={compareGrade}
+                onFocus={ensureComparisonSchools}
                 onChange={(event) => setCompareGrade(event.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
               >
@@ -646,6 +729,7 @@ export default function TutorStudentDetailPage() {
               地區
               <select
                 value={compareArea}
+                onFocus={ensureComparisonSchools}
                 onChange={(event) => {
                   setCompareArea(event.target.value);
                   setCompareDistrict("");
@@ -665,6 +749,7 @@ export default function TutorStudentDetailPage() {
               分區
               <select
                 value={compareDistrict}
+                onFocus={ensureComparisonSchools}
                 onChange={(event) => {
                   setCompareDistrict(event.target.value);
                   setCompareSchoolId("");
@@ -688,6 +773,7 @@ export default function TutorStudentDetailPage() {
               比較學校
               <select
                 value={compareSchoolId}
+                onFocus={ensureComparisonSchools}
                 onChange={(event) => setCompareSchoolId(event.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800"
               >
@@ -909,6 +995,13 @@ export default function TutorStudentDetailPage() {
                   </tr>
                 );
               })}
+              {loadingSessions && sessions.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center text-gray-400">
+                    載入中...
+                  </td>
+                </tr>
+              )}
               {sessions.length === 0 && !loadingSessions && (
                 <tr>
                   <td colSpan={6} className="py-6 text-center text-gray-400">

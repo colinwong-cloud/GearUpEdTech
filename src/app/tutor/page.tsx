@@ -5,6 +5,7 @@ import { Turnstile } from "@marsidev/react-turnstile";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
+import { rememberTutorStudent, writePaperOverviewCache } from "@/lib/tutor-portal-cache";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -204,6 +205,14 @@ export default function TutorPortalPage() {
       setPaperMonthKey(String(payload?.data?.month_key ?? ""));
       setPaperRows(payload?.data?.papers ?? []);
       setPaperMsg("");
+      writePaperOverviewCache({
+        monthKey: String(payload?.data?.month_key ?? ""),
+        used: Number(payload?.data?.used ?? 0),
+        limit: Number(payload?.data?.limit ?? 4),
+        remaining: payload?.data?.remaining ?? null,
+        unlimited: Boolean(payload?.data?.unlimited),
+        papers: payload?.data?.papers ?? [],
+      });
     } catch (err) {
       setPaperRows([]);
       setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷總覽。");
@@ -844,7 +853,13 @@ export default function TutorPortalPage() {
                   <td className="py-2 pr-3">{formatDateTime(row.last_practice_at)}</td>
                   <td className="py-2 pr-3">
                     <Link
-                      href={`/tutor/student/${encodeURIComponent(row.hash)}`}
+                      href={`/tutor/student/${encodeURIComponent(row.hash)}?sid=${encodeURIComponent(row.student_id)}`}
+                      onClick={() =>
+                        rememberTutorStudent(row.hash, {
+                          name: row.student_name || "學生",
+                          mobile: row.registered_mobile || "",
+                        })
+                      }
                       className="inline-flex rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                     >
                       View

@@ -43,6 +43,8 @@ export async function GET(req: NextRequest) {
   }
 
   const hashParam = String(req.nextUrl.searchParams.get("hash") || "").trim();
+  const studentIdHint = String(req.nextUrl.searchParams.get("sid") || "").trim();
+  const chartOnly = req.nextUrl.searchParams.get("chart") === "1";
   const subject = String(req.nextUrl.searchParams.get("subject") || "").trim();
   const year = String(req.nextUrl.searchParams.get("year") || "").trim();
   const month = String(req.nextUrl.searchParams.get("month") || "").trim();
@@ -66,7 +68,8 @@ export async function GET(req: NextRequest) {
     admin,
     profile.codeId,
     hashParam,
-    getTutorHashSecret()
+    getTutorHashSecret(),
+    studentIdHint
   );
   if ("error" in resolved) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
@@ -77,6 +80,18 @@ export async function GET(req: NextRequest) {
   const mobile = boundStudent.registeredMobile;
 
   const subjects = quizSubjectDbPatterns(subject);
+  if (chartOnly) {
+    const charts = await loadStudentChart(admin, studentId, studentName, subject);
+    return NextResponse.json({
+      data: {
+        sessions: [],
+        registered_mobile: mobile,
+        student_id: studentId,
+        student_name: studentName,
+        charts,
+      },
+    });
+  }
   const sessRes = await admin
     .from("quiz_sessions")
     .select("id,student_id,subject,questions_attempted,score,time_spent_seconds,created_at")
@@ -85,7 +100,7 @@ export async function GET(req: NextRequest) {
     .gte("created_at", monthRange.start.toISOString())
     .lt("created_at", monthRange.end.toISOString())
     .order("created_at", { ascending: false })
-    .limit(10000);
+    .limit(200);
   if (sessRes.error) {
     return NextResponse.json(
       { error: sessRes.error.message || "無法讀取練習紀錄。" },
@@ -107,6 +122,23 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  return NextResponse.json({
+    data: {
+      sessions,
+      registered_mobile: mobile,
+      student_id: studentId,
+      student_name: studentName,
+      charts: [],
+    },
+  });
+}
+
+async function loadStudentChart(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  studentId: string,
+  studentName: string,
+  subject: string
+) {
   const charts: Array<{ student_id: string; student_name: string; data: unknown }> = [];
   const chartRes = await admin.rpc("get_student_chart_data", {
     p_student_id: studentId,
@@ -122,14 +154,5 @@ export async function GET(req: NextRequest) {
       });
     }
   }
-
-  return NextResponse.json({
-    data: {
-      sessions,
-      registered_mobile: mobile,
-      student_id: studentId,
-      student_name: studentName,
-      charts,
-    },
-  });
+  return charts;
 }
