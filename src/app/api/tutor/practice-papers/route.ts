@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
         paper: paperJson(created.paper),
         used: created.used,
         limit: created.limit,
+        unlimited: created.unlimited,
       },
     });
   } catch (error) {

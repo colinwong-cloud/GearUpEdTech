@@ -95,6 +95,7 @@ export default function TutorPortalPage() {
   const [paperUsed, setPaperUsed] = useState(0);
   const [paperLimit, setPaperLimit] = useState(4);
   const [paperRemaining, setPaperRemaining] = useState(4);
+  const [paperUnlimited, setPaperUnlimited] = useState(false);
   const [paperMonthKey, setPaperMonthKey] = useState("");
   const [paperRows, setPaperRows] = useState<PracticePaperOverviewRow[]>([]);
   const [paperMsg, setPaperMsg] = useState("");
@@ -188,7 +189,8 @@ export default function TutorPortalPage() {
               month_key?: string;
               used?: number;
               limit?: number;
-              remaining?: number;
+              remaining?: number | null;
+              unlimited?: boolean;
               papers?: PracticePaperOverviewRow[];
             };
             error?: string;
@@ -198,6 +200,7 @@ export default function TutorPortalPage() {
       setPaperUsed(Number(payload?.data?.used ?? 0));
       setPaperLimit(Number(payload?.data?.limit ?? 4));
       setPaperRemaining(Number(payload?.data?.remaining ?? 0));
+      setPaperUnlimited(Boolean(payload?.data?.unlimited));
       setPaperMonthKey(String(payload?.data?.month_key ?? ""));
       setPaperRows(payload?.data?.papers ?? []);
       setPaperMsg("");
@@ -719,7 +722,7 @@ export default function TutorPortalPage() {
             <div>
               <h2 className="text-base font-bold text-gray-800">導師進階版</h2>
               <p className="mt-1 text-sm text-gray-500">
-                HK$199/月。開通後可查看同學對比：同校、同區、同年級，以及自選學校及年級。每月由已授權的付款方式自動續費。
+                HK$199/月。開通後可查看同學對比：同校、同區、同年級，以及自選學校及年級，並可無限生成練習卷。每月由已授權的付款方式自動續費。
               </p>
               <p className="mt-1 text-sm text-gray-700">
                 {planActive && planUntil
@@ -752,7 +755,9 @@ export default function TutorPortalPage() {
             <h2 className="text-base font-bold text-gray-800">練習卷總覽</h2>
             <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。每月可免費生成 4 份練習。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。列表只顯示近 180 日的練習卷。</p>
             <p className="mt-2 text-sm font-semibold text-indigo-800">
-              {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
+              {paperUnlimited
+                ? `${paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 ${paperUsed} 份，進階版不限份數。`
+                : `${paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 ${paperUsed} / ${paperLimit} 份，尚餘 ${paperRemaining} 份。`}
             </p>
           </div>
           {paperMsg && <p className="text-sm text-rose-600">{paperMsg}</p>}

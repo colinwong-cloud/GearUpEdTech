@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AI_QUESTION_SOURCE, isAiQuestionSource } from "@/lib/question-source";
 import { quizSubjectDbPatterns } from "@/lib/quiz-subjects";
+import { tutorComparisonUnlocked } from "@/lib/tutor-student-comparison";
 import {
   FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
   PRACTICE_PAPER_QUESTION_COUNT,
@@ -106,6 +107,15 @@ async function countMonthPapers(admin: SupabaseClient, codeId: string, monthKey:
   return Number(countRes.count ?? 0);
 }
 
+/** Paid tutors have no monthly cap. A missing paid_until column keeps the free limit. */
+async function practicePaperLimitForTutor(admin: SupabaseClient, codeId: string): Promise<number | null> {
+  const codeRes = await admin.from("tutor_referral_codes").select("paid_until").eq("id", codeId).maybeSingle();
+  if (codeRes.error || !codeRes.data) return FREE_PRACTICE_PAPER_MONTHLY_LIMIT;
+  return tutorComparisonUnlocked(codeRes.data.paid_until ? String(codeRes.data.paid_until) : null)
+    ? null
+    : FREE_PRACTICE_PAPER_MONTHLY_LIMIT;
+}
+
 async function loadAiQuestions(
   admin: SupabaseClient,
   subjectKey: string,
@@ -156,6 +166,7 @@ export async function listStudentPracticePapers({
       monthKey: string;
       used: number;
       limit: number;
+      unlimited: boolean;
       papers: PracticePaperRecord[];
     }
   | { ok: false; status: number; error: string }
@@ -165,6 +176,7 @@ export async function listStudentPracticePapers({
   const monthKey = hktMonthKey();
   try {
     const used = await countMonthPapers(admin, codeId, monthKey);
+    const limit = await practicePaperLimitForTutor(admin, codeId);
     const listRes = await admin
       .from("tutor_practice_papers")
       .select("id,student_id,student_name,grade_level,subject,month_key,created_at")
@@ -182,7 +194,8 @@ export async function listStudentPracticePapers({
       ok: true,
       monthKey,
       used,
-      limit: FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+      limit: limit ?? FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+      unlimited: limit === null,
       papers: (listRes.data ?? []).map((row) => mapRow(row)),
     };
   } catch (error) {
@@ -225,7 +238,8 @@ export async function listTutorPracticePaperOverview({
       monthKey: string;
       used: number;
       limit: number;
-      remaining: number;
+      remaining: number | null;
+      unlimited: boolean;
       papers: PracticePaperOverviewRow[];
     }
   | { ok: false; status: number; error: string }
@@ -235,6 +249,7 @@ export async function listTutorPracticePaperOverview({
   const monthKey = hktMonthKey();
   try {
     const used = await countMonthPapers(admin, codeId, monthKey);
+    const limit = await practicePaperLimitForTutor(admin, codeId);
     const listRes = await admin
       .from("tutor_practice_papers")
       .select("id,student_id,student_name,grade_level,subject,month_key,created_at")
@@ -252,13 +267,13 @@ export async function listTutorPracticePaperOverview({
       admin,
       papers.map((paper) => paper.studentId)
     );
-    const limit = FREE_PRACTICE_PAPER_MONTHLY_LIMIT;
     return {
       ok: true,
       monthKey,
       used,
-      limit,
-      remaining: Math.max(0, limit - used),
+      limit: limit ?? FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+      remaining: limit === null ? null : Math.max(0, limit - used),
+      unlimited: limit === null,
       papers: papers.map((paper) => ({
         ...paper,
         registeredMobile: mobiles.get(paper.studentId) || "",
@@ -282,7 +297,7 @@ export async function createPracticePaper({
   studentName: string;
   subject: string;
 }): Promise<
-  | { ok: true; paper: PracticePaperRecord; used: number; limit: number }
+  | { ok: true; paper: PracticePaperRecord; used: number; limit: number; unlimited: boolean }
   | { ok: false; status: number; error: string }
 > {
   if (!isPracticePaperSubject(subject)) {
@@ -303,14 +318,16 @@ export async function createPracticePaper({
 
   const monthKey = hktMonthKey();
   let used = 0;
+  let limit: number | null = FREE_PRACTICE_PAPER_MONTHLY_LIMIT;
   try {
     used = await countMonthPapers(admin, codeId, monthKey);
+    limit = await practicePaperLimitForTutor(admin, codeId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === TUTOR_PRACTICE_PAPER_TABLE_HINT) return { ok: false, status: 503, error: message };
     throw error;
   }
-  const quotaError = practicePaperQuotaError(used);
+  const quotaError = practicePaperQuotaError(used, limit);
   if (quotaError) return { ok: false, status: 429, error: quotaError };
 
   const pool = await loadAiQuestions(admin, subject, gradeLevel);
@@ -345,12 +362,12 @@ export async function createPracticePaper({
   if (!insertRes.data) return { ok: false, status: 500, error: "未能儲存練習卷。" };
 
   const usedAfter = await countMonthPapers(admin, codeId, monthKey);
-  if (usedAfter > FREE_PRACTICE_PAPER_MONTHLY_LIMIT) {
+  if (limit !== null && usedAfter > limit) {
     await admin.from("tutor_practice_papers").delete().eq("id", insertRes.data.id);
     return {
       ok: false,
       status: 429,
-      error: practicePaperQuotaError(FREE_PRACTICE_PAPER_MONTHLY_LIMIT) || "本月已生成 4 份練習卷。",
+      error: practicePaperQuotaError(limit) || "本月已生成 4 份練習卷。",
     };
   }
 
@@ -358,7 +375,8 @@ export async function createPracticePaper({
     ok: true,
     paper: mapRow(insertRes.data),
     used: usedAfter,
-    limit: FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+    limit: limit ?? FREE_PRACTICE_PAPER_MONTHLY_LIMIT,
+    unlimited: limit === null,
   };
 }
 

@@ -177,6 +177,7 @@ export default function TutorStudentDetailPage() {
   const [papers, setPapers] = useState<PracticePaperRow[]>([]);
   const [paperUsed, setPaperUsed] = useState(0);
   const [paperLimit, setPaperLimit] = useState(4);
+  const [paperUnlimited, setPaperUnlimited] = useState(false);
   const [paperMonthKey, setPaperMonthKey] = useState("");
   const [paperMsg, setPaperMsg] = useState("");
   const [generatingPaper, setGeneratingPaper] = useState(false);
@@ -274,6 +275,7 @@ export default function TutorStudentDetailPage() {
               month_key?: string;
               used?: number;
               limit?: number;
+              unlimited?: boolean;
               papers?: PracticePaperRow[];
             };
             error?: string;
@@ -283,6 +285,7 @@ export default function TutorStudentDetailPage() {
       setPapers(payload?.data?.papers ?? []);
       setPaperUsed(Number(payload?.data?.used ?? 0));
       setPaperLimit(Number(payload?.data?.limit ?? 4));
+      setPaperUnlimited(Boolean(payload?.data?.unlimited));
       setPaperMonthKey(String(payload?.data?.month_key ?? ""));
     } catch (err) {
       setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷。");
@@ -357,11 +360,12 @@ export default function TutorStudentDetailPage() {
         body: JSON.stringify({ hash: studentHash, subject }),
       });
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { used?: number; limit?: number }; error?: string }
+        | { data?: { used?: number; limit?: number; unlimited?: boolean }; error?: string }
         | null;
       if (!res.ok) throw new Error(payload?.error || "未能生成練習卷。");
       setPaperUsed(Number(payload?.data?.used ?? paperUsed));
       setPaperLimit(Number(payload?.data?.limit ?? paperLimit));
+      setPaperUnlimited(Boolean(payload?.data?.unlimited));
       setPaperMsg("練習卷已生成，可下載學生卷及答案卷。");
       await loadPapers();
     } catch (err) {
@@ -475,17 +479,20 @@ export default function TutorStudentDetailPage() {
             <div>
               <h2 className="text-base font-bold text-gray-800">離線練習卷</h2>
               <p className="mt-1 text-sm text-gray-500">
-                按目前科目及這位學生的年級抽出 30 題。每月可生成 {paperLimit} 份，全部學生合計，學生卷及答案卷計作 1 份。列表只顯示近 180 日的練習卷。
+                按目前科目及這位學生的年級抽出 30 題。
+                {paperUnlimited ? "進階版可無限生成。" : `每月可生成 ${paperLimit} 份，`}
+                全部學生合計，學生卷及答案卷計作 1 份。列表只顯示近 180 日的練習卷。
               </p>
               <p className="mt-2 text-sm font-semibold text-indigo-800">
-                {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘{" "}
-                {Math.max(0, paperLimit - paperUsed)} 份。
+                {paperUnlimited
+                  ? `${paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 ${paperUsed} 份，進階版不限份數。`
+                  : `${paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 ${paperUsed} / ${paperLimit} 份，尚餘 ${Math.max(0, paperLimit - paperUsed)} 份。`}
               </p>
             </div>
             <button
               type="button"
               onClick={handleGeneratePaper}
-              disabled={generatingPaper || paperUsed >= paperLimit}
+              disabled={generatingPaper || (!paperUnlimited && paperUsed >= paperLimit)}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50"
             >
               {generatingPaper ? "生成中..." : "生成練習卷"}
