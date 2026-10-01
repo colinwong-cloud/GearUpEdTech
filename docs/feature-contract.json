@@ -1692,6 +1692,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/tutor-practice-paper.ts",
+          "snippet": "previousHktMonthKey"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "較早月份的練習卷"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/tutor/practice-papers/overview/route.ts",
           "snippet": "listTutorPracticePaperOverview"
         },
@@ -2563,8 +2573,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T04:10:43.984Z",
+  "generated_at": "2026-10-01T04:30:40.395Z",
   "commit_inventory": [
+    {
+      "sha": "f189e5acd0da0cdfc06d7c1bd191b5ee04ebb6b4",
+      "date": "2026-10-01",
+      "summary": "fix: label the practice-paper balance by Hong Kong month"
+    },
+    {
+      "sha": "6ecc0833e092f8acb34163c928f92a084d410542",
+      "date": "2026-10-01",
+      "summary": "chore: record the practice-paper overview in the feature contract"
+    },
     {
       "sha": "d287ff03a2263a27d8e4f800d89c096d5f92feef",
       "date": "2026-10-01",
@@ -5052,7 +5072,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 497,
+    "total_commits_since_start": 499,
     "total_feature_rows": 64
   }
 }
