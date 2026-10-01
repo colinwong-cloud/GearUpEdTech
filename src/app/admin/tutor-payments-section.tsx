@@ -80,12 +80,19 @@ export function TutorPaymentsSection({ sessionToken }: { sessionToken: string })
   const [loading, setLoading] = useState(false);
 
   const loadMonitor = useCallback(async () => {
-    const data = await adminRequest<Monitor>("tutor_payment_monitor", { month }, sessionToken);
-    setMonitor(data);
+    try {
+      const data = await adminRequest<Monitor>("tutor_payment_monitor", { month }, sessionToken);
+      setMonitor(data);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "未能載入教師付款趨勢");
+    }
   }, [month, sessionToken]);
 
   useEffect(() => {
-    void loadMonitor().catch((err) => setMsg(err instanceof Error ? err.message : "未能載入教師付款趨勢"));
+    const timer = window.setTimeout(() => {
+      void loadMonitor();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadMonitor]);
 
   return (
