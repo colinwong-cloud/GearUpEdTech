@@ -815,6 +815,10 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["5fd1606"],
       checks: [
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "教師編號維護" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "教師付款情況" },
+        { type: "file_exists", path: "supabase_tutor_payment_admin.sql" },
+        { type: "file_contains", path: "src/lib/server/tutor-admin-billing.ts", snippet: "grantTutorPaid30Days" },
+        { type: "file_contains", path: "src/lib/server/tutor-admin-billing.ts", snippet: "confirmTutorMonthRefund" },
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "重設導師登入密碼" },
         { type: "file_contains", path: "src/app/api/admin/console/route.ts", snippet: "tutor_referral_code_create" },
         { type: "file_contains", path: "src/app/api/admin/console/route.ts", snippet: "tutor_referral_code_summary" },

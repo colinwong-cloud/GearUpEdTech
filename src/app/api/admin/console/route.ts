@@ -9,6 +9,13 @@ import {
   getAirwallexBaseUrl,
 } from "@/lib/server/payment-finalize";
 import {
+  confirmTutorMonthRefund,
+  enquireTutorPayment,
+  grantTutorPaid30Days,
+  previewTutorMonthRefund,
+  tutorPaymentMonitor,
+} from "@/lib/server/tutor-admin-billing";
+import {
   getCurrentHktMonthKey,
   getHktMonthRangeIso,
   isValidMonthKey,
@@ -60,7 +67,12 @@ type AdminAction =
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
-  | "payment_refund_last_confirm";
+  | "payment_refund_last_confirm"
+  | "tutor_payment_enquiry"
+  | "tutor_payment_monitor"
+  | "tutor_payment_grant_30"
+  | "tutor_payment_refund_preview"
+  | "tutor_payment_refund_confirm";
 
 type RequestBody = {
   action?: AdminAction;
@@ -3150,6 +3162,31 @@ export async function POST(req: NextRequest) {
           }
           throw refundErr;
         }
+      }
+      case "tutor_payment_enquiry": {
+        const query = String(payload.query ?? payload.mobile_number ?? "").trim();
+        if (!query) return NextResponse.json({ error: "請輸入教師手機或 6 位教師編號" }, { status: 400 });
+        return NextResponse.json({ data: await enquireTutorPayment(admin, query) });
+      }
+      case "tutor_payment_monitor": {
+        const month = String(payload.month ?? "").trim();
+        return NextResponse.json({ data: await tutorPaymentMonitor(admin, month || getCurrentHktMonthKey()) });
+      }
+      case "tutor_payment_grant_30": {
+        const mobile = String(payload.mobile_number ?? "").trim();
+        return NextResponse.json({ data: await grantTutorPaid30Days(admin, mobile) });
+      }
+      case "tutor_payment_refund_preview": {
+        const mobile = String(payload.mobile_number ?? "").trim();
+        return NextResponse.json({ data: await previewTutorMonthRefund(admin, mobile) });
+      }
+      case "tutor_payment_refund_confirm": {
+        const mobile = String(payload.mobile_number ?? "").trim();
+        const orderId = String(payload.order_id ?? "").trim();
+        const reason = String(payload.reason ?? "").trim();
+        return NextResponse.json({
+          data: await confirmTutorMonthRefund(admin, { mobile, orderId, reason, adminUser }),
+        });
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });

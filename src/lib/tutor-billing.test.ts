@@ -3,6 +3,7 @@ import {
   TUTOR_PLAN_PRICE_HKD,
   extendTutorPaidUntil,
   isTutorMerchantOrderId,
+  tutorGrantPaidUntil,
   tutorMerchantOrderId,
 } from "./tutor-billing";
 
@@ -13,6 +14,10 @@ describe("tutor billing", () => {
     expect(orderId.startsWith("tutor-123456-")).toBe(true);
     expect(isTutorMerchantOrderId(orderId)).toBe(true);
     expect(isTutorMerchantOrderId("GU-123")).toBe(false);
+  });
+
+  it("grants complimentary access for 30 days", () => {
+    expect(tutorGrantPaidUntil(new Date("2026-10-01T00:00:00.000Z"))).toBe("2026-10-31T00:00:00.000Z");
   });
 
   it("extends a lapsed plan from now and an active plan from paid_until", () => {

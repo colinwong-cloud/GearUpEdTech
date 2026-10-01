@@ -1,4 +1,10 @@
 export const TUTOR_PLAN_PRICE_HKD = 199;
+const TUTOR_GRANT_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Complimentary access lasts 30 days from the moment an admin grants it. */
+export function tutorGrantPaidUntil(now = new Date()): string {
+  return new Date(now.getTime() + TUTOR_GRANT_MS).toISOString();
+}
 
 export function tutorMerchantOrderId(code: string, now = new Date()): string {
   const digits = String(code ?? "").replace(/\D/g, "").slice(0, 6) || "tutor";
