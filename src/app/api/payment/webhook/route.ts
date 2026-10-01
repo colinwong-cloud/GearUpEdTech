@@ -209,6 +209,40 @@ export async function POST(req: NextRequest) {
         if (byRequestId.error && !isMissingRefundTableError(byRequestId.error.message)) {
           throw byRequestId.error;
         }
+        matched = (byRequestId.data?.length ?? 0) > 0;
+      }
+
+      if (!matched) {
+        const tutorUpdate = {
+          status: updatePayload.status,
+          failure_code: updatePayload.failure_code,
+          failure_message: updatePayload.failure_message,
+          raw_response: updatePayload.raw_response,
+          updated_at: updatePayload.updated_at,
+        };
+        if (refundId) {
+          const byTutorRefund = await supabaseAdmin
+            .from("tutor_payment_refunds")
+            .update(tutorUpdate)
+            .eq("airwallex_refund_id", refundId)
+            .select("id")
+            .limit(1);
+          if (byTutorRefund.error && !/tutor_payment_refunds|42P01|does not exist/i.test(byTutorRefund.error.message || "")) {
+            throw byTutorRefund.error;
+          }
+          matched = (byTutorRefund.data?.length ?? 0) > 0;
+        }
+        if (!matched && refundRequestId) {
+          const byTutorRequest = await supabaseAdmin
+            .from("tutor_payment_refunds")
+            .update({ ...tutorUpdate, airwallex_refund_id: refundId || null })
+            .eq("airwallex_request_id", refundRequestId)
+            .select("id")
+            .limit(1);
+          if (byTutorRequest.error && !/tutor_payment_refunds|42P01|does not exist/i.test(byTutorRequest.error.message || "")) {
+            throw byTutorRequest.error;
+          }
+        }
       }
 
       if (webhookEventId) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
+import { TutorPaymentsSection } from "./tutor-payments-section";
 import {
   buildPaidTransactionsCsv,
   getCurrentHktMonthKey,
@@ -73,6 +74,7 @@ type Tab =
   | "business"
   | "discount_codes"
   | "tutor_referral_codes"
+  | "tutor_payments"
   | "payment_status"
   | "student_practice_summary";
 
@@ -570,6 +572,7 @@ export default function AdminPage() {
     { key: "questions", label: "題目管理" },
     { key: "discount_codes", label: "折扣碼維護" },
     { key: "tutor_referral_codes", label: "教師編號維護" },
+    { key: "tutor_payments", label: "教師付款情況" },
   ];
 
   return (
@@ -602,6 +605,7 @@ export default function AdminPage() {
         {tab === "questions" && <QuestionsSection sessionToken={sessionToken} />}
         {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
         {tab === "tutor_referral_codes" && <TutorReferralCodeSection sessionToken={sessionToken} />}
+        {tab === "tutor_payments" && <TutorPaymentsSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
