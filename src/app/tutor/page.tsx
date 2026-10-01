@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
+import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -28,6 +28,7 @@ type PracticePaperOverviewRow = {
   student_name: string;
   registered_mobile: string;
   subject_label: string;
+  month_key: string;
   created_at: string;
 };
 
@@ -93,6 +94,7 @@ export default function TutorPortalPage() {
   const [paperUsed, setPaperUsed] = useState(0);
   const [paperLimit, setPaperLimit] = useState(4);
   const [paperRemaining, setPaperRemaining] = useState(4);
+  const [paperMonthKey, setPaperMonthKey] = useState("");
   const [paperRows, setPaperRows] = useState<PracticePaperOverviewRow[]>([]);
   const [paperMsg, setPaperMsg] = useState("");
 
@@ -182,6 +184,7 @@ export default function TutorPortalPage() {
       const payload = (await res.json().catch(() => null)) as
         | {
             data?: {
+              month_key?: string;
               used?: number;
               limit?: number;
               remaining?: number;
@@ -194,6 +197,7 @@ export default function TutorPortalPage() {
       setPaperUsed(Number(payload?.data?.used ?? 0));
       setPaperLimit(Number(payload?.data?.limit ?? 4));
       setPaperRemaining(Number(payload?.data?.remaining ?? 0));
+      setPaperMonthKey(String(payload?.data?.month_key ?? ""));
       setPaperRows(payload?.data?.papers ?? []);
       setPaperMsg("");
     } catch (err) {
@@ -769,13 +773,15 @@ export default function TutorPortalPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
           <div>
             <h2 className="text-base font-bold text-gray-800">練習卷總覽</h2>
-            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。學生卷及答案卷計作 1 份。重新下載不會再計。</p>
+            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。餘額按香港時間的月份計算。學生卷及答案卷計作 1 份。重新下載不會再計。列表只顯示近 180 日的練習卷。</p>
             <p className="mt-2 text-sm font-semibold text-indigo-800">
-              本月已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
+              {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
             </p>
           </div>
           {paperMsg && <p className="text-sm text-rose-600">{paperMsg}</p>}
-          {paperRows.length > 0 ? (
+          {paperRows.length === 0 ? (
+            <p className="text-sm text-gray-400">近 180 日尚未生成練習卷。</p>
+          ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -815,8 +821,6 @@ export default function TutorPortalPage() {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <p className="text-sm text-gray-400">尚未生成練習卷。</p>
           )}
         </div>
 

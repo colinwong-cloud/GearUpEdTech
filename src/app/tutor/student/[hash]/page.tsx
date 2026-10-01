@@ -14,7 +14,7 @@ import {
   PRIMARY_QUIZ_SUBJECT,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
-import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
+import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 
 type TutorStudentChart = {
   student_id: string;
@@ -176,6 +176,7 @@ export default function TutorStudentDetailPage() {
   const [papers, setPapers] = useState<PracticePaperRow[]>([]);
   const [paperUsed, setPaperUsed] = useState(0);
   const [paperLimit, setPaperLimit] = useState(4);
+  const [paperMonthKey, setPaperMonthKey] = useState("");
   const [paperMsg, setPaperMsg] = useState("");
   const [generatingPaper, setGeneratingPaper] = useState(false);
   const [comparison, setComparison] = useState<StudentComparisonPayload | null>(null);
@@ -266,12 +267,21 @@ export default function TutorStudentDetailPage() {
         cache: "no-store",
       });
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { used?: number; limit?: number; remaining?: number; papers?: PracticePaperRow[] }; error?: string }
+        | {
+            data?: {
+              month_key?: string;
+              used?: number;
+              limit?: number;
+              papers?: PracticePaperRow[];
+            };
+            error?: string;
+          }
         | null;
       if (!res.ok) throw new Error(payload?.error || "無法載入練習卷。");
       setPapers(payload?.data?.papers ?? []);
       setPaperUsed(Number(payload?.data?.used ?? 0));
       setPaperLimit(Number(payload?.data?.limit ?? 4));
+      setPaperMonthKey(String(payload?.data?.month_key ?? ""));
     } catch (err) {
       setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷。");
     }
@@ -461,12 +471,12 @@ export default function TutorStudentDetailPage() {
             <div>
               <h2 className="text-base font-bold text-gray-800">離線練習卷</h2>
               <p className="mt-1 text-sm text-gray-500">
-                按目前科目及這位學生的年級抽出 30 題。每月可生成 {paperLimit} 份，全部學生合計，學生卷及答案卷計作 1 份。
+                按目前科目及這位學生的年級抽出 30 題。每月可生成 {paperLimit} 份，全部學生合計，學生卷及答案卷計作 1 份。列表只顯示近 180 日的練習卷。
               </p>
               <p className="mt-2 text-sm font-semibold text-indigo-800">
-                本月已生成 {paperUsed} / {paperLimit} 份，尚餘 {Math.max(0, paperLimit - paperUsed)} 份。
+                {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘{" "}
+                {Math.max(0, paperLimit - paperUsed)} 份。
               </p>
-              <p className="text-sm text-gray-500">下表為全部已連結學生最近生成的練習卷，方便對照登記手機。</p>
             </div>
             <button
               type="button"
@@ -488,7 +498,9 @@ export default function TutorStudentDetailPage() {
               {paperMsg}
             </p>
           )}
-          {papers.length > 0 && (
+          {papers.length === 0 ? (
+            <p className="text-sm text-gray-400">近 180 日尚未生成練習卷。</p>
+          ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>

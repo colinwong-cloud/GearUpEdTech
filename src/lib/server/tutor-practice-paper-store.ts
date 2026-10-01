@@ -6,6 +6,7 @@ import {
   PRACTICE_PAPER_QUESTION_COUNT,
   hktMonthKey,
   isPracticePaperSubject,
+  practicePaperOverviewSince,
   pickPracticeQuestions,
   practicePaperQuotaError,
   type PracticePaperQuestion,
@@ -238,8 +239,8 @@ export async function listTutorPracticePaperOverview({
       .from("tutor_practice_papers")
       .select("id,student_id,student_name,grade_level,subject,month_key,created_at")
       .eq("code_id", codeId)
-      .order("created_at", { ascending: false })
-      .limit(80);
+      .gte("created_at", practicePaperOverviewSince().toISOString())
+      .order("created_at", { ascending: false });
     if (listRes.error) {
       if (isMissingTable(listRes.error.message || "")) {
         return { ok: false, status: 503, error: TUTOR_PRACTICE_PAPER_TABLE_HINT };
