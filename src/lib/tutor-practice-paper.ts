@@ -46,6 +46,22 @@ export function hktMonthKey(date = new Date()): string {
   return parts.slice(0, 7);
 }
 
+export function previousHktMonthKey(monthKey: string): string {
+  const [yearText, monthText] = monthKey.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return monthKey;
+  if (month === 1) return `${year - 1}-12`;
+  return `${year}-${String(month - 1).padStart(2, "0")}`;
+}
+
+export function hktMonthLabel(monthKey: string): string {
+  const [yearText, monthText] = monthKey.split("-");
+  const month = Number(monthText);
+  if (!yearText || !Number.isFinite(month)) return monthKey;
+  return `${yearText}年${month}月`;
+}
+
 export function hktDateLabel(date = new Date()): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Hong_Kong",

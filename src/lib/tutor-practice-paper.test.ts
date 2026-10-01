@@ -6,6 +6,8 @@ import {
   gradeDisplayLabel,
   hktDateLabel,
   hktMonthKey,
+  hktMonthLabel,
+  previousHktMonthKey,
   pickPracticeQuestions,
   practicePaperDownloadFilename,
   practicePaperMobileSuffix,
@@ -17,6 +19,9 @@ describe("tutor practice paper rules", () => {
   it("uses the Hong Kong calendar month", () => {
     expect(hktMonthKey(new Date("2026-09-30T15:59:00.000Z"))).toBe("2026-09");
     expect(hktMonthKey(new Date("2026-09-30T16:00:00.000Z"))).toBe("2026-10");
+    expect(previousHktMonthKey("2026-10")).toBe("2026-09");
+    expect(previousHktMonthKey("2026-01")).toBe("2025-12");
+    expect(hktMonthLabel("2026-10")).toBe("2026年10月");
     expect(hktDateLabel(new Date("2026-09-30T16:00:00.000Z"))).toBe("01/10/2026");
   });
 

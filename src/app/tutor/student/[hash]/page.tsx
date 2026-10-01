@@ -14,7 +14,7 @@ import {
   PRIMARY_QUIZ_SUBJECT,
   subjectDisplayLabel,
 } from "@/lib/quiz-subjects";
-import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
+import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 
 type TutorStudentChart = {
   student_id: string;
@@ -176,6 +176,9 @@ export default function TutorStudentDetailPage() {
   const [papers, setPapers] = useState<PracticePaperRow[]>([]);
   const [paperUsed, setPaperUsed] = useState(0);
   const [paperLimit, setPaperLimit] = useState(4);
+  const [paperMonthKey, setPaperMonthKey] = useState("");
+  const [previousPaperMonthKey, setPreviousPaperMonthKey] = useState("");
+  const [previousPaperUsed, setPreviousPaperUsed] = useState(0);
   const [paperMsg, setPaperMsg] = useState("");
   const [generatingPaper, setGeneratingPaper] = useState(false);
   const [comparison, setComparison] = useState<StudentComparisonPayload | null>(null);
@@ -266,12 +269,25 @@ export default function TutorStudentDetailPage() {
         cache: "no-store",
       });
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { used?: number; limit?: number; remaining?: number; papers?: PracticePaperRow[] }; error?: string }
+        | {
+            data?: {
+              month_key?: string;
+              previous_month_key?: string;
+              used?: number;
+              previous_used?: number;
+              limit?: number;
+              papers?: PracticePaperRow[];
+            };
+            error?: string;
+          }
         | null;
       if (!res.ok) throw new Error(payload?.error || "無法載入練習卷。");
       setPapers(payload?.data?.papers ?? []);
       setPaperUsed(Number(payload?.data?.used ?? 0));
       setPaperLimit(Number(payload?.data?.limit ?? 4));
+      setPaperMonthKey(String(payload?.data?.month_key ?? ""));
+      setPreviousPaperMonthKey(String(payload?.data?.previous_month_key ?? ""));
+      setPreviousPaperUsed(Number(payload?.data?.previous_used ?? 0));
     } catch (err) {
       setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷。");
     }
@@ -464,9 +480,16 @@ export default function TutorStudentDetailPage() {
                 按目前科目及這位學生的年級抽出 30 題。每月可生成 {paperLimit} 份，全部學生合計，學生卷及答案卷計作 1 份。
               </p>
               <p className="mt-2 text-sm font-semibold text-indigo-800">
-                本月已生成 {paperUsed} / {paperLimit} 份，尚餘 {Math.max(0, paperLimit - paperUsed)} 份。
+                {paperMonthKey ? hktMonthLabel(paperMonthKey) : "本月"}已生成 {paperUsed} / {paperLimit} 份，尚餘{" "}
+                {Math.max(0, paperLimit - paperUsed)} 份。
               </p>
-              <p className="text-sm text-gray-500">下表為全部已連結學生最近生成的練習卷，方便對照登記手機。</p>
+              {previousPaperMonthKey && (
+                <p className="text-sm text-gray-600">
+                  {hktMonthLabel(previousPaperMonthKey)}已生成 {previousPaperUsed} / {paperLimit} 份
+                  {previousPaperUsed >= paperLimit ? "，該月餘額已用完。" : `，該月尚餘 ${Math.max(0, paperLimit - previousPaperUsed)} 份。`}
+                  該月的練習卷不計入本月餘額。
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -488,7 +511,11 @@ export default function TutorStudentDetailPage() {
               {paperMsg}
             </p>
           )}
-          {papers.length > 0 && (
+          <p className="text-sm font-semibold text-gray-700">本月練習卷</p>
+          {papers.filter((paper) => paper.month_key === paperMonthKey).length === 0 && (
+            <p className="text-sm text-gray-400">本月尚未生成練習卷。</p>
+          )}
+          {papers.filter((paper) => paper.month_key === paperMonthKey).length > 0 && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -501,7 +528,7 @@ export default function TutorStudentDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {papers.map((paper) => (
+                  {papers.filter((paper) => paper.month_key === paperMonthKey).map((paper) => (
                     <tr key={paper.id} className="border-b border-gray-100">
                       <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
                       <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
@@ -527,6 +554,52 @@ export default function TutorStudentDetailPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {papers.some((paper) => paper.month_key !== paperMonthKey) && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">較早月份的練習卷</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="py-2 pr-3">日期</th>
+                      <th className="py-2 pr-3">學生</th>
+                      <th className="py-2 pr-3">登記手機</th>
+                      <th className="py-2 pr-3">科目</th>
+                      <th className="py-2 pr-3">下載</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {papers
+                      .filter((paper) => paper.month_key !== paperMonthKey)
+                      .map((paper) => (
+                        <tr key={paper.id} className="border-b border-gray-100">
+                          <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
+                          <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
+                          <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
+                          <td className="py-2 pr-3">{paper.subject_label}</td>
+                          <td className="py-2 pr-3">
+                            <button
+                              type="button"
+                              onClick={() => downloadPaper(paper.id, "student")}
+                              className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                            >
+                              學生卷
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => downloadPaper(paper.id, "answer")}
+                              className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
+                            >
+                              答案卷
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

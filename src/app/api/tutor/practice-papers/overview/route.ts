@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       data: {
         month_key: listed.monthKey,
+        previous_month_key: listed.previousMonthKey,
         used: listed.used,
+        previous_used: listed.previousUsed,
         limit: listed.limit,
         remaining: listed.remaining,
         papers: listed.papers.map((paper) => ({
