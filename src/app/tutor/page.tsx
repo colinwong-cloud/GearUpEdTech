@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -21,6 +22,14 @@ type TutorStudentRow = {
 };
 
 type TutorMessageTone = "error" | "warning" | "success" | "info";
+
+type PracticePaperOverviewRow = {
+  id: string;
+  student_name: string;
+  registered_mobile: string;
+  subject_label: string;
+  created_at: string;
+};
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "-";
@@ -81,6 +90,11 @@ export default function TutorPortalPage() {
   const [planActive, setPlanActive] = useState(false);
   const [planUntil, setPlanUntil] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
+  const [paperUsed, setPaperUsed] = useState(0);
+  const [paperLimit, setPaperLimit] = useState(4);
+  const [paperRemaining, setPaperRemaining] = useState(4);
+  const [paperRows, setPaperRows] = useState<PracticePaperOverviewRow[]>([]);
+  const [paperMsg, setPaperMsg] = useState("");
 
   const isAuthenticated = Boolean(session.authenticated);
   const mustChangePassword = Boolean(session.must_change_password);
@@ -160,6 +174,65 @@ export default function TutorPortalPage() {
   useEffect(() => {
     loadPlan();
   }, [loadPlan]);
+
+  const loadPaperOverview = useCallback(async () => {
+    if (!isAuthenticated || mustChangePassword) return;
+    try {
+      const res = await fetch("/api/tutor/practice-papers/overview", { method: "GET", cache: "no-store" });
+      const payload = (await res.json().catch(() => null)) as
+        | {
+            data?: {
+              used?: number;
+              limit?: number;
+              remaining?: number;
+              papers?: PracticePaperOverviewRow[];
+            };
+            error?: string;
+          }
+        | null;
+      if (!res.ok) throw new Error(payload?.error || "無法載入練習卷總覽。");
+      setPaperUsed(Number(payload?.data?.used ?? 0));
+      setPaperLimit(Number(payload?.data?.limit ?? 4));
+      setPaperRemaining(Number(payload?.data?.remaining ?? 0));
+      setPaperRows(payload?.data?.papers ?? []);
+      setPaperMsg("");
+    } catch (err) {
+      setPaperRows([]);
+      setPaperMsg(err instanceof Error ? err.message : "無法載入練習卷總覽。");
+    }
+  }, [isAuthenticated, mustChangePassword]);
+
+  useEffect(() => {
+    loadPaperOverview();
+  }, [loadPaperOverview]);
+
+  const downloadOverviewPaper = async (paperId: string, kind: "student" | "answer") => {
+    setPaperMsg("");
+    try {
+      const res = await fetch(`/api/tutor/practice-papers/${paperId}/pdf?kind=${kind}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "未能下載 PDF。");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filenameFromContentDisposition(
+        res.headers.get("Content-Disposition"),
+        kind === "answer" ? "gearup-practice-answer.pdf" : "gearup-practice-student.pdf"
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPaperMsg(err instanceof Error ? err.message : "未能下載 PDF。");
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated || mustChangePassword) return;
@@ -691,6 +764,60 @@ export default function TutorPortalPage() {
               {planActive ? "已開通" : planLoading ? "前往付款..." : "開通 HK$199/月"}
             </button>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-800">練習卷總覽</h2>
+            <p className="mt-1 text-sm text-gray-500">全部已連結學生合計。學生卷及答案卷計作 1 份。重新下載不會再計。</p>
+            <p className="mt-2 text-sm font-semibold text-indigo-800">
+              本月已生成 {paperUsed} / {paperLimit} 份，尚餘 {paperRemaining} 份。
+            </p>
+          </div>
+          {paperMsg && <p className="text-sm text-rose-600">{paperMsg}</p>}
+          {paperRows.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2 pr-3">日期</th>
+                    <th className="py-2 pr-3">學生</th>
+                    <th className="py-2 pr-3">登記手機</th>
+                    <th className="py-2 pr-3">科目</th>
+                    <th className="py-2 pr-3">下載</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paperRows.map((paper) => (
+                    <tr key={paper.id} className="border-b border-gray-100">
+                      <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
+                      <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
+                      <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
+                      <td className="py-2 pr-3">{paper.subject_label}</td>
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => downloadOverviewPaper(paper.id, "student")}
+                          className="mr-2 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                        >
+                          學生卷
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadOverviewPaper(paper.id, "answer")}
+                          className="rounded-lg border border-sky-200 bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700"
+                        >
+                          答案卷
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">尚未生成練習卷。</p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">

@@ -53,9 +53,11 @@ type SessionDetailAnswer = {
 type PracticePaperRow = {
   id: string;
   student_name: string;
+  registered_mobile: string;
   grade_level: string;
   subject: string;
   subject_label: string;
+  month_key: string;
   created_at: string;
 };
 
@@ -259,12 +261,12 @@ export default function TutorStudentDetailPage() {
   const loadPapers = useCallback(async () => {
     if (!studentHash) return;
     try {
-      const res = await fetch(`/api/tutor/practice-papers?hash=${encodeURIComponent(studentHash)}`, {
+      const res = await fetch("/api/tutor/practice-papers/overview", {
         method: "GET",
         cache: "no-store",
       });
       const payload = (await res.json().catch(() => null)) as
-        | { data?: { used?: number; limit?: number; papers?: PracticePaperRow[] }; error?: string }
+        | { data?: { used?: number; limit?: number; remaining?: number; papers?: PracticePaperRow[] }; error?: string }
         | null;
       if (!res.ok) throw new Error(payload?.error || "無法載入練習卷。");
       setPapers(payload?.data?.papers ?? []);
@@ -459,9 +461,12 @@ export default function TutorStudentDetailPage() {
             <div>
               <h2 className="text-base font-bold text-gray-800">離線練習卷</h2>
               <p className="mt-1 text-sm text-gray-500">
-                按目前科目及學生年級抽出 30 題。每月可生成 {paperLimit} 份，學生卷及答案卷計作 1 份。本月尚餘{" "}
-                {Math.max(0, paperLimit - paperUsed)} 份。重新下載不會再計。
+                按目前科目及這位學生的年級抽出 30 題。每月可生成 {paperLimit} 份，全部學生合計，學生卷及答案卷計作 1 份。
               </p>
+              <p className="mt-2 text-sm font-semibold text-indigo-800">
+                本月已生成 {paperUsed} / {paperLimit} 份，尚餘 {Math.max(0, paperLimit - paperUsed)} 份。
+              </p>
+              <p className="text-sm text-gray-500">下表為全部已連結學生最近生成的練習卷，方便對照登記手機。</p>
             </div>
             <button
               type="button"
@@ -489,6 +494,8 @@ export default function TutorStudentDetailPage() {
                 <thead>
                   <tr className="border-b text-left text-gray-500">
                     <th className="py-2 pr-3">日期</th>
+                    <th className="py-2 pr-3">學生</th>
+                    <th className="py-2 pr-3">登記手機</th>
                     <th className="py-2 pr-3">科目</th>
                     <th className="py-2 pr-3">下載</th>
                   </tr>
@@ -497,6 +504,8 @@ export default function TutorStudentDetailPage() {
                   {papers.map((paper) => (
                     <tr key={paper.id} className="border-b border-gray-100">
                       <td className="py-2 pr-3">{formatDateTime(paper.created_at)}</td>
+                      <td className="py-2 pr-3">{paper.student_name || "學生"}</td>
+                      <td className="py-2 pr-3 font-mono">{paper.registered_mobile || "—"}</td>
                       <td className="py-2 pr-3">{paper.subject_label}</td>
                       <td className="py-2 pr-3">
                         <button

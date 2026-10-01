@@ -1682,6 +1682,21 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "練習卷總覽"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "尚餘"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/practice-papers/overview/route.ts",
+          "snippet": "listTutorPracticePaperOverview"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/tutor/billing/checkout/route.ts",
           "snippet": "createTutorPlanCheckout"
         },
@@ -2548,8 +2563,18 @@
       ]
     }
   ],
-  "generated_at": "2026-09-30T15:51:29.096Z",
+  "generated_at": "2026-10-01T04:10:43.984Z",
   "commit_inventory": [
+    {
+      "sha": "d287ff03a2263a27d8e4f800d89c096d5f92feef",
+      "date": "2026-10-01",
+      "summary": "feat: show one practice-paper overview for every linked student"
+    },
+    {
+      "sha": "3125f5c8f7214a43f9ab7b65712be7f3151906b7",
+      "date": "2026-09-30",
+      "summary": "chore: include the tutor paid plan in the feature contract"
+    },
     {
       "sha": "a852ac5081c87e639bc29a67f1b70586aa98eedb",
       "date": "2026-09-30",
@@ -5027,7 +5052,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 495,
+    "total_commits_since_start": 497,
     "total_feature_rows": 64
   }
 }

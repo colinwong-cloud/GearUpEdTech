@@ -191,6 +191,85 @@ export async function listStudentPracticePapers({
   }
 }
 
+export type PracticePaperOverviewRow = PracticePaperRecord & { registeredMobile: string };
+
+async function loadMobilesByStudentId(admin: SupabaseClient, studentIds: string[]): Promise<Map<string, string>> {
+  const mobiles = new Map<string, string>();
+  const ids = [...new Set(studentIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return mobiles;
+  const studentRes = await admin.from("students").select("id,parent_id").in("id", ids);
+  if (studentRes.error || !studentRes.data) return mobiles;
+  const parentIds = [...new Set(studentRes.data.map((row) => String(row.parent_id ?? "").trim()).filter(Boolean))];
+  const parentRes =
+    parentIds.length > 0
+      ? await admin.from("parents").select("id,mobile_number").in("id", parentIds)
+      : { data: [], error: null };
+  const mobileByParent = new Map<string, string>();
+  for (const row of parentRes.data ?? []) {
+    mobileByParent.set(String(row.id ?? ""), String(row.mobile_number ?? "").trim());
+  }
+  for (const row of studentRes.data) {
+    mobiles.set(String(row.id ?? ""), mobileByParent.get(String(row.parent_id ?? "").trim()) || "");
+  }
+  return mobiles;
+}
+
+export async function listTutorPracticePaperOverview({
+  codeId,
+}: {
+  codeId: string;
+}): Promise<
+  | {
+      ok: true;
+      monthKey: string;
+      used: number;
+      limit: number;
+      remaining: number;
+      papers: PracticePaperOverviewRow[];
+    }
+  | { ok: false; status: number; error: string }
+> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false, status: 503, error: "系統未配置 Supabase 管理金鑰。" };
+  const monthKey = hktMonthKey();
+  try {
+    const used = await countMonthPapers(admin, codeId, monthKey);
+    const listRes = await admin
+      .from("tutor_practice_papers")
+      .select("id,student_id,student_name,grade_level,subject,month_key,created_at")
+      .eq("code_id", codeId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+    if (listRes.error) {
+      if (isMissingTable(listRes.error.message || "")) {
+        return { ok: false, status: 503, error: TUTOR_PRACTICE_PAPER_TABLE_HINT };
+      }
+      throw listRes.error;
+    }
+    const papers = (listRes.data ?? []).map((row) => mapRow(row));
+    const mobiles = await loadMobilesByStudentId(
+      admin,
+      papers.map((paper) => paper.studentId)
+    );
+    const limit = FREE_PRACTICE_PAPER_MONTHLY_LIMIT;
+    return {
+      ok: true,
+      monthKey,
+      used,
+      limit,
+      remaining: Math.max(0, limit - used),
+      papers: papers.map((paper) => ({
+        ...paper,
+        registeredMobile: mobiles.get(paper.studentId) || "",
+      })),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === TUTOR_PRACTICE_PAPER_TABLE_HINT) return { ok: false, status: 503, error: message };
+    throw error;
+  }
+}
+
 export async function createPracticePaper({
   codeId,
   studentId,
