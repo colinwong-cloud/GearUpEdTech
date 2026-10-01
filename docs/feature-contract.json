@@ -1605,6 +1605,11 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-practice-paper-pdf.ts",
+          "snippet": "readBundledFile"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-practice-paper-pdf.ts",
           "snippet": "subsetFont"
         },
         {
@@ -2598,8 +2603,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-01T07:35:45.700Z",
+  "generated_at": "2026-10-01T08:01:11.876Z",
   "commit_inventory": [
+    {
+      "sha": "810ba209ebaf5b57963c40a7710475690ac2894e",
+      "date": "2026-10-01",
+      "summary": "fix: load practice-paper images from a path the production build keeps"
+    },
+    {
+      "sha": "ee3f17725d3fe6817775892e71ecde15c6c7ae6b",
+      "date": "2026-10-01",
+      "summary": "chore: record the practice-paper header art in the feature contract"
+    },
     {
       "sha": "07581a96b18ced827d7a91c12b0cde3e7a3383d8",
       "date": "2026-10-01",
@@ -5137,7 +5152,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 507,
+    "total_commits_since_start": 509,
     "total_feature_rows": 64
   }
 }

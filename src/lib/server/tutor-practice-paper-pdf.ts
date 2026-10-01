@@ -1,4 +1,6 @@
 import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFImage } from "pdf-lib";
 import subsetFont from "subset-font";
@@ -30,13 +32,22 @@ const MASCOT_HEIGHT = 72;
 
 let fontBytes: Buffer | null = null;
 
-function loadAsset(name: string): Buffer {
-  return readFileSync(new URL(`./assets/${name}`, import.meta.url));
+// Literal URLs so the production file trace keeps these next to this module.
+const practiceFontUrl = new URL("./assets/NotoSansTC-subset.ttf", import.meta.url);
+const practiceLogoUrl = new URL("./assets/gearup-edutech-logo.png", import.meta.url);
+const practiceMascotUrl = new URL("./assets/gearup-banana-mascot.png", import.meta.url);
+
+function readBundledFile(moduleUrl: URL, filename: string): Buffer {
+  try {
+    return readFileSync(fileURLToPath(moduleUrl));
+  } catch {
+    return readFileSync(path.join(process.cwd(), "src/lib/server/assets", filename));
+  }
 }
 
 function loadFontBytes(): Buffer {
   if (!fontBytes) {
-    fontBytes = loadAsset("NotoSansTC-subset.ttf");
+    fontBytes = readBundledFile(practiceFontUrl, "NotoSansTC-subset.ttf");
   }
   return fontBytes;
 }
@@ -167,8 +178,8 @@ export async function buildPracticePaperPdf({
   );
   const glyphCache = new Map<string, boolean>();
   const contentWidth = PAGE_WIDTH - MARGIN * 2;
-  const logo = await pdf.embedPng(loadAsset("gearup-edutech-logo.png"));
-  const mascot = await pdf.embedPng(loadAsset("gearup-banana-mascot.png"));
+  const logo = await pdf.embedPng(readBundledFile(practiceLogoUrl, "gearup-edutech-logo.png"));
+  const mascot = await pdf.embedPng(readBundledFile(practiceMascotUrl, "gearup-banana-mascot.png"));
   let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = drawFirstPageBrand(page, logo, mascot);
   let pageIndex = 1;
