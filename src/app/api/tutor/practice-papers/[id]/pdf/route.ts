@@ -67,8 +67,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未能產生 PDF。";
+    console.error("practice paper pdf failed", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : error && typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : "未能產生 PDF。";
     const status = message === TUTOR_PRACTICE_PAPER_TABLE_HINT ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message || "未能產生 PDF。" }, { status });
   }
 }
