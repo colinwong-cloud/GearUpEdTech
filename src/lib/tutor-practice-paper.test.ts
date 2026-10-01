@@ -39,6 +39,8 @@ describe("tutor practice paper rules", () => {
     expect(remainingPracticePapers(3)).toBe(1);
     expect(practicePaperQuotaError(4)).toContain("4");
     expect(remainingPracticePapers(4)).toBe(0);
+    expect(practicePaperQuotaError(9, null)).toBeNull();
+    expect(remainingPracticePapers(9, null)).toBeNull();
   });
 
   it("names each download with the mobile tail and a Hong Kong timestamp", () => {

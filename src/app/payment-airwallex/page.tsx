@@ -300,6 +300,7 @@ function PaymentAirwallexContent() {
             <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-3 text-sm text-indigo-950">
               <p className="font-semibold">導師進階版 HK${TUTOR_PLAN_PRICE_HKD}/月</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-indigo-900">
+                <li>可無限生成練習卷，不再受每月 4 份限制。</li>
                 <li>顯示這位學生最近 10 次練習的真實平均正確率，以及在同學中的排名。</li>
                 <li>比較同校同年級、同區同年級，以及全部同年級。</li>
                 <li>可另選一個年級和學校，查看該組的真實比較。</li>

@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
         used: listed.used,
         limit: listed.limit,
         remaining: listed.remaining,
+        unlimited: listed.unlimited,
         papers: listed.papers.map((paper) => ({
           id: paper.id,
           student_name: paper.studentName,

@@ -147,16 +147,18 @@ export function gradeDisplayLabel(gradeLevel: string): string {
 
 export function remainingPracticePapers(
   used: number,
-  limit = FREE_PRACTICE_PAPER_MONTHLY_LIMIT
-): number {
+  limit: number | null = FREE_PRACTICE_PAPER_MONTHLY_LIMIT
+): number | null {
+  if (limit === null) return null;
   if (!Number.isFinite(used) || used < 0) return limit;
   return Math.max(0, limit - used);
 }
 
 export function practicePaperQuotaError(
   used: number,
-  limit = FREE_PRACTICE_PAPER_MONTHLY_LIMIT
+  limit: number | null = FREE_PRACTICE_PAPER_MONTHLY_LIMIT
 ): string | null {
+  if (limit === null) return null;
   if (used >= limit) {
     return `本月已生成 ${limit} 份練習卷，下月可再生成。`;
   }
