@@ -24,12 +24,19 @@ const TITLE_LEADING = 14;
 const PARAGRAPH_GAP = 18;
 const QUESTION_GAP = 20;
 const CHOICE_INDENT = 28;
+const BRAND_INSET = 22;
+const LOGO_HEIGHT = 42;
+const MASCOT_HEIGHT = 72;
 
 let fontBytes: Buffer | null = null;
 
+function loadAsset(name: string): Buffer {
+  return readFileSync(new URL(`./assets/${name}`, import.meta.url));
+}
+
 function loadFontBytes(): Buffer {
   if (!fontBytes) {
-    fontBytes = readFileSync(new URL("./assets/NotoSansTC-subset.ttf", import.meta.url));
+    fontBytes = loadAsset("NotoSansTC-subset.ttf");
   }
   return fontBytes;
 }
@@ -160,8 +167,10 @@ export async function buildPracticePaperPdf({
   );
   const glyphCache = new Map<string, boolean>();
   const contentWidth = PAGE_WIDTH - MARGIN * 2;
+  const logo = await pdf.embedPng(loadAsset("gearup-edutech-logo.png"));
+  const mascot = await pdf.embedPng(loadAsset("gearup-banana-mascot.png"));
   let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  let y = PAGE_HEIGHT - MARGIN;
+  let y = drawFirstPageBrand(page, logo, mascot);
   let pageIndex = 1;
 
   const ensureSpace = (height: number) => {
@@ -252,6 +261,30 @@ export async function buildPracticePaperPdf({
   }
 
   return pdf.save();
+}
+
+/** Logo at the top left and the banana mascot at the top right. Later pages stay plain. */
+function drawFirstPageBrand(
+  page: ReturnType<PDFDocument["addPage"]>,
+  logo: PDFImage,
+  mascot: PDFImage
+): number {
+  const top = PAGE_HEIGHT - BRAND_INSET;
+  const logoWidth = LOGO_HEIGHT * (logo.width / logo.height);
+  const mascotWidth = MASCOT_HEIGHT * (mascot.width / mascot.height);
+  page.drawImage(logo, {
+    x: BRAND_INSET,
+    y: top - LOGO_HEIGHT,
+    width: logoWidth,
+    height: LOGO_HEIGHT,
+  });
+  page.drawImage(mascot, {
+    x: PAGE_WIDTH - BRAND_INSET - mascotWidth,
+    y: top - MASCOT_HEIGHT,
+    width: mascotWidth,
+    height: MASCOT_HEIGHT,
+  });
+  return top - MASCOT_HEIGHT - 16;
 }
 
 function formatCorrectAnswer(question: PracticePaperQuestion): string {
