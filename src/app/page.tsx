@@ -772,9 +772,10 @@ function preventQuizDragStart(e: React.DragEvent) {
 
 export default function QuizApp() {
   const [screen, setScreen] = useState<AppScreen>("login_mobile");
-  const [sharedTutorCode] = useState(() =>
-    readTutorCodeFromSearch(typeof window === "undefined" ? "" : window.location.search)
-  );
+  const [sharedTutorCode, setSharedTutorCode] = useState("");
+  useEffect(() => {
+    setSharedTutorCode(readTutorCodeFromSearch(window.location.search));
+  }, []);
   const [mobileNumber, setMobileNumber] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
