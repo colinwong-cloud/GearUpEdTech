@@ -887,7 +887,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "前往 Airwallex 付款" },
         { type: "file_contains", path: "src/app/tutor/student/[hash]/page.tsx", snippet: "前往 Airwallex 付款" },
         { type: "file_contains", path: "src/app/payment-airwallex/page.tsx", snippet: "付款條款及細則" },
-        { type: "file_contains", path: "src/lib/payment-terms.ts", snippet: "payment_terms_condition.txt" },
+        { type: "file_contains", path: "src/lib/payment-terms.ts", snippet: "payment_terms_condition_0930.txt" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "練習卷總覽" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "尚餘" },
         { type: "file_contains", path: "src/lib/tutor-practice-paper.ts", snippet: "PRACTICE_PAPER_OVERVIEW_DAYS = 180" },
