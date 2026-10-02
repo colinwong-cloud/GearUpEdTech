@@ -1542,6 +1542,40 @@
           "snippet": "學生註冊時請填寫此教師編號"
         },
         {
+          "type": "file_exists",
+          "path": "src/lib/tutor-share-link.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-share-link.ts",
+          "snippet": "buildTutorShareUrl"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-share-link.ts",
+          "snippet": "buildTutorWhatsAppText"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-share-link.tsx",
+          "snippet": "把此連結發給學生"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "TutorShareLink"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "readTutorCodeFromSearch"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "initialReferralCode"
+        },
+        {
           "type": "file_contains",
           "path": "src/lib/server/turnstile.ts",
           "snippet": "challenges.cloudflare.com/turnstile/v0/siteverify"
@@ -2667,8 +2701,28 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T06:53:58.879Z",
+  "generated_at": "2026-10-02T07:21:44.679Z",
   "commit_inventory": [
+    {
+      "sha": "4dc325642822723eb462c3486b633bddf8dc512c",
+      "date": "2026-10-02",
+      "summary": "fix: read the tutor code after the login page loads"
+    },
+    {
+      "sha": "7ef752f4f0590a5e4024a263e0c444be36aabdd2",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor share-link commit in the feature contract"
+    },
+    {
+      "sha": "e54a7ccb7696a44b03c84403074d7e5fa93ccb73",
+      "date": "2026-10-02",
+      "summary": "feat: let tutors share a registration link with their code"
+    },
+    {
+      "sha": "6fc736bc62641dff4c80a4f8f9973ea5f141d60e",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor login button commit in the feature contract"
+    },
     {
       "sha": "301caacc5ef656c622a47fe2a1cff68e548b2b1d",
       "date": "2026-10-02",
@@ -5286,7 +5340,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 523,
+    "total_commits_since_start": 527,
     "total_feature_rows": 64
   }
 }

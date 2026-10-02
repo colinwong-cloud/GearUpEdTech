@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-practice-paper";
 import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
 import { rememberTutorStudent, writePaperOverviewCache } from "@/lib/tutor-portal-cache";
+import { TutorShareLink } from "@/app/tutor/tutor-share-link";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -721,6 +722,7 @@ export default function TutorPortalPage() {
               教師編號：<span className="font-mono">{session.code || "-"}</span>
             </p>
             <p className="text-xs text-gray-400">學生註冊時請填寫此教師編號。同一登記手機如有多位學生，會分列顯示；View 只開啟該學生。</p>
+            {session.code ? <TutorShareLink code={session.code} /> : null}
           </div>
         </div>
 
