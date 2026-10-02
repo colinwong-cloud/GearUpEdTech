@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   HPP_MIT_POLICY_VERSION,
+  buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
   buildMitPaymentConsentOptions,
+  nextMonthlyRecurringStartDate,
 } from "./airwallex-hpp-mit";
 
 describe("airwallex-hpp-mit", () => {
@@ -49,6 +51,26 @@ describe("airwallex-hpp-mit", () => {
         payment_schedule: { period: 1, period_unit: "MONTH" },
       },
     });
+  });
+
+  it("starts the Apple Pay subscription one month after today's charge", () => {
+    const now = new Date("2026-10-02T08:30:00.000Z");
+    const start = nextMonthlyRecurringStartDate(now);
+    expect(start.toISOString()).toBe("2026-11-02T08:30:00.000Z");
+    const options = buildApplePaySubscribeRequestOptions({
+      countryCode: "HK",
+      amount: 199,
+      now,
+    });
+    const lineItems = options.lineItems as Array<Record<string, unknown>>;
+    expect(lineItems[0]).toMatchObject({
+      amount: "199.00",
+      paymentTiming: "recurring",
+      recurringPaymentIntervalUnit: "month",
+      recurringPaymentIntervalCount: 1,
+      recurringPaymentStartDate: start,
+    });
+    expect(start.getTime()).toBeGreaterThan(now.getTime());
   });
 
   it("throws when customer_id is missing", () => {
