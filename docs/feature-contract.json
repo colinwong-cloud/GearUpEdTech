@@ -2706,8 +2706,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T08:31:03.355Z",
+  "generated_at": "2026-10-02T08:31:07.960Z",
   "commit_inventory": [
+    {
+      "sha": "609d45cee62d6a59afdc1594e03e087c19752253",
+      "date": "2026-10-02",
+      "summary": "feat: move new tutor registration above the login form"
+    },
     {
       "sha": "97045e54628657ab32e18f057bb8aa3ccc834e10",
       "date": "2026-10-02",
@@ -5350,7 +5355,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 528,
+    "total_commits_since_start": 529,
     "total_feature_rows": 64
   }
 }
