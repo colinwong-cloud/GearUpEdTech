@@ -721,6 +721,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/lib/server/tutor-student-hash.ts" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "GearUp Tutor" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "導師登入" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "https://tutor.gearupquiz.com" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "導師登入" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "首次登入請更新密碼" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "返回主頁" },
         {
