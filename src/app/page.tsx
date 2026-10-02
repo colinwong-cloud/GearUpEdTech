@@ -45,6 +45,7 @@ import {
 } from "@/components/student-quiz-experience";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
+  buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
   type MitRecurringTermsOfUse,
 } from "@/lib/airwallex-hpp-mit";
@@ -5524,23 +5525,10 @@ function PaymentScreen({
           // MIT consent fields are always passed below for every browser.
         }
         const applePayRequestOptions = methods.includes("applepay")
-          ? {
-              buttonType: "subscribe",
-              existingPaymentMethodRequired: false,
+          ? buildApplePaySubscribeRequestOptions({
               countryCode: resolvedCountryCode,
-              totalPriceLabel: "GearUp 增分寶",
-              lineItems: [
-                {
-                  label: "GearUp 增分寶月費會員",
-                  amount: resolvedFinalAmount.toFixed(2),
-                  type: "final",
-                  paymentTiming: "recurring",
-                  recurringPaymentStartDate: new Date(),
-                  recurringPaymentIntervalUnit: "month",
-                  recurringPaymentIntervalCount: 1,
-                },
-              ],
-            }
+              amount: resolvedFinalAmount,
+            })
           : undefined;
         const resolvedCustomerId =
           (payload.customer_id || "").trim() ||

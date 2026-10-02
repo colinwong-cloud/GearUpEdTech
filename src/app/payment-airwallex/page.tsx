@@ -4,7 +4,7 @@ import Script from "next/script";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { buildMitHppRedirectProps } from "@/lib/airwallex-hpp-mit";
+import { buildApplePaySubscribeRequestOptions, buildMitHppRedirectProps } from "@/lib/airwallex-hpp-mit";
 import { getPaymentTermsUrl } from "@/lib/payment-terms";
 import { TUTOR_PLAN_PRICE_HKD } from "@/lib/tutor-billing";
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
@@ -227,23 +227,10 @@ function PaymentAirwallexContent() {
       // Browser/OS only affects wallet button visibility on Airwallex HPP.
       // MIT consent fields are always passed for every browser below.
       const applePayRequestOptions = methods.includes("applepay")
-        ? {
-            buttonType: "subscribe",
-            existingPaymentMethodRequired: false,
+        ? buildApplePaySubscribeRequestOptions({
             countryCode,
-            totalPriceLabel: "GearUp 增分寶",
-            lineItems: [
-              {
-                label: "GearUp 增分寶月費會員",
-                amount: finalAmount.toFixed(2),
-                type: "final",
-                paymentTiming: "recurring",
-                recurringPaymentStartDate: new Date(),
-                recurringPaymentIntervalUnit: "month",
-                recurringPaymentIntervalCount: 1,
-              },
-            ],
-          }
+            amount: finalAmount,
+          })
         : undefined;
       payments.redirectToCheckout(
         buildMitHppRedirectProps({

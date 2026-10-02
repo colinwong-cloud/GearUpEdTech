@@ -24,6 +24,42 @@ export type MitPaymentConsentOptions = {
   terms_of_use?: MitRecurringTermsOfUse;
 };
 
+/**
+ * Next Apple Pay subscription date. Today's charge is the PaymentIntent total.
+ * The recurring line must start on the following month, or Apple Pay treats
+ * both as the same charge and rejects the request.
+ */
+export function nextMonthlyRecurringStartDate(now = new Date()): Date {
+  const next = new Date(now.getTime());
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return next;
+}
+
+export function buildApplePaySubscribeRequestOptions(input: {
+  countryCode: string;
+  amount: number;
+  now?: Date;
+}): Record<string, unknown> {
+  const amount = Number.isFinite(input.amount) ? Math.max(input.amount, 0) : 0;
+  return {
+    buttonType: "subscribe",
+    existingPaymentMethodRequired: false,
+    countryCode: input.countryCode,
+    totalPriceLabel: "GearUp 增分寶",
+    lineItems: [
+      {
+        label: "GearUp 增分寶月費會員",
+        amount: amount.toFixed(2),
+        type: "final",
+        paymentTiming: "recurring",
+        recurringPaymentStartDate: nextMonthlyRecurringStartDate(input.now),
+        recurringPaymentIntervalUnit: "month",
+        recurringPaymentIntervalCount: 1,
+      },
+    ],
+  };
+}
+
 export function buildMitPaymentConsentOptions(
   termsOfUse?: MitRecurringTermsOfUse | null
 ): MitPaymentConsentOptions {
