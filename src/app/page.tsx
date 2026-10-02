@@ -2308,6 +2308,12 @@ function LoginMobileScreen({
           >
             新用戶註冊
           </button>
+          <a
+            href="https://tutor.gearupquiz.com"
+            className="mb-4 block w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-center text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            導師登入
+          </a>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">

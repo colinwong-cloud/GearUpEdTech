@@ -1298,6 +1298,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "https://tutor.gearupquiz.com"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "導師登入"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
           "snippet": "首次登入請更新密碼"
         },
@@ -2657,8 +2667,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T05:51:08.673Z",
+  "generated_at": "2026-10-02T06:53:58.879Z",
   "commit_inventory": [
+    {
+      "sha": "301caacc5ef656c622a47fe2a1cff68e548b2b1d",
+      "date": "2026-10-02",
+      "summary": "feat: add a tutor portal button on the login page"
+    },
+    {
+      "sha": "b2499a5679cd1d7c792008b8f7a69a3bf6d0c0ad",
+      "date": "2026-10-02",
+      "summary": "chore: record the 30 September payment terms file in the feature contract"
+    },
     {
       "sha": "8873e86c53a4e85cd6198fd423db328df588de48",
       "date": "2026-10-02",
@@ -5266,7 +5286,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 521,
+    "total_commits_since_start": 523,
     "total_feature_rows": 64
   }
 }

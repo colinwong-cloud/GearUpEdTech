@@ -5,6 +5,10 @@ test.describe("Home login smoke", () => {
     await page.goto("/");
 
     await expect(page.getByText("請輸入電話號碼及密碼登入")).toBeVisible();
+    await expect(page.getByRole("link", { name: "導師登入" })).toHaveAttribute(
+      "href",
+      "https://tutor.gearupquiz.com"
+    );
     await expect(page.getByText("平台簡介")).toBeVisible();
     await expect(page.getByText("常見問題")).toBeVisible();
     await expect(page.getByRole("button", { name: "WhatsApp" })).toBeVisible();
