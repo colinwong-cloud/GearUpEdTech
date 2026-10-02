@@ -8,6 +8,6 @@ export function getPaymentTermsUrl(): string {
   if (explicit) return explicit;
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   return base
-    ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition.txt`
-    : "/payment_terms_condition.txt";
+    ? `${base}/storage/v1/object/public/Webpage_statements/payment_terms_condition_0930.txt`
+    : "/payment_terms_condition_0930.txt";
 }
