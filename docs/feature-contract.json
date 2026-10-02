@@ -1959,6 +1959,21 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/server/tutor-billing.ts",
+          "snippet": "shouldTryNextMitConfirmShape"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-billing.ts",
+          "snippet": "isConsentUsableForMit"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/tutor-billing.ts",
+          "snippet": "nextMonthlyRecurringStartDate"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "buildMitHppRedirectProps"
         },
@@ -2721,8 +2736,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T10:51:55.619Z",
+  "generated_at": "2026-10-02T11:07:38.971Z",
   "commit_inventory": [
+    {
+      "sha": "ffe23c80dafdbb57907907a2b470fa2bef5f7de1",
+      "date": "2026-10-02",
+      "summary": "fix: run tutor monthly charges with the student MIT confirm path"
+    },
+    {
+      "sha": "051d317e86dce33b1a86be12d643a6e0b54bc1e6",
+      "date": "2026-10-02",
+      "summary": "chore: record the Apple Pay recurring start commit in the feature contract"
+    },
     {
       "sha": "c85a2fbb0226f7fbd5c938b68a0292193ce852dd",
       "date": "2026-10-02",
@@ -5380,7 +5405,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 531,
+    "total_commits_since_start": 533,
     "total_feature_rows": 64
   }
 }
