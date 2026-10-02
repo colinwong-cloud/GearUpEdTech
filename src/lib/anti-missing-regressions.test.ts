@@ -234,6 +234,15 @@ describe("anti-missing regression guards", () => {
     expect(cronSource).toContain("classifyRecurringChargeFailure");
     expect(cronSource).toContain("buildMitConfirmAttempts");
     expect(cronSource).toContain("shouldTryNextMitConfirmShape");
+    const tutorMitSource = readSource("src/lib/server/tutor-billing.ts");
+    expect(tutorMitSource).toContain("buildMitConfirmAttempts");
+    expect(tutorMitSource).toContain("shouldTryNextMitConfirmShape");
+    expect(tutorMitSource).toContain("isConsentUsableForMit");
+    expect(tutorMitSource).toContain("filterEligibleMitCronProfiles");
+    expect(tutorMitSource).toContain("mitChargeLeaseIso");
+    expect(tutorMitSource).toContain("nextMonthlyRecurringStartDate");
+    expect(tutorMitSource).toContain("tutor-subsequent-confirm-retry");
+    expect(tutorMitSource).not.toContain("attempts[0]?.payload");
     expect(cronSource).toContain("subsequent-confirm-retry");
     expect(cronSource).toContain("cron-auth-rejected");
     expect(cronSource).toContain("filterEligibleMitCronProfiles");

@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enforceRecurringCheckoutMethods, getAirwallexMethodsForSelection } from "@/lib/airwallex-checkout-methods";
-import { buildMitConfirmAttempts } from "@/lib/server/recurring-mit-confirm";
+import { nextMonthlyRecurringStartDate } from "@/lib/airwallex-hpp-mit";
+import {
+  buildMitConfirmAttempts,
+  classifyRecurringChargeFailure,
+  isConsentPermanentlyUnusable,
+  isConsentUsableForMit,
+  shouldTryNextMitConfirmShape,
+} from "@/lib/server/recurring-mit-confirm";
+import { filterEligibleMitCronProfiles, mitChargeLeaseIso } from "@/lib/server/recurring-mit-cron";
 import {
   TUTOR_PLAN_PRICE_HKD,
   extendTutorPaidUntil,
@@ -350,12 +358,84 @@ export async function confirmTutorPlanPayment(input: {
   };
 }
 
+const TUTOR_MIT_PAID_STATES = new Set(["SUCCEEDED", "SUCCESS", "PAID", "CAPTURE_REQUESTED", "SETTLED"]);
+
+function nextTutorMitChargeIso(dueAt: string): string {
+  const due = new Date(dueAt);
+  const base = Number.isNaN(due.getTime()) ? new Date() : due;
+  return nextMonthlyRecurringStartDate(base).toISOString();
+}
+
+async function readTutorConsentStatus(input: {
+  airwallexBase: string;
+  accessToken: string;
+  paymentConsentId: string;
+}): Promise<{ ok: true; status: string | null } | { ok: false; reason: string }> {
+  try {
+    const res = await fetch(
+      `${input.airwallexBase}/api/v1/pa/payment_consents/${encodeURIComponent(input.paymentConsentId)}`,
+      {
+        headers: { Authorization: `Bearer ${input.accessToken}`, Accept: "application/json" },
+        cache: "no-store",
+      }
+    );
+    const body = await readApiBody(res);
+    if (!res.ok) {
+      return { ok: false, reason: airwallexError("payment_consents/get", res.status, body) };
+    }
+    return { ok: true, status: readString(body.json?.status) };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : "Unable to retrieve payment consent" };
+  }
+}
+
+async function claimTutorChargeCycle(
+  supabase: SupabaseClient,
+  profile: { id: string; next_charge_at: string; last_charged_at: string | null }
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  let query = supabase
+    .from("tutor_recurring_profiles")
+    .update({
+      next_charge_at: mitChargeLeaseIso(),
+      last_error: "mit-charge-in-progress",
+      updated_at: nowIso,
+    })
+    .eq("id", profile.id)
+    .eq("next_charge_at", profile.next_charge_at);
+  query = profile.last_charged_at
+    ? query.eq("last_charged_at", profile.last_charged_at)
+    : query.is("last_charged_at", null);
+  const { data, error } = await query.select("id");
+  if (error) throw error;
+  return Array.isArray(data) && data.length === 1;
+}
+
+async function recordTutorMitFailure(
+  supabase: SupabaseClient,
+  profileId: string,
+  dueAt: string,
+  reason: string,
+  consentStatus?: string | null
+) {
+  const kind = classifyRecurringChargeFailure({ reason, consentStatus });
+  await supabase
+    .from("tutor_recurring_profiles")
+    .update({
+      status: kind === "permanent" ? "failed" : "active",
+      next_charge_at: dueAt,
+      last_error: reason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profileId);
+}
+
 export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ processed: number; paid: number; failed: number }> {
   const now = new Date();
   const list = await supabase
     .from("tutor_recurring_profiles")
-    .select("id,code_id,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at")
-    .eq("status", "active")
+    .select("id,code_id,status,airwallex_customer_id,airwallex_payment_consent_id,airwallex_payment_method_id,payment_method_type,recurring_amount_hkd,currency,next_charge_at,last_charged_at,last_error")
+    .in("status", ["active", "failed"])
     .lte("next_charge_at", now.toISOString())
     .limit(20);
   if (list.error) {
@@ -364,19 +444,52 @@ export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ p
     }
     throw list.error;
   }
+  const dueProfiles = filterEligibleMitCronProfiles(list.data ?? [], now);
   let processed = 0;
   let paid = 0;
   let failed = 0;
   const airwallexBase = getTutorAirwallexBaseUrl();
   const accessToken = await getAccessToken(airwallexBase);
-  for (const profile of list.data ?? []) {
-    if (!profile.airwallex_payment_consent_id || !profile.airwallex_payment_method_id || !profile.payment_method_type) {
+  for (const profile of dueProfiles) {
+    const dueAt = String(profile.next_charge_at);
+    if (!profile.airwallex_payment_consent_id || !profile.airwallex_payment_method_id || !profile.payment_method_type || !profile.airwallex_customer_id) {
       failed += 1;
+      await recordTutorMitFailure(supabase, profile.id, dueAt, "missing recurring payment credentials");
       continue;
     }
+    const consentLookup = await readTutorConsentStatus({
+      airwallexBase,
+      accessToken,
+      paymentConsentId: String(profile.airwallex_payment_consent_id),
+    });
+    if (!consentLookup.ok) {
+      failed += 1;
+      await recordTutorMitFailure(supabase, profile.id, dueAt, consentLookup.reason);
+      continue;
+    }
+    if (!isConsentUsableForMit(consentLookup.status)) {
+      failed += 1;
+      const reason = `Payment consent is not usable for MIT (status=${consentLookup.status || "UNKNOWN"})`;
+      console.error(
+        "[anti-missing][payment][mit-policy] tutor-consent-not-verified",
+        JSON.stringify({
+          profile_id: profile.id,
+          consent_status: consentLookup.status,
+          permanent: isConsentPermanentlyUnusable(consentLookup.status),
+        })
+      );
+      await recordTutorMitFailure(supabase, profile.id, dueAt, reason, consentLookup.status);
+      continue;
+    }
+    const claimed = await claimTutorChargeCycle(supabase, {
+      id: profile.id,
+      next_charge_at: dueAt,
+      last_charged_at: profile.last_charged_at ? String(profile.last_charged_at) : null,
+    });
+    if (!claimed) continue;
     processed += 1;
     const amount = Number(profile.recurring_amount_hkd || TUTOR_PLAN_PRICE_HKD);
-    const merchantOrderId = `tutor-renew-${Date.now()}`;
+    const merchantOrderId = `tutor-renew-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const requestId = crypto.randomUUID();
     await supabase.from("tutor_payment_orders").insert({
       code_id: profile.code_id,
@@ -410,7 +523,12 @@ export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ p
     const intentId = readString(createBody.json?.id);
     if (!createRes.ok || !intentId) {
       failed += 1;
-      await supabase.from("tutor_recurring_profiles").update({ last_error: airwallexError("payment_intents/create", createRes.status, createBody), updated_at: new Date().toISOString() }).eq("id", profile.id);
+      await recordTutorMitFailure(
+        supabase,
+        profile.id,
+        dueAt,
+        airwallexError("payment_intents/create", createRes.status, createBody)
+      );
       continue;
     }
     const attempts = buildMitConfirmAttempts(
@@ -422,21 +540,48 @@ export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ p
         requestId: crypto.randomUUID(),
         metadata: { payer: "tutor", merchant_trigger_reason: "scheduled" },
       },
-      [crypto.randomUUID()]
+      [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()]
     );
-    const confirmRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(attempts[0]?.payload ?? {}),
-      cache: "no-store",
-    });
-    const confirmBody = await readApiBody(confirmRes);
+    let confirmRes: Response | null = null;
+    let confirmBody: ApiBody = { json: null, text: "" };
+    for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
+      const attempt = attempts[attemptIndex];
+      console.info(
+        "[anti-missing][payment][mit-policy] tutor-subsequent-confirm-payload",
+        JSON.stringify({
+          profile_id: profile.id,
+          shape: attempt.shape,
+          has_payment_consent_id: Boolean(attempt.payload.payment_consent_id),
+          triggered_by: attempt.payload.triggered_by ?? null,
+        })
+      );
+      confirmRes = await fetch(`${airwallexBase}/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}/confirm`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(attempt.payload),
+        cache: "no-store",
+      });
+      confirmBody = await readApiBody(confirmRes);
+      if (confirmRes.ok) break;
+      const attemptReason = airwallexError("payment_intents/confirm", confirmRes.status, confirmBody);
+      const hasNextShape = attemptIndex < attempts.length - 1;
+      if (!hasNextShape || !shouldTryNextMitConfirmShape(attemptReason)) break;
+      console.info(
+        "[anti-missing][payment][mit-policy] tutor-subsequent-confirm-retry",
+        JSON.stringify({
+          profile_id: profile.id,
+          failed_shape: attempt.shape,
+          next_shape: attempts[attemptIndex + 1]?.shape ?? null,
+          first_reason: attemptReason,
+        })
+      );
+    }
     const status = readString(confirmBody.json?.status)?.toUpperCase() || "";
-    const succeeded = confirmRes.ok && ["SUCCEEDED", "SUCCESS", "PAID", "CAPTURE_REQUESTED", "SETTLED"].includes(status);
+    const succeeded = Boolean(confirmRes?.ok) && TUTOR_MIT_PAID_STATES.has(status);
     await markTutorOrderPaid({
       supabase,
       paymentIntentId: intentId,
@@ -446,9 +591,24 @@ export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ p
     });
     if (!succeeded) {
       failed += 1;
-      await supabase.from("tutor_recurring_profiles").update({ last_error: airwallexError("payment_intents/confirm", confirmRes.status, confirmBody), updated_at: new Date().toISOString() }).eq("id", profile.id);
+      const reason = confirmRes
+        ? airwallexError("payment_intents/confirm", confirmRes.status, confirmBody)
+        : "MIT confirm did not run";
+      await recordTutorMitFailure(supabase, profile.id, dueAt, reason);
       continue;
     }
+    const nextChargeAt = nextTutorMitChargeIso(dueAt);
+    const chargedAt = new Date().toISOString();
+    await supabase
+      .from("tutor_recurring_profiles")
+      .update({
+        status: "active",
+        next_charge_at: nextChargeAt,
+        last_charged_at: chargedAt,
+        last_error: null,
+        updated_at: chargedAt,
+      })
+      .eq("id", profile.id);
     paid += 1;
   }
   return { processed, paid, failed };
