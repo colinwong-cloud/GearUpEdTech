@@ -2701,8 +2701,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T07:17:31.626Z",
+  "generated_at": "2026-10-02T07:17:45.357Z",
   "commit_inventory": [
+    {
+      "sha": "e54a7ccb7696a44b03c84403074d7e5fa93ccb73",
+      "date": "2026-10-02",
+      "summary": "feat: let tutors share a registration link with their code"
+    },
     {
       "sha": "6fc736bc62641dff4c80a4f8f9973ea5f141d60e",
       "date": "2026-10-02",
@@ -5325,7 +5330,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 524,
+    "total_commits_since_start": 525,
     "total_feature_rows": 64
   }
 }
