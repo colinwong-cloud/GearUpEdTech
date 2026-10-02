@@ -841,6 +841,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/app/api/tutor/register/route.ts" },
         { type: "file_contains", path: "supabase_tutor_self_registration.sql", snippet: "registration_source" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "導師自行登記" },
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "新登記導師" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "學生註冊時請填寫此教師編號" },
         { type: "file_exists", path: "src/lib/tutor-share-link.ts" },
         { type: "file_contains", path: "src/lib/tutor-share-link.ts", snippet: "buildTutorShareUrl" },

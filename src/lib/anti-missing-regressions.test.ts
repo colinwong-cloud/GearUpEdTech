@@ -122,6 +122,7 @@ describe("anti-missing regression guards", () => {
     expect(tutorPageSource).toContain("首次登入請更新密碼");
     expect(tutorPageSource).toContain("返回主頁");
     expect(tutorPageSource).toContain("導師自行登記");
+    expect(tutorPageSource).toContain("新登記導師");
     const tutorLayoutSource = readSource("src/app/tutor/layout.tsx");
     expect(tutorLayoutSource).toContain("tutor-portal-root");
     expect(readSource("src/app/globals.css")).toContain(".tutor-portal-root");
