@@ -1542,6 +1542,40 @@
           "snippet": "學生註冊時請填寫此教師編號"
         },
         {
+          "type": "file_exists",
+          "path": "src/lib/tutor-share-link.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-share-link.ts",
+          "snippet": "buildTutorShareUrl"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-share-link.ts",
+          "snippet": "buildTutorWhatsAppText"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-share-link.tsx",
+          "snippet": "把此連結發給學生"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "TutorShareLink"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "readTutorCodeFromSearch"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "initialReferralCode"
+        },
+        {
           "type": "file_contains",
           "path": "src/lib/server/turnstile.ts",
           "snippet": "challenges.cloudflare.com/turnstile/v0/siteverify"
@@ -2667,8 +2701,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T06:53:58.879Z",
+  "generated_at": "2026-10-02T07:17:31.626Z",
   "commit_inventory": [
+    {
+      "sha": "6fc736bc62641dff4c80a4f8f9973ea5f141d60e",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor login button commit in the feature contract"
+    },
     {
       "sha": "301caacc5ef656c622a47fe2a1cff68e548b2b1d",
       "date": "2026-10-02",
@@ -5286,7 +5325,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 523,
+    "total_commits_since_start": 524,
     "total_feature_rows": 64
   }
 }

@@ -28,6 +28,7 @@ import {
 } from "@/lib/gtm-events";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import { getPaymentTermsUrl } from "@/lib/payment-terms";
+import { readTutorCodeFromSearch } from "@/lib/tutor-share-link";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -771,6 +772,9 @@ function preventQuizDragStart(e: React.DragEvent) {
 
 export default function QuizApp() {
   const [screen, setScreen] = useState<AppScreen>("login_mobile");
+  const [sharedTutorCode] = useState(() =>
+    readTutorCodeFromSearch(typeof window === "undefined" ? "" : window.location.search)
+  );
   const [mobileNumber, setMobileNumber] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -1905,6 +1909,7 @@ export default function QuizApp() {
       <RegisterScreen
         mobileNumber={mobileNumber}
         setMobileNumber={setMobileNumber}
+        initialReferralCode={sharedTutorCode}
         onSubmit={handleRegister}
         onBack={() => {
           setError(null);
@@ -2535,6 +2540,7 @@ interface SchoolOption {
 function RegisterScreen({
   mobileNumber,
   setMobileNumber,
+  initialReferralCode = "",
   onSubmit,
   onBack,
   error,
@@ -2542,6 +2548,7 @@ function RegisterScreen({
 }: {
   mobileNumber: string;
   setMobileNumber: (v: string) => void;
+  initialReferralCode?: string;
   onSubmit: (form: {
     studentName: string;
     pinCode: string;
@@ -2560,7 +2567,7 @@ function RegisterScreen({
   const [avatarStyle, setAvatarStyle] = useState<string>("");
   const [gradeLevel, setGradeLevel] = useState<string>("");
   const [email, setEmail] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileBypass, setTurnstileBypass] = useState(false);
   const [turnstileErrorCode, setTurnstileErrorCode] = useState<string | null>(null);
