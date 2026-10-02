@@ -2701,8 +2701,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T07:17:45.357Z",
+  "generated_at": "2026-10-02T07:21:44.679Z",
   "commit_inventory": [
+    {
+      "sha": "4dc325642822723eb462c3486b633bddf8dc512c",
+      "date": "2026-10-02",
+      "summary": "fix: read the tutor code after the login page loads"
+    },
+    {
+      "sha": "7ef752f4f0590a5e4024a263e0c444be36aabdd2",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor share-link commit in the feature contract"
+    },
     {
       "sha": "e54a7ccb7696a44b03c84403074d7e5fa93ccb73",
       "date": "2026-10-02",
@@ -5330,7 +5340,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 525,
+    "total_commits_since_start": 527,
     "total_feature_rows": 64
   }
 }
