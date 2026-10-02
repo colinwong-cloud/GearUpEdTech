@@ -572,6 +572,16 @@ export default function TutorPortalPage() {
               以教師編號與密碼登入。首次登入後必須更新為新密碼。
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthView("register");
+              setMsg("");
+            }}
+            className="mb-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 text-base font-semibold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            新登記導師
+          </button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
 
           {msg && (
@@ -626,17 +636,6 @@ export default function TutorPortalPage() {
           >
             返回主頁
           </Link>
-
-          <button
-            type="button"
-            onClick={() => {
-              setAuthView("register");
-              setMsg("");
-            }}
-            className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
-          >
-            導師自行登記
-          </button>
 
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。

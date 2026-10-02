@@ -1539,6 +1539,11 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
+          "snippet": "新登記導師"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
           "snippet": "學生註冊時請填寫此教師編號"
         },
         {
@@ -2701,8 +2706,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T07:21:44.679Z",
+  "generated_at": "2026-10-02T08:31:03.355Z",
   "commit_inventory": [
+    {
+      "sha": "97045e54628657ab32e18f057bb8aa3ccc834e10",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor share-link prefill fix in the feature contract"
+    },
     {
       "sha": "4dc325642822723eb462c3486b633bddf8dc512c",
       "date": "2026-10-02",
@@ -5340,7 +5350,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 527,
+    "total_commits_since_start": 528,
     "total_feature_rows": 64
   }
 }
