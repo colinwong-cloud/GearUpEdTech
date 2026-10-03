@@ -5,6 +5,7 @@ import {
   buildMitHppRedirectProps,
   buildMitPaymentConsentOptions,
   nextMonthlyRecurringStartDate,
+  parseTutorCheckoutTerms,
 } from "./airwallex-hpp-mit";
 
 describe("airwallex-hpp-mit", () => {
@@ -72,6 +73,23 @@ describe("airwallex-hpp-mit", () => {
     });
     expect(JSON.stringify(options)).not.toContain("recurringPaymentStartDate");
     expect(JSON.stringify(options)).not.toMatch(/[^\x00-\x7F]/);
+  });
+
+  it("keeps the tutor consent terms that were saved on the payment intent", () => {
+    const raw = JSON.stringify({
+      payment_amount_type: "FIXED",
+      fixed_payment_amount: 199,
+      payment_currency: "HKD",
+      payment_schedule: { period: 1, period_unit: "MONTH" },
+      billing_cycle_charge_day: 3,
+      total_billing_cycles: null,
+    });
+    expect(parseTutorCheckoutTerms(raw)).toMatchObject({
+      fixed_payment_amount: 199,
+      billing_cycle_charge_day: 3,
+      total_billing_cycles: null,
+    });
+    expect(parseTutorCheckoutTerms('{"payment_amount_type":"FIXED"}')).toBeNull();
   });
 
   it("throws when customer_id is missing", () => {

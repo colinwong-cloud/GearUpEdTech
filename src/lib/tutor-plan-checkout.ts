@@ -1,3 +1,4 @@
+import { storeTutorCheckoutTerms, type MitRecurringTermsOfUse } from "@/lib/airwallex-hpp-mit";
 import { TUTOR_PLAN_PRICE_HKD } from "@/lib/tutor-billing";
 
 export async function redirectToTutorPlanCheckout(): Promise<void> {
@@ -8,11 +9,15 @@ export async function redirectToTutorPlanCheckout(): Promise<void> {
         client_secret?: string;
         customer_id?: string;
         final_amount_hkd?: number;
+        recurring_terms_of_use?: MitRecurringTermsOfUse;
         error?: string;
       }
     | null;
   if (!res.ok || !payload?.intent_id || !payload.client_secret || !payload.customer_id) {
     throw new Error(payload?.error || "未能建立付款。");
+  }
+  if (payload.recurring_terms_of_use) {
+    storeTutorCheckoutTerms(payload.intent_id, payload.recurring_terms_of_use);
   }
   const params = new URLSearchParams({
     intent_id: payload.intent_id,

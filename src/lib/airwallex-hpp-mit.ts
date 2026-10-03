@@ -58,6 +58,32 @@ export function buildApplePaySubscribeRequestOptions(input: {
   };
 }
 
+export function parseTutorCheckoutTerms(raw: string | null | undefined): MitRecurringTermsOfUse | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as MitRecurringTermsOfUse;
+    if (parsed?.payment_amount_type !== "FIXED") return null;
+    if (parsed.payment_currency !== "HKD") return null;
+    if (parsed.payment_schedule?.period !== 1 || parsed.payment_schedule?.period_unit !== "MONTH") return null;
+    if (!Number.isFinite(parsed.fixed_payment_amount) || parsed.fixed_payment_amount <= 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export const TUTOR_CHECKOUT_TERMS_STORAGE_PREFIX = "tutor-checkout-terms:";
+
+export function storeTutorCheckoutTerms(intentId: string, terms: MitRecurringTermsOfUse): void {
+  if (typeof window === "undefined" || !intentId) return;
+  sessionStorage.setItem(`${TUTOR_CHECKOUT_TERMS_STORAGE_PREFIX}${intentId}`, JSON.stringify(terms));
+}
+
+export function readTutorCheckoutTerms(intentId: string): MitRecurringTermsOfUse | null {
+  if (typeof window === "undefined" || !intentId) return null;
+  return parseTutorCheckoutTerms(sessionStorage.getItem(`${TUTOR_CHECKOUT_TERMS_STORAGE_PREFIX}${intentId}`));
+}
+
 export function buildMitPaymentConsentOptions(
   termsOfUse?: MitRecurringTermsOfUse | null
 ): MitPaymentConsentOptions {

@@ -149,6 +149,7 @@ export async function createTutorPlanCheckout(input: {
   customerId: string;
   amount: number;
   methods: string[];
+  terms: ReturnType<typeof monthlyTerms>;
 }> {
   const airwallexBase = getTutorAirwallexBaseUrl();
   const accessToken = await getAccessToken(airwallexBase);
@@ -212,7 +213,7 @@ export async function createTutorPlanCheckout(input: {
     raw_response: createIntentBody.json,
   });
   if (error) throw new Error(error.message);
-  return { intentId, clientSecret, customerId, amount, methods };
+  return { intentId, clientSecret, customerId, amount, methods, terms };
 }
 
 function readConsent(payload: Record<string, unknown>): {

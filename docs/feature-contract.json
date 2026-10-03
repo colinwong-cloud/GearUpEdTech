@@ -1969,6 +1969,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/payment-airwallex/page.tsx",
+          "snippet": "billing_cycle_charge_day"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/tutor/billing/checkout/route.ts",
+          "snippet": "recurring_terms_of_use"
+        },
+        {
+          "type": "file_contains",
           "path": "src/lib/server/tutor-billing.ts",
           "snippet": "shouldTryNextMitConfirmShape"
         },
@@ -2746,8 +2756,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-03T08:00:13.746Z",
+  "generated_at": "2026-10-03T08:13:53.711Z",
   "commit_inventory": [
+    {
+      "sha": "c797b1c77457298b45df934354a64c439f2816fa",
+      "date": "2026-10-03",
+      "summary": "fix: send the student monthly consent on tutor Apple Pay checkout"
+    },
+    {
+      "sha": "1e06d998fc040bb8ecfb26e8a75b5da05e2296dc",
+      "date": "2026-10-03",
+      "summary": "chore: record the tutor admin payment display commit in the feature contract"
+    },
     {
       "sha": "330c174464b4f9a3f048b0e9f0230caf2db9168c",
       "date": "2026-10-03",
@@ -5435,7 +5455,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 537,
+    "total_commits_since_start": 539,
     "total_feature_rows": 64
   }
 }
