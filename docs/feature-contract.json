@@ -1465,6 +1465,16 @@
           "snippet": "教師付款情況"
         },
         {
+          "type": "file_contains",
+          "path": "src/app/admin/tutor-payments-section.tsx",
+          "snippet": "每月 HKD"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/tutor-payments-section.tsx",
+          "snippet": "已付款"
+        },
+        {
           "type": "file_exists",
           "path": "supabase_tutor_payment_admin.sql"
         },
@@ -2736,8 +2746,28 @@
       ]
     }
   ],
-  "generated_at": "2026-10-02T11:07:38.971Z",
+  "generated_at": "2026-10-03T08:00:13.746Z",
   "commit_inventory": [
+    {
+      "sha": "330c174464b4f9a3f048b0e9f0230caf2db9168c",
+      "date": "2026-10-03",
+      "summary": "fix: show tutor charge amount and payment rows in admin"
+    },
+    {
+      "sha": "9d9258ae553563aa5e1f18f6d6678bddecab066e",
+      "date": "2026-10-03",
+      "summary": "chore: record the Apple Pay line item fix in the feature contract"
+    },
+    {
+      "sha": "4381d2315ffe66c73df7c439dc6418ad949a4a5a",
+      "date": "2026-10-03",
+      "summary": "fix: stop sending a Date on the Apple Pay subscription line"
+    },
+    {
+      "sha": "29d5d25e66957c3e539135385a863575a3950355",
+      "date": "2026-10-02",
+      "summary": "chore: record the tutor MIT confirm commit in the feature contract"
+    },
     {
       "sha": "ffe23c80dafdbb57907907a2b470fa2bef5f7de1",
       "date": "2026-10-02",
@@ -5405,7 +5435,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 533,
+    "total_commits_since_start": 537,
     "total_feature_rows": 64
   }
 }

@@ -818,6 +818,8 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "教師編號維護" },
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "教師付款情況" },
+        { type: "file_contains", path: "src/app/admin/tutor-payments-section.tsx", snippet: "每月 HKD" },
+        { type: "file_contains", path: "src/app/admin/tutor-payments-section.tsx", snippet: "已付款" },
         { type: "file_exists", path: "supabase_tutor_payment_admin.sql" },
         { type: "file_contains", path: "src/lib/server/tutor-admin-billing.ts", snippet: "grantTutorPaid30Days" },
         { type: "file_contains", path: "src/lib/server/tutor-admin-billing.ts", snippet: "confirmTutorMonthRefund" },
