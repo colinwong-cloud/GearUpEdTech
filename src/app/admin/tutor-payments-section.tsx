@@ -28,6 +28,7 @@ type TutorEnquiry = {
     status: string | null;
     created_at: string | null;
     paid_at: string | null;
+    payment_method_type?: string | null;
   }>;
 };
 
@@ -63,6 +64,25 @@ function formatWhen(value: string | null | undefined): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "—";
   return date.toLocaleString("zh-HK");
+}
+
+function formatHkd(amount: number): string {
+  return Number.isFinite(amount) ? amount.toFixed(2) : "—";
+}
+
+function paymentStatusLabel(status: string | null | undefined): string {
+  if (status === "paid") return "已付款";
+  if (status === "failed") return "失敗";
+  if (status === "created") return "未完成";
+  return status || "—";
+}
+
+function paymentMethodLabel(method: string | null | undefined): string {
+  const token = String(method || "").toLowerCase();
+  if (token === "applepay" || token === "apple pay") return "Apple Pay";
+  if (token === "googlepay" || token === "google pay") return "Google Pay";
+  if (token === "card") return "銀行卡";
+  return method || "—";
 }
 
 export function TutorPaymentsSection({ sessionToken }: { sessionToken: string }) {
@@ -138,9 +158,34 @@ export function TutorPaymentsSection({ sessionToken }: { sessionToken: string })
             </p>
             <p>
               自動續費：{enquiry.recurring?.status || "沒有"}
+              {enquiry.recurring ? `，每月 HKD ${formatHkd(enquiry.recurring.amount_hkd)}` : ""}
               {enquiry.recurring?.next_charge_at ? `，下次 ${formatWhen(enquiry.recurring.next_charge_at)}` : ""}
               {enquiry.recurring?.last_charged_at ? `，上次 ${formatWhen(enquiry.recurring.last_charged_at)}` : ""}
             </p>
+            {enquiry.orders && enquiry.orders.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-gray-500">
+                      <th className="py-2 pr-3">付款時間</th>
+                      <th className="py-2 pr-3">金額</th>
+                      <th className="py-2 pr-3">狀態</th>
+                      <th className="py-2 pr-3">方式</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enquiry.orders.map((order) => (
+                      <tr key={order.id} className="border-b border-gray-100">
+                        <td className="py-2 pr-3">{formatWhen(order.paid_at || order.created_at)}</td>
+                        <td className="py-2 pr-3">{formatHkd(order.amount_hkd)}</td>
+                        <td className="py-2 pr-3">{paymentStatusLabel(order.status)}</td>
+                        <td className="py-2 pr-3">{paymentMethodLabel(order.payment_method_type)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {enquiry.recurring?.last_error && <p className="text-rose-600">最近錯誤：{enquiry.recurring.last_error}</p>}
             <div className="flex flex-wrap gap-2">
               <button
