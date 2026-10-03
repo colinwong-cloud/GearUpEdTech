@@ -52,6 +52,12 @@ export async function POST(req: NextRequest) {
       airwallex_locale: "zh-HK",
       payer: "tutor",
       price_hkd: TUTOR_PLAN_PRICE_HKD,
+      payment_consent: {
+        next_triggered_by: "merchant",
+        merchant_trigger_reason: "scheduled",
+        terms_of_use: checkout.terms,
+      },
+      recurring_terms_of_use: checkout.terms,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "未能建立導師付款。";

@@ -951,6 +951,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/airwallex-hpp-mit.ts", snippet: "nextMonthlyRecurringStartDate" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "buildApplePaySubscribeRequestOptions" },
         { type: "file_contains", path: "src/app/payment-airwallex/page.tsx", snippet: "buildApplePaySubscribeRequestOptions" },
+        { type: "file_contains", path: "src/app/payment-airwallex/page.tsx", snippet: "billing_cycle_charge_day" },
+        { type: "file_contains", path: "src/app/api/tutor/billing/checkout/route.ts", snippet: "recurring_terms_of_use" },
         { type: "file_contains", path: "src/lib/server/tutor-billing.ts", snippet: "shouldTryNextMitConfirmShape" },
         { type: "file_contains", path: "src/lib/server/tutor-billing.ts", snippet: "isConsentUsableForMit" },
         { type: "file_contains", path: "src/lib/server/tutor-billing.ts", snippet: "nextMonthlyRecurringStartDate" },

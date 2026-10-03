@@ -4,7 +4,11 @@ import Script from "next/script";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { buildApplePaySubscribeRequestOptions, buildMitHppRedirectProps } from "@/lib/airwallex-hpp-mit";
+import {
+  buildApplePaySubscribeRequestOptions,
+  buildMitHppRedirectProps,
+  readTutorCheckoutTerms,
+} from "@/lib/airwallex-hpp-mit";
 import { getPaymentTermsUrl } from "@/lib/payment-terms";
 import { TUTOR_PLAN_PRICE_HKD } from "@/lib/tutor-billing";
 const AIRWALLEX_SDK_SRC = "https://static.airwallex.com/components/sdk/v1/index.js";
@@ -241,11 +245,13 @@ function PaymentAirwallexContent() {
           locale: checkoutLocale,
           customerId,
           methods,
-          termsOfUse: {
+          termsOfUse: (isTutor ? readTutorCheckoutTerms(intentId) : null) ?? {
             payment_amount_type: "FIXED",
             fixed_payment_amount: finalAmount,
             payment_currency: "HKD",
             payment_schedule: { period: 1, period_unit: "MONTH" },
+            billing_cycle_charge_day: Math.min(new Date().getUTCDate(), 28),
+            total_billing_cycles: null,
           },
           applePayRequestOptions,
           successUrl:
