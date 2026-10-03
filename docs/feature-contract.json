@@ -2746,8 +2746,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-03T08:00:13.296Z",
+  "generated_at": "2026-10-03T08:00:13.746Z",
   "commit_inventory": [
+    {
+      "sha": "330c174464b4f9a3f048b0e9f0230caf2db9168c",
+      "date": "2026-10-03",
+      "summary": "fix: show tutor charge amount and payment rows in admin"
+    },
     {
       "sha": "9d9258ae553563aa5e1f18f6d6678bddecab066e",
       "date": "2026-10-03",
@@ -5430,7 +5435,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 536,
+    "total_commits_since_start": 537,
     "total_feature_rows": 64
   }
 }
