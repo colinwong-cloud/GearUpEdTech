@@ -2756,8 +2756,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-03T08:13:53.262Z",
+  "generated_at": "2026-10-03T08:13:53.711Z",
   "commit_inventory": [
+    {
+      "sha": "c797b1c77457298b45df934354a64c439f2816fa",
+      "date": "2026-10-03",
+      "summary": "fix: send the student monthly consent on tutor Apple Pay checkout"
+    },
     {
       "sha": "1e06d998fc040bb8ecfb26e8a75b5da05e2296dc",
       "date": "2026-10-03",
@@ -5450,7 +5455,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 538,
+    "total_commits_since_start": 539,
     "total_feature_rows": 64
   }
 }
