@@ -25,9 +25,9 @@ export type MitPaymentConsentOptions = {
 };
 
 /**
- * Next Apple Pay subscription date. Today's charge is the PaymentIntent total.
- * The recurring line must start on the following month, or Apple Pay treats
- * both as the same charge and rejects the request.
+ * Next MIT charge date. Used by the tutor cron, not by the Apple Pay sheet.
+ * redirectToCheckout JSON-encodes Apple Pay options, which turns a Date into a
+ * string. Apple Pay then rejects the sheet with an invalid-input error.
  */
 export function nextMonthlyRecurringStartDate(now = new Date()): Date {
   const next = new Date(now.getTime());
@@ -38,21 +38,19 @@ export function nextMonthlyRecurringStartDate(now = new Date()): Date {
 export function buildApplePaySubscribeRequestOptions(input: {
   countryCode: string;
   amount: number;
-  now?: Date;
 }): Record<string, unknown> {
   const amount = Number.isFinite(input.amount) ? Math.max(input.amount, 0) : 0;
   return {
     buttonType: "subscribe",
     existingPaymentMethodRequired: false,
     countryCode: input.countryCode,
-    totalPriceLabel: "GearUp 增分寶",
+    totalPriceLabel: "GearUp",
     lineItems: [
       {
-        label: "GearUp 增分寶月費會員",
+        label: "GearUp monthly plan",
         amount: amount.toFixed(2),
         type: "final",
         paymentTiming: "recurring",
-        recurringPaymentStartDate: nextMonthlyRecurringStartDate(input.now),
         recurringPaymentIntervalUnit: "month",
         recurringPaymentIntervalCount: 1,
       },

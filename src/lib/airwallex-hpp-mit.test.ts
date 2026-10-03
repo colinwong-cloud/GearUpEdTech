@@ -53,24 +53,25 @@ describe("airwallex-hpp-mit", () => {
     });
   });
 
-  it("starts the Apple Pay subscription one month after today's charge", () => {
+  it("keeps the Apple Pay line equal to today's charge and free of Date fields", () => {
     const now = new Date("2026-10-02T08:30:00.000Z");
-    const start = nextMonthlyRecurringStartDate(now);
-    expect(start.toISOString()).toBe("2026-11-02T08:30:00.000Z");
+    expect(nextMonthlyRecurringStartDate(now).toISOString()).toBe("2026-11-02T08:30:00.000Z");
     const options = buildApplePaySubscribeRequestOptions({
       countryCode: "HK",
       amount: 199,
-      now,
     });
     const lineItems = options.lineItems as Array<Record<string, unknown>>;
-    expect(lineItems[0]).toMatchObject({
+    expect(lineItems).toHaveLength(1);
+    expect(lineItems[0]).toEqual({
+      label: "GearUp monthly plan",
       amount: "199.00",
+      type: "final",
       paymentTiming: "recurring",
       recurringPaymentIntervalUnit: "month",
       recurringPaymentIntervalCount: 1,
-      recurringPaymentStartDate: start,
     });
-    expect(start.getTime()).toBeGreaterThan(now.getTime());
+    expect(JSON.stringify(options)).not.toContain("recurringPaymentStartDate");
+    expect(JSON.stringify(options)).not.toMatch(/[^\x00-\x7F]/);
   });
 
   it("throws when customer_id is missing", () => {
