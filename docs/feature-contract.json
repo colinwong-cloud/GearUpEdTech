@@ -1554,6 +1554,30 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
+          "snippet": "TutorLoginCarousel"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": "導師平台專為香港私人補習導師而設"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": "tutor_portal_FAQ_261005.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/tutor-portal-faq.ts",
+          "snippet": "parseTutorPortalFaq"
+        },
+        {
+          "type": "file_exists",
+          "path": "public/tutor/20261005-tutor-1.webp"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
           "snippet": "學生註冊時請填寫此教師編號"
         },
         {
@@ -2756,8 +2780,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-03T08:13:53.711Z",
+  "generated_at": "2026-10-05T10:14:52.751Z",
   "commit_inventory": [
+    {
+      "sha": "a58dca741ad8c5b6ebff30b5093ad35d6ba9213d",
+      "date": "2026-10-03",
+      "summary": "chore: record the tutor Apple Pay consent commit in the feature contract"
+    },
     {
       "sha": "c797b1c77457298b45df934354a64c439f2816fa",
       "date": "2026-10-03",
@@ -5455,7 +5484,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 539,
+    "total_commits_since_start": 540,
     "total_feature_rows": 64
   }
 }
