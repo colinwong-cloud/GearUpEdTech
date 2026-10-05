@@ -844,6 +844,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "supabase_tutor_self_registration.sql", snippet: "registration_source" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "導師自行登記" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "新登記導師" },
+        { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "href=\"mailto:cs@gearupquiz.com\"" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "TutorLoginCarousel" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "© 2026 GearUp EduTech Limited" },
         { type: "file_contains", path: "src/app/tutor/tutor-login-marketing.tsx", snippet: "導師平台專為香港私人補習導師而設" },
