@@ -109,17 +109,15 @@ export function TutorPortalIntro() {
 }
 
 export function TutorPortalFaq() {
+  const faqUrl = tutorFaqUrl();
   const [sections, setSections] = useState<TutorFaqSection[]>([]);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const shownError = faqUrl ? error : "未能載入常見問題，請稍後再試。";
 
   useEffect(() => {
+    if (!faqUrl) return;
     let cancelled = false;
-    const faqUrl = tutorFaqUrl();
-    if (!faqUrl) {
-      setError("未能載入常見問題，請稍後再試。");
-      return;
-    }
     void fetch(faqUrl, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("faq");
@@ -135,14 +133,14 @@ export function TutorPortalFaq() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [faqUrl]);
 
   return (
     <section className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
       <div className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">
         常見問題
       </div>
-      {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+      {shownError && <p className="mt-3 text-sm text-rose-600">{shownError}</p>}
       <div className="mt-4 space-y-5">
         {sections.map((section) => (
           <div key={section.title}>
