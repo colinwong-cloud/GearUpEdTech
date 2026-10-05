@@ -2780,8 +2780,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-05T10:20:49.387Z",
+  "generated_at": "2026-10-05T10:20:49.582Z",
   "commit_inventory": [
+    {
+      "sha": "fab0be946718131ee3b047e3348994178c7d197d",
+      "date": "2026-10-05",
+      "summary": "fix: avoid setting FAQ error state inside the effect"
+    },
     {
       "sha": "0ae9edfd04d3c94fa2782f33e5fbe562b1f35fb1",
       "date": "2026-10-05",
@@ -5494,7 +5499,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 542,
+    "total_commits_since_start": 543,
     "total_feature_rows": 64
   }
 }
