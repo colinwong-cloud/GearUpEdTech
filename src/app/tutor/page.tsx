@@ -7,6 +7,7 @@ import { filenameFromContentDisposition, hktMonthLabel } from "@/lib/tutor-pract
 import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
 import { rememberTutorStudent, writePaperOverviewCache } from "@/lib/tutor-portal-cache";
 import { TutorShareLink } from "@/app/tutor/tutor-share-link";
+import { TutorLoginCarousel, TutorPortalFaq, TutorPortalIntro } from "@/app/tutor/tutor-login-marketing";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -563,8 +564,10 @@ export default function TutorPortalPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className={`${pageShell} flex items-center justify-center px-4 py-10`}>
-        <div className="w-full max-w-sm">
+      <div className={`${pageShell} px-4 py-8`}>
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
+          <TutorLoginCarousel />
+        <div className="w-full">
           <div className="mb-6 text-center">
             <p className="text-sm font-semibold text-indigo-700">GearUp Tutor</p>
             <h1 className="mt-2 text-2xl font-bold text-gray-800">導師登入</h1>
@@ -640,6 +643,9 @@ export default function TutorPortalPage() {
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
             忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。
           </div>
+        </div>
+          <TutorPortalIntro />
+          <TutorPortalFaq />
         </div>
       </div>
     );
