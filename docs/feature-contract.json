@@ -1558,6 +1558,11 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
+          "snippet": "© 2026 GearUp EduTech Limited"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/tutor/tutor-login-marketing.tsx",
           "snippet": "導師平台專為香港私人補習導師而設"
         },
@@ -2780,8 +2785,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-05T10:20:49.582Z",
+  "generated_at": "2026-10-05T10:36:34.155Z",
   "commit_inventory": [
+    {
+      "sha": "2d61369b4a91b7d47e075b80d1ef68bc3ebdd22d",
+      "date": "2026-10-05",
+      "summary": "feat: add the student copyright footer to the tutor login page"
+    },
+    {
+      "sha": "17d7164328cb78adf1c4c24c1aee1e37e3344a38",
+      "date": "2026-10-05",
+      "summary": "chore: record the tutor FAQ lint fix in the feature contract"
+    },
     {
       "sha": "fab0be946718131ee3b047e3348994178c7d197d",
       "date": "2026-10-05",
@@ -5499,7 +5514,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 543,
+    "total_commits_since_start": 545,
     "total_feature_rows": 64
   }
 }

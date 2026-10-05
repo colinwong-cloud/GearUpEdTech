@@ -564,7 +564,7 @@ export default function TutorPortalPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className={`${pageShell} px-4 py-8`}>
+      <div className={`${pageShell} px-4 pb-24 pt-8 sm:pb-28`}>
         <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
           <TutorLoginCarousel />
         <div className="w-full">
@@ -647,6 +647,14 @@ export default function TutorPortalPage() {
           <TutorPortalIntro />
           <TutorPortalFaq />
         </div>
+      <footer
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-10 border-t border-gray-200/70 bg-white/55 py-3 text-center backdrop-blur-sm sm:py-3.5"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <p className="pointer-events-auto text-[11px] text-gray-500/90 sm:text-xs">
+          © 2026 GearUp EduTech Limited
+        </p>
+      </footer>
       </div>
     );
   }
