@@ -1554,6 +1554,11 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
+          "snippet": "href=\"mailto:cs@gearupquiz.com\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
           "snippet": "TutorLoginCarousel"
         },
         {
@@ -2785,8 +2790,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-05T10:36:34.155Z",
+  "generated_at": "2026-10-05T10:47:50.433Z",
   "commit_inventory": [
+    {
+      "sha": "443ff14a7c62af40adb6b3fd4a66f58bf174c5af",
+      "date": "2026-10-05",
+      "summary": "chore: record the tutor login footer commit in the feature contract"
+    },
     {
       "sha": "2d61369b4a91b7d47e075b80d1ef68bc3ebdd22d",
       "date": "2026-10-05",
@@ -5514,7 +5524,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 545,
+    "total_commits_since_start": 546,
     "total_feature_rows": 64
   }
 }

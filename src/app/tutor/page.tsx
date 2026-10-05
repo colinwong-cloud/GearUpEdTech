@@ -641,7 +641,14 @@ export default function TutorPortalPage() {
           </Link>
 
           <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-center text-sm text-indigo-700">
-            忘記密碼或輸入錯誤超過上限？請聯絡管理員處理重設。
+            忘記密碼或輸入錯誤超過上限？請聯絡{" "}
+            <a
+              href="mailto:cs@gearupquiz.com"
+              className="font-semibold underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900"
+            >
+              cs@gearupquiz.com
+            </a>
+            {" "}處理重設。
           </div>
         </div>
           <TutorPortalIntro />
