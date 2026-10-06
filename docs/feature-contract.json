@@ -2843,7 +2843,17 @@
         {
           "type": "file_contains",
           "path": "public/countdown.html",
+          "snippet": "Default to every installed voice so Cantonese is selectable"
+        },
+        {
+          "type": "file_contains",
+          "path": "public/countdown.html",
           "snippet": "utterance.lang = voice.lang"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/countdown/route.ts",
+          "snippet": "no-store"
         },
         {
           "type": "file_contains",
@@ -2858,8 +2868,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-06T09:17:23.085Z",
+  "generated_at": "2026-10-06T09:39:55.456Z",
   "commit_inventory": [
+    {
+      "sha": "6dca3b5ec38d1fb05aee5e81ad1a1cd200b57967",
+      "date": "2026-10-06",
+      "summary": "fix: show every browser voice, including late Cantonese voices"
+    },
+    {
+      "sha": "164a0e15c5a5d9dabd6863233e4814c3d5d6132e",
+      "date": "2026-10-06",
+      "summary": "chore: record the countdown language list in the feature contract"
+    },
     {
       "sha": "1fabdc389a009b9c83bc39525abc02608eca10c6",
       "date": "2026-10-06",
@@ -5632,7 +5652,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 554,
+    "total_commits_since_start": 556,
     "total_feature_rows": 65
   }
 }
