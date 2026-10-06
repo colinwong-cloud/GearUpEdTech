@@ -21,6 +21,7 @@
     #stopBtn:hover { background-color: #c82333; }
     #display { font-size: 80px; font-weight: bold; color: #222; margin-top: 10px; }
     .value-label { font-size: 12px; color: #666; font-weight: normal; float: right; }
+    .hint { font-size: 12px; color: #666; margin: -6px 0 12px; text-align: left; }
   </style>
 </head>
 <body>
@@ -38,6 +39,12 @@
       <option value="standard" selected>Standard Adult Voice</option>
     </select>
   </div>
+
+  <div class="field">
+    <label for="langSelect">Voice Language:</label>
+    <select id="langSelect"><option value="">Loading languages...</option></select>
+  </div>
+  <p class="hint">Every speech language installed in this browser is listed, including Cantonese when the browser provides it.</p>
 
   <div class="field">
     <label for="voiceSelect">Select Voice Base:</label>
@@ -89,6 +96,7 @@
   let intervalId = null;
   let allVoices = [];
 
+  const langSelect = document.getElementById('langSelect');
   const voiceSelect = document.getElementById('voiceSelect');
   const personaSelect = document.getElementById('personaSelect');
   const pitchInput = document.getElementById('pitchInput');
@@ -101,25 +109,113 @@
   const stopBtn = document.getElementById('stopBtn');
   const testBtn = document.getElementById('testBtn');
 
+  const LANGUAGE_NAMES = {
+    "zh-hk": "Cantonese (Hong Kong)",
+    "yue": "Cantonese",
+    "yue-hk": "Cantonese (Hong Kong)",
+    "zh-cn": "Mandarin (Mainland China)",
+    "cmn-cn": "Mandarin (Mainland China)",
+    "zh-tw": "Mandarin (Taiwan)",
+    "zh-hant": "Chinese (Traditional)",
+    "zh-hans": "Chinese (Simplified)",
+  };
+
+  function languageLabel(lang) {
+    const key = String(lang || "").toLowerCase();
+    const special = LANGUAGE_NAMES[key];
+    if (special) return `${special} (${lang})`;
+    try {
+      const name = new Intl.DisplayNames(["en"], { type: "language" }).of(lang);
+      return name ? `${name} (${lang})` : lang;
+    } catch (err) {
+      return lang;
+    }
+  }
+
+  function languageRank(lang) {
+    const key = String(lang || "").toLowerCase();
+    if (key.startsWith("en")) return 0;
+    if (key === "zh-hk" || key.startsWith("yue")) return 1;
+    if (key.startsWith("zh") || key.startsWith("cmn")) return 2;
+    return 3;
+  }
+
+  function selectedVoice() {
+    const option = voiceSelect.selectedOptions[0];
+    if (!option) return null;
+    const name = option.getAttribute("data-name");
+    const lang = option.getAttribute("data-lang");
+    return allVoices.find((voice) => voice.name === name && voice.lang === lang) || null;
+  }
+
+  function voicesForLanguage(lang) {
+    if (lang === "all") return allVoices.slice();
+    return allVoices.filter((voice) => voice.lang === lang);
+  }
+
+  function fillVoiceOptions(preferredName) {
+    const lang = langSelect.value || "all";
+    const voices = voicesForLanguage(lang).sort((a, b) => {
+      return languageLabel(a.lang).localeCompare(languageLabel(b.lang)) || a.name.localeCompare(b.name);
+    });
+    voiceSelect.innerHTML = "";
+    if (!voices.length) {
+      const empty = document.createElement("option");
+      empty.textContent = "No voices for this language";
+      voiceSelect.appendChild(empty);
+      return;
+    }
+    voices.forEach((voice) => {
+      const option = document.createElement("option");
+      option.textContent = `${voice.name} (${voice.lang})`;
+      option.value = `${voice.lang}::${voice.name}`;
+      option.setAttribute("data-name", voice.name);
+      option.setAttribute("data-lang", voice.lang);
+      voiceSelect.appendChild(option);
+    });
+    const match = [...voiceSelect.options].find((option) => option.getAttribute("data-name") === preferredName);
+    if (match) voiceSelect.value = match.value;
+  }
+
   function loadVoices() {
     allVoices = window.speechSynthesis.getVoices();
     if (allVoices.length === 0) return;
 
-    voiceSelect.innerHTML = '';
-    const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
+    const previousLang = langSelect.value;
+    const previousVoice = voiceSelect.selectedOptions[0]?.getAttribute("data-name");
+    const langs = [...new Set(allVoices.map((voice) => voice.lang).filter(Boolean))];
+    langs.sort((a, b) => languageRank(a) - languageRank(b) || languageLabel(a).localeCompare(languageLabel(b)));
 
-    (englishVoices.length ? englishVoices : allVoices).forEach((voice) => {
-      const option = document.createElement('option');
-      option.textContent = `${voice.name} (${voice.lang})`;
-      option.setAttribute('data-name', voice.name);
-      voiceSelect.appendChild(option);
+    langSelect.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = `All languages (${langs.length})`;
+    langSelect.appendChild(allOption);
+    langs.forEach((lang) => {
+      const option = document.createElement("option");
+      option.value = lang;
+      option.textContent = languageLabel(lang);
+      langSelect.appendChild(option);
     });
+
+    const defaultLang = langs.find((lang) => lang.toLowerCase() === "en-us")
+      || langs.find((lang) => lang.toLowerCase().startsWith("en"))
+      || langs[0]
+      || "all";
+    langSelect.value = previousLang === "all" || langs.includes(previousLang) ? previousLang : defaultLang;
+    fillVoiceOptions(previousVoice);
+    applyPersonaVoice();
   }
 
   loadVoices();
   if (speechSynthesis.onvoiceschanged !== undefined) {
     speechSynthesis.onvoiceschanged = loadVoices;
   }
+
+  langSelect.addEventListener("change", () => {
+    fillVoiceOptions();
+    applyPersonaVoice();
+  });
 
   // Handle Character Presets
   personaSelect.addEventListener('change', () => {
@@ -158,23 +254,80 @@
     if (match) voiceSelect.value = match.value;
   }
 
+  function applyPersonaVoice() {
+    if (personaSelect.value === 'sweetGirl') selectVoiceGender('female');
+    else if (personaSelect.value === 'oldMan') selectVoiceGender('male');
+  }
+
+  function chineseNumber(n) {
+    n = Math.floor(Math.abs(Number(n) || 0));
+    if (n === 0) return "零";
+    if (n > 99999999) return String(n);
+    const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+    const units = ["", "十", "百", "千"];
+    function section(num) {
+      let text = "";
+      let pendingZero = false;
+      for (let i = 3; i >= 0; i--) {
+        const digit = Math.floor(num / (10 ** i)) % 10;
+        if (digit === 0) {
+          if (text) pendingZero = true;
+        } else {
+          if (pendingZero) text += "零";
+          pendingZero = false;
+          text += digits[digit] + units[i];
+        }
+      }
+      return text;
+    }
+    const wan = Math.floor(n / 10000);
+    const rest = n % 10000;
+    let text = "";
+    if (wan) text += section(wan) + "萬";
+    if (wan && rest && rest < 1000) text += "零";
+    if (rest) text += section(rest);
+    return text.replace(/^一十/, "十");
+  }
+
+  function spokenText(kind, seconds) {
+    const lang = (selectedVoice()?.lang || langSelect.value || "").toLowerCase();
+    const chinese = lang.startsWith("zh") || lang.startsWith("yue") || lang.startsWith("cmn");
+    const simplified = lang.startsWith("zh-cn") || lang.startsWith("zh-sg") || lang === "zh-hans" || lang.startsWith("cmn");
+    if (kind === "timeup") {
+      if (chinese) return simplified ? "时间到" : "時間到";
+      if (lang.startsWith("ja")) return "時間です";
+      if (lang.startsWith("ko")) return "시간 종료";
+      return "Time is up!";
+    }
+    if (kind === "test") {
+      if (chinese) return simplified ? "试听：三、二、一" : "試聽：三、二、一";
+      if (lang.startsWith("ja")) return "テスト：3、2、1";
+      if (lang.startsWith("ko")) return "테스트: 3, 2, 1";
+      return "Testing character voice: 3, 2, 1";
+    }
+    if (chinese) return chineseNumber(seconds);
+    return String(seconds);
+  }
+
   function speak(text) {
     window.speechSynthesis.cancel();
-    
+
     const utterance = new SpeechSynthesisUtterance(text.toString());
-    const selectedOption = voiceSelect.selectedOptions[0]?.getAttribute('data-name');
-    const selectedVoice = allVoices.find(v => v.name === selectedOption);
-    
-    if (selectedVoice) utterance.voice = selectedVoice;
+    const voice = selectedVoice();
+
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    }
 
     utterance.rate = parseFloat(speedSelect.value);
     utterance.pitch = parseFloat(pitchInput.value); // Pitch controls the voice age/character sound!
-    
+
     window.speechSynthesis.speak(utterance);
   }
 
   testBtn.addEventListener('click', () => {
-    speak("Testing character voice: 3, 2, 1");
+    speak(spokenText("test"));
   });
 
   startBtn.addEventListener('click', () => {
@@ -188,17 +341,17 @@
 
     display.textContent = seconds;
 
-    if (step === 1 || seconds % step === 0) speak(seconds);
+    if (step === 1 || seconds % step === 0) speak(spokenText("count", seconds));
 
     intervalId = setInterval(() => {
       seconds--;
       if (seconds > 0) {
         display.textContent = seconds;
-        if (step === 1 || seconds % step === 0) speak(seconds);
+        if (step === 1 || seconds % step === 0) speak(spokenText("count", seconds));
       } else if (seconds === 0) {
         display.textContent = 0;
         clearInterval(intervalId);
-        speak("Time is up!");
+        speak(spokenText("timeup"));
       } else {
         clearInterval(intervalId);
       }
