@@ -2832,6 +2832,21 @@
         },
         {
           "type": "file_contains",
+          "path": "public/countdown.html",
+          "snippet": "id=\"langSelect\""
+        },
+        {
+          "type": "file_contains",
+          "path": "public/countdown.html",
+          "snippet": "Cantonese (Hong Kong)"
+        },
+        {
+          "type": "file_contains",
+          "path": "public/countdown.html",
+          "snippet": "utterance.lang = voice.lang"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/countdown/route.ts",
           "snippet": "public/countdown.html"
         },
@@ -2843,8 +2858,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-06T08:45:21.298Z",
+  "generated_at": "2026-10-06T09:17:23.085Z",
   "commit_inventory": [
+    {
+      "sha": "1fabdc389a009b9c83bc39525abc02608eca10c6",
+      "date": "2026-10-06",
+      "summary": "feat: list every browser speech language on the countdown page"
+    },
+    {
+      "sha": "b6800b8a787a493c64f1e0536ecf83f618ac3f89",
+      "date": "2026-10-06",
+      "summary": "chore: include the countdown contract commit in the feature inventory"
+    },
     {
       "sha": "91eb19628e410a9ce6f6d4e11f4dce5b9f1be89a",
       "date": "2026-10-06",
@@ -5607,7 +5632,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 552,
+    "total_commits_since_start": 554,
     "total_feature_rows": 65
   }
 }
