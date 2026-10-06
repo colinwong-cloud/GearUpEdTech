@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voice Countdown Timer</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding-top: 20px; background-color: #f4f6f9; }
+    .container { background: #ffffff; padding: 25px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 420px; }
+    .field { margin-bottom: 12px; text-align: left; }
+    label { font-weight: bold; font-size: 14px; color: #333; display: block; margin-bottom: 4px; }
+    input, select { width: 100%; font-size: 15px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    .row { display: flex; gap: 8px; }
+    .row select, .row input { flex: 1; }
+    .btn-small { background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .btn-small:hover { background-color: #5a6268; }
+    .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+    .btn-main { flex: 1; font-size: 18px; padding: 10px; border-radius: 6px; border: none; cursor: pointer; color: white; font-weight: bold; }
+    #startBtn { background-color: #28a745; }
+    #startBtn:hover { background-color: #218838; }
+    #stopBtn { background-color: #dc3545; }
+    #stopBtn:hover { background-color: #c82333; }
+    #display { font-size: 80px; font-weight: bold; color: #222; margin-top: 10px; }
+    .value-label { font-size: 12px; color: #666; font-weight: normal; float: right; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Voice Countdown Timer</h2>
+
+  <div class="field">
+    <label for="personaSelect">Voice Character Preset:</label>
+    <select id="personaSelect">
+      <option value="custom">-- Custom / Manual --</option>
+      <option value="sweetGirl">Sweet Girl / Young Child</option>
+      <option value="oldMan">Deep Old Man</option>
+      <option value="robot">Robot / Alien</option>
+      <option value="standard" selected>Standard Adult Voice</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="voiceSelect">Select Voice Base:</label>
+    <div class="row">
+      <select id="voiceSelect"><option>Loading voices...</option></select>
+      <button id="testBtn" class="btn-small">Test</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="pitchInput">Voice Pitch (Tone): <span id="pitchVal" class="value-label">1.0</span></label>
+    <input type="range" id="pitchInput" min="0.2" max="2.0" step="0.1" value="1.0">
+  </div>
+
+  <div class="field">
+    <label for="speedSelect">Speech Speed:</label>
+    <select id="speedSelect">
+      <option value="1.0">1.0x (Normal)</option>
+      <option value="1.2">1.2x (Slightly Fast)</option>
+      <option value="1.4" selected>1.4x (Fast - Recommended)</option>
+      <option value="1.6">1.6x (Very Fast)</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="intervalSelect">Speak Interval:</label>
+    <select id="intervalSelect">
+      <option value="1" selected>Every 1 second</option>
+      <option value="5">Every 5 seconds</option>
+      <option value="10">Every 10 seconds</option>
+      <option value="15">Every 15 seconds</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="timeInput">Seconds to Countdown:</label>
+    <input type="number" id="timeInput" value="30" min="1" />
+  </div>
+
+  <div class="btn-group">
+    <button id="startBtn" class="btn-main">Start</button>
+    <button id="stopBtn" class="btn-main">Stop</button>
+  </div>
+
+  <div id="display">30</div>
+</div>
+
+<script>
+  let intervalId = null;
+  let allVoices = [];
+
+  const voiceSelect = document.getElementById('voiceSelect');
+  const personaSelect = document.getElementById('personaSelect');
+  const pitchInput = document.getElementById('pitchInput');
+  const pitchVal = document.getElementById('pitchVal');
+  const speedSelect = document.getElementById('speedSelect');
+  const intervalSelect = document.getElementById('intervalSelect');
+  const timeInput = document.getElementById('timeInput');
+  const display = document.getElementById('display');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const testBtn = document.getElementById('testBtn');
+
+  function loadVoices() {
+    allVoices = window.speechSynthesis.getVoices();
+    if (allVoices.length === 0) return;
+
+    voiceSelect.innerHTML = '';
+    const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
+
+    (englishVoices.length ? englishVoices : allVoices).forEach((voice) => {
+      const option = document.createElement('option');
+      option.textContent = `${voice.name} (${voice.lang})`;
+      option.setAttribute('data-name', voice.name);
+      voiceSelect.appendChild(option);
+    });
+  }
+
+  loadVoices();
+  if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  // Handle Character Presets
+  personaSelect.addEventListener('change', () => {
+    const val = personaSelect.value;
+    if (val === 'sweetGirl') {
+      pitchInput.value = 1.7;
+      speedSelect.value = "1.2";
+      selectVoiceGender('female');
+    } else if (val === 'oldMan') {
+      pitchInput.value = 0.5;
+      speedSelect.value = "1.0";
+      selectVoiceGender('male');
+    } else if (val === 'robot') {
+      pitchInput.value = 0.2;
+      speedSelect.value = "1.4";
+    } else if (val === 'standard') {
+      pitchInput.value = 1.0;
+      speedSelect.value = "1.4";
+    }
+    pitchVal.textContent = pitchInput.value;
+  });
+
+  pitchInput.addEventListener('input', () => {
+    pitchVal.textContent = pitchInput.value;
+    personaSelect.value = 'custom';
+  });
+
+  function selectVoiceGender(gender) {
+    const options = Array.from(voiceSelect.options);
+    const match = options.find(opt => {
+      const name = opt.textContent.toLowerCase();
+      if (gender === 'female') return name.includes('female') || name.includes('zira') || name.includes('samantha') || name.includes('victoria') || name.includes('ava');
+      if (gender === 'male') return name.includes('male') || name.includes('david') || name.includes('alex') || name.includes('george') || name.includes('andrew');
+      return false;
+    });
+    if (match) voiceSelect.value = match.value;
+  }
+
+  function speak(text) {
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text.toString());
+    const selectedOption = voiceSelect.selectedOptions[0]?.getAttribute('data-name');
+    const selectedVoice = allVoices.find(v => v.name === selectedOption);
+    
+    if (selectedVoice) utterance.voice = selectedVoice;
+
+    utterance.rate = parseFloat(speedSelect.value);
+    utterance.pitch = parseFloat(pitchInput.value); // Pitch controls the voice age/character sound!
+    
+    window.speechSynthesis.speak(utterance);
+  }
+
+  testBtn.addEventListener('click', () => {
+    speak("Testing character voice: 3, 2, 1");
+  });
+
+  startBtn.addEventListener('click', () => {
+    clearInterval(intervalId);
+    window.speechSynthesis.cancel();
+
+    let seconds = parseInt(timeInput.value, 10);
+    const step = parseInt(intervalSelect.value, 10);
+
+    if (isNaN(seconds) || seconds <= 0) return;
+
+    display.textContent = seconds;
+
+    if (step === 1 || seconds % step === 0) speak(seconds);
+
+    intervalId = setInterval(() => {
+      seconds--;
+      if (seconds > 0) {
+        display.textContent = seconds;
+        if (step === 1 || seconds % step === 0) speak(seconds);
+      } else if (seconds === 0) {
+        display.textContent = 0;
+        clearInterval(intervalId);
+        speak("Time is up!");
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 1000);
+  });
+
+  stopBtn.addEventListener('click', () => {
+    clearInterval(intervalId);
+    window.speechSynthesis.cancel();
+    display.textContent = timeInput.value;
+  });
+</script>
+
+</body>
+</html>

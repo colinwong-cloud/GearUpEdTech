@@ -1365,6 +1365,22 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "supabase_merchant_module.sql" },
       ],
     },
+    {
+      id: "voice-countdown-page",
+      month: "2026-10",
+      category: "tools",
+      priority: "high",
+      title: "Voice countdown timer hosted at /countdown",
+      evidence_commits: ["d458c0d"],
+      checks: [
+        { type: "file_exists", path: "public/countdown.html" },
+        { type: "file_exists", path: "src/app/countdown/route.ts" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "Voice Countdown Timer" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "Time is up!" },
+        { type: "file_contains", path: "src/app/countdown/route.ts", snippet: "public/countdown.html" },
+        { type: "file_contains", path: "next.config.ts", snippet: "\"/countdown\": [\"./public/countdown.html\"]" },
+      ],
+    },
   ],
 };
 
