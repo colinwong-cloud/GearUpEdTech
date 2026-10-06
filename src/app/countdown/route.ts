@@ -11,7 +11,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-store",
     },
   });
 }
