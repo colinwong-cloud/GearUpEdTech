@@ -43,8 +43,9 @@ test.describe("Voice countdown page", () => {
     const langSelect = page.locator("#langSelect");
     await expect(langSelect).toContainText("Cantonese (Hong Kong) (zh-HK)");
     await expect(langSelect).toContainText("Mandarin (Mainland China) (zh-CN)");
-    await expect(langSelect).toHaveValue("en-US");
-    await expect(page.locator("#voiceSelect option")).toHaveCount(1);
+    await expect(langSelect).toHaveValue("all");
+    await expect(page.locator("#voiceSelect")).toContainText("粤語");
+    await expect(page.locator("#voiceSelect option")).toHaveCount(5);
 
     await langSelect.selectOption("zh-HK");
     await expect(page.locator("#voiceSelect option")).toHaveText("Google 粤語（香港） (zh-HK)");
@@ -54,6 +55,32 @@ test.describe("Voice countdown page", () => {
 
     await langSelect.selectOption("all");
     await expect(page.locator("#voiceSelect option")).toHaveCount(5);
+  });
+
+  test("adds Cantonese when Chrome reports it after the first voice list", async ({ page }) => {
+    await page.addInitScript(() => {
+      let voices = [
+        { name: "Google US English", lang: "en-US", default: true, localService: true, voiceURI: "Google US English" },
+        { name: "Google UK English Female", lang: "en-GB", default: false, localService: true, voiceURI: "Google UK English Female" },
+        { name: "Google UK English Male", lang: "en-GB", default: false, localService: true, voiceURI: "Google UK English Male" },
+      ];
+      Object.defineProperty(window.speechSynthesis, "getVoices", {
+        configurable: true,
+        value: () => voices,
+      });
+      window.__addCantonese = () => {
+        voices = voices.concat([
+          { name: "Google 粤語（香港）", lang: "zh-HK", default: false, localService: false, voiceURI: "Google 粤語（香港）" },
+        ]);
+        window.speechSynthesis.dispatchEvent(new Event("voiceschanged"));
+      };
+    });
+
+    await page.goto("/countdown");
+    await expect(page.locator("#voiceSelect")).not.toContainText("粤語");
+    await page.evaluate(() => window.__addCantonese());
+    await expect(page.locator("#voiceSelect")).toContainText("粤語");
+    await expect(page.locator("#langSelect")).toContainText("Cantonese (Hong Kong) (zh-HK)");
   });
 
   test("character preset updates the pitch control", async ({ page }) => {

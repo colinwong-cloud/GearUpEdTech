@@ -153,11 +153,18 @@
     return allVoices.filter((voice) => voice.lang === lang);
   }
 
+  function appendVoiceOption(parent, voice) {
+    const option = document.createElement("option");
+    option.textContent = `${voice.name} (${voice.lang})`;
+    option.value = `${voice.lang}::${voice.name}`;
+    option.setAttribute("data-name", voice.name);
+    option.setAttribute("data-lang", voice.lang);
+    parent.appendChild(option);
+  }
+
   function fillVoiceOptions(preferredName) {
     const lang = langSelect.value || "all";
-    const voices = voicesForLanguage(lang).sort((a, b) => {
-      return languageLabel(a.lang).localeCompare(languageLabel(b.lang)) || a.name.localeCompare(b.name);
-    });
+    const voices = voicesForLanguage(lang);
     voiceSelect.innerHTML = "";
     if (!voices.length) {
       const empty = document.createElement("option");
@@ -165,21 +172,35 @@
       voiceSelect.appendChild(empty);
       return;
     }
+
+    const groups = new Map();
     voices.forEach((voice) => {
-      const option = document.createElement("option");
-      option.textContent = `${voice.name} (${voice.lang})`;
-      option.value = `${voice.lang}::${voice.name}`;
-      option.setAttribute("data-name", voice.name);
-      option.setAttribute("data-lang", voice.lang);
-      voiceSelect.appendChild(option);
+      const key = voice.lang || "und";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(voice);
     });
+    [...groups.keys()]
+      .sort((a, b) => languageRank(a) - languageRank(b) || languageLabel(a).localeCompare(languageLabel(b)))
+      .forEach((key) => {
+        const group = document.createElement("optgroup");
+        group.label = languageLabel(key);
+        groups.get(key)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .forEach((voice) => appendVoiceOption(group, voice));
+        voiceSelect.appendChild(group);
+      });
+
     const match = [...voiceSelect.options].find((option) => option.getAttribute("data-name") === preferredName);
     if (match) voiceSelect.value = match.value;
   }
 
   function loadVoices() {
-    allVoices = window.speechSynthesis.getVoices();
-    if (allVoices.length === 0) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return;
+    const signature = voices.map((voice) => `${voice.lang}::${voice.name}`).join("|");
+    if (signature === loadVoices.signature) return;
+    loadVoices.signature = signature;
+    allVoices = voices;
 
     const previousLang = langSelect.value;
     const previousVoice = voiceSelect.selectedOptions[0]?.getAttribute("data-name");
@@ -198,19 +219,23 @@
       langSelect.appendChild(option);
     });
 
-    const defaultLang = langs.find((lang) => lang.toLowerCase() === "en-us")
-      || langs.find((lang) => lang.toLowerCase().startsWith("en"))
-      || langs[0]
-      || "all";
-    langSelect.value = previousLang === "all" || langs.includes(previousLang) ? previousLang : defaultLang;
+    // Default to every installed voice so Cantonese is selectable without an English filter.
+    const keepLang = previousLang === "all" || langs.includes(previousLang);
+    langSelect.value = keepLang ? previousLang : "all";
     fillVoiceOptions(previousVoice);
-    applyPersonaVoice();
+    if (!previousVoice) applyPersonaVoice();
   }
 
   loadVoices();
-  if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
-  }
+  window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+  // Chrome often returns only the built-in English voices first, then adds the
+  // remote Google languages (including zh-HK Cantonese) a moment later.
+  let voiceLoadTicks = 0;
+  const voiceLoadTimer = setInterval(() => {
+    voiceLoadTicks += 1;
+    loadVoices();
+    if (voiceLoadTicks >= 20) clearInterval(voiceLoadTimer);
+  }, 250);
 
   langSelect.addEventListener("change", () => {
     fillVoiceOptions();
