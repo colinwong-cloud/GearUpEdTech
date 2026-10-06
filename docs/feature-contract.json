@@ -487,6 +487,19 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
+          "snippet": "MainPageBannerCarousel"
+        },
+        {
+          "type": "file_exists",
+          "path": "public/main/main-page-banner-0.webp"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/components/main-page-banner-carousel.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
           "snippet": "負責教師編號（選填）"
         },
         {
@@ -2790,8 +2803,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-05T10:47:50.814Z",
+  "generated_at": "2026-10-06T07:25:15.986Z",
   "commit_inventory": [
+    {
+      "sha": "d99c7a6e574f6debe5e927d6b6996ae1da2860cc",
+      "date": "2026-10-06",
+      "summary": "feat: replace the login logo with a main-page banner carousel"
+    },
+    {
+      "sha": "db4b0fa387ab5a2be9e8618a743ff94f6b3fbaf3",
+      "date": "2026-10-05",
+      "summary": "chore: record the tutor support email commit in the feature contract"
+    },
     {
       "sha": "5239eb546c4b624dbe0e1f0951828034271d6dd2",
       "date": "2026-10-05",
@@ -5529,7 +5552,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 547,
+    "total_commits_since_start": 549,
     "total_feature_rows": 64
   }
 }
