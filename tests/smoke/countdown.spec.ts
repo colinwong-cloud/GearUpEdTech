@@ -22,6 +22,40 @@ test.describe("Voice countdown page", () => {
     await expect(page.locator("#display")).toHaveText("8");
   });
 
+  test("lists browser languages and filters the voice base", async ({ page }) => {
+    await page.addInitScript(() => {
+      const voices = [
+        { name: "Google US English", lang: "en-US", default: true, localService: true, voiceURI: "Google US English" },
+        { name: "Google UK English Female", lang: "en-GB", default: false, localService: true, voiceURI: "Google UK English Female" },
+        { name: "Google UK English Male", lang: "en-GB", default: false, localService: true, voiceURI: "Google UK English Male" },
+        { name: "Google 粤語（香港）", lang: "zh-HK", default: false, localService: true, voiceURI: "Google 粤語（香港）" },
+        { name: "Google 普通话（中国大陆）", lang: "zh-CN", default: false, localService: true, voiceURI: "Google 普通话（中国大陆）" },
+      ];
+      Object.defineProperty(window.speechSynthesis, "getVoices", {
+        configurable: true,
+        writable: true,
+        value: () => voices,
+      });
+    });
+
+    await page.goto("/countdown");
+
+    const langSelect = page.locator("#langSelect");
+    await expect(langSelect).toContainText("Cantonese (Hong Kong) (zh-HK)");
+    await expect(langSelect).toContainText("Mandarin (Mainland China) (zh-CN)");
+    await expect(langSelect).toHaveValue("en-US");
+    await expect(page.locator("#voiceSelect option")).toHaveCount(1);
+
+    await langSelect.selectOption("zh-HK");
+    await expect(page.locator("#voiceSelect option")).toHaveText("Google 粤語（香港） (zh-HK)");
+
+    await langSelect.selectOption("en-GB");
+    await expect(page.locator("#voiceSelect option")).toHaveCount(2);
+
+    await langSelect.selectOption("all");
+    await expect(page.locator("#voiceSelect option")).toHaveCount(5);
+  });
+
   test("character preset updates the pitch control", async ({ page }) => {
     await page.goto("/countdown");
 
