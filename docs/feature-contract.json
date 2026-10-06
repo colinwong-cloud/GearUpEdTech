@@ -2801,10 +2801,60 @@
           "path": "supabase_merchant_module.sql"
         }
       ]
+    },
+    {
+      "id": "voice-countdown-page",
+      "month": "2026-10",
+      "category": "tools",
+      "priority": "high",
+      "title": "Voice countdown timer hosted at /countdown",
+      "evidence_commits": [
+        "d458c0d"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "public/countdown.html"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/countdown/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "public/countdown.html",
+          "snippet": "Voice Countdown Timer"
+        },
+        {
+          "type": "file_contains",
+          "path": "public/countdown.html",
+          "snippet": "Time is up!"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/countdown/route.ts",
+          "snippet": "public/countdown.html"
+        },
+        {
+          "type": "file_contains",
+          "path": "next.config.ts",
+          "snippet": "\"/countdown\": [\"./public/countdown.html\"]"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-10-06T07:25:15.986Z",
+  "generated_at": "2026-10-06T08:26:30.105Z",
   "commit_inventory": [
+    {
+      "sha": "d458c0d5de770dc0de97ba257676e6126b9da3da",
+      "date": "2026-10-06",
+      "summary": "feat: host the voice countdown timer at /countdown"
+    },
+    {
+      "sha": "2b50d91b9c7936b708d60d50dd199483245e40b8",
+      "date": "2026-10-06",
+      "summary": "chore: record the main page banner carousel commit in the feature contract"
+    },
     {
       "sha": "d99c7a6e574f6debe5e927d6b6996ae1da2860cc",
       "date": "2026-10-06",
@@ -5552,7 +5602,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 549,
-    "total_feature_rows": 64
+    "total_commits_since_start": 551,
+    "total_feature_rows": 65
   }
 }
