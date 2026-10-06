@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["subset-font", "harfbuzzjs", "fontverter"],
   outputFileTracingIncludes: {
+    "/countdown": ["./public/countdown.html"],
     "/api/mer/invoices/[id]/pdf": ["./public/mer/gearup-stamp.png"],
     "/api/mer/invoices/[id]/send": ["./public/mer/gearup-stamp.png"],
     "/api/tutor/practice-papers/[id]/pdf": [
