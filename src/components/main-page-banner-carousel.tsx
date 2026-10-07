@@ -14,7 +14,7 @@ export function MainPagePartnerLogos() {
   const logoHeight = Math.round(hkstpWidth * (86 / 213));
   return (
     <div
-      className="mb-4 flex items-center justify-between bg-white"
+      className="mb-4 flex items-center justify-between bg-transparent"
       style={{ gap: clearSpace, padding: clearSpace }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
