@@ -2882,8 +2882,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-07T08:59:46.626Z",
+  "generated_at": "2026-10-07T09:10:04.345Z",
   "commit_inventory": [
+    {
+      "sha": "71ec107f387a56a401b25de6cff3476189bb3cbb",
+      "date": "2026-10-07",
+      "summary": "fix: follow the HKSTP partner lockup rules on the login header"
+    },
+    {
+      "sha": "0877413de562bf6f3d304de497324bbe3976fc56",
+      "date": "2026-10-07",
+      "summary": "chore: record the HKSTP partner logo commit in the feature contract"
+    },
     {
       "sha": "59222278f3f72183588c4eb74d90088bb1b6f7cb",
       "date": "2026-10-07",
@@ -5676,7 +5686,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 558,
+    "total_commits_since_start": 560,
     "total_feature_rows": 65
   }
 }
