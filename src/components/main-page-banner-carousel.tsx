@@ -7,21 +7,31 @@ const MAIN_PAGE_BANNERS = [0, 1, 3, 4, 5, 6].map(
 );
 
 export function MainPagePartnerLogos() {
+  // HKSTP digital minimum is 100px wide. The exclusion zone equals the
+  // Innovation Pin width, about 28.6% of this aquamarine lockup.
+  const hkstpWidth = 120;
+  const clearSpace = Math.round(hkstpWidth * 0.286);
+  const logoHeight = Math.round(hkstpWidth * (86 / 213));
   return (
-    <div className="mb-4 flex items-center justify-between gap-6 rounded-2xl bg-white px-3 py-3 shadow-sm">
+    <div
+      className="mb-4 flex items-center justify-between bg-white"
+      style={{ gap: clearSpace, padding: clearSpace }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/main/gearup-quiz-logo.webp"
-        alt="GearUp Quiz"
-        className="h-16 w-auto max-w-[48%] object-contain object-left"
+        alt="GearUp EduTech"
+        style={{ height: logoHeight, width: "auto" }}
+        className="max-w-[48%] object-contain object-left"
         draggable={false}
       />
-      {/* Official aquamarine HKSTP Partner lockup. Do not recolor or stretch. */}
+      {/* Aquamarine HKSTP Partner lockup. Proportions and artwork stay intact. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/main/hkstp-partner-aquamarine.png"
         alt="HKSTP Partner"
-        className="h-12 w-auto max-w-[48%] object-contain object-right"
+        style={{ width: hkstpWidth, height: "auto", minWidth: 100 }}
+        className="max-w-[48%] object-contain object-right"
         draggable={false}
       />
     </div>
