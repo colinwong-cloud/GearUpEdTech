@@ -6,6 +6,28 @@ const MAIN_PAGE_BANNERS = [0, 1, 3, 4, 5, 6].map(
   (index) => `/main/main-page-banner-${index}.webp`
 );
 
+export function MainPagePartnerLogos() {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-6 rounded-2xl bg-white px-3 py-3 shadow-sm">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/main/gearup-quiz-logo.webp"
+        alt="GearUp Quiz"
+        className="h-16 w-auto max-w-[48%] object-contain object-left"
+        draggable={false}
+      />
+      {/* Official aquamarine HKSTP Partner lockup. Do not recolor or stretch. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/main/hkstp-partner-aquamarine.png"
+        alt="HKSTP Partner"
+        className="h-12 w-auto max-w-[48%] object-contain object-right"
+        draggable={false}
+      />
+    </div>
+  );
+}
+
 export function MainPageBannerCarousel() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);

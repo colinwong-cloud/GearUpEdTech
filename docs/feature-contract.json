@@ -490,6 +490,20 @@
           "snippet": "MainPageBannerCarousel"
         },
         {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "MainPagePartnerLogos"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/main-page-banner-carousel.tsx",
+          "snippet": "HKSTP Partner"
+        },
+        {
+          "type": "file_exists",
+          "path": "public/main/hkstp-partner-aquamarine.png"
+        },
+        {
           "type": "file_exists",
           "path": "public/main/main-page-banner-0.webp"
         },
@@ -2868,8 +2882,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-06T09:39:55.456Z",
+  "generated_at": "2026-10-07T08:59:46.203Z",
   "commit_inventory": [
+    {
+      "sha": "5454db2753a2b45c82fbe47b03292c4ad3b2b768",
+      "date": "2026-10-06",
+      "summary": "chore: record the all-voices countdown fix in the feature contract"
+    },
     {
       "sha": "6dca3b5ec38d1fb05aee5e81ad1a1cd200b57967",
       "date": "2026-10-06",
@@ -5652,7 +5671,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 556,
+    "total_commits_since_start": 557,
     "total_feature_rows": 65
   }
 }
