@@ -497,6 +497,11 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
+          "snippet": "努力，GearUp EduTech Limited"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
           "snippet": "於2026年10月正式獲批成為 HKSTP 合作夥伴"
         },
         {
@@ -1617,6 +1622,11 @@
           "type": "file_contains",
           "path": "src/app/tutor/tutor-login-marketing.tsx",
           "snippet": "導師平台專為香港私人補習導師而設"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": "努力，GearUp EduTech Limited"
         },
         {
           "type": "file_contains",
@@ -2912,8 +2922,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T05:18:10.257Z",
+  "generated_at": "2026-10-08T05:56:45.054Z",
   "commit_inventory": [
+    {
+      "sha": "9c7a109d52dd9c2ec0f4c34cf5b929720fe13737",
+      "date": "2026-10-08",
+      "summary": "fix: name GearUp EduTech Limited in the HKSTP partnership note"
+    },
+    {
+      "sha": "182bf3c1a058f72d86a24bba6e7ac465d7e1d531",
+      "date": "2026-10-08",
+      "summary": "chore: record the homepage partnership title in the feature contract"
+    },
     {
       "sha": "6e7259cdba55cb7d9e5012bd6c5358903adc7e20",
       "date": "2026-10-08",
@@ -5786,7 +5806,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 574,
+    "total_commits_since_start": 576,
     "total_feature_rows": 65
   }
 }

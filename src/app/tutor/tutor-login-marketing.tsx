@@ -103,7 +103,7 @@ export function TutorPortalIntro() {
       <section className="rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 via-white to-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">創新理念獲肯定</h2>
         <p className="mt-2 text-sm leading-7 text-gray-700">
-          憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
+          憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp EduTech Limited
           已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
         </p>
       </section>
