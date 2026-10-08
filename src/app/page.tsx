@@ -2453,7 +2453,7 @@ function LoginMobileScreen({
                 <li className="rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">創新理念獲肯定：</span>
                   憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
-                  已成功申請並通過香港科技園（HKSTP）一系列評審，正式獲批成為 HKSTP 合作夥伴。
+                  已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
                 </li>
                 <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">AI 智能精準輔導，提升學習效率：</span>
