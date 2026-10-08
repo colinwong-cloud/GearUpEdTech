@@ -1591,6 +1591,11 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
+          "snippet": "MainPagePartnerLogos"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
           "snippet": "© 2026 GearUp EduTech Limited"
         },
         {
@@ -2882,8 +2887,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-07T09:20:01.140Z",
+  "generated_at": "2026-10-08T04:30:32.169Z",
   "commit_inventory": [
+    {
+      "sha": "b2baa488d5e7661e87dc3124bb4145c97670e14e",
+      "date": "2026-10-08",
+      "summary": "feat: show the GearUp and HKSTP logos on the tutor login page"
+    },
+    {
+      "sha": "5f4ea3995f1011eab1a321b1f7965d63b9d90a1a",
+      "date": "2026-10-07",
+      "summary": "chore: record the transparent logo row in the feature contract"
+    },
     {
       "sha": "41d47a2a757aacd24dc647a7fef79726490bfc4b",
       "date": "2026-10-07",
@@ -5696,7 +5711,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 562,
+    "total_commits_since_start": 564,
     "total_feature_rows": 65
   }
 }

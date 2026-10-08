@@ -8,6 +8,7 @@ import { redirectToTutorPlanCheckout } from "@/lib/tutor-plan-checkout";
 import { rememberTutorStudent, writePaperOverviewCache } from "@/lib/tutor-portal-cache";
 import { TutorShareLink } from "@/app/tutor/tutor-share-link";
 import { TutorLoginCarousel, TutorPortalFaq, TutorPortalIntro } from "@/app/tutor/tutor-login-marketing";
+import { MainPagePartnerLogos } from "@/components/main-page-banner-carousel";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -566,6 +567,7 @@ export default function TutorPortalPage() {
     return (
       <div className={`${pageShell} px-4 pb-24 pt-8 sm:pb-28`}>
         <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
+          <MainPagePartnerLogos />
           <TutorLoginCarousel />
         <div className="w-full">
           <div className="mb-6 text-center">
