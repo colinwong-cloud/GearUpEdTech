@@ -496,6 +496,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "正式獲批成為 HKSTP 合作夥伴"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "AI 智能精準輔導，提升學習效率"
+        },
+        {
+          "type": "file_contains",
           "path": "src/components/main-page-banner-carousel.tsx",
           "snippet": "HKSTP Partner"
         },
@@ -2887,8 +2897,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T04:30:32.169Z",
+  "generated_at": "2026-10-08T04:43:17.053Z",
   "commit_inventory": [
+    {
+      "sha": "45b151122368b7dfa04d28f35e5aadd7e592e6bc",
+      "date": "2026-10-08",
+      "summary": "feat: add the HKSTP partnership note to the homepage brief"
+    },
+    {
+      "sha": "9385b415c0a7cdcc3eeeeb11fa220487b4f7ae5c",
+      "date": "2026-10-08",
+      "summary": "chore: record the tutor partner logo commit in the feature contract"
+    },
     {
       "sha": "b2baa488d5e7661e87dc3124bb4145c97670e14e",
       "date": "2026-10-08",
@@ -5711,7 +5731,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 564,
+    "total_commits_since_start": 566,
     "total_feature_rows": 65
   }
 }
