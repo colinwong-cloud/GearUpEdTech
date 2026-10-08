@@ -857,6 +857,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "MainPagePartnerLogos" },
         { type: "file_contains", path: "src/app/tutor/page.tsx", snippet: "© 2026 GearUp EduTech Limited" },
         { type: "file_contains", path: "src/app/tutor/tutor-login-marketing.tsx", snippet: "導師平台專為香港私人補習導師而設" },
+        { type: "file_contains", path: "src/app/tutor/tutor-login-marketing.tsx", snippet: "於2026年10月正式獲批成為 HKSTP 合作夥伴" },
         { type: "file_contains", path: "src/app/tutor/tutor-login-marketing.tsx", snippet: "tutor_portal_FAQ_261005.txt" },
         { type: "file_contains", path: "src/lib/tutor-portal-faq.ts", snippet: "parseTutorPortalFaq" },
         { type: "file_exists", path: "public/tutor/20261005-tutor-1.webp" },
