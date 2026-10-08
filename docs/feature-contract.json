@@ -1616,6 +1616,16 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": "於2026年10月正式獲批成為 HKSTP 合作夥伴"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": ">創新理念獲肯定</h2>"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
           "snippet": "tutor_portal_FAQ_261005.txt"
         },
         {
@@ -2897,8 +2907,28 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T04:51:46.812Z",
+  "generated_at": "2026-10-08T05:08:23.602Z",
   "commit_inventory": [
+    {
+      "sha": "53a9940b6533122b3c5b893ed3eec00ecb713a02",
+      "date": "2026-10-08",
+      "summary": "fix: lead the tutor brief with the HKSTP partnership title"
+    },
+    {
+      "sha": "f9b7e244e361f1364b8c825630740be531a262bd",
+      "date": "2026-10-08",
+      "summary": "chore: record the tutor partnership brief in the feature contract"
+    },
+    {
+      "sha": "859e15c62d3d57345d51862977db72cd5e16d818",
+      "date": "2026-10-08",
+      "summary": "feat: show the HKSTP partnership block on the tutor login page"
+    },
+    {
+      "sha": "0cb39612dca3d3c3f42a36c6ae086f53fc5e11b4",
+      "date": "2026-10-08",
+      "summary": "chore: record the dated HKSTP brief wording in the feature contract"
+    },
     {
       "sha": "79b7c9bfcf7470fc8d77b5b1f9a0f79003a2b459",
       "date": "2026-10-08",
@@ -5741,7 +5771,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 568,
+    "total_commits_since_start": 572,
     "total_feature_rows": 65
   }
 }
