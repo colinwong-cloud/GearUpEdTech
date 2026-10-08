@@ -497,7 +497,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "正式獲批成為 HKSTP 合作夥伴"
+          "snippet": "於2026年10月正式獲批成為 HKSTP 合作夥伴"
         },
         {
           "type": "file_contains",
@@ -2897,8 +2897,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T04:43:17.053Z",
+  "generated_at": "2026-10-08T04:51:46.812Z",
   "commit_inventory": [
+    {
+      "sha": "79b7c9bfcf7470fc8d77b5b1f9a0f79003a2b459",
+      "date": "2026-10-08",
+      "summary": "fix: date the HKSTP partnership approval in the homepage brief"
+    },
+    {
+      "sha": "f551200c097315ffc22313c1ec9c3ebe8229cf4d",
+      "date": "2026-10-08",
+      "summary": "chore: record the homepage brief update in the feature contract"
+    },
     {
       "sha": "45b151122368b7dfa04d28f35e5aadd7e592e6bc",
       "date": "2026-10-08",
@@ -5731,7 +5741,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 566,
+    "total_commits_since_start": 568,
     "total_feature_rows": 65
   }
 }
