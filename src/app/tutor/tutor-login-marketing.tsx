@@ -99,17 +99,21 @@ export function TutorLoginCarousel() {
 
 export function TutorPortalIntro() {
   return (
-    <section className="rounded-2xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-5 shadow-sm">
-      <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
-        平台簡介
-      </div>
-      <p className="mt-3 text-sm leading-7 text-gray-700">{INTRO}</p>
-      <p className="mt-3 rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2 text-sm leading-7 text-gray-700">
-        <span className="font-semibold text-gray-900">創新理念獲肯定：</span>
-        憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
-        已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
-      </p>
-    </section>
+    <>
+      <section className="rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 via-white to-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900">創新理念獲肯定</h2>
+        <p className="mt-2 text-sm leading-7 text-gray-700">
+          憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
+          已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
+        </p>
+      </section>
+      <section className="rounded-2xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-5 shadow-sm">
+        <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
+          平台簡介
+        </div>
+        <p className="mt-3 text-sm leading-7 text-gray-700">{INTRO}</p>
+      </section>
+    </>
   );
 }
 
