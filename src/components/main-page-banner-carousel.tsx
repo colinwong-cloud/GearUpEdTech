@@ -6,6 +6,38 @@ const MAIN_PAGE_BANNERS = [0, 1, 3, 4, 5, 6].map(
   (index) => `/main/main-page-banner-${index}.webp`
 );
 
+export function MainPagePartnerLogos() {
+  // HKSTP digital minimum is 100px wide. The exclusion zone equals the
+  // Innovation Pin width, about 28.6% of this aquamarine lockup.
+  const hkstpWidth = 120;
+  const clearSpace = Math.round(hkstpWidth * 0.286);
+  const logoHeight = Math.round(hkstpWidth * (86 / 213));
+  return (
+    <div
+      className="mb-4 flex items-center justify-between bg-transparent"
+      style={{ gap: clearSpace, padding: clearSpace }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/main/gearup-quiz-logo.webp"
+        alt="GearUp EduTech"
+        style={{ height: logoHeight, width: "auto" }}
+        className="max-w-[48%] object-contain object-left"
+        draggable={false}
+      />
+      {/* Aquamarine HKSTP Partner lockup. Proportions and artwork stay intact. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/main/hkstp-partner-aquamarine.png"
+        alt="HKSTP Partner"
+        style={{ width: hkstpWidth, height: "auto", minWidth: 100 }}
+        className="max-w-[48%] object-contain object-right"
+        draggable={false}
+      />
+    </div>
+  );
+}
+
 export function MainPageBannerCarousel() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);

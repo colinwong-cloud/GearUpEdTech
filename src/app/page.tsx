@@ -29,7 +29,7 @@ import {
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
 import { getPaymentTermsUrl } from "@/lib/payment-terms";
 import { readTutorCodeFromSearch } from "@/lib/tutor-share-link";
-import { MainPageBannerCarousel } from "@/components/main-page-banner-carousel";
+import { MainPageBannerCarousel, MainPagePartnerLogos } from "@/components/main-page-banner-carousel";
 import {
   buildSessionPracticeSummary,
   buildSessionPracticeSummaryForParent,
@@ -2296,6 +2296,7 @@ function LoginMobileScreen({
       <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-28">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
+            <MainPagePartnerLogos />
             <MainPageBannerCarousel />
             <p className="mt-3 text-[15px] leading-relaxed text-indigo-700 font-['Comic_Sans_MS','Chalkboard_SE','Trebuchet_MS','PingFang_TC','Microsoft_JhengHei',sans-serif]">
               GearUp 增分寶：香港小學生必備！免費中英數複習平台，幫小朋友輕鬆增分，學習無壓力！
