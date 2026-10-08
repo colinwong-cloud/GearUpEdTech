@@ -2443,15 +2443,20 @@ function LoginMobileScreen({
               </div>
               <p className="text-sm leading-7 text-gray-700">
                 增分寶 GearUp Quiz 是一個涵蓋中、英、數三科，並結合 AI
-                個人化學習與香港本地課程掛鉤的平台。
+                個人化學習與香港本地課程掛鈎的學習平台。
               </p>
               <ul className="space-y-3 text-sm leading-7 text-gray-700">
                 <li className="rounded-2xl border border-amber-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
                   不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
                 </li>
+                <li className="rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2">
+                  <span className="font-semibold text-gray-900">創新理念獲肯定：</span>
+                  憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
+                  已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
+                </li>
                 <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
-                  <span className="font-semibold text-gray-900">AI 智能精準補漏，提升學習效率：</span>
+                  <span className="font-semibold text-gray-900">AI 智能精準輔導，提升學習效率：</span>
                   利用 AI
                   演算法追蹤學生的薄弱環節，並提供即時自動批改與詳細解說，幫助孩子從錯誤中學習，確保每分鐘的練習都能發揮最大效用。
                 </li>

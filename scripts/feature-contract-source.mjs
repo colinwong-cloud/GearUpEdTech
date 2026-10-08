@@ -302,6 +302,8 @@ export const FEATURE_CONTRACT_BASE = {
         },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "MainPageBannerCarousel" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "MainPagePartnerLogos" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "於2026年10月正式獲批成為 HKSTP 合作夥伴" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "AI 智能精準輔導，提升學習效率" },
         { type: "file_contains", path: "src/components/main-page-banner-carousel.tsx", snippet: "HKSTP Partner" },
         { type: "file_exists", path: "public/main/hkstp-partner-aquamarine.png" },
         { type: "file_exists", path: "public/main/main-page-banner-0.webp" },
