@@ -2433,6 +2433,13 @@ function LoginMobileScreen({
               </div>
             </div>
           )}
+          <section className="mt-6 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 via-white to-white p-5 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900">創新理念獲肯定</h2>
+            <p className="mt-2 text-sm leading-7 text-gray-700">
+              憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
+              已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
+            </p>
+          </section>
           <div
             className="mt-6 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50 via-white to-sky-50 p-6 shadow-lg shadow-amber-100/40 space-y-6"
             style={{ fontFamily: "var(--font-baloo2), var(--font-noto-sans-tc), system-ui, sans-serif" }}
@@ -2449,11 +2456,6 @@ function LoginMobileScreen({
                 <li className="rounded-2xl border border-amber-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">全方位混合學習模式：</span>
                   不同於市面上單一功能的平台，本平台提供每日互動練習以鞏固基礎，讓學生在應付日常功課與備考週測、大考時都能得心應手。
-                </li>
-                <li className="rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2">
-                  <span className="font-semibold text-gray-900">創新理念獲肯定：</span>
-                  憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp Quiz
-                  已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
                 </li>
                 <li className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-2">
                   <span className="font-semibold text-gray-900">AI 智能精準輔導，提升學習效率：</span>
