@@ -1591,6 +1591,11 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/page.tsx",
+          "snippet": "MainPagePartnerLogos"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/page.tsx",
           "snippet": "© 2026 GearUp EduTech Limited"
         },
         {
@@ -2882,8 +2887,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-07T09:20:01.140Z",
+  "generated_at": "2026-10-08T04:30:31.770Z",
   "commit_inventory": [
+    {
+      "sha": "5f4ea3995f1011eab1a321b1f7965d63b9d90a1a",
+      "date": "2026-10-07",
+      "summary": "chore: record the transparent logo row in the feature contract"
+    },
     {
       "sha": "41d47a2a757aacd24dc647a7fef79726490bfc4b",
       "date": "2026-10-07",
@@ -5696,7 +5706,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 562,
+    "total_commits_since_start": 563,
     "total_feature_rows": 65
   }
 }
