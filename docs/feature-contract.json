@@ -502,6 +502,11 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
+          "snippet": ">創新理念獲肯定</h2>"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
           "snippet": "AI 智能精準輔導，提升學習效率"
         },
         {
@@ -2907,8 +2912,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T05:08:23.602Z",
+  "generated_at": "2026-10-08T05:18:10.257Z",
   "commit_inventory": [
+    {
+      "sha": "6e7259cdba55cb7d9e5012bd6c5358903adc7e20",
+      "date": "2026-10-08",
+      "summary": "fix: place the HKSTP title above the homepage brief"
+    },
+    {
+      "sha": "c8cedd94e4098b5c92067ff8fdeae97c498b70ec",
+      "date": "2026-10-08",
+      "summary": "chore: record the tutor partnership title in the feature contract"
+    },
     {
       "sha": "53a9940b6533122b3c5b893ed3eec00ecb713a02",
       "date": "2026-10-08",
@@ -5771,7 +5786,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 572,
+    "total_commits_since_start": 574,
     "total_feature_rows": 65
   }
 }
