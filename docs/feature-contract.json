@@ -1621,6 +1621,11 @@
         {
           "type": "file_contains",
           "path": "src/app/tutor/tutor-login-marketing.tsx",
+          "snippet": ">創新理念獲肯定</h2>"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/tutor-login-marketing.tsx",
           "snippet": "tutor_portal_FAQ_261005.txt"
         },
         {
@@ -2902,8 +2907,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T05:00:21.846Z",
+  "generated_at": "2026-10-08T05:08:23.602Z",
   "commit_inventory": [
+    {
+      "sha": "53a9940b6533122b3c5b893ed3eec00ecb713a02",
+      "date": "2026-10-08",
+      "summary": "fix: lead the tutor brief with the HKSTP partnership title"
+    },
+    {
+      "sha": "f9b7e244e361f1364b8c825630740be531a262bd",
+      "date": "2026-10-08",
+      "summary": "chore: record the tutor partnership brief in the feature contract"
+    },
     {
       "sha": "859e15c62d3d57345d51862977db72cd5e16d818",
       "date": "2026-10-08",
@@ -5756,7 +5771,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 570,
+    "total_commits_since_start": 572,
     "total_feature_rows": 65
   }
 }
