@@ -16,6 +16,23 @@ export function mitChargeLeaseIso(now: Date = new Date()): string {
   return new Date(now.getTime() + MIT_CHARGE_LEASE_MS).toISOString();
 }
 
+function addOneUtcMonthFrom(value: string | Date): Date {
+  const source = value instanceof Date ? value : new Date(value);
+  const next = Number.isNaN(source.getTime()) ? new Date() : new Date(source.getTime());
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return next;
+}
+
+/** After a successful MIT charge, never schedule the next charge before chargedAt + 1 UTC month. */
+export function nextMitChargeAtAfterSuccess(input: {
+  previousDue: string;
+  chargedAt: string | Date;
+}): string {
+  const fromDue = addOneUtcMonthFrom(input.previousDue).getTime();
+  const fromCharged = addOneUtcMonthFrom(input.chargedAt).getTime();
+  return new Date(Math.max(fromDue, fromCharged)).toISOString();
+}
+
 export function shouldStartMitSweep(
   lastStartedAt: string | null | undefined,
   now: Date = new Date(),
