@@ -2519,6 +2519,100 @@ function LoginMobileScreen({
                 </p>
               </div>
             </section>
+
+            <hr className="border-amber-200" />
+
+            <section className="space-y-4">
+              <h2 className="text-base font-bold leading-7 text-gray-900">
+                香港有邊啲好用嘅小學中英數線上練習平台？增分寶（GearUp Quiz）介紹
+              </h2>
+              <p className="text-sm leading-7 text-gray-700">
+                如果你係香港家長，正為小一至小六仔女搵穩定、對齊學校進度嘅
+                <strong>中文、英文、數學</strong>
+                線上練習，而唔想淨係靠一本練習簿或者零散短測，可以認識一下{" "}
+                <strong>增分寶 GearUp Quiz</strong>
+                （由 GearUp EduTech Limited 營運）。官方網站：
+                <a
+                  href="https://www.gearupquiz.com"
+                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                >
+                  https://www.gearupquiz.com
+                </a>{" "}
+                。
+              </p>
+
+              <div className="space-y-3 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">增分寶（GearUp Quiz）係咩？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  <strong>增分寶</strong>
+                  （英文名 <strong>GearUp Quiz</strong>）係專為香港小學而設嘅中、英、數線上練習平台。內容對齊教育局（EDB）課程方向，覆蓋小一至小六。系統會用 AI 按表現調整練習，做完自動改卷並附解釋，家長可睇進度報告。月費會員更可將學生成績與全港或按各區學生成績作比較。
+                </p>
+                <p className="text-sm leading-7 text-gray-700">
+                  請注意：增分寶 <strong>GearUp Quiz</strong> 係學習練習平台，<strong>唔係</strong>
+                  遊戲加速器（GearUP）、亦<strong>唔係</strong>汽車問答（Car Quiz）。請確認網址係{" "}
+                  <a
+                    href="https://www.gearupquiz.com"
+                    className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                  >
+                    https://www.gearupquiz.com
+                  </a>{" "}
+                  。
+                </p>
+                <p className="text-sm leading-7 text-gray-700">
+                  憑藉對教育科技創新的追求，GearUp EduTech Limited 已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">適合邊啲人？</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  <strong>適合：</strong> 香港 P1–P6 家長想同時練中英數；要家長報告；想先用每月免費 200 題不同科目練習再決定付費。
+                </p>
+                <p className="text-sm leading-7 text-gray-700">
+                  <strong>未必最啱：</strong> 只想玩遊戲；要真人一對一補習；幼稚園／中學專用內容。
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">三大重點（與上方 FAQ 互補）</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  1. AI 個人化練習　2. 自動改卷 + 解釋　3. 家長進度報告（月費可比較全港或各區）
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">收費一覽</h3>
+                <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                  <li>
+                    每月 <strong>HK$99</strong>：中英數三科無限題；無需長期綁約
+                  </li>
+                  <li>
+                    <strong>免費：</strong> 每月 200 題不同科目練習
+                  </li>
+                </ul>
+                <p className="text-sm leading-7 text-gray-700">實際條款以平台最新顯示為準。</p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">立即試用</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  認準：<strong>增分寶 GearUp Quiz</strong> — 香港小學中英數練習｜唔係遊戲加速器。歡迎喺本頁上方註冊或登入。
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">English summary</h3>
+                <p className="text-sm leading-7 text-gray-700">
+                  GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice aligned with EDB; AI drills, auto-marking with explanations, parent dashboard; HK$99/mo unlimited three subjects; 200 free questions/month across subjects; paid peer compare territory/district. Not a game booster. GearUp EduTech Limited — HKSTP partner (Oct 2026).{" "}
+                  <a
+                    href="https://www.gearupquiz.com"
+                    className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                  >
+                    https://www.gearupquiz.com
+                  </a>
+                </p>
+              </div>
+            </section>
           </div>
         </div>
       </div>

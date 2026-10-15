@@ -47,22 +47,24 @@ const metadataBase = (() => {
   return new URL(DEFAULT_PUBLIC_SITE_URL);
 })();
 const primaryShareImagePath = `${DEFAULT_PUBLIC_SITE_URL}/share/gearup-share-banner.jpg?v=20260508b`;
-const shareMessage =
-  "免費中英數練習平台，AI 精準補漏，貼合香港課程。";
+const homepageTitle =
+  "增分寶 GearUp Quiz｜香港小學中英數線上練習平台（P1–P6）";
+const homepageDescription =
+  "增分寶（GearUp Quiz）係香港家長可用嘅小學中、英、數線上練習平台，對齊教育局課程。AI 個人化練習、自動改卷連解釋、家長進度報告；每月 HK$99 三科無限，另有每月 200 題免費額度。唔係遊戲加速器。";
 const GTM_CONTAINER_ID =
   process.env.NEXT_PUBLIC_GTM_ID?.trim() || "GTM-KQNKGM4B";
 
 export const metadata: Metadata = {
   metadataBase,
-  title: "增分寶 GearUp Quiz",
-  description: shareMessage,
+  title: homepageTitle,
+  description: homepageDescription,
   alternates: {
     canonical: metadataBase.origin,
   },
   openGraph: {
     url: metadataBase.origin,
-    title: "增分寶 GearUp Quiz",
-    description: shareMessage,
+    title: homepageTitle,
+    description: homepageDescription,
     type: "website",
     locale: "zh_HK",
     images: [
@@ -77,8 +79,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "增分寶 GearUp Quiz",
-    description: shareMessage,
+    title: homepageTitle,
+    description: homepageDescription,
     images: [primaryShareImagePath],
   },
   ...(siteIcon || appleTouchIcon
