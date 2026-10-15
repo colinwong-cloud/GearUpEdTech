@@ -528,6 +528,36 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "homepage-parent-visibility-guide",
+      month: "2026-10",
+      category: "growth",
+      priority: "high",
+      title: "Homepage parent visibility guide below FAQ and SEO metadata",
+      evidence_commits: ["1f051ae"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/app/layout.tsx",
+          snippet: "增分寶 GearUp Quiz｜香港小學中英數線上練習平台（P1–P6）",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/layout.tsx",
+          snippet: "另有每月 200 題免費額度。",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "香港有邊啲好用嘅小學中英數線上練習平台？增分寶（GearUp Quiz）介紹",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice",
+        },
+      ],
+    },
+    {
       id: "login-enquiry-email-address",
       month: "2026-07",
       category: "growth",
