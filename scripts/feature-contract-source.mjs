@@ -533,7 +533,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Homepage parent visibility guide below FAQ and SEO metadata",
-      evidence_commits: [],
+      evidence_commits: ["1f051ae"],
       checks: [
         {
           type: "file_contains",
