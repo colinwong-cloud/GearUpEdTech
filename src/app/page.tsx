@@ -2572,7 +2572,7 @@ function LoginMobileScreen({
               <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">English summary</h3>
                 <p className="text-sm leading-7 text-gray-700">
-                  GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice aligned with EDB; AI drills, auto-marking with explanations, parent dashboard; HK$99/mo unlimited three subjects; 200 free questions/month across subjects; paid peer compare territory/district. Not a game booster. GearUp EduTech Limited — HKSTP partner (Oct 2026).{" "}
+                  GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice aligned with EDB; AI drills, auto-marking with explanations, parent dashboard; HK$99/mo unlimited three subjects; 200 free questions/month across subjects; paid peer compare territory/district. GearUp EduTech Limited — HKSTP partner (Oct 2026).{" "}
                   <a
                     href="https://www.gearupquiz.com"
                     className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
