@@ -2922,8 +2922,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T05:56:45.054Z",
+  "generated_at": "2026-10-15T03:51:12.011Z",
   "commit_inventory": [
+    {
+      "sha": "446c48c8da6add36d77263aede67914814ae03b6",
+      "date": "2026-10-15",
+      "summary": "fix(mit): floor next_charge_at at chargedAt + 1 month after success"
+    },
+    {
+      "sha": "6abc2772e7f4482fb7f9ee1681b584200bdae8eb",
+      "date": "2026-10-08",
+      "summary": "chore: record the company name in the HKSTP brief contract"
+    },
     {
       "sha": "9c7a109d52dd9c2ec0f4c34cf5b929720fe13737",
       "date": "2026-10-08",
@@ -5806,7 +5816,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 576,
+    "total_commits_since_start": 578,
     "total_feature_rows": 65
   }
 }
