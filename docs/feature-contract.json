@@ -2091,7 +2091,17 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-billing.ts",
-          "snippet": "nextMonthlyRecurringStartDate"
+          "snippet": "nextMitChargeAtAfterSuccess"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-cron.ts",
+          "snippet": "nextMitChargeAtAfterSuccess"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "nextMitChargeAtAfterSuccess"
         },
         {
           "type": "file_contains",
@@ -2922,8 +2932,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-15T03:51:12.011Z",
+  "generated_at": "2026-10-15T03:52:27.824Z",
   "commit_inventory": [
+    {
+      "sha": "b3cc399039769d5fe979a652eab46222b43eaf90",
+      "date": "2026-10-15",
+      "summary": "chore: refresh feature-contract inventory"
+    },
     {
       "sha": "446c48c8da6add36d77263aede67914814ae03b6",
       "date": "2026-10-15",
@@ -5816,7 +5831,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 578,
+    "total_commits_since_start": 579,
     "total_feature_rows": 65
   }
 }
