@@ -936,7 +936,7 @@
         {
           "type": "file_contains",
           "path": "src/app/layout.tsx",
-          "snippet": "唔係遊戲加速器。"
+          "snippet": "另有每月 200 題免費額度。"
         },
         {
           "type": "file_contains",
@@ -2964,8 +2964,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-15T04:08:49.269Z",
+  "generated_at": "2026-10-15T04:20:10.677Z",
   "commit_inventory": [
+    {
+      "sha": "678e27f1bd022c1cd41def03f9800c7a23b88658",
+      "date": "2026-10-15",
+      "summary": "fix: trim homepage visibility guide and meta description"
+    },
+    {
+      "sha": "a43a9d6cc21a9d5332bec344d0db9c768e1e39e1",
+      "date": "2026-10-15",
+      "summary": "chore: sync feature contract inventory after visibility guide evidence"
+    },
     {
       "sha": "040ba82de46fa2e30a660828d0328f51a9d7d37c",
       "date": "2026-10-15",
@@ -5888,7 +5898,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 584,
+    "total_commits_since_start": 586,
     "total_feature_rows": 66
   }
 }
