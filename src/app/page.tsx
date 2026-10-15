@@ -2547,36 +2547,12 @@ function LoginMobileScreen({
                   <strong>增分寶</strong>
                   （英文名 <strong>GearUp Quiz</strong>）係專為香港小學而設嘅中、英、數線上練習平台。內容對齊教育局（EDB）課程方向，覆蓋小一至小六。系統會用 AI 按表現調整練習，做完自動改卷並附解釋，家長可睇進度報告。月費會員更可將學生成績與全港或按各區學生成績作比較。
                 </p>
-                <p className="text-sm leading-7 text-gray-700">
-                  請注意：增分寶 <strong>GearUp Quiz</strong> 係學習練習平台，<strong>唔係</strong>
-                  遊戲加速器（GearUP）、亦<strong>唔係</strong>汽車問答（Car Quiz）。請確認網址係{" "}
-                  <a
-                    href="https://www.gearupquiz.com"
-                    className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
-                  >
-                    https://www.gearupquiz.com
-                  </a>{" "}
-                  。
-                </p>
-                <p className="text-sm leading-7 text-gray-700">
-                  憑藉對教育科技創新的追求，GearUp EduTech Limited 已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
-                </p>
               </div>
 
               <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">適合邊啲人？</h3>
                 <p className="text-sm leading-7 text-gray-700">
                   <strong>適合：</strong> 香港 P1–P6 家長想同時練中英數；要家長報告；想先用每月免費 200 題不同科目練習再決定付費。
-                </p>
-                <p className="text-sm leading-7 text-gray-700">
-                  <strong>未必最啱：</strong> 只想玩遊戲；要真人一對一補習；幼稚園／中學專用內容。
-                </p>
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">三大重點（與上方 FAQ 互補）</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  1. AI 個人化練習　2. 自動改卷 + 解釋　3. 家長進度報告（月費可比較全港或各區）
                 </p>
               </div>
 
@@ -2591,13 +2567,6 @@ function LoginMobileScreen({
                   </li>
                 </ul>
                 <p className="text-sm leading-7 text-gray-700">實際條款以平台最新顯示為準。</p>
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">立即試用</h3>
-                <p className="text-sm leading-7 text-gray-700">
-                  認準：<strong>增分寶 GearUp Quiz</strong> — 香港小學中英數練習｜唔係遊戲加速器。歡迎喺本頁上方註冊或登入。
-                </p>
               </div>
 
               <div className="space-y-2 rounded-2xl border border-gray-100 bg-white/85 px-4 py-3">

@@ -543,7 +543,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/layout.tsx",
-          snippet: "唔係遊戲加速器。",
+          snippet: "另有每月 200 題免費額度。",
         },
         {
           type: "file_contains",

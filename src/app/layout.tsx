@@ -50,7 +50,7 @@ const primaryShareImagePath = `${DEFAULT_PUBLIC_SITE_URL}/share/gearup-share-ban
 const homepageTitle =
   "增分寶 GearUp Quiz｜香港小學中英數線上練習平台（P1–P6）";
 const homepageDescription =
-  "增分寶（GearUp Quiz）係香港家長可用嘅小學中、英、數線上練習平台，對齊教育局課程。AI 個人化練習、自動改卷連解釋、家長進度報告；每月 HK$99 三科無限，另有每月 200 題免費額度。唔係遊戲加速器。";
+  "增分寶（GearUp Quiz）係香港家長可用嘅小學中、英、數線上練習平台，對齊教育局課程。AI 個人化練習、自動改卷連解釋、家長進度報告；每月 HK$99 三科無限，另有每月 200 題免費額度。";
 const GTM_CONTAINER_ID =
   process.env.NEXT_PUBLIC_GTM_ID?.trim() || "GTM-KQNKGM4B";
 
