@@ -924,7 +924,9 @@
       "category": "growth",
       "priority": "high",
       "title": "Homepage parent visibility guide below FAQ and SEO metadata",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "1f051ae"
+      ],
       "checks": [
         {
           "type": "file_contains",
@@ -2962,8 +2964,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-15T04:08:36.024Z",
+  "generated_at": "2026-10-15T04:08:49.269Z",
   "commit_inventory": [
+    {
+      "sha": "040ba82de46fa2e30a660828d0328f51a9d7d37c",
+      "date": "2026-10-15",
+      "summary": "chore: add evidence commit for homepage visibility guide contract"
+    },
     {
       "sha": "f17bbf276f5d0b71486afdd877ae10cc0a95207e",
       "date": "2026-10-15",
@@ -5881,7 +5888,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 583,
+    "total_commits_since_start": 584,
     "total_feature_rows": 66
   }
 }
