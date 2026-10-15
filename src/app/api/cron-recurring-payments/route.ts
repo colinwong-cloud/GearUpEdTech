@@ -18,6 +18,7 @@ import {
   isMissingCronRunTableError,
   mitChargeLeaseIso,
   MIT_CRON_SELECT_STATUSES,
+  nextMitChargeAtAfterSuccess,
 } from "@/lib/server/recurring-mit-cron";
 import { chargeDueTutorPlans } from "@/lib/server/tutor-billing";
 
@@ -102,13 +103,6 @@ function formatAirwallexError({
   }
   const snippet = body.text.replace(/\s+/g, " ").slice(0, 220);
   return `Airwallex ${action} failed (${status})${snippet ? `: ${snippet}` : ""}`;
-}
-
-function addOneMonthIsoFrom(value: string): string {
-  const source = new Date(value);
-  const next = Number.isNaN(source.getTime()) ? new Date() : source;
-  next.setUTCMonth(next.getUTCMonth() + 1);
-  return next.toISOString();
 }
 
 type CronRunClient = ReturnType<typeof getSupabaseAdmin> extends infer T ? Exclude<T, null> : never;
@@ -628,13 +622,17 @@ export async function GET(req: NextRequest) {
       }
 
       paid += 1;
+      const chargedAt = new Date().toISOString();
       await markRecurringProfile(supabase, profile.id, {
         status: "active",
         last_order_id: finalize.orderId,
         last_order_status: "paid",
         last_error: null,
-        last_charged_at: new Date().toISOString(),
-        next_charge_at: addOneMonthIsoFrom(profile.next_charge_at),
+        last_charged_at: chargedAt,
+        next_charge_at: nextMitChargeAtAfterSuccess({
+          previousDue: profile.next_charge_at,
+          chargedAt,
+        }),
       });
     }
 

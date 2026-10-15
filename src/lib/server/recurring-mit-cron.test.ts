@@ -6,6 +6,7 @@ import {
   isMitCronRunOverdue,
   mitChargeLeaseIso,
   MIT_CHARGE_LEASE_MS,
+  nextMitChargeAtAfterSuccess,
   shouldStartMitSweep,
 } from "./recurring-mit-cron";
 
@@ -144,6 +145,51 @@ describe("mitChargeLeaseIso", () => {
   it("holds the due date for 20 minutes so a second sweep cannot charge the same cycle", () => {
     expect(mitChargeLeaseIso(NOW)).toBe(new Date(NOW.getTime() + MIT_CHARGE_LEASE_MS).toISOString());
     expect(MIT_CHARGE_LEASE_MS).toBe(20 * 60 * 1000);
+  });
+});
+
+describe("nextMitChargeAtAfterSuccess", () => {
+  const previousDue = "2026-09-10T00:43:00.000Z";
+
+  it("schedules at least one month after a late successful charge (91917838-style)", () => {
+    const chargedAt = "2026-10-09T12:00:00.000Z";
+    const next = nextMitChargeAtAfterSuccess({ previousDue, chargedAt });
+    expect(next).toBe("2026-11-09T12:00:00.000Z");
+    expect(new Date(next).getTime()).toBeGreaterThanOrEqual(
+      new Date("2026-11-09T12:00:00.000Z").getTime()
+    );
+  });
+
+  it("keeps anniversary scheduling when the charge is on time", () => {
+    const chargedAt = "2026-09-10T08:00:00.000Z";
+    const next = nextMitChargeAtAfterSuccess({ previousDue, chargedAt });
+    expect(next).toBe("2026-10-10T08:00:00.000Z");
+  });
+
+  it("prevents a second in-window charge the day after a late success", () => {
+    const chargedAt = "2026-10-09T12:00:00.000Z";
+    const next = nextMitChargeAtAfterSuccess({ previousDue, chargedAt });
+    const dayAfterCharge = new Date("2026-10-10T00:43:00.000Z");
+    expect(
+      isEligibleForMitCronAttempt(
+        {
+          status: "active",
+          next_charge_at: next,
+          last_charged_at: chargedAt,
+        },
+        dayAfterCharge
+      )
+    ).toBe(false);
+    expect(
+      isEligibleForMitCronAttempt(
+        {
+          status: "active",
+          next_charge_at: "2026-10-10T00:43:00.000Z",
+          last_charged_at: chargedAt,
+        },
+        dayAfterCharge
+      )
+    ).toBe(true);
   });
 });
 

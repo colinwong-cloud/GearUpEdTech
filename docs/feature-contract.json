@@ -2091,7 +2091,17 @@
         {
           "type": "file_contains",
           "path": "src/lib/server/tutor-billing.ts",
-          "snippet": "nextMonthlyRecurringStartDate"
+          "snippet": "nextMitChargeAtAfterSuccess"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/recurring-mit-cron.ts",
+          "snippet": "nextMitChargeAtAfterSuccess"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/cron-recurring-payments/route.ts",
+          "snippet": "nextMitChargeAtAfterSuccess"
         },
         {
           "type": "file_contains",
@@ -2922,8 +2932,28 @@
       ]
     }
   ],
-  "generated_at": "2026-10-08T05:56:45.054Z",
+  "generated_at": "2026-10-15T03:54:00.795Z",
   "commit_inventory": [
+    {
+      "sha": "cc0f58453afe0cea0182f4683faa79f3077edf22",
+      "date": "2026-10-15",
+      "summary": "chore: align feature-contract checks with MIT next_charge_at helper"
+    },
+    {
+      "sha": "b3cc399039769d5fe979a652eab46222b43eaf90",
+      "date": "2026-10-15",
+      "summary": "chore: refresh feature-contract inventory"
+    },
+    {
+      "sha": "446c48c8da6add36d77263aede67914814ae03b6",
+      "date": "2026-10-15",
+      "summary": "fix(mit): floor next_charge_at at chargedAt + 1 month after success"
+    },
+    {
+      "sha": "6abc2772e7f4482fb7f9ee1681b584200bdae8eb",
+      "date": "2026-10-08",
+      "summary": "chore: record the company name in the HKSTP brief contract"
+    },
     {
       "sha": "9c7a109d52dd9c2ec0f4c34cf5b929720fe13737",
       "date": "2026-10-08",
@@ -5806,7 +5836,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 576,
+    "total_commits_since_start": 580,
     "total_feature_rows": 65
   }
 }

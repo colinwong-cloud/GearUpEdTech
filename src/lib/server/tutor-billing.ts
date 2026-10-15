@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enforceRecurringCheckoutMethods, getAirwallexMethodsForSelection } from "@/lib/airwallex-checkout-methods";
-import { nextMonthlyRecurringStartDate } from "@/lib/airwallex-hpp-mit";
 import {
   buildMitConfirmAttempts,
   classifyRecurringChargeFailure,
@@ -8,7 +7,11 @@ import {
   isConsentUsableForMit,
   shouldTryNextMitConfirmShape,
 } from "@/lib/server/recurring-mit-confirm";
-import { filterEligibleMitCronProfiles, mitChargeLeaseIso } from "@/lib/server/recurring-mit-cron";
+import {
+  filterEligibleMitCronProfiles,
+  mitChargeLeaseIso,
+  nextMitChargeAtAfterSuccess,
+} from "@/lib/server/recurring-mit-cron";
 import {
   TUTOR_PLAN_PRICE_HKD,
   extendTutorPaidUntil,
@@ -361,12 +364,6 @@ export async function confirmTutorPlanPayment(input: {
 
 const TUTOR_MIT_PAID_STATES = new Set(["SUCCEEDED", "SUCCESS", "PAID", "CAPTURE_REQUESTED", "SETTLED"]);
 
-function nextTutorMitChargeIso(dueAt: string): string {
-  const due = new Date(dueAt);
-  const base = Number.isNaN(due.getTime()) ? new Date() : due;
-  return nextMonthlyRecurringStartDate(base).toISOString();
-}
-
 async function readTutorConsentStatus(input: {
   airwallexBase: string;
   accessToken: string;
@@ -598,8 +595,8 @@ export async function chargeDueTutorPlans(supabase: SupabaseClient): Promise<{ p
       await recordTutorMitFailure(supabase, profile.id, dueAt, reason);
       continue;
     }
-    const nextChargeAt = nextTutorMitChargeIso(dueAt);
     const chargedAt = new Date().toISOString();
+    const nextChargeAt = nextMitChargeAtAfterSuccess({ previousDue: dueAt, chargedAt });
     await supabase
       .from("tutor_recurring_profiles")
       .update({

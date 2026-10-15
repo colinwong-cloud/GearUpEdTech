@@ -240,12 +240,13 @@ describe("anti-missing regression guards", () => {
     expect(tutorMitSource).toContain("isConsentUsableForMit");
     expect(tutorMitSource).toContain("filterEligibleMitCronProfiles");
     expect(tutorMitSource).toContain("mitChargeLeaseIso");
-    expect(tutorMitSource).toContain("nextMonthlyRecurringStartDate");
+    expect(tutorMitSource).toContain("nextMitChargeAtAfterSuccess");
     expect(tutorMitSource).toContain("tutor-subsequent-confirm-retry");
     expect(tutorMitSource).not.toContain("attempts[0]?.payload");
     expect(cronSource).toContain("subsequent-confirm-retry");
     expect(cronSource).toContain("cron-auth-rejected");
     expect(cronSource).toContain("filterEligibleMitCronProfiles");
+    expect(cronSource).toContain("nextMitChargeAtAfterSuccess");
     expect(cronSource).toContain('.in("status", [...MIT_CRON_SELECT_STATUSES])');
     expect(cronSource).toContain("recurring_cron_runs");
     expect(cronSource).not.toContain("external_recurring_data");
