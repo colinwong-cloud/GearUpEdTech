@@ -3010,8 +3010,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-24T05:21:18.891Z",
+  "generated_at": "2026-10-24T05:53:45.267Z",
   "commit_inventory": [
+    {
+      "sha": "274bd20b1e1ff43c98de8b9fba6968d07c968365",
+      "date": "2026-10-24",
+      "summary": "fix(build): use webpack production build on Vercel"
+    },
+    {
+      "sha": "3cc7a2655a9da0acd7b3f0c67badfb14a88d87f7",
+      "date": "2026-10-24",
+      "summary": "chore: refresh feature contract after question-type mix"
+    },
     {
       "sha": "17eaec890f4d4a2500188158e3f60dd84ab4364a",
       "date": "2026-10-24",
@@ -5994,7 +6004,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 596,
+    "total_commits_since_start": 598,
     "total_feature_rows": 67
   }
 }
