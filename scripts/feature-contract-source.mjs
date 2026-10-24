@@ -110,7 +110,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Question-count screen question-type mix toggles (paid + free)",
-      evidence_commits: ["56a9af2"],
+      evidence_commits: ["7d96099"],
       checks: [
         { type: "file_exists", path: "src/lib/question-type-mix.ts" },
         { type: "file_contains", path: "src/lib/question-type-mix.ts", snippet: "請至少選擇一種題型" },
