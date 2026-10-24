@@ -24,6 +24,15 @@ import {
   isAiQuestionSource,
 } from "@/lib/question-source";
 import {
+  allTypesEnabledInMix,
+  buildQuestionTypeMixAllOffMessage,
+  composeWeightsWithEnabledTypes,
+  distinctQuestionTypesFromPool,
+  filterQuestionsByEnabledTypes,
+  isAtLeastOneQuestionTypeEnabled,
+  planQuizQuestionDraw,
+} from "@/lib/question-type-mix";
+import {
   pushGtmEventOncePerSession,
 } from "@/lib/gtm-events";
 import { getPrivacyStatementTxtUrl } from "@/lib/privacy-statement";
@@ -784,6 +793,7 @@ export default function QuizApp() {
   const [pinInput, setPinInput] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [balance, setBalance] = useState<StudentBalance | null>(null);
+  const [quizPoolPreview, setQuizPoolPreview] = useState<Question[] | null>(null);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -1183,6 +1193,11 @@ export default function QuizApp() {
 
         setBalance(balRecord);
         setSelectedSubject(subject);
+        const poolPreview = await fetchAllQuestions(
+          subject,
+          selectedStudent.grade_level
+        );
+        setQuizPoolPreview(poolPreview);
         setScreen("question_count_select");
       } catch (err) {
         setError(err instanceof Error ? err.message : "無法開始測驗。");
@@ -1193,17 +1208,26 @@ export default function QuizApp() {
     [selectedStudent, mobileNumber]
   );
 
-  const handleQuestionCountSelect = async (count: number) => {
+  const handleQuizStart = async (count: number, enabledTypes: string[]) => {
     if (!selectedStudent || !selectedSubject) return;
+    if (!isAtLeastOneQuestionTypeEnabled(enabledTypes)) {
+      setError(buildQuestionTypeMixAllOffMessage());
+      return;
+    }
     if (balance && balance.remaining_questions >= 0 && balance.remaining_questions < count) {
       setError(`餘額不足，你只剩 ${balance.remaining_questions} 題，請選擇較少的題數。`);
       return;
     }
     setError(null);
-    await startQuiz(selectedStudent, selectedSubject, count);
+    await startQuiz(selectedStudent, selectedSubject, count, enabledTypes);
   };
 
-  const startQuiz = async (student: Student, subject: string, count: number = 10) => {
+  const startQuiz = async (
+    student: Student,
+    subject: string,
+    count: number = 10,
+    enabledQuestionTypes?: string[]
+  ) => {
     resetPendingQuizSubmitQueue();
     setLoading(true);
     setCurrentIndex(0);
@@ -1216,15 +1240,26 @@ export default function QuizApp() {
 
     try {
       const allQuestions = await fetchAllQuestions(subject, student.grade_level);
-      if (allQuestions.length < count) {
-        throw new Error(
-          buildStrictAiQuestionPoolErrorMessage({
-            subjectKey: subject,
-            gradeLevel: student.grade_level,
-            requestedCount: count,
-            availableCount: allQuestions.length,
-          })
-        );
+      const poolTypes = distinctQuestionTypesFromPool(allQuestions);
+      const enabledTypes =
+        enabledQuestionTypes && enabledQuestionTypes.length > 0
+          ? enabledQuestionTypes
+          : poolTypes;
+      const typesAllOn = allTypesEnabledInMix(poolTypes, enabledTypes);
+      const typeFilteredPool = filterQuestionsByEnabledTypes(
+        allQuestions,
+        enabledTypes
+      );
+      const drawPlan = planQuizQuestionDraw({
+        subjectKey: subject,
+        gradeLevel: student.grade_level,
+        requestedCount: count,
+        totalPoolSize: allQuestions.length,
+        filteredPoolSize: typeFilteredPool.length,
+        allTypesEnabled: typesAllOn,
+      });
+      if (drawPlan.strictErrorMessage) {
+        throw new Error(drawPlan.strictErrorMessage);
       }
 
       const { data: weights } = await supabase
@@ -1233,12 +1268,16 @@ export default function QuizApp() {
         .eq("student_id", student.id)
         .ilikeAnyOf("subject", quizSubjectDbPatterns(subject));
 
-      const selected = selectQuestions(
-        allQuestions,
+      const composedWeights = composeWeightsWithEnabledTypes(
         (weights as ParentWeight[]) || [],
-        count
+        enabledTypes
       );
-      if (selected.length < count) {
+      const selected = selectQuestions(
+        typeFilteredPool,
+        composedWeights,
+        drawPlan.effectiveCount
+      );
+      if (typesAllOn && selected.length < count) {
         throw new Error(
           buildStrictAiQuestionPoolErrorMessage({
             subjectKey: subject,
@@ -1956,11 +1995,19 @@ export default function QuizApp() {
   if (screen === "question_count_select") {
     return (
       <QuestionCountScreen
+        key={`${selectedSubject ?? ""}-${selectedStudent?.id ?? ""}-${quizPoolPreview?.length ?? 0}`}
         studentName={selectedStudent?.student_name || ""}
         subjectKey={selectedSubject || ""}
         balance={balance?.remaining_questions ?? null}
-        onSelect={handleQuestionCountSelect}
-        onBack={() => { setError(null); setScreen("subject_select"); }}
+        questionTypes={distinctQuestionTypesFromPool(quizPoolPreview || [])}
+        poolQuestions={quizPoolPreview || []}
+        loading={loading}
+        onStart={handleQuizStart}
+        onBack={() => {
+          setError(null);
+          setQuizPoolPreview(null);
+          setScreen("subject_select");
+        }}
         error={error}
       />
     );
@@ -3263,18 +3310,62 @@ function QuestionCountScreen({
   studentName,
   subjectKey,
   balance,
-  onSelect,
+  questionTypes,
+  poolQuestions,
+  loading,
+  onStart,
   onBack,
   error,
 }: {
   studentName: string;
   subjectKey: string;
   balance: number | null;
-  onSelect: (count: number) => void;
+  questionTypes: string[];
+  poolQuestions: Question[];
+  loading: boolean;
+  onStart: (count: number, enabledTypes: string[]) => void;
   onBack: () => void;
   error: string | null;
 }) {
   const subjectLine = subjectKey ? subjectDisplayLabel(subjectKey) : "";
+  const [selectedCount, setSelectedCount] = useState<number | null>(null);
+  const [enabledTypeKeys, setEnabledTypeKeys] = useState<Set<string>>(
+    () => new Set(questionTypes)
+  );
+
+  const enabledTypesList = questionTypes.filter((t) =>
+    enabledTypeKeys.has(t)
+  );
+  const typesAllOn = allTypesEnabledInMix(questionTypes, enabledTypesList);
+  const filteredPool = filterQuestionsByEnabledTypes(poolQuestions, enabledTypesList);
+  const drawPreview =
+    selectedCount !== null
+      ? planQuizQuestionDraw({
+          subjectKey,
+          gradeLevel: "",
+          requestedCount: selectedCount,
+          totalPoolSize: poolQuestions.length,
+          filteredPoolSize: filteredPool.length,
+          allTypesEnabled: typesAllOn,
+        })
+      : null;
+  const softWarnMessage = drawPreview?.softWarnMessage ?? null;
+  const allOff = !isAtLeastOneQuestionTypeEnabled(enabledTypesList);
+  const canStart =
+    selectedCount !== null &&
+    !allOff &&
+    !loading &&
+    (drawPreview?.strictErrorMessage == null || !typesAllOn);
+
+  const toggleType = (type: string) => {
+    setEnabledTypeKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  };
+
   return (
     <div
       className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4"
@@ -3302,15 +3393,19 @@ function QuestionCountScreen({
         <div className="space-y-3">
           {QUESTION_COUNT_OPTIONS.map((count) => {
             const disabled = balance !== null && balance >= 0 && balance < count;
+            const selected = selectedCount === count;
             return (
               <button
                 key={count}
-                onClick={() => !disabled && onSelect(count)}
+                type="button"
+                onClick={() => !disabled && setSelectedCount(count)}
                 disabled={disabled}
-                className={`w-full bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex items-center justify-between transition-all duration-200 ${
+                className={`w-full bg-white rounded-2xl shadow-md border p-5 flex items-center justify-between transition-all duration-200 ${
                   disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:border-indigo-300 hover:shadow-lg active:scale-[0.98]"
+                    ? "opacity-50 cursor-not-allowed border-gray-100"
+                    : selected
+                      ? "border-indigo-400 ring-2 ring-indigo-200 hover:border-indigo-400 hover:shadow-lg active:scale-[0.98]"
+                      : "border-gray-100 hover:border-indigo-300 hover:shadow-lg active:scale-[0.98]"
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -3332,7 +3427,68 @@ function QuestionCountScreen({
             );
           })}
         </div>
+
+        {questionTypes.length > 0 && (
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-gray-700 mb-2">題型</p>
+            <div className="flex flex-wrap gap-2">
+              {questionTypes.map((type) => {
+                const on = enabledTypeKeys.has(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleType(type)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      on
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                        : "border-gray-200 bg-white text-gray-500"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                );
+              })}
+            </div>
+            {allOff && (
+              <p className="mt-2 text-sm text-red-600 text-center">
+                {buildQuestionTypeMixAllOffMessage()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {softWarnMessage && (
+          <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800 text-center">
+            {softWarnMessage}
+          </div>
+        )}
+
+        {selectedCount !== null &&
+          typesAllOn &&
+          drawPreview?.strictErrorMessage && (
+            <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600 text-center">
+              {drawPreview.strictErrorMessage}
+            </div>
+          )}
+
         <button
+          type="button"
+          onClick={() =>
+            selectedCount !== null && canStart && onStart(selectedCount, enabledTypesList)
+          }
+          disabled={!canStart}
+          className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-8 py-3.5 font-semibold transition-all duration-200 ${
+            canStart
+              ? "bg-sky-500 text-white hover:bg-sky-600 active:scale-[0.98]"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {loading ? "載入中…" : "開始練習"}
+        </button>
+
+        <button
+          type="button"
           onClick={onBack}
           className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
         >

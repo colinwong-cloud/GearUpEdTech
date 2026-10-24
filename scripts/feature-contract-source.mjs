@@ -105,6 +105,23 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "quiz-question-type-mix",
+      month: "2026-10",
+      category: "quiz-core",
+      priority: "critical",
+      title: "Question-count screen question-type mix toggles (paid + free)",
+      evidence_commits: ["7d96099"],
+      checks: [
+        { type: "file_exists", path: "src/lib/question-type-mix.ts" },
+        { type: "file_contains", path: "src/lib/question-type-mix.ts", snippet: "請至少選擇一種題型" },
+        { type: "file_contains", path: "src/lib/question-type-mix.ts", snippet: "所選題型只有" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "題型" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "composeWeightsWithEnabledTypes" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "filterQuestionsByEnabledTypes" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "開始練習" },
+      ],
+    },
+    {
       id: "quiz-star-progress-ltr-grid",
       month: "2026-07",
       category: "quiz-core",
