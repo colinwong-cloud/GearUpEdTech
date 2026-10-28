@@ -55,6 +55,14 @@ import {
 } from "@/components/student-quiz-experience";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
+  PracticeStampCard,
+  clearPracticeStampCardDismissForSession,
+} from "@/components/practice-stamp-card";
+import {
+  parsePracticeStampAwardFromUpdateSession,
+  type PracticeStampAwardPayload,
+} from "@/lib/practice-stamp-card-ui";
+import {
   buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
   type MitRecurringTermsOfUse,
@@ -332,6 +340,7 @@ type AppScreen =
   | "parent_dashboard"
   | "parent_session_detail"
   | "account_menu"
+  | "practice_stamp_card"
   | "balance_view"
   | "payment_history"
   | "profile_edit"
@@ -350,6 +359,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "parent_dashboard",
   "parent_session_detail",
   "account_menu",
+  "practice_stamp_card",
   "balance_view",
   "payment_history",
   "profile_edit",
@@ -816,6 +826,8 @@ export default function QuizApp() {
   const [encourageIndex, setEncourageIndex] = useState(0);
   const [quizSoundOn, setQuizSoundOn] = useState(true);
   const [sessionPracticeSummary, setSessionPracticeSummary] = useState<string | null>(null);
+  const [practiceStampAwardFeedback, setPracticeStampAwardFeedback] =
+    useState<PracticeStampAwardPayload | null>(null);
   useEffect(() => {
     setQuizSoundOn(getQuizSoundEnabled());
   }, []);
@@ -1058,6 +1070,7 @@ export default function QuizApp() {
 
   const handleStudentSelect = useCallback((student: Student) => {
     setSelectedStudent(student);
+    clearPracticeStampCardDismissForSession();
     setScreen("subject_select");
   }, []);
 
@@ -1439,12 +1452,15 @@ export default function QuizApp() {
                 timeout_ms: 350,
               });
             }
-            await supabase.rpc("update_quiz_session", {
+            const { data: updateSessionData } = await supabase.rpc("update_quiz_session", {
               p_session_id: finalSessionId,
               p_questions_attempted: updatedAnswers.length,
               p_score: newScore,
               p_time_spent_seconds: timeSpent,
             });
+            setPracticeStampAwardFeedback(
+              parsePracticeStampAwardFromUpdateSession(updateSessionData)
+            );
             await finalizeQuizAndSummary({
               finalAnswers: updatedAnswers,
               summary,
@@ -1805,6 +1821,7 @@ export default function QuizApp() {
   }
 
   if (screen === "account_menu") {
+    const stampStudentId = selectedStudent?.id ?? students[0]?.id ?? null;
     return (
       <AccountMenuScreen
         onProfile={() => setScreen("profile_edit")}
@@ -1812,9 +1829,46 @@ export default function QuizApp() {
         onBalance={() => setScreen("balance_view")}
         onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
+        onStampCard={
+          stampStudentId ? () => setScreen("practice_stamp_card") : undefined
+        }
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
       />
+    );
+  }
+
+  if (screen === "practice_stamp_card") {
+    const stampStudentId = selectedStudent?.id ?? students[0]?.id;
+    if (!stampStudentId) {
+      return (
+        <div className="flex min-h-screen items-center justify-center px-4">
+          <button
+            type="button"
+            onClick={() => setScreen("account_menu")}
+            className="rounded-xl border border-sky-200 bg-white px-6 py-3 text-sky-700"
+          >
+            返回戶口管理
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div
+        className="min-h-screen bg-white/60 backdrop-blur-sm px-4 py-8"
+        onContextMenu={preventContextMenu}
+      >
+        <div className="mx-auto w-full max-w-md">
+          <PracticeStampCard studentId={stampStudentId} variant="full" />
+          <button
+            type="button"
+            onClick={() => setScreen("account_menu")}
+            className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 hover:bg-sky-50"
+          >
+            返回
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -1977,6 +2031,7 @@ export default function QuizApp() {
     return (
       <SubjectSelectScreen
         studentName={selectedStudent?.student_name || ""}
+        studentId={selectedStudent?.id ?? null}
         onSelect={handleSubjectSelect}
         onBack={() => {
           setError(null);
@@ -2021,6 +2076,7 @@ export default function QuizApp() {
         studentId={selectedStudent?.id || null}
         sessionId={sessionId}
         sessionSummary={sessionPracticeSummary}
+        practiceStampAward={practiceStampAwardFeedback}
         onRestart={handleRestart}
         onBackToHome={handleBackToHome}
         onLogout={handleLogout}
@@ -3228,6 +3284,7 @@ function StudentSelectScreen({
 
 function SubjectSelectScreen({
   studentName,
+  studentId,
   onSelect,
   onBack,
   onUpgrade,
@@ -3235,6 +3292,7 @@ function SubjectSelectScreen({
   error,
 }: {
   studentName: string;
+  studentId: string | null;
   onSelect: (s: string) => void;
   onBack: () => void;
   onUpgrade: () => void;
@@ -3279,6 +3337,15 @@ function SubjectSelectScreen({
             >
               解鎖無限題庫，取得排名資訊
             </button>
+          </div>
+        )}
+        {studentId && (
+          <div className="mb-4">
+            <PracticeStampCard
+              studentId={studentId}
+              variant="compact"
+              dismissible
+            />
           </div>
         )}
         <div className="space-y-3">
@@ -3515,6 +3582,7 @@ function ResultsView({
   studentId,
   sessionId,
   sessionSummary,
+  practiceStampAward,
   onRestart,
   onBackToHome,
   onLogout,
@@ -3525,6 +3593,7 @@ function ResultsView({
   studentId: string | null;
   sessionId: string | null;
   sessionSummary: string | null;
+  practiceStampAward: PracticeStampAwardPayload | null;
   onRestart: () => void;
   onBackToHome: () => void;
   onLogout: () => void;
@@ -3812,6 +3881,16 @@ function ResultsView({
             登出
           </button>
         </div>
+
+        {studentId && (
+          <div className="mt-8">
+            <PracticeStampCard
+              studentId={studentId}
+              variant="full"
+              earnFeedbackAward={practiceStampAward}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4081,6 +4160,7 @@ function AccountMenuScreen({
   onBalance,
   onPaymentHistory,
   onUpgrade,
+  onStampCard,
   tierStatus,
   onBack,
 }: {
@@ -4089,6 +4169,7 @@ function AccountMenuScreen({
   onBalance: () => void;
   onPaymentHistory: () => void;
   onUpgrade: () => void;
+  onStampCard?: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
@@ -4137,6 +4218,20 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
+          {onStampCard && (
+            <button
+              onClick={onStampCard}
+              className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-amber-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
+                🎫
+              </div>
+              <div className="text-left">
+                <p className="text-base font-semibold text-gray-900">練習印花卡</p>
+                <p className="text-sm text-gray-500">查看連續練習印花進度</p>
+              </div>
+            </button>
+          )}
           {tierStatus.is_paid && (
             <button
               onClick={onPaymentHistory}

@@ -10,6 +10,32 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-stamp-pop: stamp-pop 0.55s ease-out;
+}
+
+@keyframes stamp-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-stamp-pop {
+  animation: var(--animate-stamp-pop);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-pop {
+    animation: none;
+  }
 }
 
 body {
