@@ -452,7 +452,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/practice-stamp-card-ui.ts",
-          snippet: "按「兌換禮品」領取電子禮券",
+          snippet: "按「立即換領」領取電子禮券",
         },
         {
           type: "file_contains",
