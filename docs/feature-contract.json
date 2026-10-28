@@ -550,7 +550,7 @@
       "priority": "high",
       "title": "Practice stamp card Phase 3 account progress and redeem history",
       "evidence_commits": [
-        "3d84c20"
+        "f05ceb2"
       ],
       "checks": [
         {
@@ -594,6 +594,81 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "PracticeStampAccountScreen"
+        }
+      ]
+    },
+    {
+      "id": "practice-stamp-card-phase4-admin-inventory",
+      "month": "2026-10",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
+      "evidence_commits": [
+        "9f4ba32",
+        "632678a",
+        "fe45dee"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase4_inventory.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/admin-stamp-card.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/admin-stamp-card.test.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/admin/practice-stamp-section.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase4_inventory.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "關閉後不可新報名；進行中印花卡可繼續累積與換領"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "接受"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "練習印花卡"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "尚未有更新紀錄"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/practice-stamp-section.tsx",
+          "snippet": "取消"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "總碼"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "匯入兌換碼 CSV"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_program_settings_get"
         }
       ]
     },
@@ -3174,62 +3249,57 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T10:36:44.901Z",
+  "generated_at": "2026-10-28T12:51:30.683Z",
   "commit_inventory": [
     {
-      "sha": "687840150246fe135de05388c26773d9d8547798",
+      "sha": "94007c1847001a76e3dedd030d1e70f300697c09",
       "date": "2026-10-28",
-      "summary": "fix: embed GearUp icon in stamp-seal.svg for img-safe rendering"
+      "summary": "fix(admin): stamp report sticky overlap, Growth TC labels, audit empty helper"
     },
     {
-      "sha": "f5d481a59fb5ef4c1373296b6c13ad3de95aa4dc",
+      "sha": "e82c31e6fcef90b24689b57ea4313ca416371df3",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory for soft-fix commits"
+    },
+    {
+      "sha": "135d98ee144e9d148361090542b9b4c538d63bea",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract after Phase 4 UI soft fixes"
+    },
+    {
+      "sha": "072d2eec1dcf908f439d0c8c9df65e10b97f1ae0",
+      "date": "2026-10-28",
+      "summary": "fix(admin): Phase 4 stamp UI soft fixes — cancel, sticky cols, audit placeholder"
+    },
+    {
+      "sha": "6316485728ecbeca92b4a4f24d41cf638e9ae6ed",
       "date": "2026-10-28",
       "summary": "chore: refresh feature contract inventory"
     },
     {
-      "sha": "abcb1654b57aecf6a74ae5853b0c78078a0ea279",
+      "sha": "3b64058a823ec9de8efbda70b1dfc7c74e73db29",
       "date": "2026-10-28",
-      "summary": "fix: show redeem history table headers when empty"
+      "summary": "chore: fix feature contract evidence commits for Phase 3–4"
     },
     {
-      "sha": "9a62690b33020972ab9e813d4bf5595c7c30c967",
+      "sha": "fe45dee417d70f646040272073804479100b42fd",
       "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
+      "summary": "test(smoke): assert admin 練習印花卡 tab visible"
     },
     {
-      "sha": "2cf85948484e8409b2b38b05d0e17553a75536b7",
+      "sha": "632678adca3f63ca99a9c1a678f3f42328f43210",
       "date": "2026-10-28",
-      "summary": "fix: order stamp redeem history json_agg by redeemed_at_hkt"
+      "summary": "chore: refresh feature contract for Phase 4 admin stamp inventory"
     },
     {
-      "sha": "7ebede6da64156157f5fc7ccb1145541532cd593",
+      "sha": "9f4ba3235fcb19c69aa82a8f7e50ec7495172412",
       "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
+      "summary": "feat(admin): Phase 4 practice stamp program toggle, gift inventory, redeem report"
     },
     {
-      "sha": "a07b124c7e75bbd013d4632b094e0fbaa8ce4902",
+      "sha": "f05ceb2c5affa7a2da1b347d733fa55823cb53f5",
       "date": "2026-10-28",
-      "summary": "chore: align stamp feature evidence with #220 squash and fix contract gate"
-    },
-    {
-      "sha": "5668c0e8cb59bbaf6a2135615bfa18ddc508bd52",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "f96ad5b250b9678f332513eda44b037d7e498f6a",
-      "date": "2026-10-28",
-      "summary": "chore: set Phase 3 feature contract evidence commit"
-    },
-    {
-      "sha": "f6df4041fea803ee3f9bd568f86460365a9afa5d",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for Phase 3 account history"
-    },
-    {
-      "sha": "3d84c206101bcd6017b307e4a218c70d98e54bbe",
-      "date": "2026-10-28",
-      "summary": "feat: Phase 3 account stamp progress and redeem history UI"
+      "summary": "feat: Practice stamp card Phase 3 — account progress and redeem history (#221)"
     },
     {
       "sha": "1e37139e1a0eb1b202bdf7281bf9263799dad8e3",
@@ -6233,7 +6303,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 611,
-    "total_feature_rows": 70
+    "total_commits_since_start": 610,
+    "total_feature_rows": 71
   }
 }

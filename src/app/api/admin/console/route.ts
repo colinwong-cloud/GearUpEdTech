@@ -39,6 +39,17 @@ import {
   isMitCronRunOverdue,
 } from "@/lib/server/recurring-mit-cron";
 import { triggerDueMitSweep } from "@/lib/server/recurring-mit-sweep";
+import {
+  adminStampGiftCodesExport,
+  adminStampGiftCodesImport,
+  adminStampGiftCreate,
+  adminStampGiftList,
+  adminStampGiftUpdate,
+  adminStampProgramSetOpen,
+  adminStampProgramSettingsGet,
+  adminStampRedemptionReport,
+} from "@/lib/server/admin-stamp-card";
+import { buildGiftCodesExportCsv } from "@/lib/admin-stamp-card";
 
 type AdminAction =
   | "search_parent"
@@ -72,7 +83,15 @@ type AdminAction =
   | "tutor_payment_monitor"
   | "tutor_payment_grant_30"
   | "tutor_payment_refund_preview"
-  | "tutor_payment_refund_confirm";
+  | "tutor_payment_refund_confirm"
+  | "stamp_program_settings_get"
+  | "stamp_program_settings_set_open"
+  | "stamp_gift_list"
+  | "stamp_gift_create"
+  | "stamp_gift_update"
+  | "stamp_gift_codes_import"
+  | "stamp_gift_codes_export"
+  | "stamp_redemption_report";
 
 type RequestBody = {
   action?: AdminAction;
@@ -3187,6 +3206,39 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           data: await confirmTutorMonthRefund(admin, { mobile, orderId, reason, adminUser }),
         });
+      }
+      case "stamp_program_settings_get": {
+        return NextResponse.json({ data: await adminStampProgramSettingsGet(admin) });
+      }
+      case "stamp_program_settings_set_open": {
+        const open = Boolean(payload.open);
+        return NextResponse.json({
+          data: await adminStampProgramSetOpen(admin, open, adminUser),
+        });
+      }
+      case "stamp_gift_list": {
+        return NextResponse.json({ data: await adminStampGiftList(admin) });
+      }
+      case "stamp_gift_create": {
+        return NextResponse.json({ data: await adminStampGiftCreate(admin, payload) });
+      }
+      case "stamp_gift_update": {
+        return NextResponse.json({ data: await adminStampGiftUpdate(admin, payload) });
+      }
+      case "stamp_gift_codes_import": {
+        return NextResponse.json({ data: await adminStampGiftCodesImport(admin, payload) });
+      }
+      case "stamp_gift_codes_export": {
+        const result = await adminStampGiftCodesExport(admin, payload);
+        return NextResponse.json({
+          data: {
+            ...result,
+            csv: buildGiftCodesExportCsv(result.rows),
+          },
+        });
+      }
+      case "stamp_redemption_report": {
+        return NextResponse.json({ data: await adminStampRedemptionReport(admin, payload) });
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
