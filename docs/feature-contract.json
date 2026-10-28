@@ -532,6 +532,11 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "PracticeStampCard"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "STAMP_HOME_REOPEN_LABEL"
         }
       ]
     },
@@ -3112,8 +3117,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T08:26:34.209Z",
+  "generated_at": "2026-10-28T09:04:39.840Z",
   "commit_inventory": [
+    {
+      "sha": "05e6a47c441f265e14672fc3bbe04296dc21d392",
+      "date": "2026-10-28",
+      "summary": "fix: show home reopen control when stamp card is dismissed"
+    },
+    {
+      "sha": "23fbc2bdc20fe4879cbf92b3974ca9c5c6e53a8e",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "1d96273dcc602d7365e0aa354ef12ca9df8fd879",
       "date": "2026-10-28",
@@ -6156,7 +6171,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 608,
+    "total_commits_since_start": 610,
     "total_feature_rows": 69
   }
 }
