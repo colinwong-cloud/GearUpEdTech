@@ -321,7 +321,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "account",
       priority: "high",
       title: "Practice stamp card Phase 3 account progress and redeem history",
-      evidence_commits: [],
+      evidence_commits: ["3d84c20"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase3_account.sql" },
         { type: "file_exists", path: "src/components/practice-stamp-account-screen.tsx" },
