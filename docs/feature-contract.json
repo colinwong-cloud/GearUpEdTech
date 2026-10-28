@@ -439,7 +439,10 @@
       "category": "engagement",
       "priority": "high",
       "title": "Practice stamp card Phase 1 earn and streak on session completion",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "864a714",
+        "13781e1"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -486,7 +489,10 @@
       "category": "engagement",
       "priority": "high",
       "title": "Practice stamp card Phase 2 student chrome and redeem UI shell",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "1516970",
+        "3cd2072"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -519,8 +525,8 @@
         },
         {
           "type": "file_contains",
-          "path": "src/components/practice-stamp-card.tsx",
-          "snippet": "練習印花卡"
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "STAMP_CARD_HEADER_TITLE = \"練習印花卡\""
         },
         {
           "type": "file_contains",
@@ -3106,8 +3112,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T08:19:20.290Z",
+  "generated_at": "2026-10-28T08:19:38.352Z",
   "commit_inventory": [
+    {
+      "sha": "3cd20722d69d0830fa95c0dcecdd3da45c97525f",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for stamp card Phase 2 UI"
+    },
     {
       "sha": "15169705373db065345990e6272b9eef4f2c1edd",
       "date": "2026-10-28",
@@ -6130,7 +6141,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 604,
+    "total_commits_since_start": 605,
     "total_feature_rows": 69
   }
 }
