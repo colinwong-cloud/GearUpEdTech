@@ -242,6 +242,39 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase1-earn-streak",
+      month: "2026-10",
+      category: "engagement",
+      priority: "high",
+      title: "Practice stamp card Phase 1 earn and streak on session completion",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase1.sql" },
+        { type: "file_exists", path: "src/lib/practice-stamp-card.ts" },
+        { type: "file_exists", path: "src/lib/practice-stamp-card.test.ts" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase1.sql",
+          snippet: "award_practice_stamp_for_session",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase1.sql",
+          snippet: "stamps_program_open",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card.ts",
+          snippet: "PRACTICE_STAMP_MIN_ANSWERS = 10",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card.ts",
+          snippet: "isExcludedTestMobileForKpi",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",
