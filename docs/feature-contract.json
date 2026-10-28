@@ -598,6 +598,57 @@
       ]
     },
     {
+      "id": "practice-stamp-card-phase4-admin-inventory",
+      "month": "2026-10",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase4_inventory.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/admin-stamp-card.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/admin-stamp-card.test.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/admin/practice-stamp-section.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase4_inventory.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "關閉後不可新報名；進行中印花卡可繼續累積與換領"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "接受"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "練習印花卡"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_program_settings_get"
+        }
+      ]
+    },
+    {
       "id": "parent-email-practice-summary-and-wrong-details",
       "month": "2026-07",
       "category": "communications",
@@ -3174,62 +3225,12 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T10:36:44.901Z",
+  "generated_at": "2026-10-28T11:04:52.836Z",
   "commit_inventory": [
     {
-      "sha": "687840150246fe135de05388c26773d9d8547798",
+      "sha": "f05ceb2c5affa7a2da1b347d733fa55823cb53f5",
       "date": "2026-10-28",
-      "summary": "fix: embed GearUp icon in stamp-seal.svg for img-safe rendering"
-    },
-    {
-      "sha": "f5d481a59fb5ef4c1373296b6c13ad3de95aa4dc",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "abcb1654b57aecf6a74ae5853b0c78078a0ea279",
-      "date": "2026-10-28",
-      "summary": "fix: show redeem history table headers when empty"
-    },
-    {
-      "sha": "9a62690b33020972ab9e813d4bf5595c7c30c967",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "2cf85948484e8409b2b38b05d0e17553a75536b7",
-      "date": "2026-10-28",
-      "summary": "fix: order stamp redeem history json_agg by redeemed_at_hkt"
-    },
-    {
-      "sha": "7ebede6da64156157f5fc7ccb1145541532cd593",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "a07b124c7e75bbd013d4632b094e0fbaa8ce4902",
-      "date": "2026-10-28",
-      "summary": "chore: align stamp feature evidence with #220 squash and fix contract gate"
-    },
-    {
-      "sha": "5668c0e8cb59bbaf6a2135615bfa18ddc508bd52",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "f96ad5b250b9678f332513eda44b037d7e498f6a",
-      "date": "2026-10-28",
-      "summary": "chore: set Phase 3 feature contract evidence commit"
-    },
-    {
-      "sha": "f6df4041fea803ee3f9bd568f86460365a9afa5d",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for Phase 3 account history"
-    },
-    {
-      "sha": "3d84c206101bcd6017b307e4a218c70d98e54bbe",
-      "date": "2026-10-28",
-      "summary": "feat: Phase 3 account stamp progress and redeem history UI"
+      "summary": "feat: Practice stamp card Phase 3 — account progress and redeem history (#221)"
     },
     {
       "sha": "1e37139e1a0eb1b202bdf7281bf9263799dad8e3",
@@ -6233,7 +6234,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 611,
-    "total_feature_rows": 70
+    "total_commits_since_start": 601,
+    "total_feature_rows": 71
   }
 }
