@@ -475,13 +475,57 @@
         },
         {
           "type": "file_contains",
-          "path": "supabase_practice_stamp_card_phase1.sql",
-          "snippet": "stamps_per_card INTEGER NOT NULL DEFAULT 20"
+          "path": "src/lib/practice-stamp-card.ts",
+          "snippet": "isExcludedTestMobileForKpi"
+        }
+      ]
+    },
+    {
+      "id": "practice-stamp-card-phase2-student-chrome",
+      "month": "2026-10",
+      "category": "engagement",
+      "priority": "high",
+      "title": "Practice stamp card Phase 2 student chrome and redeem UI shell",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/practice-stamp-card.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/practice-stamp-card-ui.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/practice-stamp-card-ui.test.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "public/stamps/stamp-seal.svg"
+        },
+        {
+          "type": "file_exists",
+          "path": "public/stamps/stamp-slot-empty.svg"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase2_enrol.sql"
         },
         {
           "type": "file_contains",
-          "path": "src/lib/practice-stamp-card.ts",
-          "snippet": "isExcludedTestMobileForKpi"
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "GROWTH_STAMP_COPY"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "練習印花卡"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "PracticeStampCard"
         }
       ]
     },
@@ -3062,8 +3106,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T08:16:28.590Z",
+  "generated_at": "2026-10-28T08:19:20.290Z",
   "commit_inventory": [
+    {
+      "sha": "15169705373db065345990e6272b9eef4f2c1edd",
+      "date": "2026-10-28",
+      "summary": "feat: Phase 2 student stamp card chrome and redeem UI shell"
+    },
+    {
+      "sha": "ce15404c79ee1a400db28bbccd2db7af047c39e0",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for 20-stamp card size"
+    },
     {
       "sha": "13781e12e468e0727bd480b7f1961a3c20a1ec8c",
       "date": "2026-10-28",
@@ -6076,7 +6130,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 602,
-    "total_feature_rows": 68
+    "total_commits_since_start": 604,
+    "total_feature_rows": 69
   }
 }
