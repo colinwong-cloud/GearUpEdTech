@@ -247,7 +247,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "high",
       title: "Practice stamp card Phase 1 earn and streak on session completion",
-      evidence_commits: ["864a714", "13781e1"],
+      evidence_commits: ["1e37139"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase1.sql" },
         { type: "file_exists", path: "src/lib/practice-stamp-card.ts" },
@@ -285,13 +285,18 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "high",
       title: "Practice stamp card Phase 2 student chrome and redeem UI shell",
-      evidence_commits: ["1516970", "3cd2072"],
+      evidence_commits: ["1e37139"],
       checks: [
         { type: "file_exists", path: "src/components/practice-stamp-card.tsx" },
         { type: "file_exists", path: "src/lib/practice-stamp-card-ui.ts" },
         { type: "file_exists", path: "src/lib/practice-stamp-card-ui.test.ts" },
         { type: "file_exists", path: "public/stamps/stamp-seal.svg" },
         { type: "file_exists", path: "public/stamps/stamp-slot-empty.svg" },
+        {
+          type: "file_contains",
+          path: "public/stamps/stamp-seal.svg",
+          snippet: "data:image/png;base64",
+        },
         { type: "file_exists", path: "supabase_practice_stamp_card_phase2_enrol.sql" },
         {
           type: "file_contains",
@@ -312,6 +317,49 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/components/practice-stamp-card.tsx",
           snippet: "STAMP_HOME_REOPEN_LABEL",
+        },
+      ],
+    },
+    {
+      id: "practice-stamp-card-phase3-account-history",
+      month: "2026-10",
+      category: "account",
+      priority: "high",
+      title: "Practice stamp card Phase 3 account progress and redeem history",
+      evidence_commits: ["3d84c20"],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase3_account.sql" },
+        { type: "file_exists", path: "src/components/practice-stamp-account-screen.tsx" },
+        { type: "file_exists", path: "src/components/practice-stamp-redeem-history.tsx" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase3_account.sql",
+          snippet: "get_student_stamp_redeem_history",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase3_account.sql",
+          snippet: "face_value_hkd",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_ACCOUNT_PROGRESS_SECTION_TITLE",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_REDEEM_HISTORY_EMPTY",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "兌換日期 (HKT)",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "PracticeStampAccountScreen",
         },
       ],
     },

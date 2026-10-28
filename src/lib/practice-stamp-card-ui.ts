@@ -1,4 +1,5 @@
 import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
+import { supabase } from "@/lib/supabase";
 
 /** Growth TC v1 — locked strings (2026-10-28). */
 export const GROWTH_STAMP_COPY = {
@@ -23,6 +24,36 @@ export const STAMP_EARN_FEEDBACK = {
 } as const;
 
 export const STAMP_CARD_HEADER_TITLE = "練習印花卡";
+
+/** Account settings section title (Phase 3). */
+export const STAMP_ACCOUNT_PROGRESS_SECTION_TITLE = "印花進度";
+
+export const STAMP_REDEEM_HISTORY_EMPTY = "尚未有兌換紀錄";
+
+/** Table headers — locked TC (Phase 3). */
+export const STAMP_REDEEM_HISTORY_HEADERS = [
+  "兌換日期 (HKT)",
+  "禮品名稱",
+  "面值",
+  "e-coupon 代碼",
+  "電郵狀態",
+] as const;
+
+export const STAMP_REDEEM_EMAIL_CS = "cs@gearupquiz.com";
+
+export type StampRedeemEmailStatus = "sent" | "failed" | "pending" | null;
+
+/** One row from get_student_stamp_redeem_history (Phase 3 / 5). */
+export type StudentStampRedeemHistoryRow = {
+  id: string;
+  /** HKT calendar date or ISO timestamp from RPC. */
+  redeemed_at_hkt: string | null;
+  gift_name: string | null;
+  /** Immutable face-value snapshot at redeem (Finance locked). */
+  face_value_hkd: number | null;
+  ecoupon_code: string | null;
+  email_status: StampRedeemEmailStatus;
+};
 
 /** Session-scoped home dismiss flag (compact module on subject home). */
 export const PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY = "gearup_practice_stamp_card_dismissed";
@@ -200,6 +231,112 @@ export function progressFooterLine(status: StudentStampCardStatus): string {
     return GROWTH_STAMP_COPY.blank;
   }
   return GROWTH_STAMP_COPY.progress(status.streak);
+}
+
+export function parseStudentStampRedeemHistoryRows(data: unknown): StudentStampRedeemHistoryRow[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item): StudentStampRedeemHistoryRow | null => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const id = typeof row.id === "string" ? row.id : null;
+      if (!id) return null;
+      const emailRaw = row.email_status;
+      const email_status: StampRedeemEmailStatus =
+        emailRaw === "sent" || emailRaw === "failed" || emailRaw === "pending"
+          ? emailRaw
+          : null;
+      return {
+        id,
+        redeemed_at_hkt:
+          typeof row.redeemed_at_hkt === "string"
+            ? row.redeemed_at_hkt
+            : typeof row.redeemed_hkt_date === "string"
+              ? row.redeemed_hkt_date
+              : null,
+        gift_name: typeof row.gift_name === "string" ? row.gift_name : null,
+        face_value_hkd:
+          typeof row.face_value_hkd === "number" && Number.isFinite(row.face_value_hkd)
+            ? row.face_value_hkd
+            : null,
+        ecoupon_code: typeof row.ecoupon_code === "string" ? row.ecoupon_code : null,
+        email_status,
+      };
+    })
+    .filter((row): row is StudentStampRedeemHistoryRow => row !== null);
+}
+
+export function formatStampRedeemDateHkt(value: string | null): string {
+  if (!value) return "—";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-");
+    return `${y}/${m}/${d}`;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return parsed.toLocaleString("zh-HK", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+export function formatStampRedeemFaceValue(faceValueHkd: number | null): string {
+  if (faceValueHkd === null || !Number.isFinite(faceValueHkd)) return "—";
+  return `HK$${Math.round(faceValueHkd)}`;
+}
+
+export function formatStampRedeemEmailStatus(status: StampRedeemEmailStatus): {
+  kind: "sent" | "failed" | "other";
+  label: string;
+  retryHint?: string;
+} {
+  if (status === "sent") {
+    return { kind: "sent", label: "已發送" };
+  }
+  if (status === "failed") {
+    return {
+      kind: "failed",
+      label: "失敗",
+      retryHint: `如未收到電郵，請聯絡 ${STAMP_REDEEM_EMAIL_CS}`,
+    };
+  }
+  if (status === "pending") {
+    return { kind: "other", label: "處理中" };
+  }
+  return { kind: "other", label: "—" };
+}
+
+function isMissingStampRedeemHistoryRpc(errorMessage: string): boolean {
+  return /get_student_stamp_redeem_history|42883|PGRST202|does not exist|Could not find the function/i.test(
+    errorMessage
+  );
+}
+
+/** Loads redeem history; returns empty rows when RPC is not deployed yet (Phase 5). */
+export async function loadStudentStampRedeemHistory(studentId: string): Promise<{
+  rows: StudentStampRedeemHistoryRow[];
+  error: string | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("get_student_stamp_redeem_history", {
+      p_student_id: studentId,
+    });
+    if (error) {
+      if (isMissingStampRedeemHistoryRpc(error.message)) {
+        return { rows: [], error: null };
+      }
+      return { rows: [], error: "未能載入兌換紀錄" };
+    }
+    const rows = parseStudentStampRedeemHistoryRows(data);
+    return { rows, error: null };
+  } catch {
+    return { rows: [], error: null };
+  }
 }
 
 /**

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
 import {
   GROWTH_STAMP_COPY,
@@ -9,6 +11,13 @@ import {
   practiceStampEarnFeedbackMessage,
   resolvePracticeStampFooterState,
   stampCardHeaderStreakLine,
+  formatStampRedeemDateHkt,
+  formatStampRedeemEmailStatus,
+  formatStampRedeemFaceValue,
+  parseStudentStampRedeemHistoryRows,
+  STAMP_ACCOUNT_PROGRESS_SECTION_TITLE,
+  STAMP_REDEEM_HISTORY_EMPTY,
+  STAMP_REDEEM_HISTORY_HEADERS,
   STAMP_HOME_REOPEN_LABEL,
 } from "./practice-stamp-card-ui";
 
@@ -79,5 +88,42 @@ describe("practice stamp card UI", () => {
 
   it("exposes home reopen label matching the card title", () => {
     expect(STAMP_HOME_REOPEN_LABEL).toBe("練習印花卡");
+  });
+
+  it("locks Phase 3 account redeem history copy and headers", () => {
+    expect(STAMP_ACCOUNT_PROGRESS_SECTION_TITLE).toBe("印花進度");
+    expect(STAMP_REDEEM_HISTORY_EMPTY).toBe("尚未有兌換紀錄");
+    expect(STAMP_REDEEM_HISTORY_HEADERS).toEqual([
+      "兌換日期 (HKT)",
+      "禮品名稱",
+      "面值",
+      "e-coupon 代碼",
+      "電郵狀態",
+    ]);
+  });
+
+  it("parses redeem history rows with immutable face value snapshot", () => {
+    const rows = parseStudentStampRedeemHistoryRows([
+      {
+        id: "abc",
+        redeemed_at_hkt: "2026-10-28 18:00:00",
+        gift_name: "GearUp 練習獎賞禮券",
+        face_value_hkd: 50,
+        ecoupon_code: "GU-TEST-001",
+        email_status: "sent",
+      },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.face_value_hkd).toBe(50);
+    expect(formatStampRedeemFaceValue(50)).toBe("HK$50");
+    expect(formatStampRedeemEmailStatus("sent").label).toBe("已發送");
+    expect(formatStampRedeemEmailStatus("failed").retryHint).toContain("cs@gearupquiz.com");
+    expect(formatStampRedeemDateHkt("2026-10-28")).toBe("2026/10/28");
+  });
+
+  it("uses a self-contained stamp seal SVG safe for img tags", () => {
+    const seal = readFileSync(resolve(process.cwd(), "public/stamps/stamp-seal.svg"), "utf8");
+    expect(seal).toContain("data:image/png;base64");
+    expect(seal).not.toMatch(/href=["']\/icon\.png["']/);
   });
 });

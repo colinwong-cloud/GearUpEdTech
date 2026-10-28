@@ -58,6 +58,7 @@ import {
   PracticeStampCard,
   clearPracticeStampCardDismissForSession,
 } from "@/components/practice-stamp-card";
+import { PracticeStampAccountScreen } from "@/components/practice-stamp-account-screen";
 import {
   parsePracticeStampAwardFromUpdateSession,
   type PracticeStampAwardPayload,
@@ -1853,21 +1854,20 @@ export default function QuizApp() {
         </div>
       );
     }
+    const stampStudent =
+      students.find((s) => s.id === stampStudentId) ?? selectedStudent ?? students[0];
     return (
-      <div
-        className="min-h-screen bg-white/60 backdrop-blur-sm px-4 py-8"
-        onContextMenu={preventContextMenu}
-      >
-        <div className="mx-auto w-full max-w-md">
-          <PracticeStampCard studentId={stampStudentId} variant="full" />
-          <button
-            type="button"
-            onClick={() => setScreen("account_menu")}
-            className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 hover:bg-sky-50"
-          >
-            返回
-          </button>
-        </div>
+      <div onContextMenu={preventContextMenu}>
+        <PracticeStampAccountScreen
+          studentId={stampStudentId}
+          studentName={stampStudent?.student_name}
+          students={students.map((s) => ({ id: s.id, student_name: s.student_name }))}
+          onSelectStudent={(id) => {
+            const next = students.find((s) => s.id === id) ?? null;
+            setSelectedStudent(next);
+          }}
+          onBack={() => setScreen("account_menu")}
+        />
       </div>
     );
   }
@@ -4228,7 +4228,7 @@ function AccountMenuScreen({
               </div>
               <div className="text-left">
                 <p className="text-base font-semibold text-gray-900">練習印花卡</p>
-                <p className="text-sm text-gray-500">查看連續練習印花進度</p>
+                <p className="text-sm text-gray-500">印花進度及兌換紀錄</p>
               </div>
             </button>
           )}
