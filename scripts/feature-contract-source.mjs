@@ -308,6 +308,11 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/app/page.tsx",
           snippet: "PracticeStampCard",
         },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "STAMP_HOME_REOPEN_LABEL",
+        },
       ],
     },
     {

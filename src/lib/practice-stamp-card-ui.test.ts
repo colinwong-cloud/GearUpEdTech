@@ -9,6 +9,7 @@ import {
   practiceStampEarnFeedbackMessage,
   resolvePracticeStampFooterState,
   stampCardHeaderStreakLine,
+  STAMP_HOME_REOPEN_LABEL,
 } from "./practice-stamp-card-ui";
 
 describe("practice stamp card UI", () => {
@@ -74,5 +75,9 @@ describe("practice stamp card UI", () => {
   it("formats header streak line", () => {
     expect(stampCardHeaderStreakLine(0)).toBe("已連續 0 日");
     expect(STAMP_FOOTER_COPY.enrolCta).toBe("開始收集印花");
+  });
+
+  it("exposes home reopen label matching the card title", () => {
+    expect(STAMP_HOME_REOPEN_LABEL).toBe("練習印花卡");
   });
 });

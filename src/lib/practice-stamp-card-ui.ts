@@ -24,6 +24,27 @@ export const STAMP_EARN_FEEDBACK = {
 
 export const STAMP_CARD_HEADER_TITLE = "練習印花卡";
 
+/** Session-scoped home dismiss flag (compact module on subject home). */
+export const PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY = "gearup_practice_stamp_card_dismissed";
+
+/** On-screen reopen control on home after dismiss (matches card title). */
+export const STAMP_HOME_REOPEN_LABEL = STAMP_CARD_HEADER_TITLE;
+
+export function isPracticeStampCardHomeDismissedForSession(): boolean {
+  if (typeof sessionStorage === "undefined") return false;
+  return sessionStorage.getItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY) === "1";
+}
+
+export function setPracticeStampCardHomeDismissedForSession(): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY, "1");
+}
+
+export function clearPracticeStampCardHomeDismissForSession(): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
+}
+
 export function stampCardHeaderStreakLine(streak: number): string {
   return `已連續 ${streak} 日`;
 }

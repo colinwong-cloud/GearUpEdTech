@@ -7,19 +7,21 @@ import {
   GROWTH_STAMP_COPY,
   STAMP_CARD_HEADER_TITLE,
   STAMP_FOOTER_COPY,
+  STAMP_HOME_REOPEN_LABEL,
   STAMP_REDEEM_PLACEHOLDER_GIFT,
+  clearPracticeStampCardHomeDismissForSession,
+  isPracticeStampCardHomeDismissedForSession,
   parseStudentStampCardStatus,
   practiceStampEarnFeedbackMessage,
   progressFooterLine,
   requestPracticeStampRedeem,
   resolvePracticeStampFooterState,
+  setPracticeStampCardHomeDismissedForSession,
   stampCardHeaderStreakLine,
   stampSlotRotationDeg,
   type PracticeStampAwardPayload,
   type StudentStampCardStatus,
 } from "@/lib/practice-stamp-card-ui";
-
-const DISMISS_SESSION_KEY = "gearup_practice_stamp_card_dismissed";
 
 export type PracticeStampCardProps = {
   studentId: string;
@@ -73,7 +75,7 @@ export function PracticeStampCard({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setDismissed(sessionStorage.getItem(DISMISS_SESSION_KEY) === "1");
+    setDismissed(isPracticeStampCardHomeDismissedForSession());
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const apply = () => setReducedMotion(mq.matches);
     apply();
@@ -116,8 +118,13 @@ export function PracticeStampCard({
   const filledCount = status?.stamp_count ?? 0;
 
   const handleDismiss = () => {
-    sessionStorage.setItem(DISMISS_SESSION_KEY, "1");
+    setPracticeStampCardHomeDismissedForSession();
     setDismissed(true);
+  };
+
+  const handleReopen = () => {
+    clearPracticeStampCardHomeDismissForSession();
+    setDismissed(false);
   };
 
   const handleEnrol = async () => {
@@ -156,13 +163,24 @@ export function PracticeStampCard({
   };
 
   if (dismissible && dismissed && variant === "compact") {
-    return null;
+    return (
+      <button
+        type="button"
+        onClick={handleReopen}
+        className={`mb-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/95 to-orange-50/90 px-4 py-2.5 text-sm font-semibold text-amber-950 shadow-sm hover:bg-amber-100/80 ${className}`}
+        aria-expanded={false}
+        aria-controls="practice-stamp-card-home-module"
+      >
+        {STAMP_HOME_REOPEN_LABEL}
+      </button>
+    );
   }
 
   const compact = variant === "compact";
 
   return (
     <section
+      id={compact && dismissible ? "practice-stamp-card-home-module" : undefined}
       className={`rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/95 to-orange-50/90 shadow-sm ${compact ? "p-3" : "p-4 sm:p-5"} ${className}`}
       aria-label={STAMP_CARD_HEADER_TITLE}
     >
@@ -353,7 +371,5 @@ export function PracticeStampCard({
 }
 
 export function clearPracticeStampCardDismissForSession() {
-  if (typeof sessionStorage !== "undefined") {
-    sessionStorage.removeItem(DISMISS_SESSION_KEY);
-  }
+  clearPracticeStampCardHomeDismissForSession();
 }
