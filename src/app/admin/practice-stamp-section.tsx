@@ -6,9 +6,14 @@ import {
   STAMP_PROGRAM_OFF_NOTE,
   STAMP_REDEEM_REPORT_EMPTY,
   STAMP_REDEEM_REPORT_HEADERS,
+  STAMP_GIFT_BTN_EXPORT_ALL,
+  STAMP_GIFT_BTN_EXPORT_UNUSED,
+  STAMP_GIFT_BTN_IMPORT_CSV,
   buildStampRedemptionReportCsv,
+  formatStampGiftCodeCountsLine,
   formatStampProgramAuditLine,
   getStampGiftWindowBadge,
+  shouldShowStampProgramAuditEmpty,
   stampGiftStatusLabel,
   stampGiftWindowBadgeLabel,
   type StampGiftInventoryRow,
@@ -62,12 +67,14 @@ function formatHkd(value: number): string {
   return `HK$${value.toLocaleString("en-HK", { maximumFractionDigits: 0 })}`;
 }
 
-/** Sticky first column when gift/report tables scroll horizontally on narrow viewports. */
-const STICKY_COL_1 =
+/** Sticky first column when gift table scrolls horizontally on narrow viewports. */
+const GIFT_STICKY_NAME =
   "sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none";
-/** Report: keep 用戶 visible beside 兌換時間 while scrolling. */
-const STICKY_COL_2 =
-  "sticky left-[9.25rem] z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none";
+/** Redeem report: fixed-width sticky pair — col2 left offset must match col1 width to avoid overlap. */
+const REPORT_STICKY_TIME =
+  "sticky left-0 z-20 bg-white box-border w-[11.5rem] min-w-[11.5rem] max-w-[11.5rem] border-r border-gray-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none sm:border-r-0";
+const REPORT_STICKY_USER =
+  "sticky left-[11.5rem] z-10 bg-white box-border min-w-[6.5rem] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none";
 
 export function PracticeStampAdminSection({ sessionToken }: { sessionToken: string }) {
   const todayHkt = useMemo(() => getHktCalendarDate(), []);
@@ -170,8 +177,11 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   }, [loadReport]);
 
   const auditLine = formatStampProgramAuditLine(program?.audit ?? null);
-  const showAuditPlaceholder =
-    !programLoading && !programError && program !== null && !auditLine;
+  const showAuditPlaceholder = shouldShowStampProgramAuditEmpty({
+    loading: programLoading,
+    errorMessage: programError,
+    program,
+  });
   const programToggleDisabled = programLoading || Boolean(programError) || programSaving;
 
   const dismissAddGiftForm = () => {
@@ -439,7 +449,7 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
             <table className="min-w-[640px] w-full text-sm text-left">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-100">
-                  <th className={`py-2 pr-3 min-w-[7.5rem] ${STICKY_COL_1}`}>名稱</th>
+                  <th className={`py-2 pr-3 min-w-[7.5rem] ${GIFT_STICKY_NAME}`}>名稱</th>
                   <th className="py-2 pr-3 whitespace-nowrap">面值</th>
                   <th className="py-2 pr-3 whitespace-nowrap">換領窗口</th>
                   <th className="py-2 pr-3 whitespace-nowrap">數量</th>
@@ -457,7 +467,7 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
                   const badgeLabel = stampGiftWindowBadgeLabel(badge);
                   return (
                     <tr key={gift.id} className="border-b border-gray-100 align-top">
-                      <td className={`py-2 pr-3 ${STICKY_COL_1}`}>
+                      <td className={`py-2 pr-3 ${GIFT_STICKY_NAME}`}>
                         <p className="font-semibold text-gray-800">{gift.name_tc}</p>
                         {gift.image_url && (
                           <p className="text-xs text-indigo-600 truncate max-w-[10rem] mt-0.5">
@@ -475,7 +485,11 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
                         )}
                       </td>
                       <td className="py-2 pr-3 whitespace-nowrap text-xs text-gray-600">
-                        總 {gift.code_total} / 未用 {gift.code_unused} / 已用 {gift.code_used}
+                        {formatStampGiftCodeCountsLine(
+                          gift.code_total,
+                          gift.code_unused,
+                          gift.code_used
+                        )}
                       </td>
                       <td className="py-2 pr-3 whitespace-nowrap">
                         {stampGiftStatusLabel(gift.status)}
@@ -491,21 +505,21 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
                             disabled={importing}
                             className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
                           >
-                            匯入 CSV
+                            {STAMP_GIFT_BTN_IMPORT_CSV}
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleExportCodes(gift, "unused")}
                             className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
                           >
-                            未用碼
+                            {STAMP_GIFT_BTN_EXPORT_UNUSED}
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleExportCodes(gift, "all")}
                             className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
                           >
-                            全部碼
+                            {STAMP_GIFT_BTN_EXPORT_ALL}
                           </button>
                           <button
                             type="button"
@@ -601,13 +615,17 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
         </p>
 
         <div className="overflow-x-auto -mx-1 px-1">
-          <table className="min-w-[720px] w-full text-sm text-left">
+          <table className="min-w-[720px] w-full text-sm text-left table-fixed sm:table-auto">
+            <colgroup>
+              <col className="w-[11.5rem]" />
+              <col className="w-[6.5rem]" />
+            </colgroup>
             <thead>
               <tr className="text-gray-500 border-b border-gray-100">
-                <th className={`py-2 pr-3 whitespace-nowrap min-w-[9rem] ${STICKY_COL_1}`}>
+                <th className={`py-2 pr-3 whitespace-nowrap ${REPORT_STICKY_TIME}`}>
                   {STAMP_REDEEM_REPORT_HEADERS[0]}
                 </th>
-                <th className={`py-2 pr-3 whitespace-nowrap min-w-[5.5rem] ${STICKY_COL_2}`}>
+                <th className={`py-2 pr-3 whitespace-nowrap ${REPORT_STICKY_USER}`}>
                   {STAMP_REDEEM_REPORT_HEADERS[1]}
                 </th>
                 {STAMP_REDEEM_REPORT_HEADERS.slice(2).map((h) => (
@@ -633,10 +651,12 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
               ) : (
                 reportRows.map((row) => (
                   <tr key={row.id} className="border-b border-gray-100">
-                    <td className={`py-2 pr-3 whitespace-nowrap ${STICKY_COL_1}`}>
+                    <td className={`py-2 pr-3 whitespace-nowrap ${REPORT_STICKY_TIME}`}>
                       {row.redeemed_at_hkt}
                     </td>
-                    <td className={`py-2 pr-3 font-mono ${STICKY_COL_2}`}>{row.user_display}</td>
+                    <td className={`py-2 pr-3 font-mono whitespace-nowrap ${REPORT_STICKY_USER}`}>
+                      {row.user_display}
+                    </td>
                     <td className="py-2 pr-3">{row.gift_name || "—"}</td>
                     <td className="py-2 pr-3 whitespace-nowrap">
                       {row.face_value_hkd === null ? "—" : formatHkd(row.face_value_hkd)}

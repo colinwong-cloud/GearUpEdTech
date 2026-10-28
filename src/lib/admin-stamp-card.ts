@@ -8,6 +8,19 @@ export const STAMP_PROGRAM_OFF_NOTE =
 /** Shown when program settings load but no toggle audit row exists yet. */
 export const STAMP_PROGRAM_AUDIT_EMPTY = "尚未有更新紀錄";
 
+/** Growth-locked admin gift inventory copy (BRIEF Phase 4). */
+export const STAMP_GIFT_BTN_IMPORT_CSV = "匯入兌換碼 CSV";
+export const STAMP_GIFT_BTN_EXPORT_UNUSED = "匯出未用碼";
+export const STAMP_GIFT_BTN_EXPORT_ALL = "匯出全部碼";
+
+export function formatStampGiftCodeCountsLine(
+  total: number,
+  unused: number,
+  used: number
+): string {
+  return `總碼 ${total} / 未用 ${unused} / 已用 ${used}`;
+}
+
 export const STAMP_GIFT_CODE_IMPORT_SUMMARY_LABEL = "接受";
 export const STAMP_REDEEM_REPORT_EMPTY = "尚未有兌換紀錄";
 
@@ -68,6 +81,20 @@ export function formatStampProgramAuditLine(
   if (!audit?.toggled_at_hkt) return null;
   const admin = audit.admin_identifier?.trim() || "admin";
   return `上次更新：${audit.toggled_at_hkt} (HKT) · ${admin}`;
+}
+
+/**
+ * Muted placeholder under the program toggle — only before the first audit row exists.
+ * When `audit.toggled_at_hkt` is present, use {@link formatStampProgramAuditLine} instead.
+ */
+export function shouldShowStampProgramAuditEmpty(input: {
+  loading: boolean;
+  errorMessage: string;
+  program: StampProgramSettingsPayload | null;
+}): boolean {
+  if (input.loading || input.errorMessage || !input.program) return false;
+  if (input.program.error) return false;
+  return !input.program.audit?.toggled_at_hkt;
 }
 
 export function buildStampProgramSettingsPayload(input: {

@@ -407,6 +407,16 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "總碼",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "匯入兌換碼 CSV",
+        },
+        {
+          type: "file_contains",
           path: "src/app/api/admin/console/route.ts",
           snippet: "stamp_program_settings_get",
         },
