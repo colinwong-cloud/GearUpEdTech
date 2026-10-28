@@ -270,6 +270,16 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/practice-stamp-card.ts",
+          snippet: "PRACTICE_STAMP_CARD_SIZE = 20",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase1.sql",
+          snippet: "stamps_per_card INTEGER NOT NULL DEFAULT 20",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card.ts",
           snippet: "isExcludedTestMobileForKpi",
         },
       ],

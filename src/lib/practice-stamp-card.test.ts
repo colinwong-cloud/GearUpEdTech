@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  PRACTICE_STAMP_CARD_SIZE,
   PRACTICE_STAMP_MIN_ANSWERS,
   computePracticeStampStreakAfterAward,
   effectivePracticeStampStreak,
@@ -10,6 +11,10 @@ import {
 } from "./practice-stamp-card";
 
 describe("practice stamp card earn rules", () => {
+  it("uses twenty stamps per card for redeem (4×5 grid)", () => {
+    expect(PRACTICE_STAMP_CARD_SIZE).toBe(20);
+  });
+
   const awardDate = "2026-10-28";
 
   it("requires at least ten answered questions", () => {

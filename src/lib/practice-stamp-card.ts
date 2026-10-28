@@ -1,6 +1,10 @@
 /** Practice stamp card — Phase 1 earn + streak rules (mirrors SQL RPC). */
 
+/** Minimum answered questions in one session to earn a daily stamp. */
 export const PRACTICE_STAMP_MIN_ANSWERS = 10;
+
+/** Stamps required on one card before redeem (Phase 0: 20 consecutive stamped HKT days, 4×5 grid). */
+export const PRACTICE_STAMP_CARD_SIZE = 20;
 
 export type PracticeStampAwardReason =
   | "insufficient_answers"

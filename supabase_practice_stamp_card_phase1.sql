@@ -7,13 +7,18 @@
 CREATE TABLE IF NOT EXISTS stamp_program_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   stamps_program_open BOOLEAN NOT NULL DEFAULT true,
-  stamps_per_card INTEGER NOT NULL DEFAULT 10 CHECK (stamps_per_card > 0),
+  stamps_per_card INTEGER NOT NULL DEFAULT 20 CHECK (stamps_per_card > 0),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 INSERT INTO stamp_program_settings (id, stamps_program_open, stamps_per_card)
-VALUES (1, true, 10)
+VALUES (1, true, 20)
 ON CONFLICT (id) DO NOTHING;
+
+-- Phase 0: redeem goal is 20 consecutive stamped days (4×5 grid UI)
+UPDATE stamp_program_settings
+SET stamps_per_card = 20, updated_at = now()
+WHERE id = 1 AND stamps_per_card IS DISTINCT FROM 20;
 
 ALTER TABLE stamp_program_settings ENABLE ROW LEVEL SECURITY;
 
@@ -325,7 +330,7 @@ BEGIN
     RETURN json_build_object(
       'has_active_card', false,
       'stamps_program_open', COALESCE(v_settings.stamps_program_open, true),
-      'stamps_per_card', COALESCE(v_settings.stamps_per_card, 10),
+      'stamps_per_card', COALESCE(v_settings.stamps_per_card, 20),
       'stamp_count', 0,
       'streak', 0,
       'last_stamp_hkt_date', NULL,
@@ -344,7 +349,7 @@ BEGIN
     'stamp_card_id', v_card.id,
     'cycle_number', v_card.cycle_number,
     'stamps_program_open', COALESCE(v_settings.stamps_program_open, true),
-    'stamps_per_card', COALESCE(v_settings.stamps_per_card, 10),
+    'stamps_per_card', COALESCE(v_settings.stamps_per_card, 20),
     'stamp_count', v_card.stamp_count,
     'stored_streak', v_card.current_streak,
     'streak', v_effective_streak,
