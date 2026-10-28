@@ -364,6 +364,45 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase4-admin-inventory",
+      month: "2026-10",
+      category: "product",
+      priority: "critical",
+      title: "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase4_inventory.sql" },
+        { type: "file_exists", path: "src/lib/admin-stamp-card.ts" },
+        { type: "file_exists", path: "src/lib/admin-stamp-card.test.ts" },
+        { type: "file_exists", path: "src/app/admin/practice-stamp-section.tsx" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase4_inventory.sql",
+          snippet: "DO NOT RUN",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "關閉後不可新報名；進行中印花卡可繼續累積與換領",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "接受",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/page.tsx",
+          snippet: "練習印花卡",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_program_settings_get",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
+import { PracticeStampAdminSection } from "./practice-stamp-section";
 import { TutorPaymentsSection } from "./tutor-payments-section";
 import {
   buildPaidTransactionsCsv,
@@ -37,7 +38,15 @@ type AdminConsoleAction =
   | "payment_monthly_paid_summary"
   | "payment_cancel_future_payment"
   | "payment_refund_last_preview"
-  | "payment_refund_last_confirm";
+  | "payment_refund_last_confirm"
+  | "stamp_program_settings_get"
+  | "stamp_program_settings_set_open"
+  | "stamp_gift_list"
+  | "stamp_gift_create"
+  | "stamp_gift_update"
+  | "stamp_gift_codes_import"
+  | "stamp_gift_codes_export"
+  | "stamp_redemption_report";
 
 async function adminConsoleRequest<T>(
   action: AdminConsoleAction,
@@ -76,7 +85,8 @@ type Tab =
   | "tutor_referral_codes"
   | "tutor_payments"
   | "payment_status"
-  | "student_practice_summary";
+  | "student_practice_summary"
+  | "practice_stamp";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -573,6 +583,7 @@ export default function AdminPage() {
     { key: "discount_codes", label: "折扣碼維護" },
     { key: "tutor_referral_codes", label: "教師編號維護" },
     { key: "tutor_payments", label: "教師付款情況" },
+    { key: "practice_stamp", label: "練習印花卡" },
   ];
 
   return (
@@ -606,6 +617,7 @@ export default function AdminPage() {
         {tab === "discount_codes" && <DiscountCodeSection sessionToken={sessionToken} />}
         {tab === "tutor_referral_codes" && <TutorReferralCodeSection sessionToken={sessionToken} />}
         {tab === "tutor_payments" && <TutorPaymentsSection sessionToken={sessionToken} />}
+        {tab === "practice_stamp" && <PracticeStampAdminSection sessionToken={sessionToken} />}
       </div>
     </div>
   );
