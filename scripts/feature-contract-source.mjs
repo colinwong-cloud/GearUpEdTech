@@ -316,6 +316,49 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase3-account-history",
+      month: "2026-10",
+      category: "account",
+      priority: "high",
+      title: "Practice stamp card Phase 3 account progress and redeem history",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase3_account.sql" },
+        { type: "file_exists", path: "src/components/practice-stamp-account-screen.tsx" },
+        { type: "file_exists", path: "src/components/practice-stamp-redeem-history.tsx" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase3_account.sql",
+          snippet: "get_student_stamp_redeem_history",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase3_account.sql",
+          snippet: "face_value_hkd",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_ACCOUNT_PROGRESS_SECTION_TITLE",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_REDEEM_HISTORY_EMPTY",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-redeem-history.tsx",
+          snippet: "兌換日期 (HKT)",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "PracticeStampAccountScreen",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",
