@@ -423,6 +423,55 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase5-student-redeem",
+      month: "2026-10",
+      category: "product",
+      priority: "critical",
+      title: "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase5_redeem.sql" },
+        { type: "file_exists", path: "src/lib/server/practice-stamp-redeem.ts" },
+        { type: "file_exists", path: "src/lib/server/practice-stamp-redeem.test.ts" },
+        { type: "file_exists", path: "src/app/api/practice-stamp/redeem/route.ts" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase5_redeem.sql",
+          snippet: "DO NOT RUN",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase5_redeem.sql",
+          snippet: "redeem_student_practice_stamp",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "禮品兌換申請已收到",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "按「兌換禮品」領取電子禮券",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/practice-stamp-redeem.ts",
+          snippet: "redeem_student_practice_stamp",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/practice-stamp/redeem/route.ts",
+          snippet: "executePracticeStampRedeem",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "loadStudentStampRedeemOffer",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",

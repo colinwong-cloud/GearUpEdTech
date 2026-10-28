@@ -29,8 +29,8 @@ describe("practice stamp card UI", () => {
   it("uses Growth TC v1 progress copy", () => {
     expect(GROWTH_STAMP_COPY.progress(3)).toBe("已連續練習 3 日／目標 20 日。繼續加油！");
     expect(GROWTH_STAMP_COPY.redeemSuccessAck).toContain("cs@gearupquiz.com");
-    expect(GROWTH_STAMP_COPY.redeemableHint).toBe("按「立即換領」領取電子禮券。");
-    expect(GROWTH_STAMP_COPY.completedNotRedeemed).toBe("恭喜！已連續 20 日，可換領禮品。");
+    expect(GROWTH_STAMP_COPY.redeemableHint).toBe("按「兌換禮品」領取電子禮券。");
+    expect(GROWTH_STAMP_COPY.completedNotRedeemed).toBe("恭喜！已連續 20 日，可兌換禮品。");
   });
 
   it("maps earn feedback reasons to brief strings", () => {
