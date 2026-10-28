@@ -4,8 +4,8 @@ import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
 export const GROWTH_STAMP_COPY = {
   blank: "開始每日練習，完成一次（至少 10 題）即可蓋印。",
   progress: (n: number) => `已連續練習 ${n} 日／目標 ${PRACTICE_STAMP_CARD_SIZE} 日。繼續加油！`,
-  completedNotRedeemed: "恭喜！已連續 20 日，可兌換禮品。",
-  redeemableHint: "按「兌換禮品」領取電子禮券。",
+  completedNotRedeemed: "恭喜！已連續 20 日，可換領禮品。",
+  redeemableHint: "按「立即換領」領取電子禮券。",
   afterRedeemNewCycle: "新一輪印花卡已開始，明日起可再蓋印。",
   redeemSuccessAck:
     "恭喜你完成連續 20 日練習！禮品兌換申請已收到。電子禮券將於本月底前電郵發送至你的帳戶電郵。如需查詢，請聯絡 cs@gearupquiz.com。",
