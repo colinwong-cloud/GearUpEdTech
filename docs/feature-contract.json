@@ -471,6 +471,16 @@
         {
           "type": "file_contains",
           "path": "src/lib/practice-stamp-card.ts",
+          "snippet": "PRACTICE_STAMP_CARD_SIZE = 20"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase1.sql",
+          "snippet": "stamps_per_card INTEGER NOT NULL DEFAULT 20"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card.ts",
           "snippet": "isExcludedTestMobileForKpi"
         }
       ]
@@ -3052,8 +3062,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T08:15:35.545Z",
+  "generated_at": "2026-10-28T08:16:28.590Z",
   "commit_inventory": [
+    {
+      "sha": "13781e12e468e0727bd480b7f1961a3c20a1ec8c",
+      "date": "2026-10-28",
+      "summary": "fix: set practice stamp card size to 20 stamped days"
+    },
+    {
+      "sha": "12121ad197f4226e7d87bb393212bf68d3a8f060",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for practice stamp card Phase 1"
+    },
     {
       "sha": "864a714d46c2db59cec15efde079dc5093edee33",
       "date": "2026-10-28",
@@ -6056,7 +6076,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 600,
+    "total_commits_since_start": 602,
     "total_feature_rows": 68
   }
 }
