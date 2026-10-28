@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  STAMP_PROGRAM_AUDIT_EMPTY,
   STAMP_PROGRAM_OFF_NOTE,
   STAMP_REDEEM_REPORT_EMPTY,
   STAMP_REDEEM_REPORT_HEADERS,
@@ -60,6 +61,13 @@ function downloadCsv(filename: string, csv: string) {
 function formatHkd(value: number): string {
   return `HK$${value.toLocaleString("en-HK", { maximumFractionDigits: 0 })}`;
 }
+
+/** Sticky first column when gift/report tables scroll horizontally on narrow viewports. */
+const STICKY_COL_1 =
+  "sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none";
+/** Report: keep 用戶 visible beside 兌換時間 while scrolling. */
+const STICKY_COL_2 =
+  "sticky left-[9.25rem] z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] sm:static sm:z-auto sm:shadow-none";
 
 export function PracticeStampAdminSection({ sessionToken }: { sessionToken: string }) {
   const todayHkt = useMemo(() => getHktCalendarDate(), []);
@@ -162,7 +170,19 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   }, [loadReport]);
 
   const auditLine = formatStampProgramAuditLine(program?.audit ?? null);
+  const showAuditPlaceholder =
+    !programLoading && !programError && program !== null && !auditLine;
   const programToggleDisabled = programLoading || Boolean(programError) || programSaving;
+
+  const dismissAddGiftForm = () => {
+    setShowAddGift(false);
+    setNewName("");
+    setNewFaceValue("");
+    setNewImageUrl("");
+    setNewWindowStart(todayHkt);
+    setNewWindowEnd(todayHkt);
+    setNewStatus("unlisted");
+  };
 
   const handleToggleProgram = async () => {
     if (!program || programToggleDisabled) return;
@@ -285,6 +305,9 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
             <p className="text-sm font-semibold text-gray-700">印花計劃開放</p>
             <p className="text-xs text-gray-500 mt-1">{STAMP_PROGRAM_OFF_NOTE}</p>
             {auditLine && <p className="text-xs text-gray-400 mt-2">{auditLine}</p>}
+            {showAuditPlaceholder && (
+              <p className="text-xs text-gray-400 mt-2">{STAMP_PROGRAM_AUDIT_EMPTY}</p>
+            )}
             {programError && <p className="text-xs text-red-500 mt-2">{programError}</p>}
           </div>
           <button
@@ -373,14 +396,24 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
               <option value="unlisted">下架</option>
               <option value="listed">上架</option>
             </select>
-            <button
-              type="button"
-              disabled={creatingGift || !newName.trim() || newFaceValue === ""}
-              onClick={() => void handleCreateGift()}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
-            >
-              {creatingGift ? "儲存中…" : "儲存禮品"}
-            </button>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                disabled={creatingGift || !newName.trim() || newFaceValue === ""}
+                onClick={() => void handleCreateGift()}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {creatingGift ? "儲存中…" : "儲存禮品"}
+              </button>
+              <button
+                type="button"
+                disabled={creatingGift}
+                onClick={dismissAddGiftForm}
+                className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:border-gray-300 disabled:opacity-50"
+              >
+                取消
+              </button>
+            </div>
           </div>
         )}
 
@@ -402,79 +435,92 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
         ) : gifts.length === 0 ? (
           <p className="text-sm text-gray-400">尚未新增禮品</p>
         ) : (
-          <div className="space-y-3">
-            {gifts.map((gift) => {
-              const badge = getStampGiftWindowBadge(
-                gift.window_start_hkt,
-                gift.window_end_hkt,
-                todayHkt
-              );
-              const badgeLabel = stampGiftWindowBadgeLabel(badge);
-              return (
-                <div
-                  key={gift.id}
-                  className="rounded-xl border border-gray-100 p-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-800 text-sm">{gift.name_tc}</p>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="min-w-[640px] w-full text-sm text-left">
+              <thead>
+                <tr className="text-gray-500 border-b border-gray-100">
+                  <th className={`py-2 pr-3 min-w-[7.5rem] ${STICKY_COL_1}`}>名稱</th>
+                  <th className="py-2 pr-3 whitespace-nowrap">面值</th>
+                  <th className="py-2 pr-3 whitespace-nowrap">換領窗口</th>
+                  <th className="py-2 pr-3 whitespace-nowrap">數量</th>
+                  <th className="py-2 pr-3 whitespace-nowrap">狀態</th>
+                  <th className="py-2 pr-3 whitespace-nowrap min-w-[14rem]">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gifts.map((gift) => {
+                  const badge = getStampGiftWindowBadge(
+                    gift.window_start_hkt,
+                    gift.window_end_hkt,
+                    todayHkt
+                  );
+                  const badgeLabel = stampGiftWindowBadgeLabel(badge);
+                  return (
+                    <tr key={gift.id} className="border-b border-gray-100 align-top">
+                      <td className={`py-2 pr-3 ${STICKY_COL_1}`}>
+                        <p className="font-semibold text-gray-800">{gift.name_tc}</p>
+                        {gift.image_url && (
+                          <p className="text-xs text-indigo-600 truncate max-w-[10rem] mt-0.5">
+                            {gift.image_url}
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{formatHkd(gift.face_value_hkd)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-xs text-gray-600">
+                        {gift.window_start_hkt} — {gift.window_end_hkt}
+                        {badgeLabel && (
+                          <span className="ml-1 inline-block text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                            {badgeLabel}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-xs text-gray-600">
+                        總 {gift.code_total} / 未用 {gift.code_unused} / 已用 {gift.code_used}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
                         {stampGiftStatusLabel(gift.status)}
-                      </span>
-                      {badgeLabel && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                          {badgeLabel}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      面值 {formatHkd(gift.face_value_hkd)} · 換領窗口 {gift.window_start_hkt} —{" "}
-                      {gift.window_end_hkt}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      數量 總 {gift.code_total} / 未用 {gift.code_unused} / 已用 {gift.code_used}
-                    </p>
-                    {gift.image_url && (
-                      <p className="text-xs text-indigo-600 truncate mt-1">{gift.image_url}</p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImportGiftId(gift.id);
-                        fileInputRef.current?.click();
-                      }}
-                      disabled={importing}
-                      className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
-                    >
-                      匯入兌換碼 CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleExportCodes(gift, "unused")}
-                      className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
-                    >
-                      匯出未用碼
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleExportCodes(gift, "all")}
-                      className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
-                    >
-                      匯出全部碼
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleToggleGiftStatus(gift)}
-                      className="px-2 py-1.5 rounded-lg bg-gray-800 text-white text-xs font-semibold"
-                    >
-                      {gift.status === "listed" ? "下架" : "上架"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImportGiftId(gift.id);
+                              fileInputRef.current?.click();
+                            }}
+                            disabled={importing}
+                            className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
+                          >
+                            匯入 CSV
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExportCodes(gift, "unused")}
+                            className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
+                          >
+                            未用碼
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExportCodes(gift, "all")}
+                            className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-indigo-300"
+                          >
+                            全部碼
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleToggleGiftStatus(gift)}
+                            className="px-2 py-1 rounded-lg bg-gray-800 text-white text-xs font-semibold"
+                          >
+                            {gift.status === "listed" ? "下架" : "上架"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
@@ -554,11 +600,17 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
           筆
         </p>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="min-w-[720px] w-full text-sm text-left">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
-                {STAMP_REDEEM_REPORT_HEADERS.map((h) => (
+              <tr className="text-gray-500 border-b border-gray-100">
+                <th className={`py-2 pr-3 whitespace-nowrap min-w-[9rem] ${STICKY_COL_1}`}>
+                  {STAMP_REDEEM_REPORT_HEADERS[0]}
+                </th>
+                <th className={`py-2 pr-3 whitespace-nowrap min-w-[5.5rem] ${STICKY_COL_2}`}>
+                  {STAMP_REDEEM_REPORT_HEADERS[1]}
+                </th>
+                {STAMP_REDEEM_REPORT_HEADERS.slice(2).map((h) => (
                   <th key={h} className="py-2 pr-3 whitespace-nowrap">
                     {h}
                   </th>
@@ -581,10 +633,12 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
               ) : (
                 reportRows.map((row) => (
                   <tr key={row.id} className="border-b border-gray-100">
-                    <td className="py-2 pr-3 whitespace-nowrap">{row.redeemed_at_hkt}</td>
-                    <td className="py-2 pr-3 font-mono">{row.user_display}</td>
+                    <td className={`py-2 pr-3 whitespace-nowrap ${STICKY_COL_1}`}>
+                      {row.redeemed_at_hkt}
+                    </td>
+                    <td className={`py-2 pr-3 font-mono ${STICKY_COL_2}`}>{row.user_display}</td>
                     <td className="py-2 pr-3">{row.gift_name || "—"}</td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2 pr-3 whitespace-nowrap">
                       {row.face_value_hkd === null ? "—" : formatHkd(row.face_value_hkd)}
                     </td>
                     <td className="py-2 pr-3 font-mono text-xs">{row.ecoupon_code || "—"}</td>

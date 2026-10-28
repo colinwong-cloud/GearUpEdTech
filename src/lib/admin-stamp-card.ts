@@ -5,6 +5,9 @@ import { getHktCalendarDate, isExcludedTestMobileForKpi } from "@/lib/practice-s
 export const STAMP_PROGRAM_OFF_NOTE =
   "關閉後不可新報名；進行中印花卡可繼續累積與換領";
 
+/** Shown when program settings load but no toggle audit row exists yet. */
+export const STAMP_PROGRAM_AUDIT_EMPTY = "尚未有更新紀錄";
+
 export const STAMP_GIFT_CODE_IMPORT_SUMMARY_LABEL = "接受";
 export const STAMP_REDEEM_REPORT_EMPTY = "尚未有兌換紀錄";
 

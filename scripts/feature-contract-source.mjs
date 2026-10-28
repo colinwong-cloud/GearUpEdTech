@@ -397,6 +397,16 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "尚未有更新紀錄",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "取消",
+        },
+        {
+          type: "file_contains",
           path: "src/app/api/admin/console/route.ts",
           snippet: "stamp_program_settings_get",
         },
