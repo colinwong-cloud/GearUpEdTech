@@ -647,6 +647,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "尚未有更新紀錄"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/practice-stamp-section.tsx",
+          "snippet": "取消"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "stamp_program_settings_get"
         }
@@ -3229,8 +3239,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T11:11:09.260Z",
+  "generated_at": "2026-10-28T12:26:34.441Z",
   "commit_inventory": [
+    {
+      "sha": "6316485728ecbeca92b4a4f24d41cf638e9ae6ed",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "3b64058a823ec9de8efbda70b1dfc7c74e73db29",
       "date": "2026-10-28",
@@ -6258,7 +6273,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 605,
+    "total_commits_since_start": 606,
     "total_feature_rows": 71
   }
 }
