@@ -714,7 +714,7 @@
         {
           "type": "file_contains",
           "path": "src/lib/practice-stamp-card-ui.ts",
-          "snippet": "按「兌換禮品」領取電子禮券"
+          "snippet": "按「立即換領」領取電子禮券"
         },
         {
           "type": "file_contains",
@@ -3310,8 +3310,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T13:05:55.543Z",
+  "generated_at": "2026-10-28T13:07:18.946Z",
   "commit_inventory": [
+    {
+      "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
+      "date": "2026-10-28",
+      "summary": "fix(stamps): Growth soft-lock CTA and redeemable hint copy"
+    },
+    {
+      "sha": "0831c2ccd9a0718c5c3213ab04be1b69afd47973",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for stamp Phase 5"
+    },
     {
       "sha": "7bcebf2c87d2fce34371a51a19a8554eab729e6d",
       "date": "2026-10-28",
@@ -6329,7 +6339,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 603,
+    "total_commits_since_start": 605,
     "total_feature_rows": 72
   }
 }
