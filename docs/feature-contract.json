@@ -541,6 +541,60 @@
       ]
     },
     {
+      "id": "practice-stamp-card-phase3-account-history",
+      "month": "2026-10",
+      "category": "account",
+      "priority": "high",
+      "title": "Practice stamp card Phase 3 account progress and redeem history",
+      "evidence_commits": [
+        "3d84c20"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase3_account.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/components/practice-stamp-account-screen.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/components/practice-stamp-redeem-history.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase3_account.sql",
+          "snippet": "get_student_stamp_redeem_history"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase3_account.sql",
+          "snippet": "face_value_hkd"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "STAMP_ACCOUNT_PROGRESS_SECTION_TITLE"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "STAMP_REDEEM_HISTORY_EMPTY"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-redeem-history.tsx",
+          "snippet": "兌換日期 (HKT)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "PracticeStampAccountScreen"
+        }
+      ]
+    },
+    {
       "id": "parent-email-practice-summary-and-wrong-details",
       "month": "2026-07",
       "category": "communications",
@@ -3117,62 +3171,17 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T09:04:39.840Z",
+  "generated_at": "2026-10-28T09:38:14.535Z",
   "commit_inventory": [
     {
-      "sha": "05e6a47c441f265e14672fc3bbe04296dc21d392",
+      "sha": "3d84c206101bcd6017b307e4a218c70d98e54bbe",
       "date": "2026-10-28",
-      "summary": "fix: show home reopen control when stamp card is dismissed"
+      "summary": "feat: Phase 3 account stamp progress and redeem history UI"
     },
     {
-      "sha": "23fbc2bdc20fe4879cbf92b3974ca9c5c6e53a8e",
+      "sha": "1e37139e1a0eb1b202bdf7281bf9263799dad8e3",
       "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
-    },
-    {
-      "sha": "1d96273dcc602d7365e0aa354ef12ca9df8fd879",
-      "date": "2026-10-28",
-      "summary": "fix: align stamp redeem hints with 換領 / 立即換領 copy"
-    },
-    {
-      "sha": "4fd36a50eaba2798fb1de5848d83af76c0c50ec8",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory for release gate"
-    },
-    {
-      "sha": "5fef4eb4a99c910c771f118e86c5f055670804b8",
-      "date": "2026-10-28",
-      "summary": "chore: fix stamp card feature contract evidence and checks"
-    },
-    {
-      "sha": "3cd20722d69d0830fa95c0dcecdd3da45c97525f",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for stamp card Phase 2 UI"
-    },
-    {
-      "sha": "15169705373db065345990e6272b9eef4f2c1edd",
-      "date": "2026-10-28",
-      "summary": "feat: Phase 2 student stamp card chrome and redeem UI shell"
-    },
-    {
-      "sha": "ce15404c79ee1a400db28bbccd2db7af047c39e0",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for 20-stamp card size"
-    },
-    {
-      "sha": "13781e12e468e0727bd480b7f1961a3c20a1ec8c",
-      "date": "2026-10-28",
-      "summary": "fix: set practice stamp card size to 20 stamped days"
-    },
-    {
-      "sha": "12121ad197f4226e7d87bb393212bf68d3a8f060",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for practice stamp card Phase 1"
-    },
-    {
-      "sha": "864a714d46c2db59cec15efde079dc5093edee33",
-      "date": "2026-10-28",
-      "summary": "feat: practice stamp card Phase 1 schema and earn hook"
+      "summary": "feat: practice stamp card Phase 1–2 (earn + student chrome) (#220)"
     },
     {
       "sha": "61003e25f7db9188f026eb0896b9102f2df0fde7",
@@ -6171,7 +6180,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 610,
-    "total_feature_rows": 69
+    "total_commits_since_start": 601,
+    "total_feature_rows": 70
   }
 }
