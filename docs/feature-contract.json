@@ -3112,8 +3112,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T08:21:31.311Z",
+  "generated_at": "2026-10-28T08:26:34.209Z",
   "commit_inventory": [
+    {
+      "sha": "1d96273dcc602d7365e0aa354ef12ca9df8fd879",
+      "date": "2026-10-28",
+      "summary": "fix: align stamp redeem hints with 換領 / 立即換領 copy"
+    },
+    {
+      "sha": "4fd36a50eaba2798fb1de5848d83af76c0c50ec8",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory for release gate"
+    },
     {
       "sha": "5fef4eb4a99c910c771f118e86c5f055670804b8",
       "date": "2026-10-28",
@@ -6146,7 +6156,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 606,
+    "total_commits_since_start": 608,
     "total_feature_rows": 69
   }
 }
