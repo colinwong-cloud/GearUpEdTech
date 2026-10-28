@@ -292,6 +292,11 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/lib/practice-stamp-card-ui.test.ts" },
         { type: "file_exists", path: "public/stamps/stamp-seal.svg" },
         { type: "file_exists", path: "public/stamps/stamp-slot-empty.svg" },
+        {
+          type: "file_contains",
+          path: "public/stamps/stamp-seal.svg",
+          snippet: "data:image/png;base64",
+        },
         { type: "file_exists", path: "supabase_practice_stamp_card_phase2_enrol.sql" },
         {
           type: "file_contains",

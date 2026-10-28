@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
 import {
   GROWTH_STAMP_COPY,
@@ -117,5 +119,11 @@ describe("practice stamp card UI", () => {
     expect(formatStampRedeemEmailStatus("sent").label).toBe("已發送");
     expect(formatStampRedeemEmailStatus("failed").retryHint).toContain("cs@gearupquiz.com");
     expect(formatStampRedeemDateHkt("2026-10-28")).toBe("2026/10/28");
+  });
+
+  it("uses a self-contained stamp seal SVG safe for img tags", () => {
+    const seal = readFileSync(resolve(process.cwd(), "public/stamps/stamp-seal.svg"), "utf8");
+    expect(seal).toContain("data:image/png;base64");
+    expect(seal).not.toMatch(/href=["']\/icon\.png["']/);
   });
 });
