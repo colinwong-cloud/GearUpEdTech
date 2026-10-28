@@ -440,8 +440,7 @@
       "priority": "high",
       "title": "Practice stamp card Phase 1 earn and streak on session completion",
       "evidence_commits": [
-        "864a714",
-        "13781e1"
+        "1e37139"
       ],
       "checks": [
         {
@@ -490,8 +489,7 @@
       "priority": "high",
       "title": "Practice stamp card Phase 2 student chrome and redeem UI shell",
       "evidence_commits": [
-        "1516970",
-        "3cd2072"
+        "1e37139"
       ],
       "checks": [
         {
@@ -584,7 +582,7 @@
         },
         {
           "type": "file_contains",
-          "path": "src/components/practice-stamp-redeem-history.tsx",
+          "path": "src/lib/practice-stamp-card-ui.ts",
           "snippet": "兌換日期 (HKT)"
         },
         {
@@ -3171,8 +3169,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T09:41:02.776Z",
+  "generated_at": "2026-10-28T09:42:32.264Z",
   "commit_inventory": [
+    {
+      "sha": "5668c0e8cb59bbaf6a2135615bfa18ddc508bd52",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "f96ad5b250b9678f332513eda44b037d7e498f6a",
       "date": "2026-10-28",
@@ -6190,7 +6193,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 603,
+    "total_commits_since_start": 604,
     "total_feature_rows": 70
   }
 }

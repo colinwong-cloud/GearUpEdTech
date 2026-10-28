@@ -247,7 +247,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "high",
       title: "Practice stamp card Phase 1 earn and streak on session completion",
-      evidence_commits: ["864a714", "13781e1"],
+      evidence_commits: ["1e37139"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase1.sql" },
         { type: "file_exists", path: "src/lib/practice-stamp-card.ts" },
@@ -285,7 +285,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "high",
       title: "Practice stamp card Phase 2 student chrome and redeem UI shell",
-      evidence_commits: ["1516970", "3cd2072"],
+      evidence_commits: ["1e37139"],
       checks: [
         { type: "file_exists", path: "src/components/practice-stamp-card.tsx" },
         { type: "file_exists", path: "src/lib/practice-stamp-card-ui.ts" },
@@ -348,7 +348,7 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
-          path: "src/components/practice-stamp-redeem-history.tsx",
+          path: "src/lib/practice-stamp-card-ui.ts",
           snippet: "兌換日期 (HKT)",
         },
         {
