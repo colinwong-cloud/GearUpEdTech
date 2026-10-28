@@ -513,6 +513,11 @@
           "path": "public/stamps/stamp-slot-empty.svg"
         },
         {
+          "type": "file_contains",
+          "path": "public/stamps/stamp-seal.svg",
+          "snippet": "data:image/png;base64"
+        },
+        {
           "type": "file_exists",
           "path": "supabase_practice_stamp_card_phase2_enrol.sql"
         },
@@ -3169,8 +3174,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T10:27:26.383Z",
+  "generated_at": "2026-10-28T10:36:44.901Z",
   "commit_inventory": [
+    {
+      "sha": "687840150246fe135de05388c26773d9d8547798",
+      "date": "2026-10-28",
+      "summary": "fix: embed GearUp icon in stamp-seal.svg for img-safe rendering"
+    },
+    {
+      "sha": "f5d481a59fb5ef4c1373296b6c13ad3de95aa4dc",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory"
+    },
     {
       "sha": "abcb1654b57aecf6a74ae5853b0c78078a0ea279",
       "date": "2026-10-28",
@@ -6218,7 +6233,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 609,
+    "total_commits_since_start": 611,
     "total_feature_rows": 70
   }
 }
