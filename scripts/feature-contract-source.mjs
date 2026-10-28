@@ -326,7 +326,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "account",
       priority: "high",
       title: "Practice stamp card Phase 3 account progress and redeem history",
-      evidence_commits: ["3d84c20"],
+      evidence_commits: ["f05ceb2"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase3_account.sql" },
         { type: "file_exists", path: "src/components/practice-stamp-account-screen.tsx" },
@@ -369,7 +369,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
-      evidence_commits: [],
+      evidence_commits: ["9f4ba32", "632678a", "fe45dee"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase4_inventory.sql" },
         { type: "file_exists", path: "src/lib/admin-stamp-card.ts" },

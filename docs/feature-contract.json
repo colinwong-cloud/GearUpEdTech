@@ -550,7 +550,7 @@
       "priority": "high",
       "title": "Practice stamp card Phase 3 account progress and redeem history",
       "evidence_commits": [
-        "3d84c20"
+        "f05ceb2"
       ],
       "checks": [
         {
@@ -603,7 +603,11 @@
       "category": "product",
       "priority": "critical",
       "title": "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "9f4ba32",
+        "632678a",
+        "fe45dee"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -3225,8 +3229,23 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T11:04:52.836Z",
+  "generated_at": "2026-10-28T11:07:11.153Z",
   "commit_inventory": [
+    {
+      "sha": "fe45dee417d70f646040272073804479100b42fd",
+      "date": "2026-10-28",
+      "summary": "test(smoke): assert admin 練習印花卡 tab visible"
+    },
+    {
+      "sha": "632678adca3f63ca99a9c1a678f3f42328f43210",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for Phase 4 admin stamp inventory"
+    },
+    {
+      "sha": "9f4ba3235fcb19c69aa82a8f7e50ec7495172412",
+      "date": "2026-10-28",
+      "summary": "feat(admin): Phase 4 practice stamp program toggle, gift inventory, redeem report"
+    },
     {
       "sha": "f05ceb2c5affa7a2da1b347d733fa55823cb53f5",
       "date": "2026-10-28",
@@ -6234,7 +6253,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 601,
+    "total_commits_since_start": 604,
     "total_feature_rows": 71
   }
 }
