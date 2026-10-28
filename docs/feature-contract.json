@@ -657,6 +657,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "總碼"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "匯入兌換碼 CSV"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "stamp_program_settings_get"
         }
@@ -3239,8 +3249,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T12:27:50.743Z",
+  "generated_at": "2026-10-28T12:51:30.683Z",
   "commit_inventory": [
+    {
+      "sha": "94007c1847001a76e3dedd030d1e70f300697c09",
+      "date": "2026-10-28",
+      "summary": "fix(admin): stamp report sticky overlap, Growth TC labels, audit empty helper"
+    },
+    {
+      "sha": "e82c31e6fcef90b24689b57ea4313ca416371df3",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract inventory for soft-fix commits"
+    },
     {
       "sha": "135d98ee144e9d148361090542b9b4c538d63bea",
       "date": "2026-10-28",
@@ -6283,7 +6303,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 608,
+    "total_commits_since_start": 610,
     "total_feature_rows": 71
   }
 }
