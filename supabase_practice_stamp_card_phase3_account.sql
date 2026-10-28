@@ -28,7 +28,7 @@ SET search_path = public
 AS $$
   SELECT COALESCE(
     (
-      SELECT json_agg(row_to_json(t) ORDER BY t.redeemed_at DESC)
+      SELECT json_agg(row_to_json(t) ORDER BY t.redeemed_at_hkt DESC)
       FROM (
         SELECT
           r.id,
