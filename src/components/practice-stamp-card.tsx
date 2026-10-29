@@ -19,6 +19,7 @@ import {
   resolvePracticeStampFooterState,
   setPracticeStampCardHomeDismissedForSession,
   shouldRenderPracticeStampCardChrome,
+  shouldRenderPracticeStampHomeChrome,
   stampCardHeaderStreakLine,
   stampSlotRotationDeg,
   type PracticeStampAwardPayload,
@@ -171,7 +172,10 @@ export function PracticeStampCard({
   const confirmFaceValue = redeemOffer.face_value_hkd ?? 0;
   const confirmWindowEnd = formatStampGiftWindowEndLabel(redeemOffer.window_end_hkt);
 
-  if (!shouldRenderPracticeStampCardChrome(status, loading)) {
+  const chromeVisible = homeChrome
+    ? shouldRenderPracticeStampHomeChrome(status, loading)
+    : shouldRenderPracticeStampCardChrome(status, loading);
+  if (!chromeVisible) {
     return null;
   }
 

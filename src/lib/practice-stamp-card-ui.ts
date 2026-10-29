@@ -77,9 +77,18 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
 }
 
 /**
- * Soft #2: hide stamp card chrome when 印花計劃開放 is off and the student has no in-progress card.
- * In-progress cards remain visible for earn/redeem while the global program is closed.
+ * Soft #2 (subject home): hide when program is off without an in-progress card.
+ * Never paint while status is loading or unknown — avoids OFF-program flash of stamp branding.
  */
+export function shouldRenderPracticeStampHomeChrome(
+  status: StudentStampCardStatus | null,
+  loading: boolean
+): boolean {
+  if (loading || !status) return false;
+  return status.stamps_program_open || status.has_active_card;
+}
+
+/** Result page, account module, etc.: fail-open while loading; hide when off without active card. */
 export function shouldRenderPracticeStampCardChrome(
   status: StudentStampCardStatus | null,
   loading: boolean
@@ -88,9 +97,6 @@ export function shouldRenderPracticeStampCardChrome(
   if (!status) return true;
   return status.stamps_program_open || status.has_active_card;
 }
-
-/** @deprecated Use shouldRenderPracticeStampCardChrome — same behavior, kept for feature-contract anchors. */
-export const shouldRenderPracticeStampHomeChrome = shouldRenderPracticeStampCardChrome;
 
 export function stampCardHeaderStreakLine(streak: number): string {
   return `已連續 ${streak} 日`;
