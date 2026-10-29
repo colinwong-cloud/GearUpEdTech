@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BusinessKpiSection } from "./business-kpi";
 import { PracticeStampAdminSection } from "./practice-stamp-section";
+import { HomePageNoticeAdminSection } from "./home-page-notice-section";
 import { TutorPaymentsSection } from "./tutor-payments-section";
 import {
   buildPaidTransactionsCsv,
@@ -86,7 +87,8 @@ type Tab =
   | "tutor_payments"
   | "payment_status"
   | "student_practice_summary"
-  | "practice_stamp";
+  | "practice_stamp"
+  | "home_page_notice";
 
 interface StudentInfo {
   student: { id: string; student_name: string; grade_level: string };
@@ -584,6 +586,7 @@ export default function AdminPage() {
     { key: "tutor_referral_codes", label: "教師編號維護" },
     { key: "tutor_payments", label: "教師付款情況" },
     { key: "practice_stamp", label: "練習印花卡" },
+    { key: "home_page_notice", label: "主頁公告" },
   ];
 
   return (
@@ -618,6 +621,7 @@ export default function AdminPage() {
         {tab === "tutor_referral_codes" && <TutorReferralCodeSection sessionToken={sessionToken} />}
         {tab === "tutor_payments" && <TutorPaymentsSection sessionToken={sessionToken} />}
         {tab === "practice_stamp" && <PracticeStampAdminSection sessionToken={sessionToken} />}
+        {tab === "home_page_notice" && <HomePageNoticeAdminSection sessionToken={sessionToken} />}
       </div>
     </div>
   );

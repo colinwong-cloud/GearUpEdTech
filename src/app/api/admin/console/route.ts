@@ -51,6 +51,10 @@ import {
   adminStampStudentProgressList,
   adminStampStudentProgressResume,
 } from "@/lib/server/admin-stamp-card";
+import {
+  adminHomePageNoticeGet,
+  adminHomePageNoticeUpdate,
+} from "@/lib/server/admin-home-page-notice";
 import { buildGiftCodesExportCsv } from "@/lib/admin-stamp-card";
 
 type AdminAction =
@@ -95,7 +99,9 @@ type AdminAction =
   | "stamp_gift_codes_export"
   | "stamp_redemption_report"
   | "stamp_student_progress_list"
-  | "stamp_student_progress_resume";
+  | "stamp_student_progress_resume"
+  | "home_page_notice_get"
+  | "home_page_notice_update";
 
 type RequestBody = {
   action?: AdminAction;
@@ -3250,6 +3256,28 @@ export async function POST(req: NextRequest) {
       case "stamp_student_progress_resume": {
         return NextResponse.json({
           data: await adminStampStudentProgressResume(admin, payload, adminUser),
+        });
+      }
+      case "home_page_notice_get": {
+        return NextResponse.json({ data: await adminHomePageNoticeGet(admin) });
+      }
+      case "home_page_notice_update": {
+        return NextResponse.json({
+          data: await adminHomePageNoticeUpdate(admin, {
+            enabled: Boolean(payload.enabled),
+            body_text:
+              payload.body_text === null || payload.body_text === undefined
+                ? null
+                : String(payload.body_text),
+            image_url:
+              payload.image_url === null || payload.image_url === undefined
+                ? null
+                : String(payload.image_url),
+            link_url:
+              payload.link_url === null || payload.link_url === undefined
+                ? null
+                : String(payload.link_url),
+          }),
         });
       }
       default:
