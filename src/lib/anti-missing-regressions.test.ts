@@ -9,9 +9,15 @@ function readSource(relPath: string): string {
 describe("anti-missing regression guards", () => {
   it("keeps results page short summary and action buttons", () => {
     const pageSource = readSource("src/app/page.tsx");
-    expect(pageSource).toContain("{summaryText}");
-    expect(pageSource).not.toContain("小香蕉的練習小結");
-    expect(pageSource).not.toMatch(/function ResultsView[\s\S]*錯題解析/);
+    const resultsViewMatch = pageSource.match(
+      /function ResultsView\([\s\S]*?\n\}\n\nfunction QuestionImage/
+    );
+    expect(resultsViewMatch).toBeTruthy();
+    const resultsViewSource = resultsViewMatch![0];
+    expect(resultsViewSource).toContain("{summaryText}");
+    expect(resultsViewSource).not.toContain("小香蕉的練習小結");
+    expect(resultsViewSource).not.toContain("錯題解析");
+    expect(resultsViewSource).not.toContain("你的答案");
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
     expect(pageSource).toContain("px-8 py-3.5");
