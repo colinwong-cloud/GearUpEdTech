@@ -33,12 +33,12 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "ResultRecentTrendChart"
+          "snippet": "錯題解析"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "PracticeStampCard"
+          "snippet": "ResultRecentTrendChart"
         }
       ]
     },
@@ -47,20 +47,25 @@
       "month": "2026-07",
       "category": "quiz-core",
       "priority": "critical",
-      "title": "Wrong-answer detail cards include value + explanation (parent email)",
+      "title": "Wrong-answer detail cards include value + explanation",
       "evidence_commits": [
         "c38c510"
       ],
       "checks": [
         {
           "type": "file_contains",
-          "path": "src/app/api/send-quiz-email/route.ts",
+          "path": "src/app/page.tsx",
           "snippet": "你的答案（值）"
         },
         {
           "type": "file_contains",
-          "path": "src/app/api/send-quiz-email/route.ts",
+          "path": "src/app/page.tsx",
           "snippet": "正確答案（值）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "反映這題目"
         },
         {
           "type": "file_contains",
@@ -139,6 +144,16 @@
         "4b3136f"
       ],
       "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "反映這題目"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "fetch(\"/api/send-question-report\""
+        },
         {
           "type": "file_exists",
           "path": "src/app/api/send-question-report/route.ts"
@@ -3455,8 +3470,28 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T07:51:27.507Z",
+  "generated_at": "2026-10-29T08:48:56.752Z",
   "commit_inventory": [
+    {
+      "sha": "8e94e76792941387b57f7d42f13663d1a7f6f0c1",
+      "date": "2026-10-29",
+      "summary": "fix: restore result page answer table and 錯題解析"
+    },
+    {
+      "sha": "a6c70fad016077961883a8c1b3f398ee56442661",
+      "date": "2026-10-29",
+      "summary": "chore: remove unused result-page answer formatting helpers"
+    },
+    {
+      "sha": "6974115240f69af62a2fce22921511a46d2b745d",
+      "date": "2026-10-29",
+      "summary": "test: scope result-page anti-missing guard to ResultsView"
+    },
+    {
+      "sha": "72c59706a94a1b3b899c7ee3ba8df82d873c3fc7",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract after result page UX"
+    },
     {
       "sha": "72e872c1d167ee0da62ddacc35b3e169d0076069",
       "date": "2026-10-29",
@@ -6509,7 +6544,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 610,
+    "total_commits_since_start": 614,
     "total_feature_rows": 75
   }
 }
