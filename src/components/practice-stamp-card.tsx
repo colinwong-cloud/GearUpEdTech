@@ -18,6 +18,7 @@ import {
   requestPracticeStampRedeem,
   resolvePracticeStampFooterState,
   setPracticeStampCardHomeDismissedForSession,
+  shouldRenderPracticeStampCardChrome,
   shouldRenderPracticeStampHomeChrome,
   stampCardHeaderStreakLine,
   stampSlotRotationDeg,
@@ -171,11 +172,14 @@ export function PracticeStampCard({
   const confirmFaceValue = redeemOffer.face_value_hkd ?? 0;
   const confirmWindowEnd = formatStampGiftWindowEndLabel(redeemOffer.window_end_hkt);
 
-  if (homeChrome && !shouldRenderPracticeStampHomeChrome(status, loading)) {
+  const chromeVisible = homeChrome
+    ? shouldRenderPracticeStampHomeChrome(status, loading)
+    : shouldRenderPracticeStampCardChrome(status, loading);
+  if (!chromeVisible) {
     return null;
   }
 
-  if (dismissible && dismissed && variant === "compact") {
+  if (dismissible && dismissed && variant === "compact" && homeChrome) {
     return (
       <button
         type="button"

@@ -428,7 +428,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 6 admin student progress list and CS resume",
-      evidence_commits: ["e4389dc", "0621693"],
+      evidence_commits: ["78359a7"],
       checks: [
         {
           type: "file_exists",
@@ -545,9 +545,19 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-10",
       category: "engagement",
       priority: "medium",
-      title: "Practice stamp home chrome: hide card when global program is off",
+      title: "Practice stamp chrome: hide when program off without in-progress card",
       evidence_commits: ["8ad89f2"],
       checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldRenderPracticeStampCardChrome",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "status.stamps_program_open || status.has_active_card",
+        },
         {
           type: "file_contains",
           path: "src/lib/practice-stamp-card-ui.ts",
@@ -555,8 +565,23 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "if (loading || !status) return false",
+        },
+        {
+          type: "file_contains",
           path: "src/components/practice-stamp-card.tsx",
-          snippet: "homeChrome",
+          snippet: "shouldRenderPracticeStampHomeChrome(status, loading)",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/use-practice-stamp-card-chrome.ts",
+          snippet: "usePracticeStampCardChromeVisible",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "showStampCardEntry",
         },
         {
           type: "file_contains",

@@ -19,6 +19,7 @@ import {
   STAMP_REDEEM_HISTORY_EMPTY,
   STAMP_REDEEM_HISTORY_HEADERS,
   STAMP_HOME_REOPEN_LABEL,
+  shouldRenderPracticeStampCardChrome,
   shouldRenderPracticeStampHomeChrome,
 } from "./practice-stamp-card-ui";
 
@@ -92,7 +93,7 @@ describe("practice stamp card UI", () => {
     expect(STAMP_HOME_REOPEN_LABEL).toBe("練習印花卡");
   });
 
-  it("shows subject-home chrome while loading and when program is open", () => {
+  it("shows stamp chrome while loading and when program is open or student has active card", () => {
     const openStatus = {
       has_active_card: true,
       stamps_program_open: true,
@@ -102,28 +103,62 @@ describe("practice stamp card UI", () => {
       stamped_today: false,
       last_stamp_hkt_date: null,
     };
-    expect(shouldRenderPracticeStampHomeChrome(openStatus, true)).toBe(true);
-    expect(shouldRenderPracticeStampHomeChrome(openStatus, false)).toBe(true);
-    expect(shouldRenderPracticeStampHomeChrome(null, true)).toBe(true);
-    expect(shouldRenderPracticeStampHomeChrome(null, false)).toBe(true);
+    expect(shouldRenderPracticeStampCardChrome(openStatus, true)).toBe(true);
+    expect(shouldRenderPracticeStampCardChrome(openStatus, false)).toBe(true);
+    expect(shouldRenderPracticeStampCardChrome(null, true)).toBe(true);
+    expect(shouldRenderPracticeStampCardChrome(null, false)).toBe(true);
   });
 
-  it("hides subject-home chrome only when global program is confirmed off", () => {
-    const openStatus = {
+  it("hides stamp chrome when program is off and student has no active card", () => {
+    const notEnrolledOff = {
+      has_active_card: false,
+      stamps_program_open: false,
+      stamps_per_card: 20,
+      stamp_count: 0,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(shouldRenderPracticeStampCardChrome(notEnrolledOff, false)).toBe(false);
+  });
+
+  it("keeps stamp chrome when program is off but student has in-progress card", () => {
+    const activeWhileClosed = {
       has_active_card: true,
-      stamps_program_open: true,
+      stamps_program_open: false,
       stamps_per_card: 20,
       stamp_count: 2,
       streak: 2,
       stamped_today: false,
       last_stamp_hkt_date: null,
     };
-    expect(
-      shouldRenderPracticeStampHomeChrome(
-        { ...openStatus, stamps_program_open: false },
-        false
-      )
-    ).toBe(false);
+    expect(shouldRenderPracticeStampCardChrome(activeWhileClosed, false)).toBe(true);
+    expect(shouldRenderPracticeStampHomeChrome(activeWhileClosed, false)).toBe(true);
+  });
+
+  it("never paints subject-home chrome while status is loading or null", () => {
+    const openStatus = {
+      has_active_card: false,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 0,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(shouldRenderPracticeStampHomeChrome(openStatus, true)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(null, false)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(null, true)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(openStatus, false)).toBe(true);
+  });
+
+  it("PracticeStampCard uses strict home gate and global gate elsewhere", () => {
+    const cardSrc = readFileSync(
+      resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
+      "utf8"
+    );
+    expect(cardSrc).toContain("shouldRenderPracticeStampHomeChrome(status, loading)");
+    expect(cardSrc).toContain("shouldRenderPracticeStampCardChrome(status, loading)");
   });
 
   it("Soft #1: not-enrolled open footer has no manual enrol CTA in card source", () => {

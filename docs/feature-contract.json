@@ -677,8 +677,7 @@
       "priority": "critical",
       "title": "Practice stamp card Phase 6 admin student progress list and CS resume",
       "evidence_commits": [
-        "e4389dc",
-        "0621693"
+        "78359a7"
       ],
       "checks": [
         {
@@ -812,7 +811,7 @@
       "month": "2026-10",
       "category": "engagement",
       "priority": "medium",
-      "title": "Practice stamp home chrome: hide card when global program is off",
+      "title": "Practice stamp chrome: hide when program off without in-progress card",
       "evidence_commits": [
         "8ad89f2"
       ],
@@ -820,12 +819,37 @@
         {
           "type": "file_contains",
           "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "shouldRenderPracticeStampCardChrome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "status.stamps_program_open || status.has_active_card"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
           "snippet": "shouldRenderPracticeStampHomeChrome"
         },
         {
           "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "if (loading || !status) return false"
+        },
+        {
+          "type": "file_contains",
           "path": "src/components/practice-stamp-card.tsx",
-          "snippet": "homeChrome"
+          "snippet": "shouldRenderPracticeStampHomeChrome(status, loading)"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/use-practice-stamp-card-chrome.ts",
+          "snippet": "usePracticeStampCardChromeVisible"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "showStampCardEntry"
         },
         {
           "type": "file_contains",
@@ -3411,52 +3435,32 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T04:48:18.073Z",
+  "generated_at": "2026-10-29T05:33:02.812Z",
   "commit_inventory": [
     {
-      "sha": "b1bb5e643284b2f54ec6bff53945385c30fc85a9",
+      "sha": "cec0a25ff902360b6149c6b42039a3e2b2447669",
       "date": "2026-10-29",
-      "summary": "chore: Phase 6 feature contract check targets locked TC constant file"
+      "summary": "fix(stamp): no home stamp paint while status loading (OFF flash)"
     },
     {
-      "sha": "3f80fd010bc8f0c87318047d1971ea12623765f5",
+      "sha": "25b5c77081797b255d4c72044d6c353e651960e5",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature contract after Soft stamp evidence repoint"
+      "summary": "chore: refresh feature-contract.json inventory for ce5ad3c"
     },
     {
-      "sha": "b448616befe82c56dbef005da1f781131d9d3657",
+      "sha": "ce5ad3c48797c6502be2ecd1dcb06bd4c129777d",
       "date": "2026-10-29",
-      "summary": "chore: repoint Soft #1/#2 stamp home feature contract evidence to main merges"
+      "summary": "chore: refresh feature-contract.json for stamp chrome gate"
     },
     {
-      "sha": "5c58bbb6e29016acd352adc2ce700c43b090d10a",
+      "sha": "5a8344e2655a92365ea9d3efd83a434d3a8cebbb",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature contract after Phase 5 evidence repoint"
+      "summary": "fix(stamp): hide stamp chrome when program off and no active card"
     },
     {
-      "sha": "075453377c2d244997fd8baf99f53935bce5c94c",
+      "sha": "78359a7132ad609ec46ca2ca4f57f3fa4a71851d",
       "date": "2026-10-29",
-      "summary": "chore: repoint Phase 5 stamp redeem feature contract evidence to main merge"
-    },
-    {
-      "sha": "36f409a21fe4f9e35b3a437e9a10a6ed6ff1832b",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature contract after Phase 6 evidence commits"
-    },
-    {
-      "sha": "71c93e8d4fe87ff61f7259241d620b6b9413e9cc",
-      "date": "2026-10-29",
-      "summary": "chore: add Phase 6 stamp progress feature contract evidence commits"
-    },
-    {
-      "sha": "0621693db7b4580dcc6e74b895483d70bf8f3f7d",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature contract for stamp admin progress"
-    },
-    {
-      "sha": "e4389dc08a07ba051436615c3c06694c52899eec",
-      "date": "2026-10-29",
-      "summary": "feat(admin): student stamp progress list and CS resume"
+      "summary": "feat(admin): 學生印花進度報表與 CS 恢復連續練習 (#226)"
     },
     {
       "sha": "8ad89f222b3af3afe8b7d2e4442aae3f96cc24a5",
@@ -6485,7 +6489,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 614,
+    "total_commits_since_start": 610,
     "total_feature_rows": 75
   }
 }
