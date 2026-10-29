@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { PracticeStampCard } from "@/components/practice-stamp-card";
 import { PracticeStampRedeemHistory } from "@/components/practice-stamp-redeem-history";
 import { STAMP_ACCOUNT_PROGRESS_SECTION_TITLE } from "@/lib/practice-stamp-card-ui";
@@ -19,15 +20,22 @@ export function PracticeStampAccountScreen({
   onSelectStudent,
   onBack,
 }: PracticeStampAccountScreenProps) {
+  const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
   const showStudentPicker =
     students && students.length > 1 && typeof onSelectStudent === "function";
 
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="min-h-screen overflow-x-hidden bg-white/60 backdrop-blur-sm"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="border-b border-gray-200 bg-white/80 px-4 py-3 backdrop-blur">
         <span className="text-sm font-medium text-gray-700">練習印花卡</span>
       </div>
-      <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
+      <div
+        className="mx-auto max-w-lg space-y-8 px-4 py-6 pb-28"
+        style={{ paddingBottom: "max(7rem, calc(1.5rem + env(safe-area-inset-bottom)))" }}
+      >
         {showStudentPicker ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <label htmlFor="stamp-account-student" className="mb-2 block text-xs font-semibold text-gray-500">
@@ -56,10 +64,14 @@ export function PracticeStampAccountScreen({
           <h2 id="stamp-progress-heading" className="text-base font-bold text-gray-900">
             {STAMP_ACCOUNT_PROGRESS_SECTION_TITLE}
           </h2>
-          <PracticeStampCard studentId={studentId} variant="full" />
+          <PracticeStampCard
+            studentId={studentId}
+            variant="full"
+            onRedeemSuccess={() => setHistoryRefreshToken((t) => t + 1)}
+          />
         </section>
 
-        <PracticeStampRedeemHistory studentId={studentId} />
+        <PracticeStampRedeemHistory studentId={studentId} refreshToken={historyRefreshToken} />
 
         <button
           type="button"

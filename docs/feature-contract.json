@@ -604,9 +604,7 @@
       "priority": "critical",
       "title": "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
       "evidence_commits": [
-        "9f4ba32",
-        "632678a",
-        "fe45dee"
+        "495b192"
       ],
       "checks": [
         {
@@ -669,6 +667,76 @@
           "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "stamp_program_settings_get"
+        }
+      ]
+    },
+    {
+      "id": "practice-stamp-card-phase5-student-redeem",
+      "month": "2026-10",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
+      "evidence_commits": [
+        "7bcebf2",
+        "bc8eb74",
+        "13a1a5c"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase5_redeem.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/practice-stamp-redeem.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/practice-stamp-redeem.test.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/practice-stamp/redeem/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase5_redeem.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase5_redeem.sql",
+          "snippet": "redeem_student_practice_stamp"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "禮品兌換申請已收到"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "按「立即換領」領取電子禮券"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/practice-stamp-redeem.ts",
+          "snippet": "redeem_student_practice_stamp"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/practice-stamp/redeem/route.ts",
+          "snippet": "executePracticeStampRedeem"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "loadStudentStampRedeemOffer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-account-screen.tsx",
+          "snippet": "historyRefreshToken"
         }
       ]
     },
@@ -3249,52 +3317,47 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T12:51:30.683Z",
+  "generated_at": "2026-10-29T01:13:55.558Z",
   "commit_inventory": [
     {
-      "sha": "94007c1847001a76e3dedd030d1e70f300697c09",
-      "date": "2026-10-28",
-      "summary": "fix(admin): stamp report sticky overlap, Growth TC labels, audit empty helper"
+      "sha": "5eba0ab4798dcd20875353a455568c8b9e66ba3f",
+      "date": "2026-10-29",
+      "summary": "fix(contract): Phase 4/5 stamp evidence commits for release gate"
     },
     {
-      "sha": "e82c31e6fcef90b24689b57ea4313ca416371df3",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory for soft-fix commits"
+      "sha": "e0d8c2af1922c3768a2b3344b0c6aaf3ab60cd6a",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract for stamp UI soft fixes"
     },
     {
-      "sha": "135d98ee144e9d148361090542b9b4c538d63bea",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract after Phase 4 UI soft fixes"
+      "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
+      "date": "2026-10-29",
+      "summary": "fix(stamps): redeem history refresh, HKT display, mobile layout softs"
     },
     {
-      "sha": "072d2eec1dcf908f439d0c8c9df65e10b97f1ae0",
+      "sha": "fd161fdfa6c7ae36321a0a0173af9764e295e99b",
       "date": "2026-10-28",
-      "summary": "fix(admin): Phase 4 stamp UI soft fixes — cancel, sticky cols, audit placeholder"
+      "summary": "chore: refresh feature contract for stamp hint copy"
     },
     {
-      "sha": "6316485728ecbeca92b4a4f24d41cf638e9ae6ed",
+      "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
       "date": "2026-10-28",
-      "summary": "chore: refresh feature contract inventory"
+      "summary": "fix(stamps): Growth soft-lock CTA and redeemable hint copy"
     },
     {
-      "sha": "3b64058a823ec9de8efbda70b1dfc7c74e73db29",
+      "sha": "0831c2ccd9a0718c5c3213ab04be1b69afd47973",
       "date": "2026-10-28",
-      "summary": "chore: fix feature contract evidence commits for Phase 3–4"
+      "summary": "chore: refresh feature contract for stamp Phase 5"
     },
     {
-      "sha": "fe45dee417d70f646040272073804479100b42fd",
+      "sha": "7bcebf2c87d2fce34371a51a19a8554eab729e6d",
       "date": "2026-10-28",
-      "summary": "test(smoke): assert admin 練習印花卡 tab visible"
+      "summary": "feat(stamps): Phase 5 student redeem, gift assign, and Resend email"
     },
     {
-      "sha": "632678adca3f63ca99a9c1a678f3f42328f43210",
+      "sha": "495b19250afca6bee77cb9713e1b8a1aa52078c7",
       "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for Phase 4 admin stamp inventory"
-    },
-    {
-      "sha": "9f4ba3235fcb19c69aa82a8f7e50ec7495172412",
-      "date": "2026-10-28",
-      "summary": "feat(admin): Phase 4 practice stamp program toggle, gift inventory, redeem report"
+      "summary": "feat(admin): Phase 4 practice stamp inventory, program toggle, redeem report (#222)"
     },
     {
       "sha": "f05ceb2c5affa7a2da1b347d733fa55823cb53f5",
@@ -6303,7 +6366,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 610,
-    "total_feature_rows": 71
+    "total_commits_since_start": 609,
+    "total_feature_rows": 72
   }
 }

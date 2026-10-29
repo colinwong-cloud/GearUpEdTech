@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 export const GROWTH_STAMP_COPY = {
   blank: "開始每日練習，完成一次（至少 10 題）即可蓋印。",
   progress: (n: number) => `已連續練習 ${n} 日／目標 ${PRACTICE_STAMP_CARD_SIZE} 日。繼續加油！`,
-  completedNotRedeemed: "恭喜！已連續 20 日，可換領禮品。",
+  completedNotRedeemed: "恭喜！已連續 20 日，可兌換禮品。",
   redeemableHint: "按「立即換領」領取電子禮券。",
   afterRedeemNewCycle: "新一輪印花卡已開始，明日起可再蓋印。",
   redeemSuccessAck:
@@ -126,12 +126,71 @@ export type PracticeStampAwardPayload = {
 
 export type PracticeStampRedeemUiPhase = "idle" | "confirm" | "redeeming" | "success" | "error";
 
-/** UI-only gift preview until Phase 4 admin inventory. */
-export const STAMP_REDEEM_PLACEHOLDER_GIFT = {
-  giftName: "GearUp 練習獎賞禮券",
-  faceValueHkd: 50,
-  windowEndLabel: "本月底",
-} as const;
+export type StudentStampRedeemOffer = {
+  gift_window_open: boolean;
+  gift_in_stock: boolean;
+  redeemable: boolean;
+  gift_name: string | null;
+  face_value_hkd: number | null;
+  window_end_hkt: string | null;
+};
+
+export function formatStampGiftWindowEndLabel(windowEndHkt: string | null): string {
+  if (!windowEndHkt || !/^\d{4}-\d{2}-\d{2}$/.test(windowEndHkt)) {
+    return "—";
+  }
+  const [y, m, d] = windowEndHkt.split("-");
+  return `${y}/${m}/${d}`;
+}
+
+function isMissingStampRedeemOfferRpc(errorMessage: string): boolean {
+  return /get_student_stamp_redeem_offer|42883|PGRST202|does not exist|Could not find the function/i.test(
+    errorMessage
+  );
+}
+
+export function parseStudentStampRedeemOffer(data: unknown): StudentStampRedeemOffer | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  if (row.ok === false) return null;
+  return {
+    gift_window_open: row.gift_window_open === true,
+    gift_in_stock: row.gift_in_stock === true,
+    redeemable: row.redeemable === true,
+    gift_name: typeof row.gift_name === "string" ? row.gift_name : null,
+    face_value_hkd:
+      typeof row.face_value_hkd === "number" && Number.isFinite(row.face_value_hkd)
+        ? row.face_value_hkd
+        : null,
+    window_end_hkt: typeof row.window_end_hkt === "string" ? row.window_end_hkt : null,
+  };
+}
+
+/** Loads redeem offer (gift preview + window/stock flags). Defaults open when RPC not deployed. */
+export async function loadStudentStampRedeemOffer(studentId: string): Promise<StudentStampRedeemOffer> {
+  const fallback: StudentStampRedeemOffer = {
+    gift_window_open: true,
+    gift_in_stock: true,
+    redeemable: false,
+    gift_name: null,
+    face_value_hkd: null,
+    window_end_hkt: null,
+  };
+  try {
+    const { data, error } = await supabase.rpc("get_student_stamp_redeem_offer", {
+      p_student_id: studentId,
+    });
+    if (error) {
+      if (isMissingStampRedeemOfferRpc(error.message)) {
+        return fallback;
+      }
+      return fallback;
+    }
+    return parseStudentStampRedeemOffer(data) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function parseStudentStampCardStatus(data: unknown): StudentStampCardStatus | null {
   if (!data || typeof data !== "object") return null;
@@ -268,21 +327,36 @@ export function parseStudentStampRedeemHistoryRows(data: unknown): StudentStampR
 
 export function formatStampRedeemDateHkt(value: string | null): string {
   if (!value) return "—";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-");
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split("-");
     return `${y}/${m}/${d}`;
   }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleString("zh-HK", {
-    timeZone: "Asia/Hong_Kong",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const wallClock = trimmed.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+  if (wallClock) {
+    const [, y, m, d, hh, mm] = wallClock;
+    return `${y}/${m}/${d} ${hh}:${mm}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) return "—";
+    const datePart = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(parsed);
+    const timePart = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Hong_Kong",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(parsed);
+    return `${datePart.replace(/-/g, "/")} ${timePart}`;
+  }
+  return trimmed.replace(/-/g, "/");
 }
 
 export function formatStampRedeemFaceValue(faceValueHkd: number | null): string {
@@ -339,14 +413,27 @@ export async function loadStudentStampRedeemHistory(studentId: string): Promise<
   }
 }
 
-/**
- * TODO Phase 5: replace with redeem RPC + Resend email send.
- */
 export async function requestPracticeStampRedeem(studentId: string): Promise<{
   ok: boolean;
   couponCode?: string;
   error?: string;
 }> {
-  void studentId;
-  return { ok: false, error: "redeem_api_not_wired" };
+  try {
+    const res = await fetch("/api/practice-stamp/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId }),
+    });
+    const payload = (await res.json()) as {
+      ok?: boolean;
+      couponCode?: string;
+      error?: string;
+    };
+    if (!res.ok || !payload.ok || !payload.couponCode) {
+      return { ok: false, error: payload.error ?? "redeem_failed" };
+    }
+    return { ok: true, couponCode: payload.couponCode };
+  } catch {
+    return { ok: false, error: "redeem_failed" };
+  }
 }

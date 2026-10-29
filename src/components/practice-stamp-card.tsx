@@ -8,9 +8,10 @@ import {
   STAMP_CARD_HEADER_TITLE,
   STAMP_FOOTER_COPY,
   STAMP_HOME_REOPEN_LABEL,
-  STAMP_REDEEM_PLACEHOLDER_GIFT,
   clearPracticeStampCardHomeDismissForSession,
+  formatStampGiftWindowEndLabel,
   isPracticeStampCardHomeDismissedForSession,
+  loadStudentStampRedeemOffer,
   parseStudentStampCardStatus,
   practiceStampEarnFeedbackMessage,
   progressFooterLine,
@@ -21,6 +22,7 @@ import {
   stampSlotRotationDeg,
   type PracticeStampAwardPayload,
   type StudentStampCardStatus,
+  type StudentStampRedeemOffer,
 } from "@/lib/practice-stamp-card-ui";
 
 export type PracticeStampCardProps = {
@@ -30,7 +32,17 @@ export type PracticeStampCardProps = {
   earnFeedbackAward?: PracticeStampAwardPayload | null;
   giftWindowOpen?: boolean;
   giftInStock?: boolean;
+  onRedeemSuccess?: () => void;
   className?: string;
+};
+
+const DEFAULT_REDEEM_OFFER: StudentStampRedeemOffer = {
+  gift_window_open: true,
+  gift_in_stock: true,
+  redeemable: false,
+  gift_name: null,
+  face_value_hkd: null,
+  window_end_hkt: null,
 };
 
 export function PracticeStampCard({
@@ -38,11 +50,13 @@ export function PracticeStampCard({
   variant = "full",
   dismissible = false,
   earnFeedbackAward,
-  giftWindowOpen = true,
-  giftInStock = true,
+  giftWindowOpen: giftWindowOpenProp,
+  giftInStock: giftInStockProp,
+  onRedeemSuccess,
   className = "",
 }: PracticeStampCardProps) {
   const [status, setStatus] = useState<StudentStampCardStatus | null>(null);
+  const [redeemOffer, setRedeemOffer] = useState<StudentStampRedeemOffer>(DEFAULT_REDEEM_OFFER);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
@@ -57,13 +71,18 @@ export function PracticeStampCard({
   const refreshStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_student_stamp_card_status", {
-        p_student_id: studentId,
-      });
+      const [{ data, error }, offer] = await Promise.all([
+        supabase.rpc("get_student_stamp_card_status", {
+          p_student_id: studentId,
+        }),
+        loadStudentStampRedeemOffer(studentId),
+      ]);
       if (error) throw error;
       setStatus(parseStudentStampCardStatus(data));
+      setRedeemOffer(offer);
     } catch {
       setStatus(null);
+      setRedeemOffer(DEFAULT_REDEEM_OFFER);
     } finally {
       setLoading(false);
     }
@@ -104,6 +123,9 @@ export function PracticeStampCard({
     () => practiceStampEarnFeedbackMessage(earnFeedbackAward),
     [earnFeedbackAward]
   );
+
+  const giftWindowOpen = giftWindowOpenProp ?? redeemOffer.gift_window_open;
+  const giftInStock = giftInStockProp ?? redeemOffer.gift_in_stock;
 
   const footerState = resolvePracticeStampFooterState({
     status,
@@ -154,13 +176,17 @@ export function PracticeStampCard({
       setCouponCode(result.couponCode);
       setRedeemPhase("success");
       setPostRedeem(true);
+      onRedeemSuccess?.();
+      await refreshStatus();
       return;
     }
-    // Phase 5 stub: show success UI shell with preview code for QA wiring
-    setCouponCode("GU-PREVIEW-XXXX");
-    setRedeemPhase("success");
-    setPostRedeem(true);
+    setRedeemPhase("error");
   };
+
+  const confirmGiftName =
+    redeemOffer.gift_name ?? "GearUp 練習獎賞禮券";
+  const confirmFaceValue = redeemOffer.face_value_hkd ?? 0;
+  const confirmWindowEnd = formatStampGiftWindowEndLabel(redeemOffer.window_end_hkt);
 
   if (dismissible && dismissed && variant === "compact") {
     return (
@@ -297,7 +323,7 @@ export function PracticeStampCard({
               <p>{GROWTH_STAMP_COPY.afterRedeemNewCycle}</p>
             )}
             {footerState === "success" && (
-              <div className="space-y-2 rounded-xl border border-emerald-200 bg-white/90 p-3">
+              <div className="relative z-[1] mb-2 space-y-2 rounded-xl border border-emerald-200 bg-white/90 p-3 shadow-sm">
                 <p className="text-sm leading-relaxed">{GROWTH_STAMP_COPY.redeemSuccessAck}</p>
                 {couponCode && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -332,21 +358,19 @@ export function PracticeStampCard({
             <dl className="mt-3 space-y-2 text-sm text-gray-700">
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">禮品</dt>
-                <dd className="font-medium text-right">{STAMP_REDEEM_PLACEHOLDER_GIFT.giftName}</dd>
+                <dd className="max-w-[58%] break-words text-right font-medium [overflow-wrap:anywhere]">
+                  {confirmGiftName}
+                </dd>
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">面值</dt>
-                <dd className="font-medium">HK${STAMP_REDEEM_PLACEHOLDER_GIFT.faceValueHkd}</dd>
+                <dd className="font-medium">HK${confirmFaceValue}</dd>
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">換領期至</dt>
-                <dd className="font-medium">{STAMP_REDEEM_PLACEHOLDER_GIFT.windowEndLabel}</dd>
+                <dd className="font-medium">{confirmWindowEnd}</dd>
               </div>
             </dl>
-            <p className="mt-3 text-xs text-gray-500">
-              {/* TODO Phase 5: gift name / window from admin inventory RPC */}
-              禮品資料將由管理後台提供。
-            </p>
             <div className="mt-4 flex gap-2">
               <button
                 type="button"

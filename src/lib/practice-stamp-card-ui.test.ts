@@ -30,7 +30,8 @@ describe("practice stamp card UI", () => {
     expect(GROWTH_STAMP_COPY.progress(3)).toBe("已連續練習 3 日／目標 20 日。繼續加油！");
     expect(GROWTH_STAMP_COPY.redeemSuccessAck).toContain("cs@gearupquiz.com");
     expect(GROWTH_STAMP_COPY.redeemableHint).toBe("按「立即換領」領取電子禮券。");
-    expect(GROWTH_STAMP_COPY.completedNotRedeemed).toBe("恭喜！已連續 20 日，可換領禮品。");
+    expect(STAMP_FOOTER_COPY.redeemCta).toBe("立即換領");
+    expect(GROWTH_STAMP_COPY.completedNotRedeemed).toBe("恭喜！已連續 20 日，可兌換禮品。");
   });
 
   it("maps earn feedback reasons to brief strings", () => {
@@ -119,6 +120,8 @@ describe("practice stamp card UI", () => {
     expect(formatStampRedeemEmailStatus("sent").label).toBe("已發送");
     expect(formatStampRedeemEmailStatus("failed").retryHint).toContain("cs@gearupquiz.com");
     expect(formatStampRedeemDateHkt("2026-10-28")).toBe("2026/10/28");
+    expect(formatStampRedeemDateHkt("2026-10-28 08:13:00")).toBe("2026/10/28 08:13");
+    expect(formatStampRedeemDateHkt("2026-10-28T00:13:00.000Z")).toBe("2026/10/28 08:13");
   });
 
   it("uses a self-contained stamp seal SVG safe for img tags", () => {
