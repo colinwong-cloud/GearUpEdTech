@@ -730,6 +730,11 @@
           "type": "file_contains",
           "path": "src/components/practice-stamp-card.tsx",
           "snippet": "loadStudentStampRedeemOffer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-account-screen.tsx",
+          "snippet": "historyRefreshToken"
         }
       ]
     },
@@ -3310,8 +3315,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-28T13:07:18.946Z",
+  "generated_at": "2026-10-29T00:21:43.353Z",
   "commit_inventory": [
+    {
+      "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
+      "date": "2026-10-29",
+      "summary": "fix(stamps): redeem history refresh, HKT display, mobile layout softs"
+    },
+    {
+      "sha": "fd161fdfa6c7ae36321a0a0173af9764e295e99b",
+      "date": "2026-10-28",
+      "summary": "chore: refresh feature contract for stamp hint copy"
+    },
     {
       "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
       "date": "2026-10-28",
@@ -6339,7 +6354,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 605,
+    "total_commits_since_start": 607,
     "total_feature_rows": 72
   }
 }
