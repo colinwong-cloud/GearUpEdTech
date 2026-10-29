@@ -3468,34 +3468,78 @@
           "snippet": "\"/countdown\": [\"./public/countdown.html\"]"
         }
       ]
+    },
+    {
+      "id": "home-page-notice-admin",
+      "month": "2026-10",
+      "category": "admin",
+      "priority": "high",
+      "title": "Admin-controlled home page notice on role select screen",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_home_page_notice.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/home-page-notice.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/home-page-notice.test.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/components/home-page-notice-block.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/admin/home-page-notice-section.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/admin/home-page-notice/upload/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_home_page_notice.sql",
+          "snippet": "get_home_page_notice_public"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/home-page-notice-section.tsx",
+          "snippet": "主頁公告"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "HomePageNoticeBlock"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/use-home-page-notice.ts",
+          "snippet": "get_home_page_notice_public"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "home_page_notice_update"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-10-29T08:48:56.752Z",
+  "generated_at": "2026-10-29T09:53:24.488Z",
   "commit_inventory": [
     {
-      "sha": "8e94e76792941387b57f7d42f13663d1a7f6f0c1",
+      "sha": "7971345ab0a4281263e8a82ba5279575ef8c4e7f",
       "date": "2026-10-29",
-      "summary": "fix: restore result page answer table and 錯題解析"
+      "summary": "feat: admin-controlled home page notice on role select screen"
     },
     {
-      "sha": "a6c70fad016077961883a8c1b3f398ee56442661",
+      "sha": "c4982d061bf22deab8331abce33e001373e42e1c",
       "date": "2026-10-29",
-      "summary": "chore: remove unused result-page answer formatting helpers"
-    },
-    {
-      "sha": "6974115240f69af62a2fce22921511a46d2b745d",
-      "date": "2026-10-29",
-      "summary": "test: scope result-page anti-missing guard to ResultsView"
-    },
-    {
-      "sha": "72c59706a94a1b3b899c7ee3ba8df82d873c3fc7",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature contract after result page UX"
-    },
-    {
-      "sha": "72e872c1d167ee0da62ddacc35b3e169d0076069",
-      "date": "2026-10-29",
-      "summary": "feat: strip result page banner and per-question detail"
+      "summary": "Result page: remove banana banner only (#229 follow-up) (#230)"
     },
     {
       "sha": "bf09fa47c09fe5cceb691b20152bb2f3f5ee801e",
@@ -6544,7 +6588,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 614,
-    "total_feature_rows": 75
+    "total_commits_since_start": 611,
+    "total_feature_rows": 76
   }
 }
