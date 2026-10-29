@@ -3475,7 +3475,9 @@
       "category": "admin",
       "priority": "high",
       "title": "Admin-controlled home page notice on role select screen",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "7971345"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -3529,8 +3531,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T09:53:40.604Z",
+  "generated_at": "2026-10-29T09:53:57.010Z",
   "commit_inventory": [
+    {
+      "sha": "4c655a792e1add8e471e0b0d98e1b1c4a33cd006",
+      "date": "2026-10-29",
+      "summary": "chore: set feature-contract evidence for home page notice"
+    },
     {
       "sha": "acb41a1b4b890869f024b82f493ef8e343daca1b",
       "date": "2026-10-29",
@@ -6593,7 +6600,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 612,
+    "total_commits_since_start": 613,
     "total_feature_rows": 76
   }
 }

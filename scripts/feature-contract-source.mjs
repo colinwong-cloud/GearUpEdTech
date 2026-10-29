@@ -1816,7 +1816,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin-controlled home page notice on role select screen",
-      evidence_commits: [],
+      evidence_commits: ["7971345"],
       checks: [
         { type: "file_exists", path: "supabase_home_page_notice.sql" },
         { type: "file_exists", path: "src/lib/home-page-notice.ts" },
