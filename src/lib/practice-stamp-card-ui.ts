@@ -76,6 +76,16 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
   sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
 }
 
+/** Soft #2: hide subject-home chrome when global 印花計劃開放 is off (no substitute copy). */
+export function shouldRenderPracticeStampHomeChrome(
+  status: StudentStampCardStatus | null,
+  loading: boolean
+): boolean {
+  if (loading) return false;
+  if (!status) return false;
+  return status.stamps_program_open;
+}
+
 export function stampCardHeaderStreakLine(streak: number): string {
   return `已連續 ${streak} 日`;
 }

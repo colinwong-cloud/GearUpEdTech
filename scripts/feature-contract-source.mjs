@@ -497,6 +497,31 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-home-soft-hide-card-global-off",
+      month: "2026-10",
+      category: "engagement",
+      priority: "medium",
+      title: "Practice stamp home chrome: hide card when global program is off",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldRenderPracticeStampHomeChrome",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "homeChrome",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "homeChrome",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",

@@ -19,6 +19,7 @@ import {
   STAMP_REDEEM_HISTORY_EMPTY,
   STAMP_REDEEM_HISTORY_HEADERS,
   STAMP_HOME_REOPEN_LABEL,
+  shouldRenderPracticeStampHomeChrome,
 } from "./practice-stamp-card-ui";
 
 describe("practice stamp card UI", () => {
@@ -89,6 +90,27 @@ describe("practice stamp card UI", () => {
 
   it("exposes home reopen label matching the card title", () => {
     expect(STAMP_HOME_REOPEN_LABEL).toBe("練習印花卡");
+  });
+
+  it("hides subject-home chrome while loading or when global program is off", () => {
+    const openStatus = {
+      has_active_card: true,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 5,
+      streak: 5,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(shouldRenderPracticeStampHomeChrome(openStatus, true)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(openStatus, false)).toBe(true);
+    expect(
+      shouldRenderPracticeStampHomeChrome(
+        { ...openStatus, stamps_program_open: false },
+        false
+      )
+    ).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(null, false)).toBe(false);
   });
 
   it("locks Phase 3 account redeem history copy and headers", () => {
