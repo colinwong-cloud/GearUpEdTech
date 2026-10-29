@@ -482,7 +482,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
-      evidence_commits: [],
+      evidence_commits: ["f934f0a"],
       checks: [
         {
           type: "file_contains",
