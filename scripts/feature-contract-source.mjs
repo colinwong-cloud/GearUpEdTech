@@ -369,7 +369,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
-      evidence_commits: ["9f4ba32", "632678a", "fe45dee"],
+      evidence_commits: ["495b192"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase4_inventory.sql" },
         { type: "file_exists", path: "src/lib/admin-stamp-card.ts" },
@@ -428,7 +428,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
-      evidence_commits: [],
+      evidence_commits: ["7bcebf2", "bc8eb74", "13a1a5c"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase5_redeem.sql" },
         { type: "file_exists", path: "src/lib/server/practice-stamp-redeem.ts" },

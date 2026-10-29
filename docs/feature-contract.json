@@ -678,7 +678,11 @@
       "category": "product",
       "priority": "critical",
       "title": "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "7bcebf2",
+        "bc8eb74",
+        "13a1a5c"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -3315,8 +3319,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T00:21:43.353Z",
+  "generated_at": "2026-10-29T01:13:30.083Z",
   "commit_inventory": [
+    {
+      "sha": "c7182c448456514b03d4bb98cb0ddaa00f2d9082",
+      "date": "2026-10-29",
+      "summary": "fix(contract): add Phase 5 stamp redeem evidence commits"
+    },
+    {
+      "sha": "e0d8c2af1922c3768a2b3344b0c6aaf3ab60cd6a",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract for stamp UI soft fixes"
+    },
     {
       "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
       "date": "2026-10-29",
@@ -6354,7 +6368,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 607,
+    "total_commits_since_start": 609,
     "total_feature_rows": 72
   }
 }
