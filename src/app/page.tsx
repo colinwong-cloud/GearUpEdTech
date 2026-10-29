@@ -625,27 +625,6 @@ function isShortAnswer(q: Question): boolean {
   return q.opt_a == null && q.opt_b == null && q.opt_c == null && q.opt_d == null;
 }
 
-function getOptionValueByAnswer(question: Question, answer: string | null | undefined): string | null {
-  const key = String(answer || "").trim().toUpperCase();
-  if (key === "A") return question.opt_a;
-  if (key === "B") return question.opt_b;
-  if (key === "C") return question.opt_c;
-  if (key === "D") return question.opt_d;
-  return null;
-}
-
-function formatAnswerWithValue(question: Question, answer: string | null | undefined): string {
-  const raw = String(answer || "").trim();
-  if (!raw) return "—";
-  if (isShortAnswer(question)) return raw;
-  const key = raw.toUpperCase();
-  const optionValue = getOptionValueByAnswer(question, key);
-  if (optionValue && optionValue.trim()) {
-    return `${key} (${optionValue.trim()})`;
-  }
-  return key;
-}
-
 function hasImage(q: Question): boolean {
   return q.image_url != null && q.image_url.trim() !== "";
 }
