@@ -746,7 +746,9 @@
       "category": "engagement",
       "priority": "medium",
       "title": "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "f934f0a"
+      ],
       "checks": [
         {
           "type": "file_contains",
@@ -3337,8 +3339,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T02:09:20.560Z",
+  "generated_at": "2026-10-29T02:55:20.167Z",
   "commit_inventory": [
+    {
+      "sha": "adb7a804113abadaa96c69fdf2e9d4f1e47622d4",
+      "date": "2026-10-29",
+      "summary": "chore(feature-contract): add evidence for stamp home enrol CTA soft"
+    },
+    {
+      "sha": "a22ca2be93d227e35b29970b3b340e1acc9f14c7",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature-contract.json"
+    },
     {
       "sha": "f934f0a9cf377cef752a9a5647631ef3e9ae3385",
       "date": "2026-10-29",
@@ -6358,10 +6370,25 @@
       "sha": "d4cdc3591f881b1293b6fe77c9799426a900589e",
       "date": "2026-04-02",
       "summary": "Initial commit"
+    },
+    {
+      "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
+      "date": "2026-10-29",
+      "summary": "fix(stamps): redeem history refresh, HKT display, mobile layout softs"
+    },
+    {
+      "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
+      "date": "2026-10-28",
+      "summary": "fix(stamps): Growth soft-lock CTA and redeemable hint copy"
+    },
+    {
+      "sha": "7bcebf2c87d2fce34371a51a19a8554eab729e6d",
+      "date": "2026-10-28",
+      "summary": "feat(stamps): Phase 5 student redeem, gift assign, and Resend email"
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 604,
+    "total_commits_since_start": 609,
     "total_feature_rows": 73
   }
 }
