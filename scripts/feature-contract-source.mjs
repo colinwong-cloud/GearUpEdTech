@@ -423,12 +423,56 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase6-admin-student-progress",
+      month: "2026-10",
+      category: "product",
+      priority: "critical",
+      title: "Practice stamp card Phase 6 admin student progress list and CS resume",
+      evidence_commits: ["e4389dc", "0621693"],
+      checks: [
+        {
+          type: "file_exists",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          snippet: "DO NOT RUN",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          snippet: "admin_stamp_student_progress_resume",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "getAdminStampProgressDefaultDateRange",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "學生印花進度",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_student_progress_list",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_student_progress_resume",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-card-phase5-student-redeem",
       month: "2026-10",
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
-      evidence_commits: ["7bcebf2", "bc8eb74", "13a1a5c"],
+      evidence_commits: ["dea9235"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase5_redeem.sql" },
         { type: "file_exists", path: "src/lib/server/practice-stamp-redeem.ts" },
@@ -482,7 +526,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
-      evidence_commits: ["f934f0a"],
+      evidence_commits: ["c946fff"],
       checks: [
         {
           type: "file_contains",
@@ -502,7 +546,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide card when global program is off",
-      evidence_commits: ["caddad0", "9b1af24"],
+      evidence_commits: ["8ad89f2"],
       checks: [
         {
           type: "file_contains",

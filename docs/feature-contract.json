@@ -671,15 +671,60 @@
       ]
     },
     {
+      "id": "practice-stamp-card-phase6-admin-student-progress",
+      "month": "2026-10",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 6 admin student progress list and CS resume",
+      "evidence_commits": [
+        "e4389dc",
+        "0621693"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase6_admin_progress.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          "snippet": "admin_stamp_student_progress_resume"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "getAdminStampProgressDefaultDateRange"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "學生印花進度"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_student_progress_list"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_student_progress_resume"
+        }
+      ]
+    },
+    {
       "id": "practice-stamp-card-phase5-student-redeem",
       "month": "2026-10",
       "category": "product",
       "priority": "critical",
       "title": "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
       "evidence_commits": [
-        "7bcebf2",
-        "bc8eb74",
-        "13a1a5c"
+        "dea9235"
       ],
       "checks": [
         {
@@ -747,7 +792,7 @@
       "priority": "medium",
       "title": "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
       "evidence_commits": [
-        "f934f0a"
+        "c946fff"
       ],
       "checks": [
         {
@@ -769,8 +814,7 @@
       "priority": "medium",
       "title": "Practice stamp home chrome: hide card when global program is off",
       "evidence_commits": [
-        "caddad0",
-        "9b1af24"
+        "8ad89f2"
       ],
       "checks": [
         {
@@ -3367,52 +3411,62 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T03:45:38.299Z",
+  "generated_at": "2026-10-29T04:48:18.073Z",
   "commit_inventory": [
     {
-      "sha": "6a22bf5c238b37b7bf2e2821d44dba3101af2c47",
+      "sha": "b1bb5e643284b2f54ec6bff53945385c30fc85a9",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract.json for Soft #2 home chrome fix"
+      "summary": "chore: Phase 6 feature contract check targets locked TC constant file"
     },
     {
-      "sha": "9b1af24719a8d8e3539576c313821d01c95dd4a1",
+      "sha": "3f80fd010bc8f0c87318047d1971ea12623765f5",
       "date": "2026-10-29",
-      "summary": "fix(stamp): show home chrome when 印花計劃開放 is on (Soft #2)"
+      "summary": "chore: refresh feature contract after Soft stamp evidence repoint"
     },
     {
-      "sha": "caddad091cbe531f72b2cbca2473e310c62a7827",
+      "sha": "b448616befe82c56dbef005da1f781131d9d3657",
       "date": "2026-10-29",
-      "summary": "soft(stamp): hide home chrome when global 印花計劃開放 is off"
+      "summary": "chore: repoint Soft #1/#2 stamp home feature contract evidence to main merges"
     },
     {
-      "sha": "e5d0f1aae47da6aec8872c2b6b4735e65c6a400d",
+      "sha": "5c58bbb6e29016acd352adc2ce700c43b090d10a",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract.json for stamp home global-off soft"
+      "summary": "chore: refresh feature contract after Phase 5 evidence repoint"
     },
     {
-      "sha": "8a768a19c1488bef22556a55e0f736f671761266",
+      "sha": "075453377c2d244997fd8baf99f53935bce5c94c",
       "date": "2026-10-29",
-      "summary": "chore: include latest commit in feature-contract inventory"
+      "summary": "chore: repoint Phase 5 stamp redeem feature contract evidence to main merge"
+    },
+    {
+      "sha": "36f409a21fe4f9e35b3a437e9a10a6ed6ff1832b",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract after Phase 6 evidence commits"
+    },
+    {
+      "sha": "71c93e8d4fe87ff61f7259241d620b6b9413e9cc",
+      "date": "2026-10-29",
+      "summary": "chore: add Phase 6 stamp progress feature contract evidence commits"
+    },
+    {
+      "sha": "0621693db7b4580dcc6e74b895483d70bf8f3f7d",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract for stamp admin progress"
+    },
+    {
+      "sha": "e4389dc08a07ba051436615c3c06694c52899eec",
+      "date": "2026-10-29",
+      "summary": "feat(admin): student stamp progress list and CS resume"
+    },
+    {
+      "sha": "8ad89f222b3af3afe8b7d2e4442aae3f96cc24a5",
+      "date": "2026-10-29",
+      "summary": "soft(stamp): hide home 練習印花卡 when global 印花計劃開放 is off (#225)"
     },
     {
       "sha": "c946fffe7589bf345cd66778f02650a361d3d62a",
       "date": "2026-10-29",
       "summary": "soft(stamp): hide home 「開始收集印花」 CTA (auto-start) (#224)"
-    },
-    {
-      "sha": "adb7a804113abadaa96c69fdf2e9d4f1e47622d4",
-      "date": "2026-10-29",
-      "summary": "chore(feature-contract): add evidence for stamp home enrol CTA soft"
-    },
-    {
-      "sha": "a22ca2be93d227e35b29970b3b340e1acc9f14c7",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract.json"
-    },
-    {
-      "sha": "f934f0a9cf377cef752a9a5647631ef3e9ae3385",
-      "date": "2026-10-29",
-      "summary": "soft(stamp): hide home enrol CTA; stamps auto-start"
     },
     {
       "sha": "dea9235fdb904fee676523537e76fccdf6c7c352",
@@ -6428,25 +6482,10 @@
       "sha": "d4cdc3591f881b1293b6fe77c9799426a900589e",
       "date": "2026-04-02",
       "summary": "Initial commit"
-    },
-    {
-      "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
-      "date": "2026-10-29",
-      "summary": "fix(stamps): redeem history refresh, HKT display, mobile layout softs"
-    },
-    {
-      "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
-      "date": "2026-10-28",
-      "summary": "fix(stamps): Growth soft-lock CTA and redeemable hint copy"
-    },
-    {
-      "sha": "7bcebf2c87d2fce34371a51a19a8554eab729e6d",
-      "date": "2026-10-28",
-      "summary": "feat(stamps): Phase 5 student redeem, gift assign, and Resend email"
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 615,
-    "total_feature_rows": 74
+    "total_commits_since_start": 614,
+    "total_feature_rows": 75
   }
 }

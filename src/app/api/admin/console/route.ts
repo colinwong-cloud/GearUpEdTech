@@ -48,6 +48,8 @@ import {
   adminStampProgramSetOpen,
   adminStampProgramSettingsGet,
   adminStampRedemptionReport,
+  adminStampStudentProgressList,
+  adminStampStudentProgressResume,
 } from "@/lib/server/admin-stamp-card";
 import { buildGiftCodesExportCsv } from "@/lib/admin-stamp-card";
 
@@ -91,7 +93,9 @@ type AdminAction =
   | "stamp_gift_update"
   | "stamp_gift_codes_import"
   | "stamp_gift_codes_export"
-  | "stamp_redemption_report";
+  | "stamp_redemption_report"
+  | "stamp_student_progress_list"
+  | "stamp_student_progress_resume";
 
 type RequestBody = {
   action?: AdminAction;
@@ -3239,6 +3243,14 @@ export async function POST(req: NextRequest) {
       }
       case "stamp_redemption_report": {
         return NextResponse.json({ data: await adminStampRedemptionReport(admin, payload) });
+      }
+      case "stamp_student_progress_list": {
+        return NextResponse.json({ data: await adminStampStudentProgressList(admin, payload) });
+      }
+      case "stamp_student_progress_resume": {
+        return NextResponse.json({
+          data: await adminStampStudentProgressResume(admin, payload, adminUser),
+        });
       }
       default:
         return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
