@@ -48,6 +48,86 @@ export function pctColor(pct: number): string {
   return "#dc2626";
 }
 
+export function mergeCurrentSessionIntoChartSessions(
+  sessions: ChartSession[],
+  current: {
+    sessionId: string | null;
+    score: number;
+    total: number;
+  } | null
+): ChartSession[] {
+  if (!current?.sessionId || current.total <= 0) {
+    return [...sessions];
+  }
+  const pct = Math.round((current.score / current.total) * 100);
+  const list = [...sessions];
+  const idx = list.findIndex((s) => s.id === current.sessionId);
+  const row: ChartSession = {
+    id: current.sessionId,
+    created_at: idx >= 0 ? list[idx]!.created_at : new Date().toISOString(),
+    questions_attempted: current.total,
+    score: current.score,
+    correct_pct: pct,
+  };
+  if (idx >= 0) {
+    list[idx] = { ...list[idx]!, ...row };
+  } else {
+    list.push(row);
+  }
+  return list;
+}
+
+export function lastNChartSessions(sessions: ChartSession[], n: number): ChartSession[] {
+  return [...sessions]
+    .filter((s) => s.questions_attempted > 0)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .slice(-n);
+}
+
+export function ResultRecentTrendChart({ sessions }: { sessions: ChartSession[] }) {
+  const data = sessions.map((s, i) => {
+    const d = new Date(s.created_at);
+    return {
+      idx: i,
+      date: `${d.getMonth() + 1}/${d.getDate()}`,
+      datetime: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      pct: s.correct_pct,
+      fill: pctColor(s.correct_pct),
+    };
+  });
+
+  return (
+    <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-4 shadow-md">
+      <h3 className="text-sm font-bold text-gray-800 mb-3">最近10次正確率</h3>
+      {data.length === 0 ? (
+        <p className="text-sm text-gray-500">完成更多練習後，這裡會顯示你的進步趨勢。</p>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="idx"
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+                tickFormatter={(idx: number) => data[idx]?.date || ""}
+              />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-gray-400 mt-2">顯示最近 {data.length} 次練習（最多 10 次）。</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { datetime: string; pct: number } }> }) {
   if (!active || !payload || !payload[0]) return null;
   const d = payload[0].payload;

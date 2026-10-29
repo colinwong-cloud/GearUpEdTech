@@ -20,6 +20,7 @@ import {
   setPracticeStampCardHomeDismissedForSession,
   shouldRenderPracticeStampCardChrome,
   shouldRenderPracticeStampHomeChrome,
+  resultPageStreakEncouragement,
   stampCardHeaderStreakLine,
   stampSlotRotationDeg,
   type PracticeStampAwardPayload,
@@ -37,6 +38,8 @@ export type PracticeStampCardProps = {
   /** Account stamp progress module; same strict gate as homeChrome. */
   accountChrome?: boolean;
   earnFeedbackAward?: PracticeStampAwardPayload | null;
+  /** Result page: show warm streak encouragement under the header. */
+  resultStreakEncouragement?: boolean;
   giftWindowOpen?: boolean;
   giftInStock?: boolean;
   onRedeemSuccess?: () => void;
@@ -59,6 +62,7 @@ export function PracticeStampCard({
   homeChrome = false,
   accountChrome = false,
   earnFeedbackAward,
+  resultStreakEncouragement = false,
   giftWindowOpen: giftWindowOpenProp,
   giftInStock: giftInStockProp,
   onRedeemSuccess,
@@ -219,6 +223,11 @@ export function PracticeStampCard({
           <p className="mt-0.5 text-sm font-semibold text-amber-900/90">
             {stampCardHeaderStreakLine(streakDisplay)}
           </p>
+          {resultStreakEncouragement && !loading && streakDisplay > 0 && (
+            <p className="mt-2 text-sm font-semibold text-amber-950">
+              {resultPageStreakEncouragement(streakDisplay)}
+            </p>
+          )}
         </div>
         {dismissible && (
           <button

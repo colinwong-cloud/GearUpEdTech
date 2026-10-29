@@ -11,6 +11,7 @@ import {
   practiceStampEarnFeedbackMessage,
   resolvePracticeStampFooterState,
   stampCardHeaderStreakLine,
+  resultPageStreakEncouragement,
   formatStampRedeemDateHkt,
   formatStampRedeemEmailStatus,
   formatStampRedeemFaceValue,
@@ -86,6 +87,7 @@ describe("practice stamp card UI", () => {
 
   it("formats header streak line", () => {
     expect(stampCardHeaderStreakLine(0)).toBe("已連續 0 日");
+    expect(resultPageStreakEncouragement(3)).toBe("已連續 3 日練習，繼續加油！");
     expect(STAMP_FOOTER_COPY.enrolCta).toBe("開始收集印花");
   });
 

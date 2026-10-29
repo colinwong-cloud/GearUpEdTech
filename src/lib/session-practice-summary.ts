@@ -268,7 +268,6 @@ export function buildSessionPracticeSummary(
     else s = `唔使灰心，今次正確率有 ${cmp.currentPct}%，慢慢嚟都得。`;
   }
 
-  s += coachQuote(answers, false);
   s += " 下次再一齊加油！";
   return finishSummary(s, TARGET_LO, TARGET_HI);
 }
