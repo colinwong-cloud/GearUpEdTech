@@ -20,5 +20,6 @@ test.describe("Admin smoke", () => {
     await expect(page.getByRole("button", { name: "付款狀態查詢" })).toBeVisible();
     await expect(page.getByRole("button", { name: "折扣碼維護" })).toBeVisible();
     await expect(page.getByRole("button", { name: "練習印花卡" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "主頁公告" })).toBeVisible();
   });
 });

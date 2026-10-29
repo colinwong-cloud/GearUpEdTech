@@ -1810,6 +1810,47 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "next.config.ts", snippet: "\"/countdown\": [\"./public/countdown.html\"]" },
       ],
     },
+    {
+      id: "home-page-notice-admin",
+      month: "2026-10",
+      category: "admin",
+      priority: "high",
+      title: "Admin-controlled home page notice on role select screen",
+      evidence_commits: ["7971345"],
+      checks: [
+        { type: "file_exists", path: "supabase_home_page_notice.sql" },
+        { type: "file_exists", path: "src/lib/home-page-notice.ts" },
+        { type: "file_exists", path: "src/lib/home-page-notice.test.ts" },
+        { type: "file_exists", path: "src/components/home-page-notice-block.tsx" },
+        { type: "file_exists", path: "src/app/admin/home-page-notice-section.tsx" },
+        { type: "file_exists", path: "src/app/api/admin/home-page-notice/upload/route.ts" },
+        {
+          type: "file_contains",
+          path: "supabase_home_page_notice.sql",
+          snippet: "get_home_page_notice_public",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/home-page-notice-section.tsx",
+          snippet: "主頁公告",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "HomePageNoticeBlock",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/use-home-page-notice.ts",
+          snippet: "get_home_page_notice_public",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "home_page_notice_update",
+        },
+      ],
+    },
   ],
 };
 
