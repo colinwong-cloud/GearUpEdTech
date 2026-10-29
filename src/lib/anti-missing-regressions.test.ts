@@ -7,7 +7,7 @@ function readSource(relPath: string): string {
 }
 
 describe("anti-missing regression guards", () => {
-  it("keeps results page short summary and action buttons", () => {
+  it("keeps results page summary bubble without banana banner and explanation blocks", () => {
     const pageSource = readSource("src/app/page.tsx");
     const resultsViewMatch = pageSource.match(
       /function ResultsView\([\s\S]*?\n\}\n\nfunction QuestionImage/
@@ -16,8 +16,10 @@ describe("anti-missing regression guards", () => {
     const resultsViewSource = resultsViewMatch![0];
     expect(resultsViewSource).toContain("{summaryText}");
     expect(resultsViewSource).not.toContain("小香蕉的練習小結");
-    expect(resultsViewSource).not.toContain("錯題解析");
-    expect(resultsViewSource).not.toContain("你的答案");
+    expect(resultsViewSource).toContain("錯題解析");
+    expect(resultsViewSource).toContain("你的答案（值）");
+    expect(resultsViewSource).toContain("正確答案（值）");
+    expect(resultsViewSource).toContain("fetch(\"/api/send-question-report\"");
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
     expect(pageSource).toContain("px-8 py-3.5");

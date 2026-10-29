@@ -20,8 +20,8 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["5019de2", "a2f7dea"],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "測驗完成！" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "錯題解析" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "ResultRecentTrendChart" },
-        { type: "file_contains", path: "src/app/page.tsx", snippet: "PracticeStampCard" },
       ],
     },
     {
@@ -29,11 +29,12 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-07",
       category: "quiz-core",
       priority: "critical",
-      title: "Wrong-answer detail cards include value + explanation (parent email)",
+      title: "Wrong-answer detail cards include value + explanation",
       evidence_commits: ["c38c510"],
       checks: [
-        { type: "file_contains", path: "src/app/api/send-quiz-email/route.ts", snippet: "你的答案（值）" },
-        { type: "file_contains", path: "src/app/api/send-quiz-email/route.ts", snippet: "正確答案（值）" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "你的答案（值）" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "正確答案（值）" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "反映這題目" },
         { type: "file_contains", path: "src/app/api/send-quiz-email/route.ts", snippet: "錯題詳解（錯題逐題詳解）" },
       ],
     },
@@ -68,6 +69,8 @@ export const FEATURE_CONTRACT_BASE = {
       title: "Question report action sends notification email",
       evidence_commits: ["901ff59", "4b3136f"],
       checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "反映這題目" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "fetch(\"/api/send-question-report\"" },
         { type: "file_exists", path: "src/app/api/send-question-report/route.ts" },
         { type: "file_contains", path: "src/app/api/send-question-report/route.ts", snippet: "題目反映通知" },
         {
