@@ -428,7 +428,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 6 admin student progress list and CS resume",
-      evidence_commits: ["e4389dc", "0621693"],
+      evidence_commits: ["78359a7"],
       checks: [
         {
           type: "file_exists",
