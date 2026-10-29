@@ -604,9 +604,7 @@
       "priority": "critical",
       "title": "Practice stamp card Phase 4 admin program toggle, gift inventory and redeem report",
       "evidence_commits": [
-        "9f4ba32",
-        "632678a",
-        "fe45dee"
+        "495b192"
       ],
       "checks": [
         {
@@ -3319,12 +3317,12 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T01:13:30.083Z",
+  "generated_at": "2026-10-29T01:13:55.558Z",
   "commit_inventory": [
     {
-      "sha": "c7182c448456514b03d4bb98cb0ddaa00f2d9082",
+      "sha": "5eba0ab4798dcd20875353a455568c8b9e66ba3f",
       "date": "2026-10-29",
-      "summary": "fix(contract): add Phase 5 stamp redeem evidence commits"
+      "summary": "fix(contract): Phase 4/5 stamp evidence commits for release gate"
     },
     {
       "sha": "e0d8c2af1922c3768a2b3344b0c6aaf3ab60cd6a",
