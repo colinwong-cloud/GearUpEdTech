@@ -472,7 +472,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 5 student redeem, Resend email, and gift assign",
-      evidence_commits: ["7bcebf2", "bc8eb74", "13a1a5c"],
+      evidence_commits: ["dea9235"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase5_redeem.sql" },
         { type: "file_exists", path: "src/lib/server/practice-stamp-redeem.ts" },
