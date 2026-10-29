@@ -792,7 +792,7 @@
       "priority": "medium",
       "title": "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
       "evidence_commits": [
-        "f934f0a"
+        "c946fff"
       ],
       "checks": [
         {
@@ -814,8 +814,7 @@
       "priority": "medium",
       "title": "Practice stamp home chrome: hide card when global program is off",
       "evidence_commits": [
-        "caddad0",
-        "9b1af24"
+        "8ad89f2"
       ],
       "checks": [
         {
@@ -3412,8 +3411,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T04:47:59.200Z",
+  "generated_at": "2026-10-29T04:48:10.099Z",
   "commit_inventory": [
+    {
+      "sha": "b448616befe82c56dbef005da1f781131d9d3657",
+      "date": "2026-10-29",
+      "summary": "chore: repoint Soft #1/#2 stamp home feature contract evidence to main merges"
+    },
+    {
+      "sha": "5c58bbb6e29016acd352adc2ce700c43b090d10a",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract after Phase 5 evidence repoint"
+    },
     {
       "sha": "075453377c2d244997fd8baf99f53935bce5c94c",
       "date": "2026-10-29",
@@ -6466,7 +6475,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 610,
+    "total_commits_since_start": 612,
     "total_feature_rows": 75
   }
 }
