@@ -844,17 +844,27 @@
         {
           "type": "file_contains",
           "path": "src/lib/use-practice-stamp-card-chrome.ts",
-          "snippet": "usePracticeStampCardChromeVisible"
+          "snippet": "shouldRenderPracticeStampStrictChrome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "PracticeStampCardSubjectHome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "accountChrome"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "showStampCardEntry"
+          "snippet": "!stampEntryLoading && showStampCardEntry"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "homeChrome"
+          "snippet": "PracticeStampCardSubjectHome"
         }
       ]
     },
@@ -3435,27 +3445,17 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T05:33:02.812Z",
+  "generated_at": "2026-10-29T05:46:16.260Z",
   "commit_inventory": [
     {
-      "sha": "cec0a25ff902360b6149c6b42039a3e2b2447669",
+      "sha": "e4cf44b8c44b3c9f30ee8a5d0d343a4032024c9b",
       "date": "2026-10-29",
-      "summary": "fix(stamp): no home stamp paint while status loading (OFF flash)"
+      "summary": "fix(stamp): fail-closed loading for home and account chrome"
     },
     {
-      "sha": "25b5c77081797b255d4c72044d6c353e651960e5",
+      "sha": "d9e01605210204eee5cf7e74c43f91a1c29a1ed9",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract.json inventory for ce5ad3c"
-    },
-    {
-      "sha": "ce5ad3c48797c6502be2ecd1dcb06bd4c129777d",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract.json for stamp chrome gate"
-    },
-    {
-      "sha": "5a8344e2655a92365ea9d3efd83a434d3a8cebbb",
-      "date": "2026-10-29",
-      "summary": "fix(stamp): hide stamp chrome when program off and no active card"
+      "summary": "fix(stamp): hide stamp chrome when program off (no active card) (#227)"
     },
     {
       "sha": "78359a7132ad609ec46ca2ca4f57f3fa4a71851d",
@@ -6489,7 +6489,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 610,
+    "total_commits_since_start": 608,
     "total_feature_rows": 75
   }
 }
