@@ -7,11 +7,11 @@ function readSource(relPath: string): string {
 }
 
 describe("anti-missing regression guards", () => {
-  it("keeps results page wrong-answer details and action buttons", () => {
+  it("keeps results page short summary and action buttons", () => {
     const pageSource = readSource("src/app/page.tsx");
-    expect(pageSource).toContain("錯題解析");
-    expect(pageSource).toContain("你的答案（值）");
-    expect(pageSource).toContain("正確答案（值）");
+    expect(pageSource).toContain("{summaryText}");
+    expect(pageSource).not.toContain("小香蕉的練習小結");
+    expect(pageSource).not.toMatch(/function ResultsView[\s\S]*錯題解析/);
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
     expect(pageSource).toContain("px-8 py-3.5");
@@ -21,7 +21,8 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("const handleBackToHome = () => {");
     expect(pageSource).toContain("setScreen(\"login_role\")");
     expect(pageSource).toContain("登出");
-    expect(pageSource).toContain("fetch(\"/api/send-question-report\"");
+    expect(pageSource).toContain("ResultRecentTrendChart");
+    expect(pageSource).toContain("resultStreakEncouragement");
   });
 
   it("keeps question-report notification API route", () => {

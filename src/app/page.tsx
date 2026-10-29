@@ -3647,47 +3647,6 @@ function ResultsView({
     };
   }, [studentId, subjectKey, sessionId, score, total]);
 
-  const wrongAnswers = answers
-    .map((answer, index) => ({ answer, index }))
-    .filter(({ answer }) => !answer.isCorrect);
-
-  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
-  const [reportingId, setReportingId] = useState<string | null>(null);
-
-  const handleReport = async (answer: AnswerRecord) => {
-    if (reportedIds.has(answer.question.id) || reportingId) return;
-    setReportingId(answer.question.id);
-    try {
-      const { error } = await supabase.rpc("report_question", {
-        p_question_id: answer.question.id,
-        p_student_id: studentId,
-        p_session_id: sessionId,
-        p_student_answer: answer.studentAnswer,
-      });
-      if (error) throw error;
-      setReportedIds((prev) => new Set(prev).add(answer.question.id));
-      fetch("/api/send-question-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: studentId,
-          student_name: studentName,
-          session_id: sessionId,
-          question_id: answer.question.id,
-          question_subject: answer.question.subject,
-          question_content: answer.question.content,
-          question_explanation: answer.question.explanation,
-          student_answer: answer.studentAnswer,
-          correct_answer: answer.question.correct_answer,
-        }),
-      }).catch(() => {});
-    } catch {
-      // silent fail — non-critical
-    } finally {
-      setReportingId(null);
-    }
-  };
-
   let scoreColor = "text-red-600";
   let scoreBg = "bg-red-50 border-red-200";
   if (percentage >= 80) {
@@ -3740,9 +3699,8 @@ function ResultsView({
         )}
 
         <div className="relative mb-8 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
-          <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
           <p
-            className="mt-2 text-pretty whitespace-pre-wrap break-words"
+            className="text-pretty whitespace-pre-wrap break-words"
             style={{ fontFamily: "var(--font-baloo2), system-ui" }}
           >
             {summaryText}
@@ -3752,152 +3710,6 @@ function ResultsView({
             aria-hidden
           />
         </div>
-
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-12">
-                  #
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">
-                  你的答案
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">
-                  結果
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {answers.map((answer, i) => {
-                const shortAns = isShortAnswer(answer.question);
-                return (
-                  <tr
-                    key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
-                  >
-                    <td className="px-3 py-3 text-center text-sm font-medium text-gray-500">
-                      {i + 1}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {shortAns ? (
-                        <span className="inline-block px-2 py-0.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 max-w-[120px] truncate">
-                          {answer.studentAnswer}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-bold text-gray-700">
-                          {answer.studentAnswer}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {answer.isCorrect ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
-                          ✓ 正確
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
-                          ✗ 錯誤
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {wrongAnswers.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-3">
-              錯題解析
-            </h2>
-            <div className="space-y-4">
-              {wrongAnswers.map(({ answer, index }) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-2xl shadow-md border border-red-100 overflow-hidden"
-                >
-                  <div className="bg-red-50 px-4 py-3 border-b border-red-100 text-sm font-semibold text-gray-800">
-                    <span className="text-red-500 mr-1">第 {index + 1} 題</span>
-                    <span className="text-gray-400 mx-1">|</span>
-                    <span className="text-xs text-gray-600">
-                      你的答案：{answer.studentAnswer}
-                    </span>
-                    <span className="text-gray-400 mx-1">|</span>
-                    <span className="text-xs text-emerald-700">
-                      正確答案：{answer.question.correct_answer}
-                    </span>
-                  </div>
-                  <div className="px-4 py-4 space-y-3">
-                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-1">題目內容</p>
-                      <QuestionContentParagraphs
-                        content={answer.question.content}
-                        className="text-sm text-gray-800"
-                        paragraphGapClass="mt-2"
-                      />
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-red-100 bg-red-50 p-3">
-                        <p className="text-xs font-semibold text-red-500 mb-1">你的答案（值）</p>
-                        <p className="text-sm font-semibold text-red-700">
-                          {formatAnswerWithValue(answer.question, answer.studentAnswer)}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                        <p className="text-xs font-semibold text-emerald-600 mb-1">正確答案（值）</p>
-                        <p className="text-sm font-semibold text-emerald-700">
-                          {formatAnswerWithValue(
-                            answer.question,
-                            answer.question.correct_answer
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-1">解釋</p>
-                      {answer.question.explanation ? (
-                        <QuestionContentParagraphs
-                          content={answer.question.explanation}
-                          className="text-sm text-gray-700"
-                          paragraphGapClass="mt-2"
-                        />
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">沒有解釋</p>
-                      )}
-                    </div>
-                    {hasImage(answer.question) && (
-                      <QuestionImage
-                        src={getImagePublicUrl(answer.question)!}
-                      />
-                    )}
-                    <div className="pt-1">
-                      <button
-                        onClick={() => handleReport(answer)}
-                        disabled={reportedIds.has(answer.question.id) || reportingId === answer.question.id}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                          reportedIds.has(answer.question.id)
-                            ? "bg-gray-100 text-gray-400 cursor-default"
-                            : reportingId === answer.question.id
-                              ? "bg-amber-50 text-amber-400 cursor-wait"
-                              : "bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-[0.97]"
-                        }`}
-                      >
-                        {reportedIds.has(answer.question.id)
-                          ? "已反映"
-                          : reportingId === answer.question.id
-                            ? "提交中..."
-                            : "反映這題目"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <button
