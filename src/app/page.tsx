@@ -63,6 +63,7 @@ import {
   parsePracticeStampAwardFromUpdateSession,
   type PracticeStampAwardPayload,
 } from "@/lib/practice-stamp-card-ui";
+import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card-chrome";
 import {
   buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
@@ -1830,9 +1831,8 @@ export default function QuizApp() {
         onBalance={() => setScreen("balance_view")}
         onPaymentHistory={() => setScreen("payment_history")}
         onUpgrade={() => setScreen("payment")}
-        onStampCard={
-          stampStudentId ? () => setScreen("practice_stamp_card") : undefined
-        }
+        stampStudentId={stampStudentId}
+        onStampCard={() => setScreen("practice_stamp_card")}
         tierStatus={parentTierStatus}
         onBack={() => setScreen("login_role")}
       />
@@ -4161,6 +4161,7 @@ function AccountMenuScreen({
   onBalance,
   onPaymentHistory,
   onUpgrade,
+  stampStudentId,
   onStampCard,
   tierStatus,
   onBack,
@@ -4170,10 +4171,13 @@ function AccountMenuScreen({
   onBalance: () => void;
   onPaymentHistory: () => void;
   onUpgrade: () => void;
-  onStampCard?: () => void;
+  stampStudentId: string | null;
+  onStampCard: () => void;
   tierStatus: ParentTierStatus;
   onBack: () => void;
 }) {
+  const { visible: showStampCardEntry, loading: stampEntryLoading } =
+    usePracticeStampCardChromeVisible(stampStudentId);
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm flex items-center justify-center px-4" onContextMenu={preventContextMenu}>
       <div className="w-full max-w-sm">
@@ -4219,7 +4223,7 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
-          {onStampCard && (
+          {stampStudentId && (stampEntryLoading || showStampCardEntry) && (
             <button
               onClick={onStampCard}
               className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-amber-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"

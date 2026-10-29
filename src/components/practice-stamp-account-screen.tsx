@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PracticeStampCard } from "@/components/practice-stamp-card";
 import { PracticeStampRedeemHistory } from "@/components/practice-stamp-redeem-history";
 import { STAMP_ACCOUNT_PROGRESS_SECTION_TITLE } from "@/lib/practice-stamp-card-ui";
+import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card-chrome";
 
 export type PracticeStampAccountScreenProps = {
   studentId: string;
@@ -21,6 +22,8 @@ export function PracticeStampAccountScreen({
   onBack,
 }: PracticeStampAccountScreenProps) {
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
+  const { visible: stampChromeVisible, loading: stampChromeLoading } =
+    usePracticeStampCardChromeVisible(studentId);
   const showStudentPicker =
     students && students.length > 1 && typeof onSelectStudent === "function";
 
@@ -60,18 +63,22 @@ export function PracticeStampAccountScreen({
           </p>
         ) : null}
 
-        <section aria-labelledby="stamp-progress-heading" className="space-y-3">
-          <h2 id="stamp-progress-heading" className="text-base font-bold text-gray-900">
-            {STAMP_ACCOUNT_PROGRESS_SECTION_TITLE}
-          </h2>
-          <PracticeStampCard
-            studentId={studentId}
-            variant="full"
-            onRedeemSuccess={() => setHistoryRefreshToken((t) => t + 1)}
-          />
-        </section>
+        {(stampChromeLoading || stampChromeVisible) && (
+          <>
+            <section aria-labelledby="stamp-progress-heading" className="space-y-3">
+              <h2 id="stamp-progress-heading" className="text-base font-bold text-gray-900">
+                {STAMP_ACCOUNT_PROGRESS_SECTION_TITLE}
+              </h2>
+              <PracticeStampCard
+                studentId={studentId}
+                variant="full"
+                onRedeemSuccess={() => setHistoryRefreshToken((t) => t + 1)}
+              />
+            </section>
 
-        <PracticeStampRedeemHistory studentId={studentId} refreshToken={historyRefreshToken} />
+            <PracticeStampRedeemHistory studentId={studentId} refreshToken={historyRefreshToken} />
+          </>
+        )}
 
         <button
           type="button"
