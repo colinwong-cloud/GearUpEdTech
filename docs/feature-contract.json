@@ -741,6 +741,26 @@
       ]
     },
     {
+      "id": "practice-stamp-home-soft-hide-enrol-cta",
+      "month": "2026-10",
+      "category": "engagement",
+      "priority": "medium",
+      "title": "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "footerState === \"not_enrolled_open\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "GROWTH_STAMP_COPY.blank"
+        }
+      ]
+    },
+    {
       "id": "parent-email-practice-summary-and-wrong-details",
       "month": "2026-07",
       "category": "communications",
@@ -3317,42 +3337,17 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T01:13:55.558Z",
+  "generated_at": "2026-10-29T02:09:20.560Z",
   "commit_inventory": [
     {
-      "sha": "5eba0ab4798dcd20875353a455568c8b9e66ba3f",
+      "sha": "f934f0a9cf377cef752a9a5647631ef3e9ae3385",
       "date": "2026-10-29",
-      "summary": "fix(contract): Phase 4/5 stamp evidence commits for release gate"
+      "summary": "soft(stamp): hide home enrol CTA; stamps auto-start"
     },
     {
-      "sha": "e0d8c2af1922c3768a2b3344b0c6aaf3ab60cd6a",
+      "sha": "dea9235fdb904fee676523537e76fccdf6c7c352",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature contract for stamp UI soft fixes"
-    },
-    {
-      "sha": "bc8eb7402815f40d309ae225e7bb3664066859ec",
-      "date": "2026-10-29",
-      "summary": "fix(stamps): redeem history refresh, HKT display, mobile layout softs"
-    },
-    {
-      "sha": "fd161fdfa6c7ae36321a0a0173af9764e295e99b",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for stamp hint copy"
-    },
-    {
-      "sha": "13a1a5cf23e05a529b4374bd98607c4a53e22543",
-      "date": "2026-10-28",
-      "summary": "fix(stamps): Growth soft-lock CTA and redeemable hint copy"
-    },
-    {
-      "sha": "0831c2ccd9a0718c5c3213ab04be1b69afd47973",
-      "date": "2026-10-28",
-      "summary": "chore: refresh feature contract for stamp Phase 5"
-    },
-    {
-      "sha": "7bcebf2c87d2fce34371a51a19a8554eab729e6d",
-      "date": "2026-10-28",
-      "summary": "feat(stamps): Phase 5 student redeem, gift assign, and Resend email"
+      "summary": "Stamp card Phase 5: redeem assign + Resend email (#223)"
     },
     {
       "sha": "495b19250afca6bee77cb9713e1b8a1aa52078c7",
@@ -6366,7 +6361,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 609,
-    "total_feature_rows": 72
+    "total_commits_since_start": 604,
+    "total_feature_rows": 73
   }
 }
