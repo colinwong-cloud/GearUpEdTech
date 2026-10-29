@@ -63,7 +63,7 @@ export function PracticeStampAccountScreen({
           </p>
         ) : null}
 
-        {(stampChromeLoading || stampChromeVisible) && (
+        {!stampChromeLoading && stampChromeVisible && (
           <>
             <section aria-labelledby="stamp-progress-heading" className="space-y-3">
               <h2 id="stamp-progress-heading" className="text-base font-bold text-gray-900">
@@ -72,6 +72,7 @@ export function PracticeStampAccountScreen({
               <PracticeStampCard
                 studentId={studentId}
                 variant="full"
+                accountChrome
                 onRedeemSuccess={() => setHistoryRefreshToken((t) => t + 1)}
               />
             </section>
