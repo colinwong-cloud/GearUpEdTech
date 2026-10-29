@@ -33,7 +33,12 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "錯題解析"
+          "snippet": "ResultRecentTrendChart"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "PracticeStampCard"
         }
       ]
     },
@@ -42,25 +47,25 @@
       "month": "2026-07",
       "category": "quiz-core",
       "priority": "critical",
-      "title": "Wrong-answer detail cards include value + explanation",
+      "title": "Wrong-answer detail cards include value + explanation (parent email)",
       "evidence_commits": [
         "c38c510"
       ],
       "checks": [
         {
           "type": "file_contains",
-          "path": "src/app/page.tsx",
+          "path": "src/app/api/send-quiz-email/route.ts",
           "snippet": "你的答案（值）"
         },
         {
           "type": "file_contains",
-          "path": "src/app/page.tsx",
+          "path": "src/app/api/send-quiz-email/route.ts",
           "snippet": "正確答案（值）"
         },
         {
           "type": "file_contains",
-          "path": "src/app/page.tsx",
-          "snippet": "反映這題目"
+          "path": "src/app/api/send-quiz-email/route.ts",
+          "snippet": "錯題詳解（錯題逐題詳解）"
         }
       ]
     },
@@ -134,16 +139,6 @@
         "4b3136f"
       ],
       "checks": [
-        {
-          "type": "file_contains",
-          "path": "src/app/page.tsx",
-          "snippet": "反映這題目"
-        },
-        {
-          "type": "file_contains",
-          "path": "src/app/page.tsx",
-          "snippet": "fetch(\"/api/send-question-report\""
-        },
         {
           "type": "file_exists",
           "path": "src/app/api/send-question-report/route.ts"
@@ -399,7 +394,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "小香蕉的練習小結"
+          "snippet": "{summaryText}"
         },
         {
           "type": "file_contains",
@@ -3460,17 +3455,17 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T07:17:09.190Z",
+  "generated_at": "2026-10-29T07:51:27.507Z",
   "commit_inventory": [
     {
-      "sha": "2f7dc5d04f323eda0b23f266c0f98105a66f4a5c",
+      "sha": "72e872c1d167ee0da62ddacc35b3e169d0076069",
       "date": "2026-10-29",
-      "summary": "chore: refresh feature contract after result page UX"
+      "summary": "feat: strip result page banner and per-question detail"
     },
     {
-      "sha": "cbd10d61343edc40423b7e527918fdda03c37c18",
+      "sha": "bf09fa47c09fe5cceb691b20152bb2f3f5ee801e",
       "date": "2026-10-29",
-      "summary": "feat(results): stamp on top, trend chart, shorter summary"
+      "summary": "feat(results): stamp on top, 10-session trend chart, shorter summary (#229)"
     },
     {
       "sha": "c1627605313a8301d0439f90946a2fbe45c858c9",
