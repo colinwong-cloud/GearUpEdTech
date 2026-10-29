@@ -1,6 +1,10 @@
 /** Admin practice stamp card — Phase 4 (program toggle, gift CSV, redeem report). */
 
-import { getHktCalendarDate, isExcludedTestMobileForKpi } from "@/lib/practice-stamp-card";
+import {
+  effectivePracticeStampStreak,
+  getHktCalendarDate,
+  isExcludedTestMobileForKpi,
+} from "@/lib/practice-stamp-card";
 
 export const STAMP_PROGRAM_OFF_NOTE =
   "關閉後不可新報名；進行中印花卡可繼續累積與換領";
@@ -371,3 +375,187 @@ export function isMissingStampInventoryTableError(message: string): boolean {
 
 export const STAMP_INVENTORY_TABLE_HINT =
   "缺少印花禮品資料表，請先在 Supabase 執行 supabase_practice_stamp_card_phase4_inventory.sql（需 Team 批准）。";
+
+export const STAMP_ADMIN_PROGRESS_SECTION_TITLE = "學生印花進度";
+export const STAMP_ADMIN_PROGRESS_EMPTY = "此日期範圍內沒有進行中的印花紀錄";
+export const STAMP_ADMIN_PROGRESS_BTN_RESUME = "恢復";
+export const STAMP_ADMIN_PROGRESS_RESUME_CONFIRM =
+  "確定要恢復此學生的連續練習進度？系統會將最後蓋印日期調整為昨日（HKT），以便下次合資格練習可延續原有連續天數與蓋印數。";
+export const STAMP_ADMIN_PROGRESS_FILTER_HINT =
+  "篩選：最後蓋印日、報名日或範圍內任一蓋印日符合即顯示（HKT）";
+export const STAMP_ADMIN_PROGRESS_RESUME_RPC_HINT =
+  "缺少恢復功能，請先在 Supabase 執行 supabase_practice_stamp_card_phase6_admin_progress.sql（需 Colin 批准）。";
+
+export const STAMP_STUDENT_PROGRESS_HEADERS = [
+  "開始日期 (HKT)",
+  "連續天數",
+  "用戶",
+  "學生姓名",
+  "蓋印數",
+  "卡狀態",
+  "最後蓋印 (HKT)",
+  "操作",
+] as const;
+
+export type StampStudentProgressRow = {
+  stamp_card_id: string;
+  student_id: string;
+  user_display: string;
+  student_name: string;
+  start_date_hkt: string;
+  effective_streak: number;
+  stored_streak: number;
+  stamp_count: number;
+  card_status: "active" | "redeemed";
+  card_status_label: string;
+  last_stamp_hkt_date: string | null;
+  enrolled_at_hkt: string;
+  resume_eligible: boolean;
+  excluded_from_kpi: boolean;
+};
+
+export type StampStudentProgressTotals = {
+  row_count: number;
+  kpi_row_count: number;
+};
+
+/** Month-to-date in Asia/Hong_Kong (inclusive through today HKT). */
+export function getAdminStampProgressDefaultDateRange(now: Date = new Date()): {
+  startHkt: string;
+  endHkt: string;
+} {
+  const endHkt = getHktCalendarDate(now);
+  const monthStart = `${endHkt.slice(0, 7)}-01`;
+  return { startHkt: monthStart, endHkt };
+}
+
+export function isoToHktCalendarDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+  return getHktCalendarDate(date);
+}
+
+/**
+ * 開始日期：首次蓋印 HKT 日；若尚未蓋印則為報名日（enrolled_at HKT）。
+ */
+export function resolveStampProgressStartDateHkt(
+  enrolledAtIso: string,
+  firstAwardHktDate: string | null
+): string {
+  if (firstAwardHktDate) return firstAwardHktDate;
+  return isoToHktCalendarDate(enrolledAtIso);
+}
+
+export function stampCardStatusLabelTc(status: string): "進行中" | "已兌換" | string {
+  if (status === "active") return "進行中";
+  if (status === "redeemed") return "已兌換";
+  return status;
+}
+
+export function isStampProgressResumeEligible(input: {
+  todayHkt: string;
+  status: string;
+  stampCount: number;
+  storedStreak: number;
+  lastStampHktDate: string | null;
+}): boolean {
+  if (input.status !== "active") return false;
+  if (input.stampCount <= 0 || input.storedStreak <= 0) return false;
+  if (!input.lastStampHktDate) return false;
+  const effective = effectivePracticeStampStreak(
+    input.lastStampHktDate,
+    input.todayHkt,
+    input.storedStreak
+  );
+  if (effective > 0) return false;
+  const yesterday = previousHktDateForAdmin(input.todayHkt);
+  return input.lastStampHktDate < yesterday;
+}
+
+function previousHktDateForAdmin(hktDate: string): string {
+  const [y, m, d] = hktDate.split("-").map(Number);
+  const utcMs = Date.UTC(y, m - 1, d, 12, 0, 0) - 8 * 60 * 60 * 1000;
+  const prev = new Date(utcMs - 24 * 60 * 60 * 1000);
+  return getHktCalendarDate(prev);
+}
+
+export function stampProgressRowInHktRange(input: {
+  enrolledAtIso: string;
+  lastStampHktDate: string | null;
+  hasAwardInRange: boolean;
+  startHkt: string;
+  endHkt: string;
+}): boolean {
+  if (!input.startHkt || !input.endHkt) return true;
+  if (input.hasAwardInRange) return true;
+  const enrolled = isoToHktCalendarDate(input.enrolledAtIso);
+  if (enrolled >= input.startHkt && enrolled <= input.endHkt) return true;
+  const last = input.lastStampHktDate;
+  if (last && last >= input.startHkt && last <= input.endHkt) return true;
+  return false;
+}
+
+export function computeStampStudentProgressTotals(
+  rows: StampStudentProgressRow[]
+): StampStudentProgressTotals {
+  let kpiRowCount = 0;
+  for (const row of rows) {
+    if (!row.excluded_from_kpi) kpiRowCount += 1;
+  }
+  return { row_count: rows.length, kpi_row_count: kpiRowCount };
+}
+
+export function mapStampStudentProgressRow(input: {
+  stamp_card_id: string;
+  student_id: string;
+  student_name: string | null;
+  mobile_number: string | null;
+  enrolled_at: string;
+  first_award_hkt_date: string | null;
+  status: string;
+  stamp_count: number;
+  current_streak: number;
+  last_stamp_hkt_date: string | null;
+  todayHkt: string;
+}): StampStudentProgressRow {
+  const excluded = isExcludedTestMobileForKpi(input.mobile_number);
+  const cardStatus =
+    input.status === "redeemed" ? ("redeemed" as const) : ("active" as const);
+  const storedStreak = Math.max(0, Number(input.current_streak) || 0);
+  const effectiveStreak = effectivePracticeStampStreak(
+    input.last_stamp_hkt_date,
+    input.todayHkt,
+    storedStreak
+  );
+  return {
+    stamp_card_id: input.stamp_card_id,
+    student_id: input.student_id,
+    user_display: maskAdminUserMobile(input.mobile_number),
+    student_name: (input.student_name ?? "").trim() || "—",
+    start_date_hkt: resolveStampProgressStartDateHkt(
+      input.enrolled_at,
+      input.first_award_hkt_date
+    ),
+    effective_streak: effectiveStreak,
+    stored_streak: storedStreak,
+    stamp_count: Math.max(0, Number(input.stamp_count) || 0),
+    card_status: cardStatus,
+    card_status_label: stampCardStatusLabelTc(cardStatus),
+    last_stamp_hkt_date: input.last_stamp_hkt_date,
+    enrolled_at_hkt: isoToHktCalendarDate(input.enrolled_at),
+    resume_eligible: isStampProgressResumeEligible({
+      todayHkt: input.todayHkt,
+      status: cardStatus,
+      stampCount: Math.max(0, Number(input.stamp_count) || 0),
+      storedStreak,
+      lastStampHktDate: input.last_stamp_hkt_date,
+    }),
+    excluded_from_kpi: excluded,
+  };
+}
+
+export function isMissingStampProgressResumeRpcError(message: string): boolean {
+  return /admin_stamp_student_progress_resume|student_stamp_card_resume_audit|42883|PGRST202|does not exist|Could not find the function/i.test(
+    message
+  );
+}

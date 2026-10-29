@@ -9,9 +9,16 @@ import {
   STAMP_GIFT_BTN_EXPORT_ALL,
   STAMP_GIFT_BTN_EXPORT_UNUSED,
   STAMP_GIFT_BTN_IMPORT_CSV,
+  STAMP_ADMIN_PROGRESS_BTN_RESUME,
+  STAMP_ADMIN_PROGRESS_EMPTY,
+  STAMP_ADMIN_PROGRESS_FILTER_HINT,
+  STAMP_ADMIN_PROGRESS_RESUME_CONFIRM,
+  STAMP_ADMIN_PROGRESS_SECTION_TITLE,
+  STAMP_STUDENT_PROGRESS_HEADERS,
   buildStampRedemptionReportCsv,
   formatStampGiftCodeCountsLine,
   formatStampProgramAuditLine,
+  getAdminStampProgressDefaultDateRange,
   getStampGiftWindowBadge,
   shouldShowStampProgramAuditEmpty,
   stampGiftStatusLabel,
@@ -20,6 +27,7 @@ import {
   type StampGiftStatus,
   type StampProgramSettingsPayload,
   type StampRedemptionReportRow,
+  type StampStudentProgressRow,
 } from "@/lib/admin-stamp-card";
 import { getHktCalendarDate } from "@/lib/practice-stamp-card";
 
@@ -31,7 +39,9 @@ type StampAdminAction =
   | "stamp_gift_update"
   | "stamp_gift_codes_import"
   | "stamp_gift_codes_export"
-  | "stamp_redemption_report";
+  | "stamp_redemption_report"
+  | "stamp_student_progress_list"
+  | "stamp_student_progress_resume";
 
 async function stampAdminRequest<T>(
   action: StampAdminAction,
@@ -78,6 +88,7 @@ const REPORT_STICKY_USER =
 
 export function PracticeStampAdminSection({ sessionToken }: { sessionToken: string }) {
   const todayHkt = useMemo(() => getHktCalendarDate(), []);
+  const defaultProgressRange = useMemo(() => getAdminStampProgressDefaultDateRange(), []);
 
   const [program, setProgram] = useState<StampProgramSettingsPayload | null>(null);
   const [programLoading, setProgramLoading] = useState(true);
@@ -113,6 +124,14 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   const [reportEmailFilter, setReportEmailFilter] = useState("all");
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
+
+  const [progressRows, setProgressRows] = useState<StampStudentProgressRow[]>([]);
+  const [progressTotals, setProgressTotals] = useState({ row_count: 0, kpi_row_count: 0 });
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressStart, setProgressStart] = useState(defaultProgressRange.startHkt);
+  const [progressEnd, setProgressEnd] = useState(defaultProgressRange.endHkt);
+  const [progressMsg, setProgressMsg] = useState("");
+  const [resumingCardId, setResumingCardId] = useState<string | null>(null);
 
   const loadProgram = useCallback(async () => {
     setProgramLoading(true);
@@ -167,6 +186,28 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
     }
   }, [sessionToken, reportGiftFilter, reportEmailFilter, reportStart, reportEnd]);
 
+  const loadProgress = useCallback(async () => {
+    setProgressLoading(true);
+    setProgressMsg("");
+    try {
+      const data = await stampAdminRequest<{
+        rows: StampStudentProgressRow[];
+        totals: typeof progressTotals;
+      }>("stamp_student_progress_list", sessionToken, {
+        start_hkt: progressStart || null,
+        end_hkt: progressEnd || null,
+      });
+      setProgressRows(data.rows ?? []);
+      setProgressTotals(data.totals ?? { row_count: 0, kpi_row_count: 0 });
+    } catch (err) {
+      setProgressRows([]);
+      setProgressTotals({ row_count: 0, kpi_row_count: 0 });
+      setProgressMsg(err instanceof Error ? err.message : "載入失敗");
+    } finally {
+      setProgressLoading(false);
+    }
+  }, [sessionToken, progressStart, progressEnd]);
+
   useEffect(() => {
     void loadProgram();
     void loadGifts();
@@ -175,6 +216,10 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   useEffect(() => {
     void loadReport();
   }, [loadReport]);
+
+  useEffect(() => {
+    void loadProgress();
+  }, [loadProgress]);
 
   const auditLine = formatStampProgramAuditLine(program?.audit ?? null);
   const showAuditPlaceholder = shouldShowStampProgramAuditEmpty({
@@ -304,6 +349,23 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
 
   const handleExportReport = () => {
     downloadCsv("stamp-redemption-report.csv", buildStampRedemptionReportCsv(reportRows));
+  };
+
+  const handleResumeProgress = async (row: StampStudentProgressRow) => {
+    if (!row.resume_eligible) return;
+    if (!window.confirm(STAMP_ADMIN_PROGRESS_RESUME_CONFIRM)) return;
+    setResumingCardId(row.stamp_card_id);
+    setProgressMsg("");
+    try {
+      await stampAdminRequest("stamp_student_progress_resume", sessionToken, {
+        stamp_card_id: row.stamp_card_id,
+      });
+      await loadProgress();
+    } catch (err) {
+      setProgressMsg(err instanceof Error ? err.message : "恢復失敗");
+    } finally {
+      setResumingCardId(null);
+    }
   };
 
   return (
@@ -664,6 +726,121 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
                     <td className="py-2 pr-3 font-mono text-xs">{row.ecoupon_code || "—"}</td>
                     <td className="py-2 pr-3 whitespace-nowrap">{row.email_sent_at_hkt || "—"}</td>
                     <td className="py-2 pr-3">{row.admin_actor || "—"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-gray-800">{STAMP_ADMIN_PROGRESS_SECTION_TITLE}</h2>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-end">
+          <label className="text-xs text-gray-500">
+            開始日期
+            <input
+              type="date"
+              value={progressStart}
+              onChange={(e) => setProgressStart(e.target.value)}
+              className="mt-1 block p-2 rounded-lg border border-gray-200 text-sm"
+            />
+          </label>
+          <label className="text-xs text-gray-500">
+            結束日期
+            <input
+              type="date"
+              value={progressEnd}
+              onChange={(e) => setProgressEnd(e.target.value)}
+              className="mt-1 block p-2 rounded-lg border border-gray-200 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void loadProgress()}
+            disabled={progressLoading}
+            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
+          >
+            {progressLoading ? "載入中…" : "套用篩選"}
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-500">{STAMP_ADMIN_PROGRESS_FILTER_HINT}</p>
+        <p className="text-xs text-gray-500">
+          進行中（不含 9999 測試帳戶）：{progressTotals.kpi_row_count} 人 · {progressTotals.row_count}{" "}
+          筆
+        </p>
+        {progressMsg && <p className="text-sm text-red-500">{progressMsg}</p>}
+
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="min-w-[720px] w-full text-sm text-left table-fixed sm:table-auto">
+            <colgroup>
+              <col className="w-[6.5rem]" />
+              <col className="w-[6.5rem]" />
+            </colgroup>
+            <thead>
+              <tr className="text-gray-500 border-b border-gray-100">
+                {STAMP_STUDENT_PROGRESS_HEADERS.map((h, index) => (
+                  <th
+                    key={h}
+                    className={`py-2 pr-3 whitespace-nowrap ${
+                      index === 2 ? REPORT_STICKY_USER : index === 0 ? REPORT_STICKY_TIME : ""
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {progressLoading ? (
+                <tr>
+                  <td colSpan={STAMP_STUDENT_PROGRESS_HEADERS.length} className="py-6 text-center text-gray-400">
+                    載入中…
+                  </td>
+                </tr>
+              ) : progressRows.length === 0 ? (
+                <tr>
+                  <td colSpan={STAMP_STUDENT_PROGRESS_HEADERS.length} className="py-6 text-center text-gray-400">
+                    {STAMP_ADMIN_PROGRESS_EMPTY}
+                  </td>
+                </tr>
+              ) : (
+                progressRows.map((row) => (
+                  <tr key={row.stamp_card_id} className="border-b border-gray-100">
+                    <td className={`py-2 pr-3 whitespace-nowrap ${REPORT_STICKY_TIME}`}>
+                      {row.start_date_hkt}
+                    </td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{row.effective_streak}</td>
+                    <td className={`py-2 pr-3 font-mono whitespace-nowrap ${REPORT_STICKY_USER}`}>
+                      {row.user_display}
+                    </td>
+                    <td className="py-2 pr-3">{row.student_name}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">
+                      {row.stamp_count}
+                      {row.excluded_from_kpi ? (
+                        <span className="ml-1 text-xs text-amber-600">測試</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{row.card_status_label}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{row.last_stamp_hkt_date || "—"}</td>
+                    <td className="py-2 pr-3">
+                      {row.resume_eligible ? (
+                        <button
+                          type="button"
+                          disabled={resumingCardId === row.stamp_card_id}
+                          onClick={() => void handleResumeProgress(row)}
+                          className="px-2 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50"
+                        >
+                          {resumingCardId === row.stamp_card_id ? "處理中…" : STAMP_ADMIN_PROGRESS_BTN_RESUME}
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

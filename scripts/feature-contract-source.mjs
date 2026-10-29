@@ -423,6 +423,50 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase6-admin-student-progress",
+      month: "2026-10",
+      category: "product",
+      priority: "critical",
+      title: "Practice stamp card Phase 6 admin student progress list and CS resume",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_exists",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          snippet: "DO NOT RUN",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase6_admin_progress.sql",
+          snippet: "admin_stamp_student_progress_resume",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "getAdminStampProgressDefaultDateRange",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "學生印花進度",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_student_progress_list",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_student_progress_resume",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-card-phase5-student-redeem",
       month: "2026-10",
       category: "product",

@@ -7,11 +7,18 @@ import {
   mapRedemptionRowForReport,
   parseGiftCodeCsv,
   STAMP_INVENTORY_TABLE_HINT,
+  STAMP_ADMIN_PROGRESS_RESUME_RPC_HINT,
+  computeStampStudentProgressTotals,
+  isMissingStampProgressResumeRpcError,
+  mapStampStudentProgressRow,
+  stampProgressRowInHktRange,
   type StampGiftInventoryRow,
   type StampGiftStatus,
   type StampProgramSettingsPayload,
   type StampRedemptionReportRow,
+  type StampStudentProgressRow,
 } from "@/lib/admin-stamp-card";
+import { getHktCalendarDate } from "@/lib/practice-stamp-card";
 const STAMP_SETTINGS_HINT =
   "缺少印花計劃設定資料表，請先在 Supabase 執行 supabase_practice_stamp_card_phase1.sql。";
 
@@ -394,4 +401,191 @@ export async function adminStampRedemptionReport(
   });
 
   return { rows, totals: computeStampRedemptionReportTotals(rows) };
+}
+
+const STAMP_PROGRESS_SETTINGS_HINT =
+  "缺少印花進度資料表，請先在 Supabase 執行 supabase_practice_stamp_card_phase1.sql。";
+
+function parseOptionalHktRange(payload: Record<string, unknown>): {
+  startHkt: string;
+  endHkt: string;
+} {
+  const startHkt = String(payload.start_hkt ?? "").trim();
+  const endHkt = String(payload.end_hkt ?? "").trim();
+  if (!startHkt && !endHkt) return { startHkt: "", endHkt: "" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startHkt) || !/^\d{4}-\d{2}-\d{2}$/.test(endHkt)) {
+    throw new Error("日期格式無效（請用 YYYY-MM-DD）");
+  }
+  if (endHkt < startHkt) throw new Error("結束日期不可早於開始日期");
+  return { startHkt, endHkt };
+}
+
+export async function adminStampStudentProgressList(
+  admin: SupabaseClient,
+  payload: Record<string, unknown>
+): Promise<{ rows: StampStudentProgressRow[]; totals: ReturnType<typeof computeStampStudentProgressTotals> }> {
+  const { startHkt, endHkt } = parseOptionalHktRange(payload);
+  const todayHkt = getHktCalendarDate();
+
+  const { data, error } = await admin
+    .from("student_stamp_cards")
+    .select(
+      `
+      id,
+      student_id,
+      status,
+      stamp_count,
+      current_streak,
+      last_stamp_hkt_date,
+      enrolled_at,
+      students!inner (
+        id,
+        student_name,
+        parents!inner (
+          mobile_number
+        )
+      )
+    `
+    )
+    .eq("status", "active")
+    .order("last_stamp_hkt_date", { ascending: false, nullsFirst: false })
+    .limit(3000);
+
+  if (error) {
+    const msg = error.message ?? "";
+    if (/student_stamp_cards|42P01|PGRST205|does not exist/i.test(msg)) {
+      throw new Error(STAMP_PROGRESS_SETTINGS_HINT);
+    }
+    throw new Error(msg);
+  }
+
+  const cardRows = data ?? [];
+  const cardIds = cardRows.map((row) => String(row.id));
+
+  const firstAwardByCard = new Map<string, string>();
+  const studentsWithAwardInRange = new Set<string>();
+
+  if (cardIds.length > 0) {
+    const { data: awardRows, error: awardErr } = await admin
+      .from("student_stamp_daily_awards")
+      .select("stamp_card_id, student_id, hkt_date")
+      .in("stamp_card_id", cardIds);
+    if (awardErr) {
+      const msg = awardErr.message ?? "";
+      if (/student_stamp_daily_awards|42P01|PGRST205|does not exist/i.test(msg)) {
+        throw new Error(STAMP_PROGRESS_SETTINGS_HINT);
+      }
+      throw new Error(msg);
+    }
+    for (const award of awardRows ?? []) {
+      const cardId = String(award.stamp_card_id);
+      const hktDate = String(award.hkt_date);
+      const studentId = String(award.student_id);
+      const prev = firstAwardByCard.get(cardId);
+      if (!prev || hktDate < prev) {
+        firstAwardByCard.set(cardId, hktDate);
+      }
+      if (startHkt && endHkt && hktDate >= startHkt && hktDate <= endHkt) {
+        studentsWithAwardInRange.add(studentId);
+      }
+    }
+  }
+
+  const mapped: StampStudentProgressRow[] = [];
+  for (const row of cardRows) {
+    const students = row.students as
+      | {
+          id?: string;
+          student_name?: string | null;
+          parents?: { mobile_number?: string | null } | { mobile_number?: string | null }[];
+        }
+      | {
+          id?: string;
+          student_name?: string | null;
+          parents?: { mobile_number?: string | null } | { mobile_number?: string | null }[];
+        }[]
+      | null;
+    const studentNode = Array.isArray(students) ? students[0] : students;
+    const parentsNode = studentNode?.parents;
+    const parent = Array.isArray(parentsNode) ? parentsNode[0] : parentsNode;
+    const mobile = parent?.mobile_number ?? null;
+    const studentId = String(row.student_id ?? studentNode?.id ?? "");
+    const enrolledAt = String(row.enrolled_at);
+
+    if (
+      !stampProgressRowInHktRange({
+        enrolledAtIso: enrolledAt,
+        lastStampHktDate: row.last_stamp_hkt_date ? String(row.last_stamp_hkt_date) : null,
+        hasAwardInRange: studentsWithAwardInRange.has(studentId),
+        startHkt,
+        endHkt,
+      })
+    ) {
+      continue;
+    }
+
+    mapped.push(
+      mapStampStudentProgressRow({
+        stamp_card_id: String(row.id),
+        student_id: studentId,
+        student_name: studentNode?.student_name ?? null,
+        mobile_number: mobile,
+        enrolled_at: enrolledAt,
+        first_award_hkt_date: firstAwardByCard.get(String(row.id)) ?? null,
+        status: String(row.status),
+        stamp_count: Number(row.stamp_count) || 0,
+        current_streak: Number(row.current_streak) || 0,
+        last_stamp_hkt_date: row.last_stamp_hkt_date ? String(row.last_stamp_hkt_date) : null,
+        todayHkt,
+      })
+    );
+  }
+
+  return { rows: mapped, totals: computeStampStudentProgressTotals(mapped) };
+}
+
+export async function adminStampStudentProgressResume(
+  admin: SupabaseClient,
+  payload: Record<string, unknown>,
+  adminIdentifier: string
+): Promise<StampStudentProgressRow> {
+  const stampCardId = String(payload.stamp_card_id ?? "").trim();
+  if (!stampCardId) throw new Error("缺少印花卡 id");
+
+  const { data, error } = await admin.rpc("admin_stamp_student_progress_resume", {
+    p_stamp_card_id: stampCardId,
+    p_admin_identifier: adminIdentifier,
+  });
+  if (error) {
+    const msg = error.message ?? "";
+    if (isMissingStampProgressResumeRpcError(msg)) {
+      throw new Error(STAMP_ADMIN_PROGRESS_RESUME_RPC_HINT);
+    }
+    throw new Error(msg);
+  }
+
+  const listed = await adminStampStudentProgressList(admin, {});
+  const row = listed.rows.find((r) => r.stamp_card_id === stampCardId);
+  if (row) return row;
+
+  const body = data as {
+    student_id?: string;
+    stamp_count?: number;
+    stored_streak?: number;
+    last_stamp_hkt_date?: string;
+    effective_streak?: number;
+  };
+  return mapStampStudentProgressRow({
+    stamp_card_id: stampCardId,
+    student_id: String(body.student_id ?? ""),
+    student_name: null,
+    mobile_number: null,
+    enrolled_at: new Date().toISOString(),
+    first_award_hkt_date: null,
+    status: "active",
+    stamp_count: Number(body.stamp_count) || 0,
+    current_streak: Number(body.stored_streak) || 0,
+    last_stamp_hkt_date: body.last_stamp_hkt_date ? String(body.last_stamp_hkt_date) : null,
+    todayHkt: getHktCalendarDate(),
+  });
 }
