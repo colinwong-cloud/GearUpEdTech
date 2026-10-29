@@ -3531,8 +3531,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T09:53:57.010Z",
+  "generated_at": "2026-10-29T10:04:30.009Z",
   "commit_inventory": [
+    {
+      "sha": "a6e47caaa5b5801a52b736e933f9adfe490ac69a",
+      "date": "2026-10-29",
+      "summary": "test: smoke-check admin 主頁公告 tab"
+    },
+    {
+      "sha": "a6d8c26dbcf6f9a30d0101e096bd9e87e6c3629a",
+      "date": "2026-10-29",
+      "summary": "chore: pin home-page-notice feature evidence commit"
+    },
     {
       "sha": "4c655a792e1add8e471e0b0d98e1b1c4a33cd006",
       "date": "2026-10-29",
@@ -6600,7 +6610,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 613,
+    "total_commits_since_start": 615,
     "total_feature_rows": 76
   }
 }
