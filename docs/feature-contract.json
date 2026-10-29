@@ -3366,8 +3366,13 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T03:25:16.200Z",
+  "generated_at": "2026-10-29T03:26:29.586Z",
   "commit_inventory": [
+    {
+      "sha": "e5d0f1aae47da6aec8872c2b6b4735e65c6a400d",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature-contract.json for stamp home global-off soft"
+    },
     {
       "sha": "caddad091cbe531f72b2cbca2473e310c62a7827",
       "date": "2026-10-29",
@@ -6395,7 +6400,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 605,
+    "total_commits_since_start": 606,
     "total_feature_rows": 74
   }
 }
