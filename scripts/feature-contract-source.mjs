@@ -526,7 +526,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
-      evidence_commits: ["f934f0a"],
+      evidence_commits: ["c946fff"],
       checks: [
         {
           type: "file_contains",
@@ -546,7 +546,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide card when global program is off",
-      evidence_commits: ["caddad0", "9b1af24"],
+      evidence_commits: ["8ad89f2"],
       checks: [
         {
           type: "file_contains",
