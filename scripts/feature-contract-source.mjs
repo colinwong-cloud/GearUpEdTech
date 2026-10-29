@@ -477,6 +477,26 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-home-soft-hide-enrol-cta",
+      month: "2026-10",
+      category: "engagement",
+      priority: "medium",
+      title: "Practice stamp home chrome: hide manual enrol CTA (auto-start)",
+      evidence_commits: ["f934f0a"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: 'footerState === "not_enrolled_open"',
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "GROWTH_STAMP_COPY.blank",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",

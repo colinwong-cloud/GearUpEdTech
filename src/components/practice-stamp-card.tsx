@@ -59,7 +59,6 @@ export function PracticeStampCard({
   const [redeemOffer, setRedeemOffer] = useState<StudentStampRedeemOffer>(DEFAULT_REDEEM_OFFER);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
-  const [enrolling, setEnrolling] = useState(false);
   const [redeemPhase, setRedeemPhase] = useState<
     "idle" | "confirm" | "redeeming" | "success" | "error"
   >("idle");
@@ -147,26 +146,6 @@ export function PracticeStampCard({
   const handleReopen = () => {
     clearPracticeStampCardHomeDismissForSession();
     setDismissed(false);
-  };
-
-  const handleEnrol = async () => {
-    setEnrolling(true);
-    try {
-      const { data, error } = await supabase.rpc("enrol_student_stamp_card", {
-        p_student_id: studentId,
-      });
-      if (error) throw error;
-      const row = data as { enrolled?: boolean; reason?: string };
-      if (row?.enrolled === false && row.reason === "enrolment_closed") {
-        await refreshStatus();
-        return;
-      }
-      await refreshStatus();
-    } catch {
-      // keep UI stable
-    } finally {
-      setEnrolling(false);
-    }
   };
 
   const handleRedeemSubmit = async () => {
@@ -297,17 +276,7 @@ export function PracticeStampCard({
               </>
             )}
             {footerState === "not_enrolled_open" && (
-              <>
-                <p>{GROWTH_STAMP_COPY.blank}</p>
-                <button
-                  type="button"
-                  disabled={enrolling}
-                  onClick={() => void handleEnrol()}
-                  className="mt-1 w-full rounded-xl border border-amber-400 bg-white px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-60"
-                >
-                  {enrolling ? "處理中…" : STAMP_FOOTER_COPY.enrolCta}
-                </button>
-              </>
+              <p>{GROWTH_STAMP_COPY.blank}</p>
             )}
             {footerState === "not_enrolled_off" && (
               <p>{STAMP_FOOTER_COPY.programClosedForNew}</p>
