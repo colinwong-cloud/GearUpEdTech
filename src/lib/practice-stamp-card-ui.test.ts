@@ -92,7 +92,7 @@ describe("practice stamp card UI", () => {
     expect(STAMP_HOME_REOPEN_LABEL).toBe("練習印花卡");
   });
 
-  it("hides subject-home chrome while loading or when global program is off", () => {
+  it("shows subject-home chrome while loading and when program is open", () => {
     const openStatus = {
       has_active_card: true,
       stamps_program_open: true,
@@ -102,15 +102,39 @@ describe("practice stamp card UI", () => {
       stamped_today: false,
       last_stamp_hkt_date: null,
     };
-    expect(shouldRenderPracticeStampHomeChrome(openStatus, true)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(openStatus, true)).toBe(true);
     expect(shouldRenderPracticeStampHomeChrome(openStatus, false)).toBe(true);
+    expect(shouldRenderPracticeStampHomeChrome(null, true)).toBe(true);
+    expect(shouldRenderPracticeStampHomeChrome(null, false)).toBe(true);
+  });
+
+  it("hides subject-home chrome only when global program is confirmed off", () => {
+    const openStatus = {
+      has_active_card: true,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 2,
+      streak: 2,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
     expect(
       shouldRenderPracticeStampHomeChrome(
         { ...openStatus, stamps_program_open: false },
         false
       )
     ).toBe(false);
-    expect(shouldRenderPracticeStampHomeChrome(null, false)).toBe(false);
+  });
+
+  it("Soft #1: not-enrolled open footer has no manual enrol CTA in card source", () => {
+    const cardSrc = readFileSync(
+      resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
+      "utf8"
+    );
+    expect(cardSrc).toContain('footerState === "not_enrolled_open"');
+    expect(cardSrc).toContain("GROWTH_STAMP_COPY.blank");
+    expect(cardSrc).not.toMatch(/footerState === "not_enrolled_open"[\s\S]*enrolCta/);
+    expect(cardSrc).not.toContain("enrol_student_stamp_card");
   });
 
   it("locks Phase 3 account redeem history copy and headers", () => {

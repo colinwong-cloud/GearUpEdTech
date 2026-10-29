@@ -76,13 +76,13 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
   sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
 }
 
-/** Soft #2: hide subject-home chrome when global 印花計劃開放 is off (no substitute copy). */
+/** Soft #2: hide subject-home chrome only when global 印花計劃開放 is confirmed off. */
 export function shouldRenderPracticeStampHomeChrome(
   status: StudentStampCardStatus | null,
   loading: boolean
 ): boolean {
-  if (loading) return false;
-  if (!status) return false;
+  if (loading) return true;
+  if (!status) return true;
   return status.stamps_program_open;
 }
 
