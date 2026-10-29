@@ -451,7 +451,7 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
-          path: "src/app/admin/practice-stamp-section.tsx",
+          path: "src/lib/admin-stamp-card.ts",
           snippet: "學生印花進度",
         },
         {
