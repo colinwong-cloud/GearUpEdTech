@@ -32,6 +32,7 @@ export type PracticeStampCardProps = {
   earnFeedbackAward?: PracticeStampAwardPayload | null;
   giftWindowOpen?: boolean;
   giftInStock?: boolean;
+  onRedeemSuccess?: () => void;
   className?: string;
 };
 
@@ -51,6 +52,7 @@ export function PracticeStampCard({
   earnFeedbackAward,
   giftWindowOpen: giftWindowOpenProp,
   giftInStock: giftInStockProp,
+  onRedeemSuccess,
   className = "",
 }: PracticeStampCardProps) {
   const [status, setStatus] = useState<StudentStampCardStatus | null>(null);
@@ -174,6 +176,7 @@ export function PracticeStampCard({
       setCouponCode(result.couponCode);
       setRedeemPhase("success");
       setPostRedeem(true);
+      onRedeemSuccess?.();
       await refreshStatus();
       return;
     }
@@ -320,7 +323,7 @@ export function PracticeStampCard({
               <p>{GROWTH_STAMP_COPY.afterRedeemNewCycle}</p>
             )}
             {footerState === "success" && (
-              <div className="space-y-2 rounded-xl border border-emerald-200 bg-white/90 p-3">
+              <div className="relative z-[1] mb-2 space-y-2 rounded-xl border border-emerald-200 bg-white/90 p-3 shadow-sm">
                 <p className="text-sm leading-relaxed">{GROWTH_STAMP_COPY.redeemSuccessAck}</p>
                 {couponCode && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -355,7 +358,9 @@ export function PracticeStampCard({
             <dl className="mt-3 space-y-2 text-sm text-gray-700">
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">禮品</dt>
-                <dd className="font-medium text-right">{confirmGiftName}</dd>
+                <dd className="max-w-[58%] break-words text-right font-medium [overflow-wrap:anywhere]">
+                  {confirmGiftName}
+                </dd>
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">面值</dt>

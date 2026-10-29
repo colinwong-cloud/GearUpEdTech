@@ -469,6 +469,11 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/components/practice-stamp-card.tsx",
           snippet: "loadStudentStampRedeemOffer",
         },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-account-screen.tsx",
+          snippet: "historyRefreshToken",
+        },
       ],
     },
     {

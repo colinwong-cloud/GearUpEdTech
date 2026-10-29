@@ -120,6 +120,8 @@ describe("practice stamp card UI", () => {
     expect(formatStampRedeemEmailStatus("sent").label).toBe("已發送");
     expect(formatStampRedeemEmailStatus("failed").retryHint).toContain("cs@gearupquiz.com");
     expect(formatStampRedeemDateHkt("2026-10-28")).toBe("2026/10/28");
+    expect(formatStampRedeemDateHkt("2026-10-28 08:13:00")).toBe("2026/10/28 08:13");
+    expect(formatStampRedeemDateHkt("2026-10-28T00:13:00.000Z")).toBe("2026/10/28 08:13");
   });
 
   it("uses a self-contained stamp seal SVG safe for img tags", () => {

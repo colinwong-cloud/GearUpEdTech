@@ -327,21 +327,36 @@ export function parseStudentStampRedeemHistoryRows(data: unknown): StudentStampR
 
 export function formatStampRedeemDateHkt(value: string | null): string {
   if (!value) return "—";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-");
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split("-");
     return `${y}/${m}/${d}`;
   }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleString("zh-HK", {
-    timeZone: "Asia/Hong_Kong",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const wallClock = trimmed.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+  if (wallClock) {
+    const [, y, m, d, hh, mm] = wallClock;
+    return `${y}/${m}/${d} ${hh}:${mm}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) return "—";
+    const datePart = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(parsed);
+    const timePart = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Hong_Kong",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(parsed);
+    return `${datePart.replace(/-/g, "/")} ${timePart}`;
+  }
+  return trimmed.replace(/-/g, "/");
 }
 
 export function formatStampRedeemFaceValue(faceValueHkd: number | null): string {
