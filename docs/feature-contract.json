@@ -702,7 +702,7 @@
         },
         {
           "type": "file_contains",
-          "path": "src/app/admin/practice-stamp-section.tsx",
+          "path": "src/lib/admin-stamp-card.ts",
           "snippet": "學生印花進度"
         },
         {
@@ -3411,8 +3411,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T04:48:10.099Z",
+  "generated_at": "2026-10-29T04:48:18.073Z",
   "commit_inventory": [
+    {
+      "sha": "b1bb5e643284b2f54ec6bff53945385c30fc85a9",
+      "date": "2026-10-29",
+      "summary": "chore: Phase 6 feature contract check targets locked TC constant file"
+    },
+    {
+      "sha": "3f80fd010bc8f0c87318047d1971ea12623765f5",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature contract after Soft stamp evidence repoint"
+    },
     {
       "sha": "b448616befe82c56dbef005da1f781131d9d3657",
       "date": "2026-10-29",
@@ -6475,7 +6485,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 612,
+    "total_commits_since_start": 614,
     "total_feature_rows": 75
   }
 }
