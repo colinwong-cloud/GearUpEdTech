@@ -502,7 +502,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "engagement",
       priority: "medium",
       title: "Practice stamp home chrome: hide card when global program is off",
-      evidence_commits: [],
+      evidence_commits: ["caddad0"],
       checks: [
         {
           type: "file_contains",
