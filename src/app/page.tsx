@@ -3740,9 +3740,8 @@ function ResultsView({
         )}
 
         <div className="relative mb-8 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
-          <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
           <p
-            className="mt-2 text-pretty whitespace-pre-wrap break-words"
+            className="text-pretty whitespace-pre-wrap break-words"
             style={{ fontFamily: "var(--font-baloo2), system-ui" }}
           >
             {summaryText}

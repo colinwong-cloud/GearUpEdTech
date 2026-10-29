@@ -21,6 +21,7 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "測驗完成！" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "錯題解析" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "ResultRecentTrendChart" },
       ],
     },
     {
@@ -34,6 +35,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/page.tsx", snippet: "你的答案（值）" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "正確答案（值）" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "反映這題目" },
+        { type: "file_contains", path: "src/app/api/send-quiz-email/route.ts", snippet: "錯題詳解（錯題逐題詳解）" },
       ],
     },
     {
@@ -232,7 +234,7 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["e8d2d99"],
       checks: [
         { type: "file_exists", path: "src/lib/session-practice-summary.ts" },
-        { type: "file_contains", path: "src/app/page.tsx", snippet: "小香蕉的練習小結" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "{summaryText}" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "ResultRecentTrendChart" },
         { type: "file_contains", path: "src/components/student-performance-charts.tsx", snippet: "最近10次正確率" },
         { type: "file_contains", path: "src/lib/practice-stamp-card-ui.ts", snippet: "resultPageStreakEncouragement" },

@@ -7,11 +7,19 @@ function readSource(relPath: string): string {
 }
 
 describe("anti-missing regression guards", () => {
-  it("keeps results page wrong-answer details and action buttons", () => {
+  it("keeps results page summary bubble without banana banner and explanation blocks", () => {
     const pageSource = readSource("src/app/page.tsx");
-    expect(pageSource).toContain("錯題解析");
-    expect(pageSource).toContain("你的答案（值）");
-    expect(pageSource).toContain("正確答案（值）");
+    const resultsViewMatch = pageSource.match(
+      /function ResultsView\([\s\S]*?\n\}\n\nfunction QuestionImage/
+    );
+    expect(resultsViewMatch).toBeTruthy();
+    const resultsViewSource = resultsViewMatch![0];
+    expect(resultsViewSource).toContain("{summaryText}");
+    expect(resultsViewSource).not.toContain("小香蕉的練習小結");
+    expect(resultsViewSource).toContain("錯題解析");
+    expect(resultsViewSource).toContain("你的答案（值）");
+    expect(resultsViewSource).toContain("正確答案（值）");
+    expect(resultsViewSource).toContain("fetch(\"/api/send-question-report\"");
     expect(pageSource).toContain("再做一次");
     expect(pageSource).toContain("回到主畫面");
     expect(pageSource).toContain("px-8 py-3.5");
@@ -21,7 +29,8 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("const handleBackToHome = () => {");
     expect(pageSource).toContain("setScreen(\"login_role\")");
     expect(pageSource).toContain("登出");
-    expect(pageSource).toContain("fetch(\"/api/send-question-report\"");
+    expect(pageSource).toContain("ResultRecentTrendChart");
+    expect(pageSource).toContain("resultStreakEncouragement");
   });
 
   it("keeps question-report notification API route", () => {
