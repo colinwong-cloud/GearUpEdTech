@@ -105,6 +105,11 @@ export function stampCardHeaderStreakLine(streak: number): string {
   return `已連續 ${streak} 日`;
 }
 
+/** Result page streak nudge (Traditional Chinese, warm product voice). */
+export function resultPageStreakEncouragement(streak: number): string {
+  return `已連續 ${streak} 日練習，繼續加油！`;
+}
+
 export const STAMP_FOOTER_COPY = {
   progressDaysRemaining: (days: number) => `再練習 ${days} 日可換領禮品`,
   redeemCta: "立即換領",

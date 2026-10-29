@@ -233,6 +233,9 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_exists", path: "src/lib/session-practice-summary.ts" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "小香蕉的練習小結" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "ResultRecentTrendChart" },
+        { type: "file_contains", path: "src/components/student-performance-charts.tsx", snippet: "最近10次正確率" },
+        { type: "file_contains", path: "src/lib/practice-stamp-card-ui.ts", snippet: "resultPageStreakEncouragement" },
         { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "buildPracticeComparison" },
         { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "近10次平均" },
         { type: "file_contains", path: "src/lib/session-practice-summary.ts", snippet: "今次正確率有" },

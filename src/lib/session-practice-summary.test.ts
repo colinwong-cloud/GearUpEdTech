@@ -105,10 +105,9 @@ describe("buildSessionPracticeSummary", () => {
     expect(s).toContain("第一次完成練習");
     expect(s).toContain("今次正確率有");
     expect(s).toContain("50%");
-    expect(s).toContain("體積（二）");
-    expect(s).toContain("題型既");
-    expect(s).toContain("你答咗");
-    expect(s).toContain("想一想");
+    expect(s).not.toContain("題型既");
+    expect(s).not.toContain("想一想");
+    expect(s).toContain("下次再一齊加油");
     expect(s.length).toBeGreaterThanOrEqual(20);
   });
 
@@ -136,18 +135,21 @@ describe("buildSessionPracticeSummary", () => {
     expect(s).toContain("低少少都唔緊要");
   });
 
-  it("quotes the student wrong option and a thinking step", () => {
+  it("keeps wrong-question coach detail on the parent summary only", () => {
     const s = buildSessionPracticeSummary(mixedAnswers, PRIMARY_QUIZ_SUBJECT);
-    expect(s).toContain("你答咗 A (長方體)");
-    expect(s).toContain("正確係 B (正方體)");
-    expect(s).toContain("題型既");
-    expect(s).toContain("一個立體的長闊高分別是3cm、3cm、5cm，它是什麼形狀？");
-    expect(s).toContain("想一想：先睇長闊高係咪全部相等，先決定係正方體定長方體。");
+    expect(s).not.toContain("你答咗 A (長方體)");
+    expect(s).not.toContain("題型既");
     expect(s).toContain("。 下次再一齊加油！");
-    expect(s).not.toContain("…");
+    const parent = buildSessionPracticeSummaryForParent(
+      mixedAnswers,
+      PRIMARY_QUIZ_SUBJECT,
+      "小明"
+    );
+    expect(parent).toContain("答了 A (長方體)");
+    expect(parent).toContain("思路");
   });
 
-  it("keeps English spaces and full question plus explanation", () => {
+  it("keeps English spaces and full question plus explanation on parent summary", () => {
     const englishWrong: AnswerLike = {
       question: q("Prepositions", "en1", {
         content: 'Choose the correct preposition: "We had lunch ___ noon."',
@@ -161,16 +163,21 @@ describe("buildSessionPracticeSummary", () => {
       isCorrect: false,
       studentAnswer: "B",
     };
-    const s = buildSessionPracticeSummary(
+    const student = buildSessionPracticeSummary(
       [mk("簡易方程（二）", "1", true), englishWrong],
       PRIMARY_QUIZ_SUBJECT
     );
-    expect(s).toContain('Choose the correct preposition: "We had lunch ___ noon."');
-    expect(s).toContain('We often use "at" for eating at a specific time, such as at noon.');
-    expect(s).toContain("你答咗 B (on)");
-    expect(s).toContain("正確係 C (at)");
-    expect(s).not.toContain("Choosethecorrect");
-    expect(s).not.toContain("…");
+    expect(student).not.toContain('Choose the correct preposition');
+    const parent = buildSessionPracticeSummaryForParent(
+      [mk("簡易方程（二）", "1", true), englishWrong],
+      PRIMARY_QUIZ_SUBJECT,
+      "Amy"
+    );
+    expect(parent).toContain('Choose the correct preposition: "We had lunch ___ noon."');
+    expect(parent).toContain('We often use "at" for eating at a specific time, such as at noon.');
+    expect(parent).toContain("答了 B (on)");
+    expect(parent).not.toContain("Choosethecorrect");
+    expect(parent).not.toContain("…");
   });
 
   it("empty returns short fallback", () => {

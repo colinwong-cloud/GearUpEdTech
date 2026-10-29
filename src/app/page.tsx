@@ -4,7 +4,15 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
-import { OverallChart, TypeCharts, type ChartDataPayload } from "@/components/student-performance-charts";
+import {
+  OverallChart,
+  TypeCharts,
+  ResultRecentTrendChart,
+  lastNChartSessions,
+  mergeCurrentSessionIntoChartSessions,
+  type ChartDataPayload,
+  type ChartSession,
+} from "@/components/student-performance-charts";
 import type {
   Student,
   Question,
@@ -2076,6 +2084,7 @@ export default function QuizApp() {
         studentName={selectedStudent?.student_name || ""}
         studentId={selectedStudent?.id || null}
         sessionId={sessionId}
+        subjectKey={selectedSubject}
         sessionSummary={sessionPracticeSummary}
         practiceStampAward={practiceStampAwardFeedback}
         onRestart={handleRestart}
@@ -3563,21 +3572,12 @@ function QuestionCountScreen({
   );
 }
 
-function getPracticeResultBannerSrc(): string {
-  const override = process.env.NEXT_PUBLIC_PRACTICE_RESULT_BANNER_URL?.trim();
-  if (override) return override;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
-  if (base) {
-    return `${base}/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png`;
-  }
-  return "/storage/v1/object/public/Webpage_images/logo/GearUp_Chi_Eng_banner.png";
-}
-
 function ResultsView({
   answers,
   studentName,
   studentId,
   sessionId,
+  subjectKey,
   sessionSummary,
   practiceStampAward,
   onRestart,
@@ -3589,6 +3589,7 @@ function ResultsView({
   studentName: string;
   studentId: string | null;
   sessionId: string | null;
+  subjectKey: string | null;
   sessionSummary: string | null;
   practiceStampAward: PracticeStampAwardPayload | null;
   onRestart: () => void;
@@ -3601,6 +3602,50 @@ function ResultsView({
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const summaryText =
     sessionSummary?.trim() || buildSessionPracticeSummary(answers, answers[0]?.question.subject || "");
+
+  const [trendSessions, setTrendSessions] = useState<ChartSession[]>([]);
+  const [trendLoading, setTrendLoading] = useState(Boolean(studentId && subjectKey));
+
+  useEffect(() => {
+    if (!studentId || !subjectKey) {
+      setTrendSessions([]);
+      setTrendLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setTrendLoading(true);
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_student_chart_data", {
+          p_student_id: studentId,
+          p_subject: subjectKey,
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const payload = data as ChartDataPayload | null;
+        const merged = mergeCurrentSessionIntoChartSessions(payload?.sessions ?? [], {
+          sessionId,
+          score,
+          total,
+        });
+        setTrendSessions(lastNChartSessions(merged, 10));
+      } catch {
+        if (!cancelled) {
+          const fallback = mergeCurrentSessionIntoChartSessions([], {
+            sessionId,
+            score,
+            total,
+          });
+          setTrendSessions(lastNChartSessions(fallback, 10));
+        }
+      } finally {
+        if (!cancelled) setTrendLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId, subjectKey, sessionId, score, total]);
 
   const wrongAnswers = answers
     .map((answer, index) => ({ answer, index }))
@@ -3675,28 +3720,37 @@ function ResultsView({
           )}
         </div>
 
-        <div className="mb-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
-          <div className="shrink-0 self-center sm:self-end">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getPracticeResultBannerSrc()}
-              alt="GearUp 增分寶 Banner"
-              className="h-auto w-44 max-w-[70vw] sm:w-56"
-              width={560}
-              height={140}
-              draggable={false}
+        {studentId && (
+          <div className="mb-8">
+            <PracticeStampCard
+              studentId={studentId}
+              variant="full"
+              earnFeedbackAward={practiceStampAward}
+              resultStreakEncouragement
             />
           </div>
-          <div className="relative min-w-0 flex-1 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
-            <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
-            <p className="mt-2 text-pretty whitespace-pre-wrap break-words" style={{ fontFamily: "var(--font-baloo2), system-ui" }}>
-              {summaryText}
-            </p>
-            <div
-              className="absolute -bottom-2 left-6 h-4 w-4 rotate-45 border-b-2 border-r-2 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50"
-              aria-hidden
-            />
+        )}
+
+        {trendLoading ? (
+          <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-500 shadow-md">
+            載入正確率趨勢…
           </div>
+        ) : (
+          <ResultRecentTrendChart sessions={trendSessions} />
+        )}
+
+        <div className="relative mb-8 rounded-3xl border-4 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-4 py-4 text-sm leading-relaxed text-slate-800 shadow-md sm:text-base">
+          <p className="text-xs font-bold text-amber-800/90 sm:text-sm">小香蕉的練習小結</p>
+          <p
+            className="mt-2 text-pretty whitespace-pre-wrap break-words"
+            style={{ fontFamily: "var(--font-baloo2), system-ui" }}
+          >
+            {summaryText}
+          </p>
+          <div
+            className="absolute -bottom-2 left-6 h-4 w-4 rotate-45 border-b-2 border-r-2 border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50"
+            aria-hidden
+          />
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -3878,16 +3932,6 @@ function ResultsView({
             登出
           </button>
         </div>
-
-        {studentId && (
-          <div className="mt-8">
-            <PracticeStampCard
-              studentId={studentId}
-              variant="full"
-              earnFeedbackAward={practiceStampAward}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
