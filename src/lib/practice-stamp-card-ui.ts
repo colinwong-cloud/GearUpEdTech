@@ -88,7 +88,7 @@ export function shouldRenderPracticeStampHomeChrome(
   return status.stamps_program_open || status.has_active_card;
 }
 
-/** Result page, account module, etc.: fail-open while loading; hide when off without active card. */
+/** Result page only: fail-open while loading; hide when off without active card. */
 export function shouldRenderPracticeStampCardChrome(
   status: StudentStampCardStatus | null,
   loading: boolean
@@ -97,6 +97,9 @@ export function shouldRenderPracticeStampCardChrome(
   if (!status) return true;
   return status.stamps_program_open || status.has_active_card;
 }
+
+/** Account menu, account progress, subject home — strict fail-closed while loading/null. */
+export const shouldRenderPracticeStampStrictChrome = shouldRenderPracticeStampHomeChrome;
 
 export function stampCardHeaderStreakLine(streak: number): string {
   return `已連續 ${streak} 日`;

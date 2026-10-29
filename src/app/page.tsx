@@ -56,6 +56,7 @@ import {
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
   PracticeStampCard,
+  PracticeStampCardSubjectHome,
   clearPracticeStampCardDismissForSession,
 } from "@/components/practice-stamp-card";
 import { PracticeStampAccountScreen } from "@/components/practice-stamp-account-screen";
@@ -3341,12 +3342,7 @@ function SubjectSelectScreen({
         )}
         {studentId && (
           <div className="mb-4">
-            <PracticeStampCard
-              studentId={studentId}
-              variant="compact"
-              dismissible
-              homeChrome
-            />
+            <PracticeStampCardSubjectHome studentId={studentId} />
           </div>
         )}
         <div className="space-y-3">
@@ -4223,7 +4219,7 @@ function AccountMenuScreen({
               <p className="text-sm text-gray-500">查看餘額及消費記錄</p>
             </div>
           </button>
-          {stampStudentId && (stampEntryLoading || showStampCardEntry) && (
+          {stampStudentId && !stampEntryLoading && showStampCardEntry && (
             <button
               onClick={onStampCard}
               className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-amber-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"

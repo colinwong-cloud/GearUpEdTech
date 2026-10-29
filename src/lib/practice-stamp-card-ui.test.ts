@@ -152,13 +152,25 @@ describe("practice stamp card UI", () => {
     expect(shouldRenderPracticeStampHomeChrome(openStatus, false)).toBe(true);
   });
 
-  it("PracticeStampCard uses strict home gate and global gate elsewhere", () => {
+  it("PracticeStampCard uses strict gate for home/account and global gate on result", () => {
     const cardSrc = readFileSync(
       resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
       "utf8"
     );
+    expect(cardSrc).toContain("const strictChromeGate = homeChrome || accountChrome");
     expect(cardSrc).toContain("shouldRenderPracticeStampHomeChrome(status, loading)");
     expect(cardSrc).toContain("shouldRenderPracticeStampCardChrome(status, loading)");
+    expect(cardSrc).toContain("PracticeStampCardSubjectHome");
+  });
+
+  it("usePracticeStampCardChromeVisible is fail-closed while loading", () => {
+    const hookSrc = readFileSync(
+      resolve(process.cwd(), "src/lib/use-practice-stamp-card-chrome.ts"),
+      "utf8"
+    );
+    expect(hookSrc).toContain("useState(false)");
+    expect(hookSrc).toContain("shouldRenderPracticeStampStrictChrome");
+    expect(hookSrc).toMatch(/setLoading\(true\)[\s\S]*setVisible\(false\)/);
   });
 
   it("Soft #1: not-enrolled open footer has no manual enrol CTA in card source", () => {

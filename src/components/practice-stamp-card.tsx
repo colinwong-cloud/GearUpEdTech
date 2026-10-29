@@ -26,13 +26,16 @@ import {
   type StudentStampCardStatus,
   type StudentStampRedeemOffer,
 } from "@/lib/practice-stamp-card-ui";
+import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card-chrome";
 
 export type PracticeStampCardProps = {
   studentId: string;
   variant?: "compact" | "full";
   dismissible?: boolean;
-  /** Subject-select home module only; hidden entirely when stamps_program_open is false. */
+  /** Subject-select home module only; strict visibility until status confirms eligibility. */
   homeChrome?: boolean;
+  /** Account stamp progress module; same strict gate as homeChrome. */
+  accountChrome?: boolean;
   earnFeedbackAward?: PracticeStampAwardPayload | null;
   giftWindowOpen?: boolean;
   giftInStock?: boolean;
@@ -54,6 +57,7 @@ export function PracticeStampCard({
   variant = "full",
   dismissible = false,
   homeChrome = false,
+  accountChrome = false,
   earnFeedbackAward,
   giftWindowOpen: giftWindowOpenProp,
   giftInStock: giftInStockProp,
@@ -90,6 +94,11 @@ export function PracticeStampCard({
     } finally {
       setLoading(false);
     }
+  }, [studentId]);
+
+  useEffect(() => {
+    setStatus(null);
+    setLoading(true);
   }, [studentId]);
 
   useEffect(() => {
@@ -172,7 +181,8 @@ export function PracticeStampCard({
   const confirmFaceValue = redeemOffer.face_value_hkd ?? 0;
   const confirmWindowEnd = formatStampGiftWindowEndLabel(redeemOffer.window_end_hkt);
 
-  const chromeVisible = homeChrome
+  const strictChromeGate = homeChrome || accountChrome;
+  const chromeVisible = strictChromeGate
     ? shouldRenderPracticeStampHomeChrome(status, loading)
     : shouldRenderPracticeStampCardChrome(status, loading);
   if (!chromeVisible) {
@@ -372,6 +382,20 @@ export function PracticeStampCard({
         </div>
       )}
     </section>
+  );
+}
+
+/** Subject home: do not mount the card until RPC confirms open program or active card. */
+export function PracticeStampCardSubjectHome({ studentId }: { studentId: string }) {
+  const { visible, loading } = usePracticeStampCardChromeVisible(studentId);
+  if (loading || !visible) return null;
+  return (
+    <PracticeStampCard
+      studentId={studentId}
+      variant="compact"
+      dismissible
+      homeChrome
+    />
   );
 }
 

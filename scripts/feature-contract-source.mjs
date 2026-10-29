@@ -576,17 +576,27 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/use-practice-stamp-card-chrome.ts",
-          snippet: "usePracticeStampCardChromeVisible",
+          snippet: "shouldRenderPracticeStampStrictChrome",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "PracticeStampCardSubjectHome",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "accountChrome",
         },
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "showStampCardEntry",
+          snippet: "!stampEntryLoading && showStampCardEntry",
         },
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "homeChrome",
+          snippet: "PracticeStampCardSubjectHome",
         },
       ],
     },
