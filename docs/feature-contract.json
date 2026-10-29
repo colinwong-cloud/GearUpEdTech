@@ -403,6 +403,21 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "ResultRecentTrendChart"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-performance-charts.tsx",
+          "snippet": "最近10次正確率"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "resultPageStreakEncouragement"
+        },
+        {
+          "type": "file_contains",
           "path": "src/lib/session-practice-summary.ts",
           "snippet": "buildPracticeComparison"
         },
@@ -3445,12 +3460,12 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T05:46:16.260Z",
+  "generated_at": "2026-10-29T06:28:14.009Z",
   "commit_inventory": [
     {
-      "sha": "e4cf44b8c44b3c9f30ee8a5d0d343a4032024c9b",
+      "sha": "c1627605313a8301d0439f90946a2fbe45c858c9",
       "date": "2026-10-29",
-      "summary": "fix(stamp): fail-closed loading for home and account chrome"
+      "summary": "fix(stamp): fail-closed stamp loading on home and account (no OFF flash) (#228)"
     },
     {
       "sha": "d9e01605210204eee5cf7e74c43f91a1c29a1ed9",
