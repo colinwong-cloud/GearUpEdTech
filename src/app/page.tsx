@@ -3345,6 +3345,7 @@ function SubjectSelectScreen({
               studentId={studentId}
               variant="compact"
               dismissible
+              homeChrome
             />
           </div>
         )}

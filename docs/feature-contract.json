@@ -763,6 +763,34 @@
       ]
     },
     {
+      "id": "practice-stamp-home-soft-hide-card-global-off",
+      "month": "2026-10",
+      "category": "engagement",
+      "priority": "medium",
+      "title": "Practice stamp home chrome: hide card when global program is off",
+      "evidence_commits": [
+        "caddad0",
+        "9b1af24"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "shouldRenderPracticeStampHomeChrome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/practice-stamp-card.tsx",
+          "snippet": "homeChrome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "homeChrome"
+        }
+      ]
+    },
+    {
       "id": "parent-email-practice-summary-and-wrong-details",
       "month": "2026-07",
       "category": "communications",
@@ -3339,8 +3367,38 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T02:55:20.167Z",
+  "generated_at": "2026-10-29T03:45:38.299Z",
   "commit_inventory": [
+    {
+      "sha": "6a22bf5c238b37b7bf2e2821d44dba3101af2c47",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature-contract.json for Soft #2 home chrome fix"
+    },
+    {
+      "sha": "9b1af24719a8d8e3539576c313821d01c95dd4a1",
+      "date": "2026-10-29",
+      "summary": "fix(stamp): show home chrome when 印花計劃開放 is on (Soft #2)"
+    },
+    {
+      "sha": "caddad091cbe531f72b2cbca2473e310c62a7827",
+      "date": "2026-10-29",
+      "summary": "soft(stamp): hide home chrome when global 印花計劃開放 is off"
+    },
+    {
+      "sha": "e5d0f1aae47da6aec8872c2b6b4735e65c6a400d",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature-contract.json for stamp home global-off soft"
+    },
+    {
+      "sha": "8a768a19c1488bef22556a55e0f736f671761266",
+      "date": "2026-10-29",
+      "summary": "chore: include latest commit in feature-contract inventory"
+    },
+    {
+      "sha": "c946fffe7589bf345cd66778f02650a361d3d62a",
+      "date": "2026-10-29",
+      "summary": "soft(stamp): hide home 「開始收集印花」 CTA (auto-start) (#224)"
+    },
     {
       "sha": "adb7a804113abadaa96c69fdf2e9d4f1e47622d4",
       "date": "2026-10-29",
@@ -6388,7 +6446,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 609,
-    "total_feature_rows": 73
+    "total_commits_since_start": 615,
+    "total_feature_rows": 74
   }
 }

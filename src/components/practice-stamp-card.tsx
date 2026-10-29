@@ -18,6 +18,7 @@ import {
   requestPracticeStampRedeem,
   resolvePracticeStampFooterState,
   setPracticeStampCardHomeDismissedForSession,
+  shouldRenderPracticeStampHomeChrome,
   stampCardHeaderStreakLine,
   stampSlotRotationDeg,
   type PracticeStampAwardPayload,
@@ -29,6 +30,8 @@ export type PracticeStampCardProps = {
   studentId: string;
   variant?: "compact" | "full";
   dismissible?: boolean;
+  /** Subject-select home module only; hidden entirely when stamps_program_open is false. */
+  homeChrome?: boolean;
   earnFeedbackAward?: PracticeStampAwardPayload | null;
   giftWindowOpen?: boolean;
   giftInStock?: boolean;
@@ -49,6 +52,7 @@ export function PracticeStampCard({
   studentId,
   variant = "full",
   dismissible = false,
+  homeChrome = false,
   earnFeedbackAward,
   giftWindowOpen: giftWindowOpenProp,
   giftInStock: giftInStockProp,
@@ -166,6 +170,10 @@ export function PracticeStampCard({
     redeemOffer.gift_name ?? "GearUp 練習獎賞禮券";
   const confirmFaceValue = redeemOffer.face_value_hkd ?? 0;
   const confirmWindowEnd = formatStampGiftWindowEndLabel(redeemOffer.window_end_hkt);
+
+  if (homeChrome && !shouldRenderPracticeStampHomeChrome(status, loading)) {
+    return null;
+  }
 
   if (dismissible && dismissed && variant === "compact") {
     return (
