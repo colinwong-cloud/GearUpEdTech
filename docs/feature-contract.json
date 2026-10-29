@@ -828,8 +828,18 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "shouldRenderPracticeStampHomeChrome"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "if (loading || !status) return false"
+        },
+        {
+          "type": "file_contains",
           "path": "src/components/practice-stamp-card.tsx",
-          "snippet": "shouldRenderPracticeStampCardChrome(status, loading)"
+          "snippet": "shouldRenderPracticeStampHomeChrome(status, loading)"
         },
         {
           "type": "file_contains",
@@ -3425,8 +3435,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T05:24:32.456Z",
+  "generated_at": "2026-10-29T05:33:02.812Z",
   "commit_inventory": [
+    {
+      "sha": "cec0a25ff902360b6149c6b42039a3e2b2447669",
+      "date": "2026-10-29",
+      "summary": "fix(stamp): no home stamp paint while status loading (OFF flash)"
+    },
+    {
+      "sha": "25b5c77081797b255d4c72044d6c353e651960e5",
+      "date": "2026-10-29",
+      "summary": "chore: refresh feature-contract.json inventory for ce5ad3c"
+    },
     {
       "sha": "ce5ad3c48797c6502be2ecd1dcb06bd4c129777d",
       "date": "2026-10-29",
@@ -6469,7 +6489,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 608,
+    "total_commits_since_start": 610,
     "total_feature_rows": 75
   }
 }
