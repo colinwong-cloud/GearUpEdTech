@@ -742,6 +742,43 @@
       ]
     },
     {
+      "id": "admin-stamp-progress-unmask-sort",
+      "month": "2026-10",
+      "category": "admin",
+      "priority": "high",
+      "title": "Admin stamp progress table shows full mobile and sortable columns",
+      "evidence_commits": [
+        "9f54568"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "formatAdminStampProgressUserDisplay"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "sortStampStudentProgressRows"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "STAMP_STUDENT_PROGRESS_SORT_KEYS"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/practice-stamp-section.tsx",
+          "snippet": "handleProgressColumnSort"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/practice-stamp-section.tsx",
+          "snippet": "aria-sort"
+        }
+      ]
+    },
+    {
       "id": "practice-stamp-card-phase5-student-redeem",
       "month": "2026-10",
       "category": "product",
@@ -3531,32 +3568,17 @@
       ]
     }
   ],
-  "generated_at": "2026-10-29T10:04:30.009Z",
+  "generated_at": "2026-10-30T07:30:33.450Z",
   "commit_inventory": [
     {
-      "sha": "a6e47caaa5b5801a52b736e933f9adfe490ac69a",
-      "date": "2026-10-29",
-      "summary": "test: smoke-check admin 主頁公告 tab"
+      "sha": "39d4d1c35a25e4201b27408fa03b68b9665cb6a5",
+      "date": "2026-10-30",
+      "summary": "fix(admin): unmask mobile and sort all stamp progress columns"
     },
     {
-      "sha": "a6d8c26dbcf6f9a30d0101e096bd9e87e6c3629a",
+      "sha": "3f169379474a996f9edeb23ad76291efe5d71669",
       "date": "2026-10-29",
-      "summary": "chore: pin home-page-notice feature evidence commit"
-    },
-    {
-      "sha": "4c655a792e1add8e471e0b0d98e1b1c4a33cd006",
-      "date": "2026-10-29",
-      "summary": "chore: set feature-contract evidence for home page notice"
-    },
-    {
-      "sha": "acb41a1b4b890869f024b82f493ef8e343daca1b",
-      "date": "2026-10-29",
-      "summary": "chore: refresh feature-contract inventory"
-    },
-    {
-      "sha": "7971345ab0a4281263e8a82ba5279575ef8c4e7f",
-      "date": "2026-10-29",
-      "summary": "feat: admin-controlled home page notice on role select screen"
+      "summary": "feat: admin-controlled home page notice (主頁公告) (#231)"
     },
     {
       "sha": "c4982d061bf22deab8331abce33e001373e42e1c",
@@ -6610,7 +6632,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 615,
-    "total_feature_rows": 76
+    "total_commits_since_start": 612,
+    "total_feature_rows": 77
   }
 }
