@@ -748,7 +748,7 @@
       "priority": "high",
       "title": "Admin stamp progress table shows full mobile and sortable columns",
       "evidence_commits": [
-        "9f54568"
+        "39d4d1c"
       ],
       "checks": [
         {
@@ -3568,8 +3568,18 @@
       ]
     }
   ],
-  "generated_at": "2026-10-30T07:30:33.450Z",
+  "generated_at": "2026-10-30T07:30:50.170Z",
   "commit_inventory": [
+    {
+      "sha": "311a6b895fc25153acbb6d31c391dd23b5024aaa",
+      "date": "2026-10-30",
+      "summary": "chore: fix feature contract evidence SHA for admin stamp progress"
+    },
+    {
+      "sha": "1b002dedd4f7456dcfd73905f5bff6c27fe2dcae",
+      "date": "2026-10-30",
+      "summary": "chore: refresh feature contract"
+    },
     {
       "sha": "39d4d1c35a25e4201b27408fa03b68b9665cb6a5",
       "date": "2026-10-30",
@@ -6632,7 +6642,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 612,
+    "total_commits_since_start": 614,
     "total_feature_rows": 77
   }
 }
