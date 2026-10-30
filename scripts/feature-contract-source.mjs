@@ -477,7 +477,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin stamp progress table shows full mobile and sortable columns",
-      evidence_commits: ["9f54568"],
+      evidence_commits: ["39d4d1c"],
       checks: [
         {
           type: "file_contains",
