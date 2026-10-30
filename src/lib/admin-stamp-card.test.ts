@@ -8,9 +8,11 @@ import {
   getAdminStampProgressDefaultDateRange,
   isStampProgressResumeEligible,
   mapStampStudentProgressRow,
+  nextStampStudentProgressSortState,
   parseGiftCodeCsv,
   resolveStampProgressStartDateHkt,
   shouldShowStampProgramAuditEmpty,
+  sortStampStudentProgressRows,
   stampProgressRowInHktRange,
   STAMP_GIFT_BTN_EXPORT_ALL,
   STAMP_GIFT_BTN_EXPORT_UNUSED,
@@ -131,7 +133,7 @@ describe("admin student stamp progress", () => {
     ).toBe(false);
   });
 
-  it("maps progress row with masked mobile and KPI exclusion", () => {
+  it("maps progress row with full mobile for admin and KPI exclusion", () => {
     const row = mapStampStudentProgressRow({
       stamp_card_id: "card-1",
       student_id: "stu-1",
@@ -145,7 +147,7 @@ describe("admin student stamp progress", () => {
       last_stamp_hkt_date: "2026-10-26",
       todayHkt: "2026-10-29",
     });
-    expect(row.user_display).toBe("6567****");
+    expect(row.user_display).toBe("65671234");
     expect(row.effective_streak).toBe(0);
     expect(row.resume_eligible).toBe(true);
     expect(row.excluded_from_kpi).toBe(false);
@@ -227,5 +229,61 @@ describe("admin student stamp progress", () => {
     ]);
     expect(totals.row_count).toBe(2);
     expect(totals.kpi_row_count).toBe(1);
+  });
+
+  it("sorts progress rows by every column key", () => {
+    const base = {
+      enrolled_at: "2026-10-01T00:00:00.000Z",
+      first_award_hkt_date: "2026-10-02",
+      status: "active" as const,
+      current_streak: 1,
+      todayHkt: "2026-10-29",
+    };
+    const rowA = mapStampStudentProgressRow({
+      ...base,
+      stamp_card_id: "a",
+      student_id: "1",
+      student_name: "Amy",
+      mobile_number: "11112222",
+      stamp_count: 2,
+      last_stamp_hkt_date: "2026-10-10",
+    });
+    const rowB = mapStampStudentProgressRow({
+      ...base,
+      stamp_card_id: "b",
+      student_id: "2",
+      student_name: "Bob",
+      mobile_number: "33334444",
+      stamp_count: 5,
+      last_stamp_hkt_date: "2026-10-20",
+    });
+    const rows = [rowB, rowA];
+
+    expect(sortStampStudentProgressRows(rows, "stamp_count", "asc").map((r) => r.stamp_card_id)).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(sortStampStudentProgressRows(rows, "user_display", "asc").map((r) => r.stamp_card_id)).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(
+      sortStampStudentProgressRows(rows, "last_stamp_hkt_date", "desc").map((r) => r.stamp_card_id)
+    ).toEqual(["b", "a"]);
+  });
+
+  it("toggles sort direction when the same column is clicked again", () => {
+    expect(nextStampStudentProgressSortState(null, "asc", "stamp_count")).toEqual({
+      key: "stamp_count",
+      direction: "asc",
+    });
+    expect(nextStampStudentProgressSortState("stamp_count", "asc", "stamp_count")).toEqual({
+      key: "stamp_count",
+      direction: "desc",
+    });
+    expect(nextStampStudentProgressSortState("stamp_count", "desc", "student_name")).toEqual({
+      key: "student_name",
+      direction: "asc",
+    });
   });
 });

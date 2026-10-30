@@ -143,6 +143,15 @@ export function maskAdminUserMobile(mobile: string | null | undefined): string {
   return `${raw.slice(0, 4)}****`;
 }
 
+/** Full mobile for admin stamp progress (not redacted). */
+export function formatAdminStampProgressUserDisplay(
+  mobile: string | null | undefined
+): string {
+  const raw = (mobile ?? "").trim();
+  if (!raw) return "—";
+  return raw;
+}
+
 export function stampGiftStatusLabel(status: StampGiftStatus): string {
   return status === "listed" ? "上架" : "下架";
 }
@@ -397,6 +406,93 @@ export const STAMP_STUDENT_PROGRESS_HEADERS = [
   "操作",
 ] as const;
 
+export const STAMP_STUDENT_PROGRESS_SORT_KEYS = [
+  "start_date_hkt",
+  "effective_streak",
+  "user_display",
+  "student_name",
+  "stamp_count",
+  "card_status_label",
+  "last_stamp_hkt_date",
+  "resume_eligible",
+] as const;
+
+export type StampStudentProgressSortKey = (typeof STAMP_STUDENT_PROGRESS_SORT_KEYS)[number];
+
+export type StampStudentProgressSortDirection = "asc" | "desc";
+
+export function stampStudentProgressSortIndicator(
+  activeKey: StampStudentProgressSortKey | null,
+  columnKey: StampStudentProgressSortKey,
+  direction: StampStudentProgressSortDirection
+): string | null {
+  if (activeKey !== columnKey) return null;
+  return direction === "asc" ? "↑" : "↓";
+}
+
+function compareNullableStrings(a: string | null, b: string | null): number {
+  const aEmpty = a === null || a === "" || a === "—";
+  const bEmpty = b === null || b === "" || b === "—";
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1;
+  if (bEmpty) return -1;
+  return a.localeCompare(b, "zh-HK");
+}
+
+function compareStampStudentProgressByKey(
+  a: StampStudentProgressRow,
+  b: StampStudentProgressRow,
+  key: StampStudentProgressSortKey
+): number {
+  switch (key) {
+    case "start_date_hkt":
+      return a.start_date_hkt.localeCompare(b.start_date_hkt);
+    case "effective_streak":
+      return a.effective_streak - b.effective_streak;
+    case "user_display":
+      return a.user_display.localeCompare(b.user_display, "zh-HK");
+    case "student_name":
+      return a.student_name.localeCompare(b.student_name, "zh-HK");
+    case "stamp_count":
+      return a.stamp_count - b.stamp_count;
+    case "card_status_label":
+      return a.card_status_label.localeCompare(b.card_status_label, "zh-HK");
+    case "last_stamp_hkt_date":
+      return compareNullableStrings(a.last_stamp_hkt_date, b.last_stamp_hkt_date);
+    case "resume_eligible":
+      return Number(a.resume_eligible) - Number(b.resume_eligible);
+    default:
+      return 0;
+  }
+}
+
+export function sortStampStudentProgressRows(
+  rows: StampStudentProgressRow[],
+  key: StampStudentProgressSortKey,
+  direction: StampStudentProgressSortDirection
+): StampStudentProgressRow[] {
+  const factor = direction === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const primary = compareStampStudentProgressByKey(left, right, key) * factor;
+    if (primary !== 0) return primary;
+    return left.stamp_card_id.localeCompare(right.stamp_card_id);
+  });
+}
+
+export function nextStampStudentProgressSortState(
+  currentKey: StampStudentProgressSortKey | null,
+  currentDirection: StampStudentProgressSortDirection,
+  clickedKey: StampStudentProgressSortKey
+): { key: StampStudentProgressSortKey; direction: StampStudentProgressSortDirection } {
+  if (currentKey !== clickedKey) {
+    return { key: clickedKey, direction: "asc" };
+  }
+  return {
+    key: clickedKey,
+    direction: currentDirection === "asc" ? "desc" : "asc",
+  };
+}
+
 export type StampStudentProgressRow = {
   stamp_card_id: string;
   student_id: string;
@@ -530,7 +626,7 @@ export function mapStampStudentProgressRow(input: {
   return {
     stamp_card_id: input.stamp_card_id,
     student_id: input.student_id,
-    user_display: maskAdminUserMobile(input.mobile_number),
+    user_display: formatAdminStampProgressUserDisplay(input.mobile_number),
     student_name: (input.student_name ?? "").trim() || "—",
     start_date_hkt: resolveStampProgressStartDateHkt(
       input.enrolled_at,
