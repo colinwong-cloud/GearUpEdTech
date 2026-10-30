@@ -15,19 +15,25 @@ import {
   STAMP_ADMIN_PROGRESS_RESUME_CONFIRM,
   STAMP_ADMIN_PROGRESS_SECTION_TITLE,
   STAMP_STUDENT_PROGRESS_HEADERS,
+  STAMP_STUDENT_PROGRESS_SORT_KEYS,
   buildStampRedemptionReportCsv,
   formatStampGiftCodeCountsLine,
   formatStampProgramAuditLine,
   getAdminStampProgressDefaultDateRange,
   getStampGiftWindowBadge,
+  nextStampStudentProgressSortState,
   shouldShowStampProgramAuditEmpty,
+  sortStampStudentProgressRows,
   stampGiftStatusLabel,
   stampGiftWindowBadgeLabel,
+  stampStudentProgressSortIndicator,
   type StampGiftInventoryRow,
   type StampGiftStatus,
   type StampProgramSettingsPayload,
   type StampRedemptionReportRow,
   type StampStudentProgressRow,
+  type StampStudentProgressSortDirection,
+  type StampStudentProgressSortKey,
 } from "@/lib/admin-stamp-card";
 import { getHktCalendarDate } from "@/lib/practice-stamp-card";
 
@@ -132,6 +138,28 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   const [progressEnd, setProgressEnd] = useState(defaultProgressRange.endHkt);
   const [progressMsg, setProgressMsg] = useState("");
   const [resumingCardId, setResumingCardId] = useState<string | null>(null);
+  const [progressSortKey, setProgressSortKey] = useState<StampStudentProgressSortKey | null>(
+    null
+  );
+  const [progressSortDirection, setProgressSortDirection] =
+    useState<StampStudentProgressSortDirection>("asc");
+
+  const sortedProgressRows = useMemo(() => {
+    if (!progressSortKey) return progressRows;
+    return sortStampStudentProgressRows(progressRows, progressSortKey, progressSortDirection);
+  }, [progressRows, progressSortKey, progressSortDirection]);
+
+  const handleProgressColumnSort = (columnIndex: number) => {
+    const clickedKey = STAMP_STUDENT_PROGRESS_SORT_KEYS[columnIndex];
+    if (!clickedKey) return;
+    const next = nextStampStudentProgressSortState(
+      progressSortKey,
+      progressSortDirection,
+      clickedKey
+    );
+    setProgressSortKey(next.key);
+    setProgressSortDirection(next.direction);
+  };
 
   const loadProgram = useCallback(async () => {
     setProgramLoading(true);
@@ -783,16 +811,44 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
             </colgroup>
             <thead>
               <tr className="text-gray-500 border-b border-gray-100">
-                {STAMP_STUDENT_PROGRESS_HEADERS.map((h, index) => (
-                  <th
-                    key={h}
-                    className={`py-2 pr-3 whitespace-nowrap ${
-                      index === 2 ? REPORT_STICKY_USER : index === 0 ? REPORT_STICKY_TIME : ""
-                    }`}
-                  >
-                    {h}
-                  </th>
-                ))}
+                {STAMP_STUDENT_PROGRESS_HEADERS.map((h, index) => {
+                  const columnKey = STAMP_STUDENT_PROGRESS_SORT_KEYS[index];
+                  const sortMark = columnKey
+                    ? stampStudentProgressSortIndicator(
+                        progressSortKey,
+                        columnKey,
+                        progressSortDirection
+                      )
+                    : null;
+                  return (
+                    <th
+                      key={h}
+                      className={`py-2 pr-3 whitespace-nowrap ${
+                        index === 2 ? REPORT_STICKY_USER : index === 0 ? REPORT_STICKY_TIME : ""
+                      }`}
+                      aria-sort={
+                        progressSortKey === columnKey
+                          ? progressSortDirection === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleProgressColumnSort(index)}
+                        className="inline-flex items-center gap-1 font-inherit text-inherit hover:text-gray-800"
+                      >
+                        <span>{h}</span>
+                        {sortMark ? (
+                          <span className="text-indigo-600" aria-hidden>
+                            {sortMark}
+                          </span>
+                        ) : null}
+                      </button>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -809,7 +865,7 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
                   </td>
                 </tr>
               ) : (
-                progressRows.map((row) => (
+                sortedProgressRows.map((row) => (
                   <tr key={row.stamp_card_id} className="border-b border-gray-100">
                     <td className={`py-2 pr-3 whitespace-nowrap ${REPORT_STICKY_TIME}`}>
                       {row.start_date_hkt}

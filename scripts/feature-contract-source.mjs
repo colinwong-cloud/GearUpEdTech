@@ -472,6 +472,41 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "admin-stamp-progress-unmask-sort",
+      month: "2026-10",
+      category: "admin",
+      priority: "high",
+      title: "Admin stamp progress table shows full mobile and sortable columns",
+      evidence_commits: ["9f54568"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "formatAdminStampProgressUserDisplay",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "sortStampStudentProgressRows",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "STAMP_STUDENT_PROGRESS_SORT_KEYS",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "handleProgressColumnSort",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "aria-sort",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-card-phase5-student-redeem",
       month: "2026-10",
       category: "product",
