@@ -937,7 +937,7 @@
       "priority": "high",
       "title": "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
       "evidence_commits": [
-        "90cdc48"
+        "818b689"
       ],
       "checks": [
         {
@@ -1531,6 +1531,48 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice"
+        }
+      ]
+    },
+    {
+      "id": "chengfenshi-visibility-guide-a-b",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "high",
+      "title": "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
+      "evidence_commits": [
+        "8e2ed16",
+        "b2c5f1c"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "香港小學呈分試，邊度練中英數先啱？增分寶（GearUp Quiz）介紹"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "HOME_FAQ_CHENGFENSHI_QUESTION"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "CHENGFENSHI_GUIDE_PATH"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/sitemap.ts",
+          "snippet": "CHENGFENSHI_GUIDE_PATH"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "呈分試中英數練習指南"
         }
       ]
     },
@@ -3609,22 +3651,57 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T06:10:37.281Z",
+  "generated_at": "2026-11-01T09:08:57.253Z",
   "commit_inventory": [
     {
-      "sha": "1617afcb0ce235d635ff4da47d1d822b9e69d613",
+      "sha": "3e2633efcf229fd8b078ad7eda0d135e8351abc5",
       "date": "2026-11-01",
-      "summary": "chore: refresh feature contract for stamp streak break fix"
+      "summary": "chore: refresh feature-contract.json for FAQ-only 呈分試 visibility"
     },
     {
-      "sha": "84817093f70138ad0fcc6acaa74fb347d4f019c5",
+      "sha": "b2c5f1cc06100b105de4503e04d886a94b1bc5f0",
       "date": "2026-11-01",
-      "summary": "chore: refresh feature contract for stamp streak break fix"
+      "summary": "refactor(growth): 呈分試 via home FAQ link only, keep dedicated guide"
     },
     {
-      "sha": "90cdc48f2f52da2c315ec29fa6dab0e4f220ab77",
+      "sha": "0c6ceb42e2ba34a4c1763bb36d6d4451be961629",
       "date": "2026-11-01",
-      "summary": "fix(stamp): align streak break visibility, grid, and admin resume count"
+      "summary": "chore: refresh feature-contract.json inventory"
+    },
+    {
+      "sha": "6172299270b05c1f501bf9d6546d2e916947bc64",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json"
+    },
+    {
+      "sha": "486a0fdfbfa2e81645342d9f04c429d9ef88c5b4",
+      "date": "2026-11-01",
+      "summary": "fix(growth): align 呈分試 cross-link copy with locked brief"
+    },
+    {
+      "sha": "9bbe6b319ab706a3597436242895b561a9627371",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json inventory (include contract sync commit)"
+    },
+    {
+      "sha": "01c110dd16d4859b5d374891d800b5a46c9ff1df",
+      "date": "2026-11-01",
+      "summary": "chore: sync feature-contract inventory after amend"
+    },
+    {
+      "sha": "f6c7b679c4182a2f32e3c2e7914fe212fe20ccdc",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json for 呈分試 visibility A+B"
+    },
+    {
+      "sha": "8e2ed16a9fb098f67a6033564e17b9145d0131cb",
+      "date": "2026-11-01",
+      "summary": "feat(growth): ship 呈分試 visibility on home and dedicated guide route"
+    },
+    {
+      "sha": "818b6897785d4fe207e71ce7f1b220ad37678b8d",
+      "date": "2026-11-01",
+      "summary": "fix(stamp): streak break visibility, zero reset, admin resume stamp count (#233)"
     },
     {
       "sha": "172076c00846452333ccf5b6994b618c90c25e1a",
@@ -6688,7 +6765,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 615,
-    "total_feature_rows": 78
+    "total_commits_since_start": 622,
+    "total_feature_rows": 79
   }
 }

@@ -646,7 +646,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
-      evidence_commits: ["90cdc48"],
+      evidence_commits: ["818b689"],
       checks: [
         { type: "file_exists", path: "supabase_practice_stamp_card_phase7_streak_reset.sql" },
         {
@@ -1006,6 +1006,45 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/page.tsx",
           snippet: "GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice",
+        },
+      ],
+    },
+    {
+      id: "chengfenshi-visibility-guide-a-b",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
+      evidence_commits: ["8e2ed16", "b2c5f1c"],
+      checks: [
+        {
+          type: "file_exists",
+          path: "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "香港小學呈分試，邊度練中英數先啱？增分寶（GearUp Quiz）介紹",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "HOME_FAQ_CHENGFENSHI_QUESTION",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "CHENGFENSHI_GUIDE_PATH",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/sitemap.ts",
+          snippet: "CHENGFENSHI_GUIDE_PATH",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "呈分試中英數練習指南",
         },
       ],
     },

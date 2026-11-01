@@ -10,7 +10,7 @@ test.describe("Home login smoke", () => {
       "https://tutor.gearupquiz.com"
     );
     await expect(page.getByText("平台簡介")).toBeVisible();
-    await expect(page.getByText("常見問題")).toBeVisible();
+    await expect(page.getByText("常見問題（FAQ）").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "WhatsApp" })).toBeVisible();
     await expect(page.getByRole("button", { name: "WeChat" })).toBeVisible();
   });
