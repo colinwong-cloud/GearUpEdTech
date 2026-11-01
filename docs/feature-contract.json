@@ -748,7 +748,7 @@
       "priority": "high",
       "title": "Admin stamp progress table shows full mobile and sortable columns",
       "evidence_commits": [
-        "39d4d1c"
+        "172076c"
       ],
       "checks": [
         {
@@ -936,7 +936,9 @@
       "category": "growth",
       "priority": "high",
       "title": "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "90cdc48"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -3552,7 +3554,7 @@
       "priority": "high",
       "title": "Admin-controlled home page notice on role select screen",
       "evidence_commits": [
-        "7971345"
+        "3f16937"
       ],
       "checks": [
         {
@@ -3607,8 +3609,13 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T04:55:30.211Z",
+  "generated_at": "2026-11-01T04:55:56.360Z",
   "commit_inventory": [
+    {
+      "sha": "84817093f70138ad0fcc6acaa74fb347d4f019c5",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature contract for stamp streak break fix"
+    },
     {
       "sha": "90cdc48f2f52da2c315ec29fa6dab0e4f220ab77",
       "date": "2026-11-01",
@@ -6676,7 +6683,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 613,
+    "total_commits_since_start": 614,
     "total_feature_rows": 78
   }
 }
