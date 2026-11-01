@@ -18,6 +18,8 @@ import {
   STAMP_GIFT_BTN_EXPORT_UNUSED,
   STAMP_GIFT_BTN_IMPORT_CSV,
   STAMP_GIFT_CODE_IMPORT_SUMMARY_LABEL,
+  parseAdminResumeTargetStampCount,
+  STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID,
 } from "@/lib/admin-stamp-card";
 
 describe("parseGiftCodeCsv", () => {
@@ -131,6 +133,15 @@ describe("admin student stamp progress", () => {
         lastStampHktDate: "2026-10-28",
       })
     ).toBe(false);
+  });
+
+  it("validates admin resume target stamp count bounds", () => {
+    expect(parseAdminResumeTargetStampCount("7")).toBe(7);
+    expect(parseAdminResumeTargetStampCount("0")).toBe(0);
+    expect(parseAdminResumeTargetStampCount("20")).toBe(20);
+    expect(parseAdminResumeTargetStampCount("21")).toBeNull();
+    expect(parseAdminResumeTargetStampCount("x")).toBeNull();
+    expect(STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID).toContain("0");
   });
 
   it("maps progress row with full mobile for admin and KPI exclusion", () => {

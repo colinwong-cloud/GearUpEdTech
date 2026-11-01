@@ -4,6 +4,7 @@ import {
   effectivePracticeStampStreak,
   getHktCalendarDate,
   isExcludedTestMobileForKpi,
+  PRACTICE_STAMP_CARD_SIZE,
 } from "@/lib/practice-stamp-card";
 
 export const STAMP_PROGRAM_OFF_NOTE =
@@ -388,8 +389,23 @@ export const STAMP_INVENTORY_TABLE_HINT =
 export const STAMP_ADMIN_PROGRESS_SECTION_TITLE = "學生印花進度";
 export const STAMP_ADMIN_PROGRESS_EMPTY = "此日期範圍內沒有進行中的印花紀錄";
 export const STAMP_ADMIN_PROGRESS_BTN_RESUME = "恢復";
+export const STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_PROMPT =
+  "請輸入恢復後的蓋印數（0–20 的整數）：";
+export const STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID = "蓋印數須為 0 至 20 的整數";
+
+export function parseAdminResumeTargetStampCount(
+  raw: string,
+  stampsPerCard: number = PRACTICE_STAMP_CARD_SIZE
+): number | null {
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  if (!Number.isInteger(value) || value < 0 || value > stampsPerCard) return null;
+  return value;
+}
+
 export const STAMP_ADMIN_PROGRESS_RESUME_CONFIRM =
-  "確定要恢復此學生的連續練習進度？系統會將最後蓋印日期調整為昨日（HKT），以便下次合資格練習可延續原有連續天數與蓋印數。";
+  "確定要恢復此學生的連續練習進度？系統會將最後蓋印日期調整為昨日（HKT），並依你輸入的蓋印數更新卡面進度。";
 export const STAMP_ADMIN_PROGRESS_FILTER_HINT =
   "篩選：最後蓋印日、報名日或範圍內任一蓋印日符合即顯示（HKT）";
 export const STAMP_ADMIN_PROGRESS_RESUME_RPC_HINT =

@@ -641,6 +641,42 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-streak-break-visibility-reset",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase7_streak_reset.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase7_streak_reset.sql",
+          snippet: "p_target_stamp_count",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldHidePracticeStampCardForBrokenStreakWithoutActivity",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "resolveStudentStampCardFilledSlotCount",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "parseAdminResumeTargetStampCount",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "target_stamp_count",
+        },
+      ],
+    },
+    {
       id: "parent-email-practice-summary-and-wrong-details",
       month: "2026-07",
       category: "communications",

@@ -13,7 +13,10 @@ import {
   STAMP_ADMIN_PROGRESS_EMPTY,
   STAMP_ADMIN_PROGRESS_FILTER_HINT,
   STAMP_ADMIN_PROGRESS_RESUME_CONFIRM,
+  STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID,
+  STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_PROMPT,
   STAMP_ADMIN_PROGRESS_SECTION_TITLE,
+  parseAdminResumeTargetStampCount,
   STAMP_STUDENT_PROGRESS_HEADERS,
   STAMP_STUDENT_PROGRESS_SORT_KEYS,
   buildStampRedemptionReportCsv,
@@ -382,11 +385,19 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
   const handleResumeProgress = async (row: StampStudentProgressRow) => {
     if (!row.resume_eligible) return;
     if (!window.confirm(STAMP_ADMIN_PROGRESS_RESUME_CONFIRM)) return;
+    const rawCount = window.prompt(STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_PROMPT, String(row.stamp_count));
+    if (rawCount === null) return;
+    const targetStampCount = parseAdminResumeTargetStampCount(rawCount);
+    if (targetStampCount === null) {
+      setProgressMsg(STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID);
+      return;
+    }
     setResumingCardId(row.stamp_card_id);
     setProgressMsg("");
     try {
       await stampAdminRequest("stamp_student_progress_resume", sessionToken, {
         stamp_card_id: row.stamp_card_id,
+        target_stamp_count: targetStampCount,
       });
       await loadProgress();
     } catch (err) {

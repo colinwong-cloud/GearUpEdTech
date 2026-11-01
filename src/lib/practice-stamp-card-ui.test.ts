@@ -22,6 +22,9 @@ import {
   STAMP_HOME_REOPEN_LABEL,
   shouldRenderPracticeStampCardChrome,
   shouldRenderPracticeStampHomeChrome,
+  shouldHidePracticeStampCardForBrokenStreakWithoutActivity,
+  resolveStudentStampCardFilledSlotCount,
+  progressFooterLine,
 } from "./practice-stamp-card-ui";
 
 describe("practice stamp card UI", () => {
@@ -136,6 +139,60 @@ describe("practice stamp card UI", () => {
     };
     expect(shouldRenderPracticeStampCardChrome(activeWhileClosed, false)).toBe(true);
     expect(shouldRenderPracticeStampHomeChrome(activeWhileClosed, false)).toBe(true);
+  });
+
+  it("hides stamp chrome when streak is broken and program is off", () => {
+    const brokenOffProgram = {
+      has_active_card: true,
+      stamps_program_open: false,
+      stamps_per_card: 20,
+      stamp_count: 4,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: "2026-10-20",
+    };
+    expect(shouldHidePracticeStampCardForBrokenStreakWithoutActivity(brokenOffProgram)).toBe(true);
+    expect(shouldRenderPracticeStampCardChrome(brokenOffProgram, false)).toBe(false);
+    expect(shouldRenderPracticeStampHomeChrome(brokenOffProgram, false)).toBe(false);
+  });
+
+  it("keeps stamp chrome when streak is broken but program is still open", () => {
+    const brokenOpenProgram = {
+      has_active_card: true,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 4,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: "2026-10-20",
+    };
+    expect(shouldRenderPracticeStampCardChrome(brokenOpenProgram, false)).toBe(true);
+  });
+
+  it("fills stamp slots from effective streak not stored stamp_count after a gap", () => {
+    const afterGapAward = {
+      has_active_card: true,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 4,
+      streak: 1,
+      stamped_today: true,
+      last_stamp_hkt_date: "2026-10-28",
+    };
+    expect(resolveStudentStampCardFilledSlotCount(afterGapAward)).toBe(1);
+  });
+
+  it("shows remaining days copy for zero streak on an active card", () => {
+    const brokenActive = {
+      has_active_card: true,
+      stamps_program_open: true,
+      stamps_per_card: 20,
+      stamp_count: 4,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: "2026-10-20",
+    };
+    expect(progressFooterLine(brokenActive)).toBe(STAMP_FOOTER_COPY.progressDaysRemaining(20));
   });
 
   it("never paints subject-home chrome while status is loading or null", () => {
