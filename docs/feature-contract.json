@@ -1541,7 +1541,7 @@
       "priority": "high",
       "title": "呈分試 visibility: homepage block + dedicated guide route and sitemap",
       "evidence_commits": [
-        "7971e7d"
+        "8e2ed16"
       ],
       "checks": [
         {
@@ -3645,10 +3645,15 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T08:44:30.652Z",
+  "generated_at": "2026-11-01T08:47:32.740Z",
   "commit_inventory": [
     {
-      "sha": "7971e7de6407305f34ed3ac979101678682265ad",
+      "sha": "f6c7b679c4182a2f32e3c2e7914fe212fe20ccdc",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json for 呈分試 visibility A+B"
+    },
+    {
+      "sha": "8e2ed16a9fb098f67a6033564e17b9145d0131cb",
       "date": "2026-11-01",
       "summary": "feat(growth): ship 呈分試 visibility on home and dedicated guide route"
     },
@@ -6719,7 +6724,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 614,
+    "total_commits_since_start": 615,
     "total_feature_rows": 79
   }
 }

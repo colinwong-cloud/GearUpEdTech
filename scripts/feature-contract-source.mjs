@@ -1015,7 +1015,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "呈分試 visibility: homepage block + dedicated guide route and sitemap",
-      evidence_commits: ["7971e7d"],
+      evidence_commits: ["8e2ed16"],
       checks: [
         {
           type: "file_exists",
