@@ -552,9 +552,22 @@ export async function adminStampStudentProgressResume(
   const stampCardId = String(payload.stamp_card_id ?? "").trim();
   if (!stampCardId) throw new Error("缺少印花卡 id");
 
+  const rawTarget = payload.target_stamp_count;
+  const targetStampCount =
+    rawTarget === undefined || rawTarget === null || rawTarget === ""
+      ? null
+      : Number(rawTarget);
+  if (
+    targetStampCount !== null &&
+    (!Number.isInteger(targetStampCount) || targetStampCount < 0 || targetStampCount > 20)
+  ) {
+    throw new Error("蓋印數須為 0 至 20 的整數");
+  }
+
   const { data, error } = await admin.rpc("admin_stamp_student_progress_resume", {
     p_stamp_card_id: stampCardId,
     p_admin_identifier: adminIdentifier,
+    p_target_stamp_count: targetStampCount,
   });
   if (error) {
     const msg = error.message ?? "";

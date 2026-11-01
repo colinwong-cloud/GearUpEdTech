@@ -60,6 +60,46 @@ export function effectivePracticeStampStreak(
 /**
  * After a successful award on `awardHktDate`, compute the new consecutive-day streak.
  */
+/** True when the student had prior stamps but the consecutive-day chain is broken (effective streak 0). */
+export function isPracticeStampProgressStreakBroken(input: {
+  hasActiveCard: boolean;
+  effectiveStreak: number;
+  lastStampHktDate: string | null;
+}): boolean {
+  if (!input.hasActiveCard) return false;
+  if (input.effectiveStreak > 0) return false;
+  return input.lastStampHktDate !== null;
+}
+
+/**
+ * Stamp slots filled on the card mirror consecutive streak days (not lifetime stamp_count after a gap).
+ */
+export function resolvePracticeStampFilledSlotCount(input: {
+  effectiveStreak: number;
+  stampsPerCard: number;
+}): number {
+  return Math.max(0, Math.min(input.stampsPerCard, input.effectiveStreak));
+}
+
+/**
+ * After a successful award, persist stamp_count aligned with streak (reset to 1 after a gap day).
+ */
+export function computePracticeStampCountAfterAward(input: {
+  lastStampHktDate: string | null;
+  storedStampCount: number;
+  awardHktDate: string;
+}): number {
+  if (!input.lastStampHktDate) return 1;
+  const yesterday = previousHktCalendarDate(input.awardHktDate);
+  if (input.lastStampHktDate === input.awardHktDate) {
+    return Math.max(0, input.storedStampCount);
+  }
+  if (input.lastStampHktDate === yesterday) {
+    return Math.max(0, input.storedStampCount) + 1;
+  }
+  return 1;
+}
+
 export function computePracticeStampStreakAfterAward(
   lastStampHktDate: string | null,
   storedStreak: number,

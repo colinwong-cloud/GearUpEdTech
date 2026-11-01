@@ -3,6 +3,7 @@ import {
   PRACTICE_STAMP_CARD_SIZE,
   PRACTICE_STAMP_MIN_ANSWERS,
   computePracticeStampStreakAfterAward,
+  computePracticeStampCountAfterAward,
   effectivePracticeStampStreak,
   evaluatePracticeStampAward,
   getHktCalendarDate,
@@ -71,7 +72,26 @@ describe("practice stamp card earn rules", () => {
     expect(
       computePracticeStampStreakAfterAward(yesterday, 3, awardDate)
     ).toBe(4);
+    expect(
+      computePracticeStampCountAfterAward({
+        lastStampHktDate: yesterday,
+        storedStampCount: 3,
+        awardHktDate: awardDate,
+      })
+    ).toBe(4);
     expect(effectivePracticeStampStreak(yesterday, awardDate, 3)).toBe(3);
+  });
+
+  it("resets stamp count to one after a streak gap on the next award", () => {
+    const yesterday = previousHktCalendarDate(awardDate);
+    const twoDaysAgo = previousHktCalendarDate(yesterday);
+    expect(
+      computePracticeStampCountAfterAward({
+        lastStampHktDate: twoDaysAgo,
+        storedStampCount: 4,
+        awardHktDate: awardDate,
+      })
+    ).toBe(1);
   });
 
   it("blocks new enrolment when the program is closed but still earns for mid-card students", () => {

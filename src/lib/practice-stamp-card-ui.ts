@@ -1,4 +1,8 @@
-import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
+import {
+  PRACTICE_STAMP_CARD_SIZE,
+  isPracticeStampProgressStreakBroken,
+  resolvePracticeStampFilledSlotCount,
+} from "./practice-stamp-card";
 import { supabase } from "@/lib/supabase";
 
 /** Growth TC v1 — locked strings (2026-10-28). */
@@ -76,6 +80,18 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
   sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
 }
 
+/** Hide stamp chrome when streak is broken and the stamp program is not running (no active activity). */
+export function shouldHidePracticeStampCardForBrokenStreakWithoutActivity(
+  status: StudentStampCardStatus
+): boolean {
+  if (status.stamps_program_open) return false;
+  return isPracticeStampProgressStreakBroken({
+    hasActiveCard: status.has_active_card,
+    effectiveStreak: status.streak,
+    lastStampHktDate: status.last_stamp_hkt_date,
+  });
+}
+
 /**
  * Soft #2 (subject home): hide when program is off without an in-progress card.
  * Never paint while status is loading or unknown — avoids OFF-program flash of stamp branding.
@@ -85,6 +101,7 @@ export function shouldRenderPracticeStampHomeChrome(
   loading: boolean
 ): boolean {
   if (loading || !status) return false;
+  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
   return status.stamps_program_open || status.has_active_card;
 }
 
@@ -95,6 +112,7 @@ export function shouldRenderPracticeStampCardChrome(
 ): boolean {
   if (loading) return true;
   if (!status) return true;
+  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
   return status.stamps_program_open || status.has_active_card;
 }
 
@@ -310,14 +328,22 @@ export function practiceStampEarnFeedbackMessage(
   return null;
 }
 
+export function resolveStudentStampCardFilledSlotCount(status: StudentStampCardStatus): number {
+  const goal = status.stamps_per_card || PRACTICE_STAMP_CARD_SIZE;
+  return resolvePracticeStampFilledSlotCount({
+    effectiveStreak: status.streak,
+    stampsPerCard: goal,
+  });
+}
+
 export function progressFooterLine(status: StudentStampCardStatus): string {
   const goal = status.stamps_per_card || PRACTICE_STAMP_CARD_SIZE;
   const remaining = Math.max(0, goal - status.streak);
-  if (remaining > 0 && status.streak > 0) {
-    return STAMP_FOOTER_COPY.progressDaysRemaining(remaining);
-  }
-  if (status.stamp_count === 0 && status.streak === 0) {
+  if (!status.has_active_card && status.stamp_count === 0 && status.streak === 0) {
     return GROWTH_STAMP_COPY.blank;
+  }
+  if (status.has_active_card && remaining > 0) {
+    return STAMP_FOOTER_COPY.progressDaysRemaining(remaining);
   }
   return GROWTH_STAMP_COPY.progress(status.streak);
 }

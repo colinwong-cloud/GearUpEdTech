@@ -17,6 +17,7 @@ import {
   progressFooterLine,
   requestPracticeStampRedeem,
   resolvePracticeStampFooterState,
+  resolveStudentStampCardFilledSlotCount,
   setPracticeStampCardHomeDismissedForSession,
   shouldRenderPracticeStampCardChrome,
   shouldRenderPracticeStampHomeChrome,
@@ -121,7 +122,7 @@ export function PracticeStampCard({
 
   useEffect(() => {
     if (!earnFeedbackAward?.awarded || !status) return;
-    const idx = Math.max(0, (status.stamp_count || 1) - 1);
+    const idx = Math.max(0, resolveStudentStampCardFilledSlotCount(status) - 1);
     setAnimateTodayIndex(idx);
     if (!reducedMotion) {
       const t = window.setTimeout(() => setAnimateTodayIndex(null), 900);
@@ -154,7 +155,7 @@ export function PracticeStampCard({
 
   const stampsPerCard = status?.stamps_per_card ?? PRACTICE_STAMP_CARD_SIZE;
   const streakDisplay = status?.streak ?? 0;
-  const filledCount = status?.stamp_count ?? 0;
+  const filledCount = status ? resolveStudentStampCardFilledSlotCount(status) : 0;
 
   const handleDismiss = () => {
     setPracticeStampCardHomeDismissedForSession();

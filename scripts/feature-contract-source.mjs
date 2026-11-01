@@ -477,7 +477,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin stamp progress table shows full mobile and sortable columns",
-      evidence_commits: ["39d4d1c"],
+      evidence_commits: ["172076c"],
       checks: [
         {
           type: "file_contains",
@@ -637,6 +637,42 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/page.tsx",
           snippet: "PracticeStampCardSubjectHome",
+        },
+      ],
+    },
+    {
+      id: "practice-stamp-streak-break-visibility-reset",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
+      evidence_commits: ["90cdc48"],
+      checks: [
+        { type: "file_exists", path: "supabase_practice_stamp_card_phase7_streak_reset.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase7_streak_reset.sql",
+          snippet: "p_target_stamp_count",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldHidePracticeStampCardForBrokenStreakWithoutActivity",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/practice-stamp-card.tsx",
+          snippet: "resolveStudentStampCardFilledSlotCount",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "parseAdminResumeTargetStampCount",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/practice-stamp-section.tsx",
+          snippet: "target_stamp_count",
         },
       ],
     },
@@ -1851,7 +1887,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin-controlled home page notice on role select screen",
-      evidence_commits: ["7971345"],
+      evidence_commits: ["3f16937"],
       checks: [
         { type: "file_exists", path: "supabase_home_page_notice.sql" },
         { type: "file_exists", path: "src/lib/home-page-notice.ts" },
