@@ -1539,9 +1539,10 @@
       "month": "2026-11",
       "category": "growth",
       "priority": "high",
-      "title": "呈分試 visibility: homepage block + dedicated guide route and sitemap",
+      "title": "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
       "evidence_commits": [
-        "8e2ed16"
+        "8e2ed16",
+        "b2c5f1c"
       ],
       "checks": [
         {
@@ -1556,7 +1557,12 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "ChengFenshiVisibilityGuideHomeSection"
+          "snippet": "HOME_FAQ_CHENGFENSHI_QUESTION"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "CHENGFENSHI_GUIDE_PATH"
         },
         {
           "type": "file_contains",
@@ -3645,8 +3651,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T08:52:32.300Z",
+  "generated_at": "2026-11-01T09:08:56.834Z",
   "commit_inventory": [
+    {
+      "sha": "b2c5f1cc06100b105de4503e04d886a94b1bc5f0",
+      "date": "2026-11-01",
+      "summary": "refactor(growth): 呈分試 via home FAQ link only, keep dedicated guide"
+    },
+    {
+      "sha": "0c6ceb42e2ba34a4c1763bb36d6d4451be961629",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json inventory"
+    },
     {
       "sha": "6172299270b05c1f501bf9d6546d2e916947bc64",
       "date": "2026-11-01",
@@ -6744,7 +6760,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 619,
+    "total_commits_since_start": 621,
     "total_feature_rows": 79
   }
 }
