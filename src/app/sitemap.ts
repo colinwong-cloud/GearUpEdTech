@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CHENGFENSHI_GUIDE_PATH } from "@/lib/chengfenshi-visibility-guide-meta";
 import { TUTOR_SHARE_ORIGIN } from "@/lib/tutor-share-link";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -16,6 +17,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${base}/tutor`,
       changeFrequency: "weekly",
       priority: 0.8,
+    },
+    {
+      url: `${base}${CHENGFENSHI_GUIDE_PATH}`,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   ];
 }

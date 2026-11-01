@@ -9,6 +9,7 @@ import { rememberTutorStudent, writePaperOverviewCache } from "@/lib/tutor-porta
 import { TutorShareLink } from "@/app/tutor/tutor-share-link";
 import { TutorLoginCarousel, TutorPortalFaq, TutorPortalIntro } from "@/app/tutor/tutor-login-marketing";
 import { MainPagePartnerLogos } from "@/components/main-page-banner-carousel";
+import { TutorChengfenshiGuideCta } from "@/components/tutor-chengfenshi-guide-cta";
 
 type TutorSessionPayload = {
   authenticated: boolean;
@@ -654,6 +655,7 @@ export default function TutorPortalPage() {
           </div>
         </div>
           <TutorPortalIntro />
+          <TutorChengfenshiGuideCta />
           <TutorPortalFaq />
         </div>
       <footer

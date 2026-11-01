@@ -74,6 +74,14 @@ import {
 } from "@/lib/practice-stamp-card-ui";
 import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card-chrome";
 import { HomePageNoticeBlock } from "@/components/home-page-notice-block";
+import { ChengFenshiVisibilityGuideHomeSection } from "@/components/chengfenshi-visibility-guide-content";
+import {
+  CHENGFENSHI_GUIDE_PATH,
+  HOME_CHENGFENSHI_SECTION_ID,
+  HOME_PARENT_GUIDE_SECTION_ID,
+  PARENT_TO_CHENGFENSHI_LINK_LABEL,
+} from "@/lib/chengfenshi-visibility-guide-meta";
+import Link from "next/link";
 import {
   buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
@@ -2636,8 +2644,44 @@ function LoginMobileScreen({
 
             <hr className="border-amber-200" />
 
-            <section className="space-y-4">
-              <h2 className="text-base font-bold leading-7 text-gray-900">
+            <section
+              id={HOME_PARENT_GUIDE_SECTION_ID}
+              className="scroll-mt-6 space-y-4"
+              aria-labelledby="parent-visibility-guide-heading"
+            >
+              <nav
+                aria-label="一般家長指南站內連結"
+                className="flex flex-wrap gap-x-3 gap-y-1 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm leading-7 text-gray-700"
+              >
+                <Link
+                  href={CHENGFENSHI_GUIDE_PATH}
+                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                >
+                  {PARENT_TO_CHENGFENSHI_LINK_LABEL}
+                </Link>
+                <span className="text-gray-400" aria-hidden>
+                  ·
+                </span>
+                <a
+                  href={`#${HOME_CHENGFENSHI_SECTION_ID}`}
+                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                >
+                  跳到呈分試介紹
+                </a>
+                <span className="text-gray-400" aria-hidden>
+                  ·
+                </span>
+                <Link
+                  href="/tutor"
+                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                >
+                  練習入口 /tutor
+                </Link>
+              </nav>
+              <h2
+                id="parent-visibility-guide-heading"
+                className="text-base font-bold leading-7 text-gray-900"
+              >
                 香港有邊啲好用嘅小學中英數線上練習平台？增分寶（GearUp Quiz）介紹
               </h2>
               <p className="text-sm leading-7 text-gray-700">
@@ -2696,6 +2740,10 @@ function LoginMobileScreen({
                 </p>
               </div>
             </section>
+
+            <hr className="border-amber-200" />
+
+            <ChengFenshiVisibilityGuideHomeSection />
           </div>
         </div>
       </div>
