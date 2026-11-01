@@ -1014,7 +1014,7 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-11",
       category: "growth",
       priority: "high",
-      title: "呈分試 visibility: homepage block + dedicated guide route and sitemap",
+      title: "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
       evidence_commits: ["8e2ed16"],
       checks: [
         {
@@ -1029,7 +1029,12 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "ChengFenshiVisibilityGuideHomeSection",
+          snippet: "HOME_FAQ_CHENGFENSHI_QUESTION",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "CHENGFENSHI_GUIDE_PATH",
         },
         {
           type: "file_contains",

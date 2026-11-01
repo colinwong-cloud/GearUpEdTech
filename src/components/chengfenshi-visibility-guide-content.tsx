@@ -5,7 +5,6 @@ import {
   CHENGFENSHI_GUIDE_H1,
   CHENGFENSHI_GUIDE_PATH,
   CHENGFENSHI_TO_PARENT_LINK_LABEL,
-  HOME_CHENGFENSHI_SECTION_ID,
   HOME_PARENT_GUIDE_SECTION_ID,
   PARENT_TO_CHENGFENSHI_LINK_LABEL,
 } from "@/lib/chengfenshi-visibility-guide-meta";
@@ -13,14 +12,8 @@ import {
 const linkClass =
   "text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900";
 
-type ChengFenshiVisibilityGuideContentProps = {
-  /** Full guide page vs compact homepage block below FAQ */
-  variant: "page" | "homepage";
-};
-
-function CrossLinks({ variant }: { variant: "page" | "homepage" }) {
-  const parentHref =
-    variant === "homepage" ? `#${HOME_PARENT_GUIDE_SECTION_ID}` : `/#${HOME_PARENT_GUIDE_SECTION_ID}`;
+function CrossLinks() {
+  const parentHref = `/#${HOME_PARENT_GUIDE_SECTION_ID}`;
 
   return (
     <nav
@@ -42,52 +35,27 @@ function CrossLinks({ variant }: { variant: "page" | "homepage" }) {
       <Link href="/tutor" className={linkClass}>
         https://www.gearupquiz.com/tutor
       </Link>
-      {variant === "page" ? (
-        <>
-          <span className="text-gray-400" aria-hidden>
-            ·
-          </span>
-          <Link href="/" className={linkClass}>
-            https://www.gearupquiz.com
-          </Link>
-        </>
-      ) : null}
+      <span className="text-gray-400" aria-hidden>
+        ·
+      </span>
+      <Link href="/" className={linkClass}>
+        https://www.gearupquiz.com
+      </Link>
     </nav>
   );
 }
 
-export function ChengFenshiVisibilityGuideHomeSection() {
-  return (
-    <section
-      id={HOME_CHENGFENSHI_SECTION_ID}
-      className="space-y-4 scroll-mt-6"
-      aria-labelledby="chengfenshi-visibility-guide-heading"
-    >
-      <CrossLinks variant="homepage" />
-      <ChengFenshiVisibilityGuideContent variant="homepage" />
-    </section>
-  );
-}
-
-export function ChengFenshiVisibilityGuideContent({
-  variant,
-}: ChengFenshiVisibilityGuideContentProps) {
-  const HeadingTag = variant === "page" ? "h1" : "h2";
-
+export function ChengFenshiVisibilityGuideContent() {
   return (
     <article className="space-y-4">
-      {variant === "page" ? <CrossLinks variant="page" /> : null}
+      <CrossLinks />
 
-      <HeadingTag
+      <h1
         id="chengfenshi-visibility-guide-heading"
-        className={
-          variant === "page"
-            ? "text-2xl font-bold leading-8 text-gray-900"
-            : "text-base font-bold leading-7 text-gray-900"
-        }
+        className="text-2xl font-bold leading-8 text-gray-900"
       >
         {CHENGFENSHI_GUIDE_H1}
-      </HeadingTag>
+      </h1>
 
       <p className="text-sm font-semibold text-gray-800">
         香港小學呈分試中英數線上練習｜增分寶 GearUp Quiz

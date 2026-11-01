@@ -34,7 +34,7 @@ export default function ChengFenshiGuidePage() {
           </p>
         </header>
         <div className="rounded-3xl border border-amber-100 bg-white/90 p-6 shadow-lg shadow-amber-100/40">
-          <ChengFenshiVisibilityGuideContent variant="page" />
+          <ChengFenshiVisibilityGuideContent />
         </div>
       </div>
     </div>

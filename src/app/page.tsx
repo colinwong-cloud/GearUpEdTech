@@ -74,11 +74,12 @@ import {
 } from "@/lib/practice-stamp-card-ui";
 import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card-chrome";
 import { HomePageNoticeBlock } from "@/components/home-page-notice-block";
-import { ChengFenshiVisibilityGuideHomeSection } from "@/components/chengfenshi-visibility-guide-content";
 import {
   CHENGFENSHI_GUIDE_PATH,
+  HOME_FAQ_CHENGFENSHI_ANSWER,
+  HOME_FAQ_CHENGFENSHI_QUESTION,
   HOME_PARENT_GUIDE_SECTION_ID,
-  PARENT_TO_CHENGFENSHI_LINK_LABEL,
+  TUTOR_CHENGFENSHI_CTA_LABEL,
 } from "@/lib/chengfenshi-visibility-guide-meta";
 import Link from "next/link";
 import {
@@ -2639,6 +2640,28 @@ function LoginMobileScreen({
                   是的。平台提供即時自動批改系統，學生提交答案後會立即獲得回饋與解釋。這不僅能減輕家長對稿的時間負擔，也能讓學生在記憶最清晰時糾正錯誤概念。
                 </p>
               </div>
+
+              <div className="space-y-2 rounded-2xl border border-indigo-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  6. {HOME_FAQ_CHENGFENSHI_QUESTION}
+                </h3>
+                <p className="text-sm leading-7 text-gray-700">{HOME_FAQ_CHENGFENSHI_ANSWER}</p>
+                <p className="text-sm leading-7 text-gray-700">
+                  <Link
+                    href={CHENGFENSHI_GUIDE_PATH}
+                    className="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                  >
+                    {TUTOR_CHENGFENSHI_CTA_LABEL}
+                  </Link>
+                  {" · "}
+                  <Link
+                    href="/tutor"
+                    className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                  >
+                    https://www.gearupquiz.com/tutor
+                  </Link>
+                </p>
+              </div>
             </section>
 
             <hr className="border-amber-200" />
@@ -2648,26 +2671,6 @@ function LoginMobileScreen({
               className="scroll-mt-6 space-y-4"
               aria-labelledby="parent-visibility-guide-heading"
             >
-              <nav
-                aria-label="一般家長指南站內連結"
-                className="flex flex-wrap gap-x-3 gap-y-1 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm leading-7 text-gray-700"
-              >
-                <Link
-                  href={CHENGFENSHI_GUIDE_PATH}
-                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
-                >
-                  {PARENT_TO_CHENGFENSHI_LINK_LABEL}
-                </Link>
-                <span className="text-gray-400" aria-hidden>
-                  ·
-                </span>
-                <Link
-                  href="/tutor"
-                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
-                >
-                  https://www.gearupquiz.com/tutor
-                </Link>
-              </nav>
               <h2
                 id="parent-visibility-guide-heading"
                 className="text-base font-bold leading-7 text-gray-900"
@@ -2730,10 +2733,6 @@ function LoginMobileScreen({
                 </p>
               </div>
             </section>
-
-            <hr className="border-amber-200" />
-
-            <ChengFenshiVisibilityGuideHomeSection />
           </div>
         </div>
       </div>
