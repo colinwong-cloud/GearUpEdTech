@@ -937,7 +937,7 @@
       "priority": "high",
       "title": "Practice stamp card streak break hide, zero reset, and admin resume stamp count",
       "evidence_commits": [
-        "90cdc48"
+        "818b689"
       ],
       "checks": [
         {
@@ -1531,6 +1531,42 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "GearUp Quiz（增分寶）— HK primary P1–P6 Chinese, English, Maths practice"
+        }
+      ]
+    },
+    {
+      "id": "chengfenshi-visibility-guide-a-b",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "high",
+      "title": "呈分試 visibility: homepage block + dedicated guide route and sitemap",
+      "evidence_commits": [
+        "7971e7d"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "香港小學呈分試，邊度練中英數先啱？增分寶（GearUp Quiz）介紹"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "ChengFenshiVisibilityGuideHomeSection"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/sitemap.ts",
+          "snippet": "CHENGFENSHI_GUIDE_PATH"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "呈分試中英數練習指南"
         }
       ]
     },
@@ -3609,22 +3645,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T06:10:37.281Z",
+  "generated_at": "2026-11-01T08:44:30.652Z",
   "commit_inventory": [
     {
-      "sha": "1617afcb0ce235d635ff4da47d1d822b9e69d613",
+      "sha": "7971e7de6407305f34ed3ac979101678682265ad",
       "date": "2026-11-01",
-      "summary": "chore: refresh feature contract for stamp streak break fix"
+      "summary": "feat(growth): ship 呈分試 visibility on home and dedicated guide route"
     },
     {
-      "sha": "84817093f70138ad0fcc6acaa74fb347d4f019c5",
+      "sha": "818b6897785d4fe207e71ce7f1b220ad37678b8d",
       "date": "2026-11-01",
-      "summary": "chore: refresh feature contract for stamp streak break fix"
-    },
-    {
-      "sha": "90cdc48f2f52da2c315ec29fa6dab0e4f220ab77",
-      "date": "2026-11-01",
-      "summary": "fix(stamp): align streak break visibility, grid, and admin resume count"
+      "summary": "fix(stamp): streak break visibility, zero reset, admin resume stamp count (#233)"
     },
     {
       "sha": "172076c00846452333ccf5b6994b618c90c25e1a",
@@ -6688,7 +6719,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 615,
-    "total_feature_rows": 78
+    "total_commits_since_start": 614,
+    "total_feature_rows": 79
   }
 }
