@@ -77,7 +77,6 @@ import { HomePageNoticeBlock } from "@/components/home-page-notice-block";
 import { ChengFenshiVisibilityGuideHomeSection } from "@/components/chengfenshi-visibility-guide-content";
 import {
   CHENGFENSHI_GUIDE_PATH,
-  HOME_CHENGFENSHI_SECTION_ID,
   HOME_PARENT_GUIDE_SECTION_ID,
   PARENT_TO_CHENGFENSHI_LINK_LABEL,
 } from "@/lib/chengfenshi-visibility-guide-meta";
@@ -2662,20 +2661,11 @@ function LoginMobileScreen({
                 <span className="text-gray-400" aria-hidden>
                   ·
                 </span>
-                <a
-                  href={`#${HOME_CHENGFENSHI_SECTION_ID}`}
-                  className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
-                >
-                  跳到呈分試介紹
-                </a>
-                <span className="text-gray-400" aria-hidden>
-                  ·
-                </span>
                 <Link
                   href="/tutor"
                   className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
                 >
-                  練習入口 /tutor
+                  https://www.gearupquiz.com/tutor
                 </Link>
               </nav>
               <h2

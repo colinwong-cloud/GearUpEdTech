@@ -21,8 +21,6 @@ type ChengFenshiVisibilityGuideContentProps = {
 function CrossLinks({ variant }: { variant: "page" | "homepage" }) {
   const parentHref =
     variant === "homepage" ? `#${HOME_PARENT_GUIDE_SECTION_ID}` : `/#${HOME_PARENT_GUIDE_SECTION_ID}`;
-  const chengfenshiHref =
-    variant === "homepage" ? `#${HOME_CHENGFENSHI_SECTION_ID}` : CHENGFENSHI_GUIDE_PATH;
 
   return (
     <nav
@@ -42,27 +40,18 @@ function CrossLinks({ variant }: { variant: "page" | "homepage" }) {
         ·
       </span>
       <Link href="/tutor" className={linkClass}>
-        練習入口 /tutor
+        https://www.gearupquiz.com/tutor
       </Link>
-      {variant === "homepage" ? (
-        <>
-          <span className="text-gray-400" aria-hidden>
-            ·
-          </span>
-          <a href={chengfenshiHref} className={linkClass}>
-            完整呈分試指南
-          </a>
-        </>
-      ) : (
+      {variant === "page" ? (
         <>
           <span className="text-gray-400" aria-hidden>
             ·
           </span>
           <Link href="/" className={linkClass}>
-            返回主頁
+            https://www.gearupquiz.com
           </Link>
         </>
-      )}
+      ) : null}
     </nav>
   );
 }

@@ -14,6 +14,6 @@ export const CHENGFENSHI_GUIDE_H1 =
 export const HOME_PARENT_GUIDE_SECTION_ID = "parent-visibility-guide";
 export const HOME_CHENGFENSHI_SECTION_ID = "chengfenshi-visibility-guide";
 
-export const PARENT_TO_CHENGFENSHI_LINK_LABEL = "準備呈分試？睇呈分試中英數練習指南";
+export const PARENT_TO_CHENGFENSHI_LINK_LABEL = "準備呈分試？睇呢頁";
 export const CHENGFENSHI_TO_PARENT_LINK_LABEL = "想睇整體中英數介紹";
 export const TUTOR_CHENGFENSHI_CTA_LABEL = "呈分試中英數練習指南";
