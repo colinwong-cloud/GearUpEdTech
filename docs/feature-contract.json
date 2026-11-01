@@ -3651,8 +3651,13 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T09:08:56.834Z",
+  "generated_at": "2026-11-01T09:08:57.253Z",
   "commit_inventory": [
+    {
+      "sha": "3e2633efcf229fd8b078ad7eda0d135e8351abc5",
+      "date": "2026-11-01",
+      "summary": "chore: refresh feature-contract.json for FAQ-only 呈分試 visibility"
+    },
     {
       "sha": "b2c5f1cc06100b105de4503e04d886a94b1bc5f0",
       "date": "2026-11-01",
@@ -6760,7 +6765,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 621,
+    "total_commits_since_start": 622,
     "total_feature_rows": 79
   }
 }
