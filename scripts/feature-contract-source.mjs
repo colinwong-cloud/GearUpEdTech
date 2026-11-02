@@ -1909,7 +1909,12 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         { type: "file_exists", path: "public/countdown.html" },
         { type: "file_exists", path: "src/app/countdown/route.ts" },
-        { type: "file_contains", path: "public/countdown.html", snippet: "Voice Countdown Timer" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "語音倒數計時｜增分寶 GearUp Quiz" },
+        { type: "file_contains", path: "public/countdown.html", snippet: 'lang="zh-Hant"' },
+        { type: "file_contains", path: "public/countdown.html", snippet: "/main/gearup-quiz-logo.webp" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "返回主頁" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "#f0f9ff" },
+        { type: "file_contains", path: "public/countdown.html", snippet: "© 2026 GearUp EduTech Limited" },
         { type: "file_contains", path: "public/countdown.html", snippet: "Time is up!" },
         { type: "file_contains", path: "public/countdown.html", snippet: "id=\"langSelect\"" },
         { type: "file_contains", path: "public/countdown.html", snippet: "Cantonese (Hong Kong)" },
