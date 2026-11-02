@@ -1917,6 +1917,11 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "public/countdown.html", snippet: "utterance.lang = voice.lang" },
         { type: "file_contains", path: "src/app/countdown/route.ts", snippet: "no-store" },
         { type: "file_contains", path: "src/app/countdown/route.ts", snippet: "public/countdown.html" },
+        {
+          type: "file_contains",
+          path: "src/app/countdown/route.ts",
+          snippet: 'path.join(process.cwd(), "public", "countdown.html")',
+        },
         { type: "file_contains", path: "next.config.ts", snippet: "\"/countdown\": [\"./public/countdown.html\"]" },
       ],
     },
