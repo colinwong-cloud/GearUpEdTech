@@ -3584,6 +3584,11 @@
         },
         {
           "type": "file_contains",
+          "path": "src/app/countdown/route.ts",
+          "snippet": "path.join(process.cwd(), \"public\", \"countdown.html\")"
+        },
+        {
+          "type": "file_contains",
           "path": "next.config.ts",
           "snippet": "\"/countdown\": [\"./public/countdown.html\"]"
         }
@@ -3651,8 +3656,23 @@
       ]
     }
   ],
-  "generated_at": "2026-11-01T09:08:57.253Z",
+  "generated_at": "2026-11-02T08:00:00.000Z",
   "commit_inventory": [
+    {
+      "sha": "1d57b1cb1345f7862a29ede90910fe6e7ad2a12b",
+      "date": "2026-11-02",
+      "summary": "chore: anti-missing check for countdown public path read"
+    },
+    {
+      "sha": "59e21ca3f509ec3ccb5f8a10dd56be70df110d61",
+      "date": "2026-11-02",
+      "summary": "fix: read countdown HTML from public via process.cwd()"
+    },
+    {
+      "sha": "d4c3de146e63b1c22d78fceaaa1bc1d9a0ddb551",
+      "date": "2026-11-02",
+      "summary": "feat(growth): 呈分試 guide + home FAQ link (#234)"
+    },
     {
       "sha": "3e2633efcf229fd8b078ad7eda0d135e8351abc5",
       "date": "2026-11-01",
@@ -6765,7 +6785,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 622,
+    "total_commits_since_start": 625,
     "total_feature_rows": 79
   }
 }
