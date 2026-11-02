@@ -4,21 +4,21 @@ test.describe("Voice countdown page", () => {
   test("serves the standalone timer at /countdown", async ({ page }) => {
     await page.goto("/countdown");
 
-    await expect(page).toHaveTitle("Voice Countdown Timer");
-    await expect(page.getByRole("heading", { name: "Voice Countdown Timer" })).toBeVisible();
+    await expect(page).toHaveTitle("語音倒數計時｜增分寶 GearUp Quiz");
+    await expect(page.getByRole("heading", { name: "語音倒數計時" })).toBeVisible();
     await expect(page.locator("#display")).toHaveText("30");
-    await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "開始" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "停止" })).toBeVisible();
   });
 
   test("counts down and stop restores the entered seconds", async ({ page }) => {
     await page.goto("/countdown");
 
     await page.locator("#timeInput").fill("8");
-    await page.getByRole("button", { name: "Start" }).click();
+    await page.getByRole("button", { name: "開始" }).click();
     await expect(page.locator("#display")).toHaveText("7", { timeout: 2_500 });
 
-    await page.getByRole("button", { name: "Stop" }).click();
+    await page.getByRole("button", { name: "停止" }).click();
     await expect(page.locator("#display")).toHaveText("8");
   });
 
@@ -89,5 +89,29 @@ test.describe("Voice countdown page", () => {
     await page.locator("#personaSelect").selectOption("sweetGirl");
     await expect(page.locator("#pitchVal")).toHaveText("1.7");
     await expect(page.locator("#pitchInput")).toHaveValue("1.7");
+  });
+
+  test("marketing chrome matches GearUp brief", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/countdown");
+
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+    await expect(page.locator('a.logo-link[href="/"] img[src="/main/gearup-quiz-logo.webp"]')).toBeVisible();
+    await expect(page.getByRole("link", { name: "返回主頁" })).toHaveAttribute("href", "/");
+    await expect(page.getByText("© 2026 GearUp EduTech Limited")).toBeVisible();
+
+    const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(bodyBg).toBe("rgb(240, 249, 255)");
+
+    const startBox = await page.getByRole("button", { name: "開始" }).boundingBox();
+    const stopBox = await page.getByRole("button", { name: "停止" }).boundingBox();
+    const testBox = await page.getByRole("button", { name: "試聽" }).boundingBox();
+    expect(startBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(stopBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(testBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
 });
