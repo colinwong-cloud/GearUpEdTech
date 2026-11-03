@@ -1609,7 +1609,9 @@
       "category": "growth",
       "priority": "medium",
       "title": "Home login page links to voice countdown at /countdown",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "4ac732e"
+      ],
       "checks": [
         {
           "type": "file_contains",
@@ -3706,8 +3708,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-03T08:20:32.215Z",
+  "generated_at": "2026-11-03T08:55:23.510Z",
   "commit_inventory": [
+    {
+      "sha": "edd6d50e7f23e1f0cf6bfb1a9ef1996d85f755c5",
+      "date": "2026-11-03",
+      "summary": "chore: add evidence commit for home countdown CTA contract"
+    },
+    {
+      "sha": "7383ee3819ce52d587715ea013c52a7985ee8846",
+      "date": "2026-11-03",
+      "summary": "chore: refresh feature contract for home countdown CTA"
+    },
     {
       "sha": "4ac732e411b7feeef9175c269f4c12ed1ffe6f4d",
       "date": "2026-11-03",
@@ -6790,7 +6802,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 616,
+    "total_commits_since_start": 618,
     "total_feature_rows": 80
   }
 }
