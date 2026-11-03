@@ -13,6 +13,9 @@ test.describe("Home login smoke", () => {
     await expect(page.getByText("常見問題（FAQ）").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "WhatsApp" })).toBeVisible();
     await expect(page.getByRole("button", { name: "WeChat" })).toBeVisible();
+    const countdownLink = page.getByRole("link", { name: "學習計時器" });
+    await expect(countdownLink).toBeVisible();
+    await expect(countdownLink).toHaveAttribute("href", "/countdown");
   });
 
   test("register screen marks gender as mandatory", async ({ page }) => {

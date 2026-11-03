@@ -1015,7 +1015,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
-      evidence_commits: ["8e2ed16", "b2c5f1c"],
+      evidence_commits: ["d4c3de1"],
       checks: [
         {
           type: "file_exists",
@@ -1059,6 +1059,23 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/app/page.tsx", snippet: "有問題或意見？歡迎電郵至" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "href=\"mailto:cs@gearupquiz.com\"" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "cs@gearupquiz.com" },
+      ],
+    },
+    {
+      id: "home-countdown-timer-cta",
+      month: "2026-11",
+      category: "growth",
+      priority: "medium",
+      title: "Home login page links to voice countdown at /countdown",
+      evidence_commits: ["4ac732e"],
+      checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "學習計時器" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: 'href="/countdown"' },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "有問題或意見？歡迎電郵至",
+        },
       ],
     },
     {

@@ -83,6 +83,15 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("cs@gearupquiz.com");
   });
 
+  it("keeps home countdown timer CTA above login enquiry block", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    const timerIdx = pageSource.indexOf('href="/countdown"');
+    const enquiryIdx = pageSource.indexOf("有問題或意見？歡迎電郵至");
+    expect(timerIdx).toBeGreaterThan(-1);
+    expect(pageSource).toContain("學習計時器");
+    expect(timerIdx).toBeLessThan(enquiryIdx);
+  });
+
   it("shows paid upsell on subject select when free quota is exhausted", () => {
     const pageSource = readSource("src/app/page.tsx");
     expect(pageSource).toContain("function SubjectSelectScreen(");
