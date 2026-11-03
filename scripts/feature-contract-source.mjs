@@ -1062,6 +1062,23 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "home-countdown-timer-cta",
+      month: "2026-11",
+      category: "growth",
+      priority: "medium",
+      title: "Home login page links to voice countdown at /countdown",
+      evidence_commits: [],
+      checks: [
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "學習計時器" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: 'href="/countdown"' },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "有問題或意見？歡迎電郵至",
+        },
+      ],
+    },
+    {
       id: "social-share-whatsapp-wechat",
       month: "2026-05",
       category: "growth",
