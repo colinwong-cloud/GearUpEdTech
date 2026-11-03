@@ -1541,8 +1541,7 @@
       "priority": "high",
       "title": "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
       "evidence_commits": [
-        "8e2ed16",
-        "b2c5f1c"
+        "d4c3de1"
       ],
       "checks": [
         {
@@ -3708,8 +3707,13 @@
       ]
     }
   ],
-  "generated_at": "2026-11-03T08:55:23.510Z",
+  "generated_at": "2026-11-03T09:00:59.519Z",
   "commit_inventory": [
+    {
+      "sha": "0a71810914361a09529b2eec1401cf55a392a71a",
+      "date": "2026-11-03",
+      "summary": "chore: refresh feature contract after evidence commit"
+    },
     {
       "sha": "edd6d50e7f23e1f0cf6bfb1a9ef1996d85f755c5",
       "date": "2026-11-03",
@@ -6802,7 +6806,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 618,
+    "total_commits_since_start": 619,
     "total_feature_rows": 80
   }
 }
