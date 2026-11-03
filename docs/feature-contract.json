@@ -1604,6 +1604,31 @@
       ]
     },
     {
+      "id": "home-countdown-timer-cta",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "medium",
+      "title": "Home login page links to voice countdown at /countdown",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "學習計時器"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "href=\"/countdown\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "有問題或意見？歡迎電郵至"
+        }
+      ]
+    },
+    {
       "id": "social-share-whatsapp-wechat",
       "month": "2026-05",
       "category": "growth",
@@ -3681,82 +3706,22 @@
       ]
     }
   ],
-  "generated_at": "2026-11-02T08:15:00.000Z",
+  "generated_at": "2026-11-03T08:20:32.215Z",
   "commit_inventory": [
     {
-      "sha": "22b86978e34de8400886dcdcd21a14bbbedb2194",
-      "date": "2026-11-02",
-      "summary": "chore: extend countdown feature contract for marketing chrome"
+      "sha": "4ac732e411b7feeef9175c269f4c12ed1ffe6f4d",
+      "date": "2026-11-03",
+      "summary": "feat(home): add 學習計時器 CTA linking to /countdown"
     },
     {
-      "sha": "40463fdabf385c6faa8334b7bd3058597b8a606c",
+      "sha": "e81055abd16927f675ff198c06421a4fa7a5839b",
       "date": "2026-11-02",
-      "summary": "feat(countdown): restyle page with GearUp marketing chrome (TC)"
-    },
-    {
-      "sha": "30ac5d1c376ba940f9746a64548254bc6530b899",
-      "date": "2026-11-02",
-      "summary": "chore: record countdown route fix in feature contract"
-    },
-    {
-      "sha": "59e21ca3f509ec3ccb5f8a10dd56be70df110d61",
-      "date": "2026-11-02",
-      "summary": "fix: read countdown HTML from public via process.cwd()"
-    },
-    {
-      "sha": "1d57b1cb1345f7862a29ede90910fe6e7ad2a12b",
-      "date": "2026-11-02",
-      "summary": "chore: anti-missing check for countdown public path read"
+      "summary": "fix: /countdown 500 + GearUp marketing chrome (TC) (#235)"
     },
     {
       "sha": "d4c3de146e63b1c22d78fceaaa1bc1d9a0ddb551",
-      "date": "2026-11-02",
+      "date": "2026-11-01",
       "summary": "feat(growth): 呈分試 guide + home FAQ link (#234)"
-    },
-    {
-      "sha": "3e2633efcf229fd8b078ad7eda0d135e8351abc5",
-      "date": "2026-11-01",
-      "summary": "chore: refresh feature-contract.json for FAQ-only 呈分試 visibility"
-    },
-    {
-      "sha": "b2c5f1cc06100b105de4503e04d886a94b1bc5f0",
-      "date": "2026-11-01",
-      "summary": "refactor(growth): 呈分試 via home FAQ link only, keep dedicated guide"
-    },
-    {
-      "sha": "0c6ceb42e2ba34a4c1763bb36d6d4451be961629",
-      "date": "2026-11-01",
-      "summary": "chore: refresh feature-contract.json inventory"
-    },
-    {
-      "sha": "6172299270b05c1f501bf9d6546d2e916947bc64",
-      "date": "2026-11-01",
-      "summary": "chore: refresh feature-contract.json"
-    },
-    {
-      "sha": "486a0fdfbfa2e81645342d9f04c429d9ef88c5b4",
-      "date": "2026-11-01",
-      "summary": "fix(growth): align 呈分試 cross-link copy with locked brief"
-    },
-    {
-      "sha": "9bbe6b319ab706a3597436242895b561a9627371",
-      "date": "2026-11-01",
-      "summary": "chore: refresh feature-contract.json inventory (include contract sync commit)"
-    },
-    {
-      "sha": "01c110dd16d4859b5d374891d800b5a46c9ff1df",
-      "date": "2026-11-01",
-      "summary": "chore: sync feature-contract inventory after amend"
-    },
-    {
-      "sha": "f6c7b679c4182a2f32e3c2e7914fe212fe20ccdc",
-      "date": "2026-11-01",
-      "summary": "chore: refresh feature-contract.json for 呈分試 visibility A+B"
-    },
-    {
-      "sha": "8e2ed16a9fb098f67a6033564e17b9145d0131cb",
-      "date": "2026-11-01",
-      "summary": "feat(growth): ship 呈分試 visibility on home and dedicated guide route"
     },
     {
       "sha": "818b6897785d4fe207e71ce7f1b220ad37678b8d",
@@ -6825,7 +6790,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 628,
-    "total_feature_rows": 79
+    "total_commits_since_start": 616,
+    "total_feature_rows": 80
   }
 }
