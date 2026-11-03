@@ -1067,7 +1067,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "medium",
       title: "Home login page links to voice countdown at /countdown",
-      evidence_commits: [],
+      evidence_commits: ["4ac732e"],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "學習計時器" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: 'href="/countdown"' },
