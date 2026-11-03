@@ -1015,7 +1015,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "呈分試 visibility: home FAQ link + dedicated guide route and sitemap",
-      evidence_commits: ["8e2ed16", "b2c5f1c"],
+      evidence_commits: ["d4c3de1"],
       checks: [
         {
           type: "file_exists",
