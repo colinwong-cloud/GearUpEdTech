@@ -2223,7 +2223,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
-      evidence_commits: ["428a53e", "b04a2a0"],
+      evidence_commits: ["74c296d"],
       checks: [
         { type: "file_exists", path: "src/components/guoyu/GuoyuBrandHeader.tsx" },
         {
