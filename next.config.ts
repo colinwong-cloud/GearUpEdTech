@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
       "./src/lib/server/assets/gearup-banana-mascot.png",
       "./node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm",
     ],
+    "/api/guoyu/worksheet-pdf": [
+      "./src/lib/server/assets/NotoSansTC-subset.ttf",
+      "./src/lib/server/assets/gearup-edutech-logo.png",
+      "./src/lib/server/assets/gearup-banana-mascot.png",
+      "./node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm",
+    ],
   },
   /*
    * Expose Supabase URL + anon key to the browser bundle when only server-prefixed

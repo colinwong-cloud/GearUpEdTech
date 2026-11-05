@@ -2078,6 +2078,18 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
           snippet: 'ttsPending ? "處理中" : "開始朗讀"',
         },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "練習卷（空白拼音）",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "答案卷",
+        },
+        { type: "file_exists", path: "src/lib/server/guoyu-worksheet-pdf.ts" },
+        { type: "file_exists", path: "src/app/api/guoyu/worksheet-pdf/route.ts" },
         { type: "file_contains", path: "src/lib/server/guoyu-poe-common.ts", snippet: "POE_API_KEY" },
         { type: "file_exists", path: "src/lib/server/guoyu-poe-pinyin.ts" },
         {
