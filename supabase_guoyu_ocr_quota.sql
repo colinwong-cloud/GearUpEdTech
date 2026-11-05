@@ -18,20 +18,14 @@ CREATE INDEX IF NOT EXISTS idx_parent_guoyu_ocr_usage_month
 
 ALTER TABLE public.parent_guoyu_ocr_usage ENABLE ROW LEVEL SECURITY;
 
--- Month key aligned with get_student_balance HKT month boundaries (date_trunc in Asia/Hong_Kong).
+-- Month key is HK-local YYYY-MM via to_char(timezone(...)), not ::date after AT TIME ZONE.
 CREATE OR REPLACE FUNCTION public.guoyu_ocr_hkt_month_key(p_at TIMESTAMPTZ DEFAULT now())
 RETURNS TEXT
 LANGUAGE sql
 STABLE
 SET search_path = public
 AS $$
-  SELECT to_char(
-    (
-      date_trunc('month', timezone('Asia/Hong_Kong', coalesce(p_at, now())))
-      AT TIME ZONE 'Asia/Hong_Kong'
-    )::date,
-    'YYYY-MM'
-  );
+  SELECT to_char(timezone('Asia/Hong_Kong', coalesce(p_at, now())), 'YYYY-MM');
 $$;
 
 -- True when parent mobile is registered as an active tutor (tutor MIT does not raise OCR cap).
