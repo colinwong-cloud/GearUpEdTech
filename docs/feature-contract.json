@@ -3756,7 +3756,7 @@
       "title": "國語練習 pinyin student flow with OCR quota and TTS",
       "evidence_commits": [
         "3823661",
-        "d936929"
+        "9aece08"
       ],
       "checks": [
         {
@@ -3852,7 +3852,17 @@
         },
         {
           "type": "file_exists",
-          "path": "src/lib/server/guoyu-worksheet-pdf.ts"
+          "path": "src/lib/guoyu/romanize.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/guoyu/pinyin/route.ts",
+          "snippet": "romanizeGuoyuLines"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-worksheet-pdf.ts",
+          "snippet": "PRACTICE_CELL_GAP"
         },
         {
           "type": "file_exists",
@@ -3894,27 +3904,12 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T08:46:05.786Z",
+  "generated_at": "2026-11-05T09:09:22.888Z",
   "commit_inventory": [
     {
-      "sha": "379c90471a8ff9f831574f9b0157cbb08ee41ee9",
+      "sha": "9aece0890c1e8a67e10c557a3a1cb1998ea23798",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json"
-    },
-    {
-      "sha": "65f9d361b6216231210cd320ad3b9dbf212a07f7",
-      "date": "2026-11-05",
-      "summary": "chore: point guoyu feature contract evidence at shipped commits"
-    },
-    {
-      "sha": "fe31c9b22e7a0f7bd2544bd9c7c97fb22459030f",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json"
-    },
-    {
-      "sha": "d9369298a229fe3daf96cb79c1f8e64b6ab3d543",
-      "date": "2026-11-05",
-      "summary": "feat(guoyu): add worksheet PDF downloads on result screen"
+      "summary": "feat(guoyu): downloadable 國語練習 PDFs on result screen (#239)"
     },
     {
       "sha": "382366133323e7fee4f4a5286339f5345517a7b4",
@@ -7008,7 +7003,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 622,
+    "total_commits_since_start": 619,
     "total_feature_rows": 82
   }
 }
