@@ -1,46 +1,44 @@
 import { createSign } from "node:crypto";
+import { ExternalAccountClient } from "google-auth-library";
+import { getVercelOidcToken } from "@vercel/oidc";
+import {
+  buildExternalAccountClientConfig,
+  getGoogleAccessTokenScopes,
+  getGoogleCloudProjectIdFromEnv,
+  googleCredentialsConfiguredFromEnv,
+  readGoogleServiceAccountJson,
+  readGoogleWifEnvConfig,
+  resolveGoogleCloudAuthMode,
+} from "@/lib/server/google-cloud-auth-config";
 
-type ServiceAccount = {
-  client_email: string;
-  private_key: string;
-  project_id?: string;
-  token_uri?: string;
-};
+export type { GoogleCloudAuthMode } from "@/lib/server/google-cloud-auth-config";
+export {
+  getGoogleCloudProjectIdFromEnv,
+  googleCredentialsConfiguredFromEnv,
+  resolveGoogleCloudAuthMode,
+  readGoogleServiceAccountJson,
+  readGoogleWifEnvConfig,
+} from "@/lib/server/google-cloud-auth-config";
 
-let cachedToken: { accessToken: string; expiresAtMs: number } | null = null;
-
-function parseServiceAccountJson(): ServiceAccount | null {
-  const raw =
-    process.env.GOOGLE_CLOUD_SERVICE_ACCOUNT_JSON?.trim() ||
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as ServiceAccount;
-  } catch {
-    return null;
-  }
-}
+let cachedToken: { accessToken: string; expiresAtMs: number; mode: string } | null =
+  null;
 
 function base64Url(input: Buffer | string): string {
   const buf = typeof input === "string" ? Buffer.from(input) : input;
   return buf.toString("base64url");
 }
 
-async function fetchGoogleAccessToken(): Promise<string | null> {
-  const sa = parseServiceAccountJson();
-  if (!sa?.client_email || !sa.private_key) return null;
+async function fetchGoogleAccessTokenViaServiceAccountJson(): Promise<string | null> {
+  const sa = readGoogleServiceAccountJson();
+  if (!sa) return null;
 
   const nowSec = Math.floor(Date.now() / 1000);
-  if (cachedToken && cachedToken.expiresAtMs > Date.now() + 60_000) {
-    return cachedToken.accessToken;
-  }
-
   const tokenUri = sa.token_uri || "https://oauth2.googleapis.com/token";
   const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = base64Url(
     JSON.stringify({
       iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/cloud-translation https://www.googleapis.com/auth/cloud-platform",
+      scope: getGoogleAccessTokenScopes().join(" "),
       aud: tokenUri,
       iat: nowSec,
       exp: nowSec + 3600,
@@ -64,24 +62,69 @@ async function fetchGoogleAccessToken(): Promise<string | null> {
   if (!res.ok) return null;
   const data = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!data.access_token) return null;
-  cachedToken = {
-    accessToken: data.access_token,
-    expiresAtMs: Date.now() + (data.expires_in ?? 3600) * 1000,
-  };
   return data.access_token;
 }
 
+async function fetchGoogleAccessTokenViaWif(): Promise<string | null> {
+  const wif = readGoogleWifEnvConfig();
+  if (!wif) return null;
+
+  const clientConfig = buildExternalAccountClientConfig(wif);
+  const authClient = ExternalAccountClient.fromJSON({
+    ...clientConfig,
+    subject_token_supplier: {
+      getSubjectToken: () =>
+        getVercelOidcToken({
+          audience: wif.oidcAudience,
+        }),
+    },
+  });
+  if (!authClient) return null;
+
+  const response = await authClient.getAccessToken();
+  const token = typeof response === "string" ? response : response?.token;
+  return token ?? null;
+}
+
+async function fetchGoogleAccessTokenUncached(): Promise<string | null> {
+  const mode = resolveGoogleCloudAuthMode();
+  if (mode === "service_account_json") {
+    return fetchGoogleAccessTokenViaServiceAccountJson();
+  }
+  if (mode === "wif") {
+    return fetchGoogleAccessTokenViaWif();
+  }
+  return null;
+}
+
 export function getGoogleCloudProjectId(): string | null {
-  const sa = parseServiceAccountJson();
-  if (sa?.project_id) return sa.project_id;
-  const envProject = process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
-  return envProject || null;
+  return getGoogleCloudProjectIdFromEnv();
 }
 
 export async function getGoogleCloudAccessToken(): Promise<string | null> {
-  return fetchGoogleAccessToken();
+  const mode = resolveGoogleCloudAuthMode();
+  if (mode === "none") return null;
+
+  if (cachedToken && cachedToken.mode === mode && cachedToken.expiresAtMs > Date.now() + 60_000) {
+    return cachedToken.accessToken;
+  }
+
+  const accessToken = await fetchGoogleAccessTokenUncached();
+  if (!accessToken) return null;
+
+  cachedToken = {
+    accessToken,
+    expiresAtMs: Date.now() + 3300 * 1000,
+    mode,
+  };
+  return accessToken;
 }
 
 export function googleCredentialsConfigured(): boolean {
-  return Boolean(parseServiceAccountJson()?.client_email);
+  return googleCredentialsConfiguredFromEnv();
+}
+
+/** Test hook to reset in-memory token cache. */
+export function resetGoogleCloudAccessTokenCacheForTests(): void {
+  cachedToken = null;
 }

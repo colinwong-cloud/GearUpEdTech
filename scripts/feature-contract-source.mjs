@@ -2056,6 +2056,22 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/components/guoyu/GuoyuComposeScreen.tsx", snippet: "練習國語拼音" },
         { type: "file_contains", path: "src/components/guoyu/GuoyuResultScreen.tsx", snippet: "讀出文章" },
         { type: "file_contains", path: "src/lib/server/guoyu-poe-ocr.ts", snippet: "POE_API_KEY" },
+        { type: "file_exists", path: "src/lib/server/google-cloud-auth-config.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/server/google-cloud-auth.ts",
+          snippet: "ExternalAccountClient",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/google-cloud-auth.ts",
+          snippet: "getVercelOidcToken",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/google-cloud-auth-config.ts",
+          snippet: "GCP_WORKLOAD_IDENTITY_POOL_ID",
+        },
       ],
     },
   ],
