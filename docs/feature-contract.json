@@ -3825,6 +3825,16 @@
         },
         {
           "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-pinyin.ts",
+          "snippet": "bestEffortPoePinyinLine"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "GuoyuOcrQuotaCircles"
+        },
+        {
+          "type": "file_contains",
           "path": "src/lib/server/guoyu-poe-common.ts",
           "snippet": "GPT-5.4"
         },
@@ -3840,8 +3850,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T04:29:56.499Z",
+  "generated_at": "2026-11-05T04:51:39.843Z",
   "commit_inventory": [
+    {
+      "sha": "8e30a13fc7157d1340598f0a423f5f5dedd814fa",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): tolerate Poe pinyin drift; compose UI polish"
+    },
+    {
+      "sha": "1b14ac8c36d961f944118afd34637016a9f0d199",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for guoyu TTS busy state"
+    },
     {
       "sha": "566f1a9686be306ee9e658707d5b8ae14bdd993b",
       "date": "2026-11-05",
@@ -6989,7 +7009,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 629,
+    "total_commits_since_start": 631,
     "total_feature_rows": 82
   }
 }
