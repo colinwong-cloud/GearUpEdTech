@@ -16,6 +16,10 @@ test.describe("Home login smoke", () => {
     const countdownLink = page.getByRole("link", { name: "學習計時器" });
     await expect(countdownLink).toBeVisible();
     await expect(countdownLink).toHaveAttribute("href", "/countdown");
+    await expect(page.getByRole("heading", { name: "關於我們" })).toBeVisible();
+    await expect(page.getByText("如有問題或查詢，請電郵")).toBeVisible();
+    const aboutMailLink = page.getByRole("link", { name: "cs@gearupquiz.com" }).last();
+    await expect(aboutMailLink).toHaveAttribute("href", "mailto:cs@gearupquiz.com");
   });
 
   test("register screen marks gender as mandatory", async ({ page }) => {

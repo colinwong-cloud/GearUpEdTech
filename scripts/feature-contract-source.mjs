@@ -1010,6 +1010,46 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "homepage-about-us-block",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Homepage about-us card above fixed footer with cs@gearupquiz.com",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: 'aria-labelledby="about-us-heading"',
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: 'id="about-us-heading"',
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "由一班香港人創立，專注教育科技，務求令專業學習更易入手、更可負擔",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "如有問題或查詢，請電郵",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "border border-indigo-100 bg-white/90 px-4 py-5 shadow-sm",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/anti-missing-regressions.test.ts",
+          snippet: 'id="about-us-heading"',
+        },
+      ],
+    },
+    {
       id: "chengfenshi-visibility-guide-a-b",
       month: "2026-11",
       category: "growth",

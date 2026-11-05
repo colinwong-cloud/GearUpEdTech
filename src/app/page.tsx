@@ -2742,6 +2742,29 @@ function LoginMobileScreen({
               </div>
             </section>
           </div>
+
+          <section
+            aria-labelledby="about-us-heading"
+            className="mt-6 rounded-2xl border border-indigo-100 bg-white/90 px-4 py-5 shadow-sm sm:px-5"
+          >
+            <h2 id="about-us-heading" className="text-lg font-bold text-gray-900">
+              關於我們
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-gray-700">
+              我們是 GearUp EduTech Limited，由一班香港人創立，專注教育科技，務求令專業學習更易入手、更可負擔。憑藉我們對教育科技創新的追求，以及持續專注優化學習平台的努力，GearUp EduTech Limited
+              已成功申請並通過香港科技園（HKSTP）一系列評審，於2026年10月正式獲批成為 HKSTP 合作夥伴。
+            </p>
+            <p className="mt-3 text-sm text-gray-600">
+              如有問題或查詢，請電郵{" "}
+              <a
+                href="mailto:cs@gearupquiz.com"
+                className="font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-900"
+              >
+                cs@gearupquiz.com
+              </a>
+              。
+            </p>
+          </section>
         </div>
       </div>
       <footer
