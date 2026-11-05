@@ -3755,9 +3755,8 @@
       "priority": "high",
       "title": "國語練習 pinyin student flow with OCR quota and TTS",
       "evidence_commits": [
-        "749b2d6",
-        "30f4ba5",
-        "d37631b"
+        "3823661",
+        "d936929"
       ],
       "checks": [
         {
@@ -3895,8 +3894,23 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T08:34:35.478Z",
+  "generated_at": "2026-11-05T08:36:44.386Z",
   "commit_inventory": [
+    {
+      "sha": "65f9d361b6216231210cd320ad3b9dbf212a07f7",
+      "date": "2026-11-05",
+      "summary": "chore: point guoyu feature contract evidence at shipped commits"
+    },
+    {
+      "sha": "fe31c9b22e7a0f7bd2544bd9c7c97fb22459030f",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract.json"
+    },
+    {
+      "sha": "d9369298a229fe3daf96cb79c1f8e64b6ab3d543",
+      "date": "2026-11-05",
+      "summary": "feat(guoyu): add worksheet PDF downloads on result screen"
+    },
     {
       "sha": "382366133323e7fee4f4a5286339f5345517a7b4",
       "date": "2026-11-05",
@@ -6989,7 +7003,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 618,
+    "total_commits_since_start": 621,
     "total_feature_rows": 82
   }
 }
