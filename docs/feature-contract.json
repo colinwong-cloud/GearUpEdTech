@@ -3969,7 +3969,10 @@
       "category": "student",
       "priority": "medium",
       "title": "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "428a53e",
+        "b04a2a0"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -4004,12 +4007,27 @@
           "type": "file_contains",
           "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
           "snippet": "練習普通話拼音"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "下載練習卷讓小朋友填寫拼音"
         }
       ]
     }
   ],
-  "generated_at": "2026-11-05T16:22:51.246Z",
+  "generated_at": "2026-11-05T16:31:24.997Z",
   "commit_inventory": [
+    {
+      "sha": "cfe811c989c203c8006499ae90a12ab47fdba03e",
+      "date": "2026-11-05",
+      "summary": "chore(feature-contract): evidence commits for guoyu #242 soft row"
+    },
+    {
+      "sha": "a97dc60b8c566dd8b330b93b2dcf6e506ff9986a",
+      "date": "2026-11-05",
+      "summary": "docs: refresh feature contract after guoyu PDF wording soft"
+    },
     {
       "sha": "b04a2a02d57fcec0df07a3cd198779e84c169bb4",
       "date": "2026-11-05",
@@ -7132,7 +7150,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 624,
+    "total_commits_since_start": 626,
     "total_feature_rows": 84
   }
 }
