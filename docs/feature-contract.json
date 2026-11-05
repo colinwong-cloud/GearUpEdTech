@@ -3811,6 +3811,11 @@
         },
         {
           "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "ttsPending ? \"處理中\" : \"開始朗讀\""
+        },
+        {
+          "type": "file_contains",
           "path": "src/lib/server/guoyu-poe-common.ts",
           "snippet": "POE_API_KEY"
         },
@@ -3835,8 +3840,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T04:19:25.115Z",
+  "generated_at": "2026-11-05T04:29:56.499Z",
   "commit_inventory": [
+    {
+      "sha": "566f1a9686be306ee9e658707d5b8ae14bdd993b",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): disable 開始朗讀 while TTS request is in flight"
+    },
+    {
+      "sha": "c10b4d7883dd332d6cc0e45ff4bca6c4a5995b26",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for 91abca2"
+    },
     {
       "sha": "91abca28a1427d3c37efd61fe549df6d6158f260",
       "date": "2026-11-05",
@@ -6974,7 +6989,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 627,
+    "total_commits_since_start": 629,
     "total_feature_rows": 82
   }
 }
