@@ -2135,6 +2135,43 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "guoyu-tts-ios-playback-soft",
+      month: "2026-11",
+      category: "student",
+      priority: "high",
+      title: "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
+      evidence_commits: ["3f46849"],
+      checks: [
+        { type: "file_exists", path: "src/lib/guoyu/tts-playback.ts" },
+        { type: "file_exists", path: "src/lib/guoyu/tts-playback.test.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/guoyu/tts-playback.ts",
+          snippet: "unlockGuoyuTtsAudioInUserGesture",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/guoyu/tts-playback.ts",
+          snippet: "未能播放朗讀，請再試一次",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/guoyu/tts-playback.ts",
+          snippet: "此瀏覽器暫不支援朗讀",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "guoyuTtsPlaybackErrorMessage",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "unlockGuoyuTtsAudioInUserGesture",
+        },
+      ],
+    },
   ],
 };
 
