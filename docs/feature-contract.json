@@ -3877,8 +3877,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T05:09:40.410Z",
+  "generated_at": "2026-11-05T05:33:39.368Z",
   "commit_inventory": [
+    {
+      "sha": "270955336ea5cb82df9fd5a2fc5eea1a1c15c092",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): TTS speaks practice text only; default 0.75x speed"
+    },
+    {
+      "sha": "6bb66aa26281c7fdcec82d88367952b72078c18e",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for guoyu TTS quota"
+    },
     {
       "sha": "c9f1201f773ce4d88b91364efe5a34efb995ea2d",
       "date": "2026-11-05",
@@ -7046,7 +7056,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 633,
+    "total_commits_since_start": 635,
     "total_feature_rows": 82
   }
 }
