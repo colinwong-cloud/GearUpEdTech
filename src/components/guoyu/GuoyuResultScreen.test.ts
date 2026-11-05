@@ -16,5 +16,8 @@ describe("GuoyuResultScreen TTS busy state and quota", () => {
     expect(source).toContain("GUOYU_TTS_DEFAULT_SPEED");
     const controlsIdx = source.indexOf("startReadAloudLabel");
     expect(source.indexOf("GuoyuTtsQuotaCircles", controlsIdx)).toBeGreaterThan(controlsIdx);
+    expect(source).toContain("練習卷（空白拼音）");
+    expect(source).toContain("答案卷");
+    expect(source).toContain("/api/guoyu/worksheet-pdf");
   });
 });

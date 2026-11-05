@@ -10,6 +10,8 @@ import {
   guoyuTtsQuotaExhausted,
   type GuoyuTtsQuotaView,
 } from "@/lib/guoyu/quota-copy";
+import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
+import type { GuoyuWorksheetPdfKind } from "@/lib/guoyu/worksheet-pdf";
 import { GuoyuTtsQuotaCircles } from "@/components/guoyu/GuoyuTtsQuotaCircles";
 
 type TtsQuotaPayload = {
@@ -40,6 +42,8 @@ export function GuoyuResultScreen({
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [ttsSupported, setTtsSupported] = useState(true);
   const [ttsQuota, setTtsQuota] = useState<TtsQuotaPayload | null>(null);
+  const [pdfBusyKind, setPdfBusyKind] = useState<GuoyuWorksheetPdfKind | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const ttsInFlightRef = useRef(false);
@@ -152,6 +156,44 @@ export function GuoyuResultScreen({
   const startReadAloudDisabled = ttsPending || playing || ttsExhausted;
   const startReadAloudLabel = ttsPending ? "處理中" : "開始朗讀";
 
+  const downloadWorksheetPdf = async (kind: GuoyuWorksheetPdfKind) => {
+    if (pdfBusyKind || !studentId.trim()) return;
+    setPdfBusyKind(kind);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/guoyu/worksheet-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: studentId,
+          kind,
+          rows,
+          source_text: sourceText,
+        }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "未能下載 PDF。");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filenameFromContentDisposition(
+        res.headers.get("Content-Disposition"),
+        kind === "answer" ? "gearup-guoyu-answer.pdf" : "gearup-guoyu-practice.pdf"
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "未能下載 PDF。");
+    } finally {
+      setPdfBusyKind(null);
+    }
+  };
+
   if (!sourceText.trim() || rows.length === 0) {
     return (
       <div className="min-h-screen bg-white/60 px-4 py-10 text-center">
@@ -253,16 +295,33 @@ export function GuoyuResultScreen({
 
         <section className="mt-8 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <h2 className="text-base font-semibold text-gray-900">下載練習 PDF</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            稍後提供：空白拼音練習卷 + 答案卷（含範例列）。
-          </p>
-          <button
-            type="button"
-            disabled
-            className="mt-4 w-full cursor-not-allowed rounded-xl bg-gray-200 py-3 text-sm font-semibold text-gray-500"
-          >
-            即將推出
-          </button>
+          <div className="mt-4 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => void downloadWorksheetPdf("practice")}
+              disabled={Boolean(pdfBusyKind) || !studentId.trim()}
+              className={`min-h-11 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white ${
+                pdfBusyKind || !studentId.trim()
+                  ? "cursor-not-allowed bg-indigo-600/50"
+                  : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+            >
+              {pdfBusyKind === "practice" ? "處理中…" : "練習卷（空白拼音）"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void downloadWorksheetPdf("answer")}
+              disabled={Boolean(pdfBusyKind) || !studentId.trim()}
+              className={`min-h-11 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white ${
+                pdfBusyKind || !studentId.trim()
+                  ? "cursor-not-allowed bg-sky-600/50"
+                  : "bg-sky-600 hover:bg-sky-700"
+              }`}
+            >
+              {pdfBusyKind === "answer" ? "處理中…" : "答案卷"}
+            </button>
+          </div>
+          {pdfError && <p className="mt-2 text-sm text-gray-600">{pdfError}</p>}
         </section>
 
         <button
