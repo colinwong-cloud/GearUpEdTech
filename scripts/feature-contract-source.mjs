@@ -2146,7 +2146,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "high",
       title: "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
-      evidence_commits: ["3f46849"],
+      evidence_commits: ["68909e4"],
       checks: [
         { type: "file_exists", path: "src/lib/guoyu/tts-playback.ts" },
         { type: "file_exists", path: "src/lib/guoyu/tts-playback.test.ts" },
