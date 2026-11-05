@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { synthesizeMandarinTts } from "@/lib/server/guoyu-google";
+import { synthesizeMandarinTts } from "@/lib/server/guoyu-poe-tts";
 import { sanitizeGuoyuInput, hasGuoyuPracticeContent } from "@/lib/guoyu/text";
 
 type Body = {
@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
     speakingRate,
   });
   if (!tts.ok) {
-    return NextResponse.json({ error: tts.error }, { status: 503 });
+    return NextResponse.json(
+      { error: tts.error, missing_key: tts.missingKey ?? false },
+      { status: 503 }
+    );
   }
 
   return NextResponse.json({

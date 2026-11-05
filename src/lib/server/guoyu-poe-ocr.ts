@@ -1,7 +1,10 @@
 import { stripLatinAndDigits } from "@/lib/guoyu/text";
-
-const POE_API_URL = "https://api.poe.com/v1/chat/completions";
-const POE_MODEL = "GPT-5.4";
+import {
+  POE_CHAT_COMPLETIONS_URL,
+  POE_MODEL_OCR_PINYIN,
+  poeMissingKeyError,
+  resolvePoeApiKey,
+} from "@/lib/server/guoyu-poe-common";
 
 export type PoeOcrResult =
   | { ok: true; text: string }
@@ -13,13 +16,9 @@ export async function extractChineseTextFromImageViaPoe(params: {
   apiKey?: string;
   fetchImpl?: typeof fetch;
 }): Promise<PoeOcrResult> {
-  const key = params.apiKey ?? process.env.POE_API_KEY?.trim();
+  const key = resolvePoeApiKey(params.apiKey);
   if (!key) {
-    return {
-      ok: false,
-      error: "OCR 服務未設定（缺少 POE_API_KEY），請改用手動輸入文字。",
-      missingKey: true,
-    };
+    return poeMissingKeyError("ocr");
   }
 
   const fetchFn = params.fetchImpl ?? fetch;
@@ -30,14 +29,15 @@ export async function extractChineseTextFromImageViaPoe(params: {
 
   let res: Response;
   try {
-    res = await fetchFn(POE_API_URL, {
+    res = await fetchFn(POE_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: POE_MODEL,
+        model: POE_MODEL_OCR_PINYIN,
+        stream: false,
         messages: [
           { role: "system", content: systemPrompt },
           {
