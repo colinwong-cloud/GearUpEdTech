@@ -76,6 +76,8 @@ import { usePracticeStampCardChromeVisible } from "@/lib/use-practice-stamp-card
 import { HomePageNoticeBlock } from "@/components/home-page-notice-block";
 import {
   CHENGFENSHI_GUIDE_PATH,
+  HOME_FAQ_AI_TUTORING_ANSWER,
+  HOME_FAQ_AI_TUTORING_QUESTION,
   HOME_FAQ_CHENGFENSHI_ANSWER,
   HOME_FAQ_CHENGFENSHI_QUESTION,
   HOME_PARENT_GUIDE_SECTION_ID,
@@ -2711,14 +2713,14 @@ function LoginMobileScreen({
                   >
                     {TUTOR_CHENGFENSHI_CTA_LABEL}
                   </Link>
-                  {" · "}
-                  <Link
-                    href="/tutor"
-                    className="text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
-                  >
-                    https://www.gearupquiz.com/tutor
-                  </Link>
                 </p>
+              </div>
+
+              <div className="space-y-1 rounded-2xl border border-teal-100 bg-white/85 px-4 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  7. {HOME_FAQ_AI_TUTORING_QUESTION}
+                </h3>
+                <p className="text-sm leading-7 text-gray-700">{HOME_FAQ_AI_TUTORING_ANSWER}</p>
               </div>
             </section>
 
