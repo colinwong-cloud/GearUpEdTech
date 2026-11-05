@@ -3925,7 +3925,7 @@
       "priority": "high",
       "title": "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
       "evidence_commits": [
-        "3f46849"
+        "68909e4"
       ],
       "checks": [
         {
@@ -4016,8 +4016,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T16:31:24.997Z",
+  "generated_at": "2026-11-05T16:31:40.374Z",
   "commit_inventory": [
+    {
+      "sha": "a8da0d94dfb44ce4874a16cbb33892c629df7ef0",
+      "date": "2026-11-05",
+      "summary": "chore(feature-contract): point guoyu TTS playback evidence at 68909e4"
+    },
+    {
+      "sha": "236554bac00464db7481e34a2e59c09b13257b76",
+      "date": "2026-11-05",
+      "summary": "docs: refresh feature contract inventory"
+    },
     {
       "sha": "cfe811c989c203c8006499ae90a12ab47fdba03e",
       "date": "2026-11-05",
@@ -7150,7 +7160,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 626,
+    "total_commits_since_start": 628,
     "total_feature_rows": 84
   }
 }
