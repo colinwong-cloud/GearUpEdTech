@@ -326,7 +326,7 @@ export function GuoyuResultScreen({
         </section>
 
         <section className="mt-8 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">下載練習 PDF</h2>
+          <h2 className="text-base font-semibold text-gray-900">下載練習卷讓小朋友填寫拼音</h2>
           <div className="mt-4 flex flex-col gap-3">
             <button
               type="button"
@@ -338,7 +338,7 @@ export function GuoyuResultScreen({
                   : "bg-indigo-600 hover:bg-indigo-700"
               }`}
             >
-              {pdfBusyKind === "practice" ? "處理中…" : "練習卷（空白拼音）"}
+              {pdfBusyKind === "practice" ? "處理中…" : "練習卷"}
             </button>
             <button
               type="button"

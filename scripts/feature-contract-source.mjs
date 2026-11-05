@@ -2091,7 +2091,12 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
-          snippet: "練習卷（空白拼音）",
+          snippet: "下載練習卷讓小朋友填寫拼音",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: '? "處理中…" : "練習卷"',
         },
         {
           type: "file_contains",
