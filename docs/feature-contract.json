@@ -3843,6 +3843,16 @@
         {
           "type": "file_contains",
           "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "unlockGuoyuTtsAudioInUserGesture"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/tts-playback.ts",
+          "snippet": "未能播放朗讀，請再試一次"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
           "snippet": "練習卷（空白拼音）"
         },
         {
@@ -3902,19 +3912,74 @@
           "snippet": "Gemini-3.1-Flash-TTS"
         }
       ]
-    }
-  ],
-  "generated_at": "2026-11-05T09:17:06.293Z",
-  "commit_inventory": [
-    {
-      "sha": "3405a20086281f3047f97c80128a6003246df3e7",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature contract inventory"
     },
     {
-      "sha": "9e6bd43c48fceec0545309a069fa0c43391535b2",
+      "id": "guoyu-tts-ios-playback-soft",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "high",
+      "title": "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
+      "evidence_commits": [
+        "3f46849"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/guoyu/tts-playback.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/guoyu/tts-playback.test.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/tts-playback.ts",
+          "snippet": "unlockGuoyuTtsAudioInUserGesture"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/tts-playback.ts",
+          "snippet": "未能播放朗讀，請再試一次"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/tts-playback.ts",
+          "snippet": "此瀏覽器暫不支援朗讀"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "guoyuTtsPlaybackErrorMessage"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "unlockGuoyuTtsAudioInUserGesture"
+        }
+      ]
+    }
+  ],
+  "generated_at": "2026-11-05T15:05:47.035Z",
+  "commit_inventory": [
+    {
+      "sha": "1003f46db38cbf583583c858d11514432a4a846e",
       "date": "2026-11-05",
-      "summary": "fix(guoyu): tone-marked pinyin and practice PDF spacing"
+      "summary": "chore: add feature-contract evidence for guoyu TTS iOS playback soft"
+    },
+    {
+      "sha": "93454d9286abc0745ae82d9f57b7420831a8fdd0",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory"
+    },
+    {
+      "sha": "3f4684958a0dbbf988cc0c0164f5f005c1485dc3",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): unlock iOS audio before TTS fetch and accurate errors"
+    },
+    {
+      "sha": "a9344108cd1ccee92bc561f45fe4e44ade1393ee",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): Quiz #239 soft — PDF spacing + toned pinyin (#240)"
     },
     {
       "sha": "9aece0890c1e8a67e10c557a3a1cb1998ea23798",
@@ -7013,7 +7078,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 621,
-    "total_feature_rows": 82
+    "total_commits_since_start": 623,
+    "total_feature_rows": 83
   }
 }

@@ -11,6 +11,9 @@ describe("GuoyuResultScreen TTS busy state and quota", () => {
     expect(source).toContain("ttsInFlightRef");
     expect(source).toContain("setTtsPending(true)");
     expect(source).toContain('startReadAloudLabel = ttsPending ? "處理中" : "開始朗讀"');
+    expect(source).toContain("unlockGuoyuTtsAudioInUserGesture");
+    expect(source).toContain("guoyuTtsPlaybackErrorMessage");
+    expect(source).not.toMatch(/catch\s*\{\s*setTtsSupported\(false\)/);
     expect(source).toContain("ttsExhausted");
     expect(source).toContain("GuoyuTtsQuotaCircles");
     expect(source).toContain("GUOYU_TTS_DEFAULT_SPEED");
