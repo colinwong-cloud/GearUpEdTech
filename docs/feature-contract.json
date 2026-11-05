@@ -1618,6 +1618,46 @@
       ]
     },
     {
+      "id": "home-faq-soft-243",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "medium",
+      "title": "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "系統點幫到我拎呈分試 RO ？"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "全港，同區以及同校"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "HOME_FAQ_AI_TUTORING_QUESTION"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "咩係 AI 精準輔導？"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "HOME_FAQ_AI_TUTORING_ANSWER"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "CHENGFENSHI_GUIDE_PATH"
+        }
+      ]
+    },
+    {
       "id": "login-enquiry-email-address",
       "month": "2026-07",
       "category": "growth",
@@ -4016,42 +4056,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T16:31:40.374Z",
+  "generated_at": "2026-11-05T18:03:44.272Z",
   "commit_inventory": [
     {
-      "sha": "a8da0d94dfb44ce4874a16cbb33892c629df7ef0",
+      "sha": "ee8c1ff893ccf39c3923ab973b804c0d95223ad9",
       "date": "2026-11-05",
-      "summary": "chore(feature-contract): point guoyu TTS playback evidence at 68909e4"
+      "summary": "feat(home): Soft #243 locked FAQ #6 copy and new FAQ #7 (#243)"
     },
     {
-      "sha": "236554bac00464db7481e34a2e59c09b13257b76",
-      "date": "2026-11-05",
-      "summary": "docs: refresh feature contract inventory"
-    },
-    {
-      "sha": "cfe811c989c203c8006499ae90a12ab47fdba03e",
-      "date": "2026-11-05",
-      "summary": "chore(feature-contract): evidence commits for guoyu #242 soft row"
-    },
-    {
-      "sha": "a97dc60b8c566dd8b330b93b2dcf6e506ff9986a",
-      "date": "2026-11-05",
-      "summary": "docs: refresh feature contract after guoyu PDF wording soft"
-    },
-    {
-      "sha": "b04a2a02d57fcec0df07a3cd198779e84c169bb4",
-      "date": "2026-11-05",
-      "summary": "fix(guoyu): soften PDF download section copy on result screen (#242)"
-    },
-    {
-      "sha": "594fda9e81f989370c2a29b291b2a8d47f5f7dfa",
-      "date": "2026-11-05",
-      "summary": "docs: refresh feature contract after guoyu #242 UI soft"
-    },
-    {
-      "sha": "428a53ee3196f12c4eb263b92e3fbc71077d7fad",
-      "date": "2026-11-05",
-      "summary": "feat(guoyu): 普通話 UI polish — logo, copy, quota legend (#242)"
+      "sha": "74c296d4eaecd53dc73271adcbe70bf840042df7",
+      "date": "2026-11-06",
+      "summary": "Soft polish: Guoyu 拼音練習 UI — logo, 普通話 copy, quota legend (#242)"
     },
     {
       "sha": "68909e4cc7defd35b9ba7d153e608b5a9f0188df",
@@ -7160,7 +7175,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 628,
-    "total_feature_rows": 84
+    "total_commits_since_start": 623,
+    "total_feature_rows": 85
   }
 }
