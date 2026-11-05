@@ -3835,10 +3835,10 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T04:17:33.690Z",
+  "generated_at": "2026-11-05T04:19:25.115Z",
   "commit_inventory": [
     {
-      "sha": "ec17865fa79fdd3388e81c1dfae53571138e0eae",
+      "sha": "91abca28a1427d3c37efd61fe549df6d6158f260",
       "date": "2026-11-05",
       "summary": "chore: refresh feature-contract for Poe-only guoyu"
     },
