@@ -120,6 +120,30 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("getRankSampleImageUrl()");
   });
 
+  it("keeps 國語練習 entry above quiz subjects and guoyu compose chrome", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    const guoyuIdx = pageSource.indexOf("國語練習");
+    const mathIdx = pageSource.indexOf("STUDENT_SUBJECT_OPTIONS.map");
+    expect(guoyuIdx).toBeGreaterThan(-1);
+    expect(mathIdx).toBeGreaterThan(guoyuIdx);
+    expect(pageSource).toContain("onGuoyu");
+    expect(pageSource).toContain('window.location.assign("/guoyu")');
+
+    const composeSource = readSource("src/components/guoyu/GuoyuComposeScreen.tsx");
+    expect(composeSource).toContain("練習國語拼音");
+    expect(composeSource).toContain("生成練習");
+    expect(composeSource).toContain("GuoyuOcrQuotaCircles");
+    expect(readSource("src/lib/guoyu/quota-copy.ts")).toContain("免費 OCR：本月尚餘");
+
+    const sqlSource = readSource("supabase_guoyu_ocr_quota.sql");
+    expect(sqlSource).toContain("guoyu_ocr_cap_for_parent");
+    expect(sqlSource).toContain("paid_until >= now()");
+    expect(sqlSource).toContain("guoyu_ocr_parent_is_tutor");
+    const ttsSql = readSource("supabase_guoyu_tts_quota.sql");
+    expect(ttsSql).toContain("HOLD");
+    expect(ttsSql).toContain("consume_parent_guoyu_tts_quota");
+  });
+
   it("keeps parent practice email readability and wrong-question details", () => {
     const emailSource = readSource("src/app/api/send-quiz-email/route.ts");
     expect(emailSource).toContain('meta name="x-apple-disable-message-reformatting"');

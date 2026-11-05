@@ -1541,7 +1541,7 @@
       "priority": "high",
       "title": "Homepage about-us card above fixed footer with cs@gearupquiz.com",
       "evidence_commits": [
-        "d6c1eb5"
+        "9b35bb8"
       ],
       "checks": [
         {
@@ -3747,34 +3747,237 @@
           "snippet": "home_page_notice_update"
         }
       ]
+    },
+    {
+      "id": "guoyu-pinyin-practice-phase0",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "high",
+      "title": "國語練習 pinyin student flow with OCR quota and TTS",
+      "evidence_commits": [
+        "749b2d6",
+        "30f4ba5",
+        "d37631b"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_guoyu_ocr_quota.sql"
+        },
+        {
+          "type": "file_exists",
+          "path": "supabase_guoyu_tts_quota.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_ocr_quota.sql",
+          "snippet": "consume_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_ocr_quota.sql",
+          "snippet": "guoyu_ocr_cap_for_parent"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_tts_quota.sql",
+          "snippet": "consume_parent_guoyu_tts_quota"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/tts-quota/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-tts-quota.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuQuotaTickCircle.tsx",
+          "snippet": "#84cc16"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "GuoyuTtsQuotaCircles"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/guoyu/page.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/guoyu/result/page.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/ocr/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/pinyin/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/tts/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "國語練習"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "練習國語拼音"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "讀出文章"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "ttsPending ? \"處理中\" : \"開始朗讀\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "POE_API_KEY"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-poe-pinyin.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-pinyin.ts",
+          "snippet": "bestEffortPoePinyinLine"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "GuoyuOcrQuotaCircles"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "GPT-5.4"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-poe-tts.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "Gemini-3.1-Flash-TTS"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-05T01:35:24.931Z",
+  "generated_at": "2026-11-05T05:41:31.244Z",
   "commit_inventory": [
     {
-      "sha": "a645b241aaffccd4ddfdb715d86abdca2d65495a",
+      "sha": "ea9d5c3ace325f46a4d0d638b0c63faf56c9f19c",
       "date": "2026-11-05",
-      "summary": "chore: align countdown CTA contract evidence with main merge commit"
+      "summary": "chore: refresh feature-contract inventory for TTS defaults"
     },
     {
-      "sha": "512baafdbec31376981a74a8ff7fb9a73a6440d2",
+      "sha": "270955336ea5cb82df9fd5a2fc5eea1a1c15c092",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature contract inventory after evidence pin"
+      "summary": "fix(guoyu): TTS speaks practice text only; default 0.75x speed"
     },
     {
-      "sha": "a724546cfd799c2619f9c6841218edaa9bc69766",
+      "sha": "6bb66aa26281c7fdcec82d88367952b72078c18e",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature contract for homepage about-us block"
+      "summary": "chore: refresh feature-contract for guoyu TTS quota"
     },
     {
-      "sha": "e2c3a7fb5f4771619b5742068c3f9e32063d1e84",
+      "sha": "c9f1201f773ce4d88b91364efe5a34efb995ea2d",
       "date": "2026-11-05",
-      "summary": "chore: pin homepage-about-us evidence commit in contract source"
+      "summary": "feat(guoyu): green-tick quota circles and TTS monthly caps"
     },
     {
-      "sha": "d6c1eb581690342320aab028ccbdff3d3148da47",
+      "sha": "95d2dd2c8d88bde2bae2064781458c8482c49680",
       "date": "2026-11-05",
-      "summary": "feat(home): add 關於我們 card above fixed footer"
+      "summary": "chore: refresh feature-contract for guoyu pinyin and OCR UI"
+    },
+    {
+      "sha": "8e30a13fc7157d1340598f0a423f5f5dedd814fa",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): tolerate Poe pinyin drift; compose UI polish"
+    },
+    {
+      "sha": "1b14ac8c36d961f944118afd34637016a9f0d199",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for guoyu TTS busy state"
+    },
+    {
+      "sha": "566f1a9686be306ee9e658707d5b8ae14bdd993b",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): disable 開始朗讀 while TTS request is in flight"
+    },
+    {
+      "sha": "c10b4d7883dd332d6cc0e45ff4bca6c4a5995b26",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for 91abca2"
+    },
+    {
+      "sha": "91abca28a1427d3c37efd61fe549df6d6158f260",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for Poe-only guoyu"
+    },
+    {
+      "sha": "d37631b88786281d7a45686a35c4a1ab45015db7",
+      "date": "2026-11-05",
+      "summary": "feat: guoyu pinyin and TTS via Poe only (Colin GO)"
+    },
+    {
+      "sha": "4b3c51bf450cbd66a226527c8c545498d34ce6d9",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for cc6b3d8"
+    },
+    {
+      "sha": "cc6b3d84f43fa4f1e4b561a64a712c9d5f99f682",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for WIF auth"
+    },
+    {
+      "sha": "30f4ba5916619e7651622803bfc85c348dc1877e",
+      "date": "2026-11-05",
+      "summary": "feat: keyless GCP auth for guoyu via Vercel OIDC and WIF"
+    },
+    {
+      "sha": "d5c9874d130efe2eadae3cda051178e4b56a1159",
+      "date": "2026-11-05",
+      "summary": "fix(sql): guoyu OCR HKT month key via HK-local to_char"
+    },
+    {
+      "sha": "ff82d851a4d728ec099cb3f3821c9f6cf1172138",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for ecea966"
+    },
+    {
+      "sha": "ecea966b8e7a67d2c4810934b33c25af2c8e80a2",
+      "date": "2026-11-05",
+      "summary": "chore: fix homepage-about-us evidence sha in feature contract"
+    },
+    {
+      "sha": "478b55da5998e2f718141059301134d8d598911e",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for guoyu pinyin phase0"
+    },
+    {
+      "sha": "749b2d6d555455b26444cfb15b022a9d91fba3c6",
+      "date": "2026-11-05",
+      "summary": "feat: add 國語練習 pinyin flow with Finance-locked OCR quota"
+    },
+    {
+      "sha": "9b35bb84e29fd026da7d78e9b52d6615a838c741",
+      "date": "2026-11-05",
+      "summary": "feat(home): 關於我們 card above fixed footer (UI-only) (#237)"
     },
     {
       "sha": "10dd43f4f6d1043f2e4d0c0698b2246bb2ec011e",
@@ -6858,7 +7061,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 621,
-    "total_feature_rows": 81
+    "total_commits_since_start": 636,
+    "total_feature_rows": 82
   }
 }

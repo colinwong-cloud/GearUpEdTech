@@ -83,6 +83,11 @@ import {
 } from "@/lib/chengfenshi-visibility-guide-meta";
 import Link from "next/link";
 import {
+  readGuoyuStudentResume,
+  saveGuoyuStudentResume,
+  clearGuoyuStudentResume,
+} from "@/lib/guoyu/student-resume";
+import {
   buildApplePaySubscribeRequestOptions,
   buildMitHppRedirectProps,
   type MitRecurringTermsOfUse,
@@ -909,6 +914,35 @@ export default function QuizApp() {
   const markAuthIntent = useCallback(() => {
     authIntentRef.current = true;
   }, []);
+
+  useEffect(() => {
+    const resume = readGuoyuStudentResume();
+    if (!resume?.mobileNumber || !resume.students?.length) return;
+    if (hasLoginContext) return;
+    const selected =
+      resume.students.find((s) => s.id === resume.selectedStudentId) ??
+      resume.students[0];
+    markAuthIntent();
+    setMobileNumber(resume.mobileNumber);
+    setStudents(resume.students);
+    setSelectedStudent(selected);
+    setParentTierStatus({
+      tier: resume.parentTier.tier,
+      is_paid: resume.parentTier.is_paid,
+      paid_until: resume.parentTier.paid_until,
+      tier_label: resume.parentTier.tier_label,
+    });
+    if (resume.returnScreen === "payment") {
+      clearGuoyuStudentResume();
+      setScreen("payment");
+      return;
+    }
+    if (resume.returnScreen === "guoyu_compose") {
+      return;
+    }
+    clearGuoyuStudentResume();
+    setScreen("subject_select");
+  }, [hasLoginContext, markAuthIntent]);
 
   useEffect(() => {
     if (hasLoginContext) return;
@@ -2051,6 +2085,22 @@ export default function QuizApp() {
         studentName={selectedStudent?.student_name || ""}
         studentId={selectedStudent?.id ?? null}
         onSelect={handleSubjectSelect}
+        onGuoyu={() => {
+          if (!selectedStudent || !mobileNumber.trim()) return;
+          saveGuoyuStudentResume({
+            mobileNumber: mobileNumber.trim(),
+            students,
+            selectedStudentId: selectedStudent.id,
+            parentTier: {
+              tier: parentTierStatus.tier,
+              is_paid: parentTierStatus.is_paid,
+              paid_until: parentTierStatus.paid_until ?? null,
+              tier_label: parentTierStatus.tier_label,
+            },
+            returnScreen: "subject_select",
+          });
+          window.location.assign("/guoyu");
+        }}
         onBack={() => {
           setError(null);
           setScreen("login_student");
@@ -3365,6 +3415,7 @@ function SubjectSelectScreen({
   studentName,
   studentId,
   onSelect,
+  onGuoyu,
   onBack,
   onUpgrade,
   isPaid,
@@ -3373,6 +3424,7 @@ function SubjectSelectScreen({
   studentName: string;
   studentId: string | null;
   onSelect: (s: string) => void;
+  onGuoyu: () => void;
   onBack: () => void;
   onUpgrade: () => void;
   isPaid: boolean;
@@ -3424,6 +3476,14 @@ function SubjectSelectScreen({
           </div>
         )}
         <div className="space-y-3">
+          <button
+            type="button"
+            onClick={onGuoyu}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <span className="text-3xl">🗣️</span>
+            <span className="text-lg font-semibold text-gray-900">國語練習</span>
+          </button>
           {subjects.map((s) => (
             <button
               key={s.key}
