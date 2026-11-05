@@ -1094,7 +1094,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "medium",
       title: "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
-      evidence_commits: [],
+      evidence_commits: ["ee8c1ff"],
       checks: [
         {
           type: "file_contains",
