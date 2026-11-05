@@ -1015,7 +1015,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Homepage about-us card above fixed footer with cs@gearupquiz.com",
-      evidence_commits: ["d6c1eb5"],
+      evidence_commits: ["9b35bb8"],
       checks: [
         {
           type: "file_contains",
