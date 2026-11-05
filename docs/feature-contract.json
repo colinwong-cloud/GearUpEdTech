@@ -1535,6 +1535,48 @@
       ]
     },
     {
+      "id": "homepage-about-us-block",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "high",
+      "title": "Homepage about-us card above fixed footer with cs@gearupquiz.com",
+      "evidence_commits": [
+        "d6c1eb5"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "aria-labelledby=\"about-us-heading\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "id=\"about-us-heading\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "由一班香港人創立，專注教育科技，務求令專業學習更易入手、更可負擔"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "如有問題或查詢，請電郵"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "border border-indigo-100 bg-white/90 px-4 py-5 shadow-sm"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/anti-missing-regressions.test.ts",
+          "snippet": "id=\"about-us-heading\""
+        }
+      ]
+    },
+    {
       "id": "chengfenshi-visibility-guide-a-b",
       "month": "2026-11",
       "category": "growth",
@@ -3707,37 +3749,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-03T09:06:02.936Z",
+  "generated_at": "2026-11-05T01:25:17.468Z",
   "commit_inventory": [
     {
-      "sha": "39c585dad7ae46d6b739d68d73d18a6e10eab0a9",
-      "date": "2026-11-03",
-      "summary": "chore: refresh feature contract after chengfenshi evidence fix"
+      "sha": "d6c1eb581690342320aab028ccbdff3d3148da47",
+      "date": "2026-11-05",
+      "summary": "feat(home): add 關於我們 card above fixed footer"
     },
     {
-      "sha": "e825eb446800aff2d77ffa4f52356533dec499d2",
+      "sha": "10dd43f4f6d1043f2e4d0c0698b2246bb2ec011e",
       "date": "2026-11-03",
-      "summary": "chore: fix chengfenshi guide contract evidence to main merge commit"
-    },
-    {
-      "sha": "0a71810914361a09529b2eec1401cf55a392a71a",
-      "date": "2026-11-03",
-      "summary": "chore: refresh feature contract after evidence commit"
-    },
-    {
-      "sha": "edd6d50e7f23e1f0cf6bfb1a9ef1996d85f755c5",
-      "date": "2026-11-03",
-      "summary": "chore: add evidence commit for home countdown CTA contract"
-    },
-    {
-      "sha": "7383ee3819ce52d587715ea013c52a7985ee8846",
-      "date": "2026-11-03",
-      "summary": "chore: refresh feature contract for home countdown CTA"
-    },
-    {
-      "sha": "4ac732e411b7feeef9175c269f4c12ed1ffe6f4d",
-      "date": "2026-11-03",
-      "summary": "feat(home): add 學習計時器 CTA linking to /countdown"
+      "summary": "feat(home): add 學習計時器 CTA to /countdown (#236)"
     },
     {
       "sha": "e81055abd16927f675ff198c06421a4fa7a5839b",
@@ -6816,7 +6838,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 621,
-    "total_feature_rows": 80
+    "total_commits_since_start": 617,
+    "total_feature_rows": 81
   }
 }
