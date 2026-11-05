@@ -2064,6 +2064,16 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/lib/server/guoyu-poe-pinyin.ts" },
         {
           type: "file_contains",
+          path: "src/lib/server/guoyu-poe-pinyin.ts",
+          snippet: "bestEffortPoePinyinLine",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuComposeScreen.tsx",
+          snippet: "GuoyuOcrQuotaCircles",
+        },
+        {
+          type: "file_contains",
           path: "src/lib/server/guoyu-poe-common.ts",
           snippet: "GPT-5.4",
         },

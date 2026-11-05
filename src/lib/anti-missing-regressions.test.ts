@@ -132,6 +132,7 @@ describe("anti-missing regression guards", () => {
     const composeSource = readSource("src/components/guoyu/GuoyuComposeScreen.tsx");
     expect(composeSource).toContain("練習國語拼音");
     expect(composeSource).toContain("生成練習");
+    expect(composeSource).toContain("GuoyuOcrQuotaCircles");
     expect(readSource("src/lib/guoyu/quota-copy.ts")).toContain("免費 OCR：本月尚餘");
 
     const sqlSource = readSource("supabase_guoyu_ocr_quota.sql");

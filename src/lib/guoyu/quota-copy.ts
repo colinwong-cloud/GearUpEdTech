@@ -24,6 +24,20 @@ export function formatGuoyuOcrQuotaLine(view: GuoyuOcrQuotaView): string {
   return "免費 OCR 額度已用完（每月 1 次）。請升級月費以繼續掃描，或直接在下方輸入文字練習。";
 }
 
+/** Visual quota row: 10 circles for paid MIT; 1 for free/tutor. */
+export function guoyuOcrQuotaCircleTotal(view: GuoyuOcrQuotaView): number {
+  if (view.isPaidMit && view.cap >= 10) return 10;
+  return 1;
+}
+
+/** Lit circles = OCR uses consumed this month (within displayed total). */
+export function guoyuOcrQuotaCirclesUsed(view: GuoyuOcrQuotaView): number {
+  const total = guoyuOcrQuotaCircleTotal(view);
+  const remaining = Math.max(0, Math.min(view.remaining, view.cap));
+  const used = total - Math.min(remaining, total);
+  return Math.max(0, Math.min(total, used));
+}
+
 export function guoyuOcrUpsellVisible(view: GuoyuOcrQuotaView): boolean {
   return !view.isPaidMit && view.remaining <= 0;
 }

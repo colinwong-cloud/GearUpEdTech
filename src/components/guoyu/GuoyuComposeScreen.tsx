@@ -8,12 +8,9 @@ import {
   isAllowedGuoyuImageMime,
   sanitizeGuoyuInput,
 } from "@/lib/guoyu/text";
-import {
-  formatGuoyuOcrQuotaLine,
-  guoyuOcrUpsellVisible,
-  type GuoyuOcrQuotaView,
-} from "@/lib/guoyu/quota-copy";
+import { type GuoyuOcrQuotaView } from "@/lib/guoyu/quota-copy";
 import type { GuoyuWorksheetRow } from "@/lib/guoyu/worksheet";
+import { GuoyuOcrQuotaCircles } from "@/components/guoyu/GuoyuOcrQuotaCircles";
 
 type QuotaPayload = {
   rpc_ready: boolean;
@@ -185,14 +182,6 @@ export function GuoyuComposeScreen({
       lang="zh-Hant"
     >
       <div className="w-full max-w-md">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
-        >
-          返回
-        </button>
-
         <h1 className="text-2xl font-bold text-gray-900">練習國語拼音</h1>
         <p className="mt-1 text-sm text-gray-500">
           上傳課文或自行輸入，即時生成拼音練習
@@ -206,17 +195,8 @@ export function GuoyuComposeScreen({
         </ol>
 
         {quotaView && (
-          <p className="mt-4 text-sm text-gray-700">{formatGuoyuOcrQuotaLine(quotaView)}</p>
+          <GuoyuOcrQuotaCircles view={quotaView} onUpgrade={onUpgrade} />
         )}
-        {quotaView && guoyuOcrUpsellVisible(quotaView) && !quotaView.isPaidMit && (
-            <button
-              type="button"
-              onClick={onUpgrade}
-              className="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-            >
-              了解月費
-            </button>
-          )}
 
         <div className="mt-5 space-y-5">
           <div className={ocrExhausted ? "opacity-50 pointer-events-none" : ""}>
@@ -316,6 +296,14 @@ export function GuoyuComposeScreen({
             }`}
           >
             {generateBusy ? "正在生成拼音…" : "生成練習"}
+          </button>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50"
+          >
+            返回
           </button>
         </div>
       </div>
