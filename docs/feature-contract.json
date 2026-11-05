@@ -3765,6 +3765,10 @@
           "path": "supabase_guoyu_ocr_quota.sql"
         },
         {
+          "type": "file_exists",
+          "path": "supabase_guoyu_tts_quota.sql"
+        },
+        {
           "type": "file_contains",
           "path": "supabase_guoyu_ocr_quota.sql",
           "snippet": "consume_parent_guoyu_ocr_quota"
@@ -3773,6 +3777,29 @@
           "type": "file_contains",
           "path": "supabase_guoyu_ocr_quota.sql",
           "snippet": "guoyu_ocr_cap_for_parent"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_tts_quota.sql",
+          "snippet": "consume_parent_guoyu_tts_quota"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/tts-quota/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-tts-quota.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuQuotaTickCircle.tsx",
+          "snippet": "#84cc16"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "GuoyuTtsQuotaCircles"
         },
         {
           "type": "file_exists",
@@ -3850,8 +3877,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T04:51:39.843Z",
+  "generated_at": "2026-11-05T05:09:40.410Z",
   "commit_inventory": [
+    {
+      "sha": "c9f1201f773ce4d88b91364efe5a34efb995ea2d",
+      "date": "2026-11-05",
+      "summary": "feat(guoyu): green-tick quota circles and TTS monthly caps"
+    },
+    {
+      "sha": "95d2dd2c8d88bde2bae2064781458c8482c49680",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for guoyu pinyin and OCR UI"
+    },
     {
       "sha": "8e30a13fc7157d1340598f0a423f5f5dedd814fa",
       "date": "2026-11-05",
@@ -7009,7 +7046,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 631,
+    "total_commits_since_start": 633,
     "total_feature_rows": 82
   }
 }
