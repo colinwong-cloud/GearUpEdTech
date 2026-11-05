@@ -1,3 +1,4 @@
+import { buildCellsWithTonedPinyin } from "@/lib/guoyu/romanize";
 import { isCjkCharacter } from "@/lib/guoyu/text";
 
 export type GuoyuCharCell = {
@@ -32,15 +33,19 @@ export function alignPinyinToLine(line: string, romanized: string): GuoyuCharCel
 
 export function buildGuoyuWorksheetRows(
   lines: string[],
-  romanizedByLine: string[]
+  romanizedByLine?: string[]
 ): GuoyuWorksheetRow[] {
   const rows: GuoyuWorksheetRow[] = [];
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     if (!line.trim()) continue;
-    const romanized = romanizedByLine[i] ?? "";
+    const romanized = romanizedByLine?.[i];
+    const cells =
+      romanized !== undefined && romanized.trim()
+        ? alignPinyinToLine(line, romanized)
+        : buildCellsWithTonedPinyin(line);
     rows.push({
-      cells: alignPinyinToLine(line, romanized),
+      cells,
       blankPracticeLine: true,
     });
   }

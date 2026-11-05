@@ -2034,7 +2034,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "high",
       title: "國語練習 pinyin student flow with OCR quota and TTS",
-      evidence_commits: ["3823661", "d936929"],
+      evidence_commits: ["3823661", "9aece08"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_ocr_quota.sql" },
         { type: "file_exists", path: "supabase_guoyu_tts_quota.sql" },
@@ -2088,7 +2088,17 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
           snippet: "答案卷",
         },
-        { type: "file_exists", path: "src/lib/server/guoyu-worksheet-pdf.ts" },
+        { type: "file_exists", path: "src/lib/guoyu/romanize.ts" },
+        {
+          type: "file_contains",
+          path: "src/app/api/guoyu/pinyin/route.ts",
+          snippet: "romanizeGuoyuLines",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/guoyu-worksheet-pdf.ts",
+          snippet: "PRACTICE_CELL_GAP",
+        },
         { type: "file_exists", path: "src/app/api/guoyu/worksheet-pdf/route.ts" },
         { type: "file_contains", path: "src/lib/server/guoyu-poe-common.ts", snippet: "POE_API_KEY" },
         { type: "file_exists", path: "src/lib/server/guoyu-poe-pinyin.ts" },
