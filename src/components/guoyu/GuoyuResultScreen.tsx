@@ -15,10 +15,12 @@ export type GuoyuResultScreenProps = {
 export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScreenProps) {
   const [speed, setSpeed] = useState(1);
   const [playing, setPlaying] = useState(false);
+  const [ttsPending, setTtsPending] = useState(false);
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [ttsSupported, setTtsSupported] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const ttsInFlightRef = useRef(false);
 
   useEffect(() => {
     document.title = "拼音練習｜增分寶 GearUp Quiz";
@@ -37,6 +39,9 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
   };
 
   const startPlayback = async () => {
+    if (ttsInFlightRef.current) return;
+    ttsInFlightRef.current = true;
+    setTtsPending(true);
     setTtsError(null);
     stopPlayback();
     if (objectUrlRef.current) {
@@ -72,8 +77,14 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
     } catch {
       setTtsSupported(false);
       setTtsError("此瀏覽器暫不支援朗讀");
+    } finally {
+      ttsInFlightRef.current = false;
+      setTtsPending(false);
     }
   };
+
+  const startReadAloudDisabled = ttsPending || playing;
+  const startReadAloudLabel = ttsPending ? "處理中" : "開始朗讀";
 
   if (!sourceText.trim() || rows.length === 0) {
     return (
@@ -130,7 +141,7 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
                 value={speed}
                 onChange={(e) => setSpeed(Number(e.target.value))}
                 className="min-h-11 rounded-lg border border-gray-200 px-2 py-2 text-sm"
-                disabled={playing}
+                disabled={playing || ttsPending}
               >
                 {GUOYU_TTS_SPEED_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -144,10 +155,15 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
                 <button
                   type="button"
                   onClick={() => void startPlayback()}
-                  disabled={playing}
-                  className="min-h-11 flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  disabled={startReadAloudDisabled}
+                  aria-busy={ttsPending}
+                  className={`min-h-11 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
+                    startReadAloudDisabled
+                      ? "cursor-not-allowed bg-emerald-600/50"
+                      : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
                 >
-                  開始朗讀
+                  {startReadAloudLabel}
                 </button>
               )}
               {playing && (
