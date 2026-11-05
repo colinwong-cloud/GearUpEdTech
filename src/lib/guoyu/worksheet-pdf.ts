@@ -3,6 +3,7 @@ import {
   practicePaperMobileSuffix,
 } from "@/lib/tutor-practice-paper";
 import type { GuoyuWorksheetRow } from "@/lib/guoyu/worksheet";
+import { GUOYU_PINYIN_TONE_MARKS } from "@/lib/guoyu/romanize";
 import { isCjkCharacter } from "@/lib/guoyu/text";
 
 export type GuoyuWorksheetPdfKind = "practice" | "answer";
@@ -73,6 +74,7 @@ export function guoyuWorksheetPdfFontCorpus(rows: GuoyuWorksheetRow[]): string {
   const chunks = [
     "拼音練習 GearUp 國語練習 練習卷（空白拼音） 答案卷 範例 日期：________________ 導師參考。請勿派發給學生。",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    GUOYU_PINYIN_TONE_MARKS,
     "，。？！、；：「」『』（）【】《》〈〉—…．·×÷＿_　／",
   ];
   for (const row of rows) {

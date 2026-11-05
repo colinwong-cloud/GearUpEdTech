@@ -10,6 +10,7 @@ import {
   guoyuWorksheetPdfFontCorpus,
   type GuoyuWorksheetPdfKind,
 } from "@/lib/guoyu/worksheet-pdf";
+import { GUOYU_PINYIN_TONE_MARKS } from "@/lib/guoyu/romanize";
 import { practicePaperDateLine } from "@/lib/server/tutor-practice-paper-pdf";
 
 const PAGE_WIDTH = 595.28;
@@ -20,8 +21,12 @@ const MUTED = rgb(0.35, 0.38, 0.42);
 const PINYIN_SIZE = 9;
 const CHAR_SIZE = 14;
 const CELL_GAP = 4;
+/** Practice sheet: 1.5× horizontal gap between character/pinyin columns. */
+const PRACTICE_CELL_GAP = CELL_GAP * 1.5;
 const ROW_GAP = 18;
 const PRACTICE_LINE_HEIGHT = 14;
+/** Practice sheet: every other row gets 2× trailing vertical gap for writing. */
+const PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER = 2;
 const TITLE_SIZE = 20;
 const META_SIZE = 13;
 const BRAND_INSET = 22;
@@ -95,10 +100,15 @@ function cellPinyinText(
   return guoyuWorksheetBlankPinyinDisplay(cell.char);
 }
 
-function measureCellWidth(font: PDFFont, pinyinText: string, char: string): number {
+function measureCellWidth(
+  font: PDFFont,
+  pinyinText: string,
+  char: string,
+  cellGap: number
+): number {
   const pinyinWidth = font.widthOfTextAtSize(pinyinText, PINYIN_SIZE);
   const charWidth = font.widthOfTextAtSize(char, CHAR_SIZE);
-  return Math.max(pinyinWidth, charWidth, 10) + CELL_GAP;
+  return Math.max(pinyinWidth, charWidth, 10) + cellGap;
 }
 
 function drawFirstPageBrand(
@@ -131,8 +141,10 @@ function drawWorksheetRow(
   y: number,
   row: GuoyuWorksheetRow,
   mode: GuoyuWorksheetPdfKind,
-  contentWidth: number
+  contentWidth: number,
+  options?: { rowIndex?: number; practiceSpacing?: boolean }
 ): number {
+  const cellGap = options?.practiceSpacing ? PRACTICE_CELL_GAP : CELL_GAP;
   const startX = MARGIN;
   let x = startX;
   let rowTop = y;
@@ -141,7 +153,7 @@ function drawWorksheetRow(
   for (const cell of row.cells) {
     const pinyinText = sanitizeText(font, cellPinyinText(cell, mode), glyphCache);
     const charText = sanitizeText(font, cell.char, glyphCache);
-    const cellWidth = measureCellWidth(font, pinyinText, charText);
+    const cellWidth = measureCellWidth(font, pinyinText, charText, cellGap);
     if (x + cellWidth > MARGIN + contentWidth && x > startX) {
       x = startX;
       rowTop -= CHAR_SIZE + PINYIN_SIZE + 6;
@@ -166,6 +178,10 @@ function drawWorksheetRow(
 
   let nextY = minY - PINYIN_SIZE - CHAR_SIZE - 6;
   if (row.blankPracticeLine) {
+    const writeLineHeight =
+      options?.practiceSpacing && (options.rowIndex ?? 0) % 2 === 0
+        ? PRACTICE_LINE_HEIGHT * PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER
+        : PRACTICE_LINE_HEIGHT;
     nextY -= 4;
     page.drawLine({
       start: { x: MARGIN, y: nextY },
@@ -174,9 +190,13 @@ function drawWorksheetRow(
       color: MUTED,
       dashArray: [3, 3],
     });
-    nextY -= PRACTICE_LINE_HEIGHT;
+    nextY -= writeLineHeight;
   }
-  return nextY - ROW_GAP;
+  const rowGap =
+    options?.practiceSpacing && (options.rowIndex ?? 0) % 2 === 0
+      ? ROW_GAP * PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER
+      : ROW_GAP;
+  return nextY - rowGap;
 }
 
 export async function buildGuoyuWorksheetPdf({
@@ -190,7 +210,10 @@ export async function buildGuoyuWorksheetPdf({
 }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
-  const font = await embedWorksheetFont(pdf, guoyuWorksheetPdfFontCorpus(rows));
+  const font = await embedWorksheetFont(
+    pdf,
+    `${guoyuWorksheetPdfFontCorpus(rows)}${GUOYU_PINYIN_TONE_MARKS}`
+  );
   const glyphCache = new Map<string, boolean>();
   const contentWidth = PAGE_WIDTH - MARGIN * 2;
   const logo = await pdf.embedPng(readBundledFile(practiceLogoUrl, "gearup-edutech-logo.png"));
@@ -255,9 +278,13 @@ export async function buildGuoyuWorksheetPdf({
   y -= 22;
 
   if (kind === "practice") {
-    for (const row of rows) {
-      ensureSpace(CHAR_SIZE + PINYIN_SIZE + PRACTICE_LINE_HEIGHT + ROW_GAP);
-      y = drawWorksheetRow(page, font, glyphCache, y, row, "practice", contentWidth);
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      const row = rows[rowIndex]!;
+      ensureSpace(CHAR_SIZE + PINYIN_SIZE + PRACTICE_LINE_HEIGHT * 2 + ROW_GAP * 2);
+      y = drawWorksheetRow(page, font, glyphCache, y, row, "practice", contentWidth, {
+        rowIndex,
+        practiceSpacing: true,
+      });
     }
   } else {
     if (rows.length > 0) {

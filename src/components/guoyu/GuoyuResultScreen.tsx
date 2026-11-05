@@ -221,10 +221,18 @@ export function GuoyuResultScreen({
 
         <div className="space-y-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           {rows.map((row, idx) => (
-            <div key={`row-${idx}`} className="border-b border-gray-100 pb-4 last:border-0">
-              <div className="flex flex-wrap gap-x-1 gap-y-2">
+            <div
+              key={`row-${idx}`}
+              className={`border-b border-gray-100 last:border-0 ${
+                idx % 2 === 0 ? "pb-8 mb-2" : "pb-4"
+              }`}
+            >
+              <div className="flex flex-wrap gap-x-2 gap-y-2">
                 {row.cells.map((cell, ci) => (
-                  <span key={`c-${idx}-${ci}`} className="inline-flex flex-col items-center min-w-[1.25rem]">
+                  <span
+                    key={`c-${idx}-${ci}`}
+                    className="inline-flex min-w-[1.5rem] flex-col items-center px-0.5"
+                  >
                     <span className="text-xs text-indigo-600/90">{cell.pinyin || "·"}</span>
                     <span className="text-base text-gray-900">{cell.char}</span>
                   </span>
@@ -232,7 +240,9 @@ export function GuoyuResultScreen({
               </div>
               {row.blankPracticeLine && (
                 <div
-                  className="mt-3 h-10 w-full border-b border-dashed border-gray-300"
+                  className={`mt-3 w-full border-b border-dashed border-gray-300 ${
+                    idx % 2 === 0 ? "h-16" : "h-10"
+                  }`}
                   aria-hidden
                 />
               )}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeGuoyuInput, splitGuoyuLines, hasGuoyuPracticeContent } from "@/lib/guoyu/text";
+import { romanizeGuoyuLines } from "@/lib/guoyu/romanize";
 import { buildGuoyuWorksheetRows } from "@/lib/guoyu/worksheet";
-import { romanizeChineseLines } from "@/lib/server/guoyu-poe-pinyin";
 
 type Body = { text?: string };
 
@@ -19,20 +19,13 @@ export async function POST(req: NextRequest) {
   }
 
   const lines = splitGuoyuLines(sanitized).filter((l) => l.trim());
-  const romanized = await romanizeChineseLines(lines);
-  if (!romanized.ok) {
-    return NextResponse.json(
-      { error: romanized.error, missing_key: romanized.missingKey ?? false },
-      { status: 503 }
-    );
-  }
-
-  const rows = buildGuoyuWorksheetRows(lines, romanized.lines);
+  const romanizedLines = romanizeGuoyuLines(lines);
+  const rows = buildGuoyuWorksheetRows(lines, romanizedLines);
   return NextResponse.json({
     data: {
       source_text: sanitized,
       lines,
-      romanized_lines: romanized.lines,
+      romanized_lines: romanizedLines,
       rows,
     },
   });
