@@ -1089,6 +1089,46 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "home-faq-soft-243",
+      month: "2026-11",
+      category: "growth",
+      priority: "medium",
+      title: "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
+      evidence_commits: ["ee8c1ff"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "系統點幫到我拎呈分試 RO ？",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "全港，同區以及同校",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "HOME_FAQ_AI_TUTORING_QUESTION",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "咩係 AI 精準輔導？",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "HOME_FAQ_AI_TUTORING_ANSWER",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "CHENGFENSHI_GUIDE_PATH",
+        },
+      ],
+    },
+    {
       id: "login-enquiry-email-address",
       month: "2026-07",
       category: "growth",
@@ -2183,7 +2223,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
-      evidence_commits: ["428a53e", "b04a2a0"],
+      evidence_commits: ["74c296d"],
       checks: [
         { type: "file_exists", path: "src/components/guoyu/GuoyuBrandHeader.tsx" },
         {
