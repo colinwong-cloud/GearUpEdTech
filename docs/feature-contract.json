@@ -3843,6 +3843,24 @@
         },
         {
           "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "練習卷（空白拼音）"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "答案卷"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-worksheet-pdf.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/worksheet-pdf/route.ts"
+        },
+        {
+          "type": "file_contains",
           "path": "src/lib/server/guoyu-poe-common.ts",
           "snippet": "POE_API_KEY"
         },
@@ -3877,102 +3895,12 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T05:41:31.244Z",
+  "generated_at": "2026-11-05T08:34:35.478Z",
   "commit_inventory": [
     {
-      "sha": "ea9d5c3ace325f46a4d0d638b0c63faf56c9f19c",
+      "sha": "382366133323e7fee4f4a5286339f5345517a7b4",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory for TTS defaults"
-    },
-    {
-      "sha": "270955336ea5cb82df9fd5a2fc5eea1a1c15c092",
-      "date": "2026-11-05",
-      "summary": "fix(guoyu): TTS speaks practice text only; default 0.75x speed"
-    },
-    {
-      "sha": "6bb66aa26281c7fdcec82d88367952b72078c18e",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for guoyu TTS quota"
-    },
-    {
-      "sha": "c9f1201f773ce4d88b91364efe5a34efb995ea2d",
-      "date": "2026-11-05",
-      "summary": "feat(guoyu): green-tick quota circles and TTS monthly caps"
-    },
-    {
-      "sha": "95d2dd2c8d88bde2bae2064781458c8482c49680",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for guoyu pinyin and OCR UI"
-    },
-    {
-      "sha": "8e30a13fc7157d1340598f0a423f5f5dedd814fa",
-      "date": "2026-11-05",
-      "summary": "fix(guoyu): tolerate Poe pinyin drift; compose UI polish"
-    },
-    {
-      "sha": "1b14ac8c36d961f944118afd34637016a9f0d199",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for guoyu TTS busy state"
-    },
-    {
-      "sha": "566f1a9686be306ee9e658707d5b8ae14bdd993b",
-      "date": "2026-11-05",
-      "summary": "fix(guoyu): disable 開始朗讀 while TTS request is in flight"
-    },
-    {
-      "sha": "c10b4d7883dd332d6cc0e45ff4bca6c4a5995b26",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory for 91abca2"
-    },
-    {
-      "sha": "91abca28a1427d3c37efd61fe549df6d6158f260",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for Poe-only guoyu"
-    },
-    {
-      "sha": "d37631b88786281d7a45686a35c4a1ab45015db7",
-      "date": "2026-11-05",
-      "summary": "feat: guoyu pinyin and TTS via Poe only (Colin GO)"
-    },
-    {
-      "sha": "4b3c51bf450cbd66a226527c8c545498d34ce6d9",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory for cc6b3d8"
-    },
-    {
-      "sha": "cc6b3d84f43fa4f1e4b561a64a712c9d5f99f682",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for WIF auth"
-    },
-    {
-      "sha": "30f4ba5916619e7651622803bfc85c348dc1877e",
-      "date": "2026-11-05",
-      "summary": "feat: keyless GCP auth for guoyu via Vercel OIDC and WIF"
-    },
-    {
-      "sha": "d5c9874d130efe2eadae3cda051178e4b56a1159",
-      "date": "2026-11-05",
-      "summary": "fix(sql): guoyu OCR HKT month key via HK-local to_char"
-    },
-    {
-      "sha": "ff82d851a4d728ec099cb3f3821c9f6cf1172138",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory for ecea966"
-    },
-    {
-      "sha": "ecea966b8e7a67d2c4810934b33c25af2c8e80a2",
-      "date": "2026-11-05",
-      "summary": "chore: fix homepage-about-us evidence sha in feature contract"
-    },
-    {
-      "sha": "478b55da5998e2f718141059301134d8d598911e",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract for guoyu pinyin phase0"
-    },
-    {
-      "sha": "749b2d6d555455b26444cfb15b022a9d91fba3c6",
-      "date": "2026-11-05",
-      "summary": "feat: add 國語練習 pinyin flow with Finance-locked OCR quota"
+      "summary": "feat: 國語練習 (pinyin) Phase 0 — student flow + OCR/TTS quota (#238)"
     },
     {
       "sha": "9b35bb84e29fd026da7d78e9b52d6615a838c741",
@@ -7061,7 +6989,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 636,
+    "total_commits_since_start": 618,
     "total_feature_rows": 82
   }
 }
