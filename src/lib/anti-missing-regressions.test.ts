@@ -92,6 +92,25 @@ describe("anti-missing regression guards", () => {
     expect(timerIdx).toBeLessThan(enquiryIdx);
   });
 
+  it("keeps home about-us block after parent visibility guide and above fixed footer", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    const aboutIdx = pageSource.indexOf('id="about-us-heading"');
+    const parentGuideIdx = pageSource.indexOf('id="parent-visibility-guide-heading"');
+    const footerIdx = pageSource.indexOf("© 2026 GearUp EduTech Limited");
+    expect(aboutIdx).toBeGreaterThan(-1);
+    expect(parentGuideIdx).toBeGreaterThan(-1);
+    expect(footerIdx).toBeGreaterThan(-1);
+    expect(aboutIdx).toBeGreaterThan(parentGuideIdx);
+    expect(aboutIdx).toBeLessThan(footerIdx);
+    expect(pageSource).toContain("關於我們");
+    expect(pageSource).toContain(
+      "由一班香港人創立，專注教育科技，務求令專業學習更易入手、更可負擔"
+    );
+    expect(pageSource).toContain("如有問題或查詢，請電郵");
+    const aboutSection = pageSource.slice(aboutIdx, aboutIdx + 1200);
+    expect(aboutSection).toContain('href="mailto:cs@gearupquiz.com"');
+  });
+
   it("shows paid upsell on subject select when free quota is exhausted", () => {
     const pageSource = readSource("src/app/page.tsx");
     expect(pageSource).toContain("function SubjectSelectScreen(");
