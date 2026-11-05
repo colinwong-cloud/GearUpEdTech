@@ -2028,6 +2028,36 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "guoyu-pinyin-practice-phase0",
+      month: "2026-11",
+      category: "student",
+      priority: "high",
+      title: "國語練習 pinyin student flow with OCR quota and TTS",
+      evidence_commits: ["pending"],
+      checks: [
+        { type: "file_exists", path: "supabase_guoyu_ocr_quota.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_ocr_quota.sql",
+          snippet: "consume_parent_guoyu_ocr_quota",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_ocr_quota.sql",
+          snippet: "guoyu_ocr_cap_for_parent",
+        },
+        { type: "file_exists", path: "src/app/guoyu/page.tsx" },
+        { type: "file_exists", path: "src/app/guoyu/result/page.tsx" },
+        { type: "file_exists", path: "src/app/api/guoyu/ocr/route.ts" },
+        { type: "file_exists", path: "src/app/api/guoyu/pinyin/route.ts" },
+        { type: "file_exists", path: "src/app/api/guoyu/tts/route.ts" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "國語練習" },
+        { type: "file_contains", path: "src/components/guoyu/GuoyuComposeScreen.tsx", snippet: "練習國語拼音" },
+        { type: "file_contains", path: "src/components/guoyu/GuoyuResultScreen.tsx", snippet: "讀出文章" },
+        { type: "file_contains", path: "src/lib/server/guoyu-poe-ocr.ts", snippet: "POE_API_KEY" },
+      ],
+    },
   ],
 };
 
