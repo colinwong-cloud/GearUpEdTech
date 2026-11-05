@@ -2037,6 +2037,7 @@ export const FEATURE_CONTRACT_BASE = {
       evidence_commits: ["749b2d6", "30f4ba5", "d37631b"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_ocr_quota.sql" },
+        { type: "file_exists", path: "supabase_guoyu_tts_quota.sql" },
         {
           type: "file_contains",
           path: "supabase_guoyu_ocr_quota.sql",
@@ -2046,6 +2047,23 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "supabase_guoyu_ocr_quota.sql",
           snippet: "guoyu_ocr_cap_for_parent",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_tts_quota.sql",
+          snippet: "consume_parent_guoyu_tts_quota",
+        },
+        { type: "file_exists", path: "src/app/api/guoyu/tts-quota/route.ts" },
+        { type: "file_exists", path: "src/lib/server/guoyu-tts-quota.ts" },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuQuotaTickCircle.tsx",
+          snippet: "#84cc16",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "GuoyuTtsQuotaCircles",
         },
         { type: "file_exists", path: "src/app/guoyu/page.tsx" },
         { type: "file_exists", path: "src/app/guoyu/result/page.tsx" },

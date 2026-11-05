@@ -11,6 +11,7 @@ import { readGuoyuStudentResume, saveGuoyuStudentResume } from "@/lib/guoyu/stud
 export default function GuoyuResultPage() {
   const router = useRouter();
   const payload = useMemo(() => readGuoyuResultPayload(), []);
+  const resume = useMemo(() => readGuoyuStudentResume(), []);
 
   useEffect(() => {
     if (!payload?.sourceText) {
@@ -28,10 +29,10 @@ export default function GuoyuResultPage() {
 
   return (
     <GuoyuResultScreen
+      studentId={resume?.selectedStudentId ?? ""}
       sourceText={payload.sourceText}
       rows={payload.rows}
       onBack={() => {
-        const resume = readGuoyuStudentResume();
         if (resume) {
           saveGuoyuStudentResume({
             ...resume,
@@ -40,6 +41,12 @@ export default function GuoyuResultPage() {
           });
         }
         router.push("/guoyu");
+      }}
+      onUpgrade={() => {
+        if (resume) {
+          saveGuoyuStudentResume({ ...resume, returnScreen: "payment" });
+        }
+        router.push("/");
       }}
     />
   );

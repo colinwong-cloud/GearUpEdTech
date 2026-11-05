@@ -1,30 +1,77 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   GUOYU_TTS_SPEED_OPTIONS,
   type GuoyuWorksheetRow,
 } from "@/lib/guoyu/worksheet";
+import {
+  guoyuTtsQuotaExhausted,
+  type GuoyuTtsQuotaView,
+} from "@/lib/guoyu/quota-copy";
+import { GuoyuTtsQuotaCircles } from "@/components/guoyu/GuoyuTtsQuotaCircles";
+
+type TtsQuotaPayload = {
+  rpc_ready: boolean;
+  remaining: number;
+  cap: number;
+  is_paid_parent: boolean;
+};
 
 export type GuoyuResultScreenProps = {
+  studentId: string;
   sourceText: string;
   rows: GuoyuWorksheetRow[];
   onBack: () => void;
+  onUpgrade: () => void;
 };
 
-export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScreenProps) {
+export function GuoyuResultScreen({
+  studentId,
+  sourceText,
+  rows,
+  onBack,
+  onUpgrade,
+}: GuoyuResultScreenProps) {
   const [speed, setSpeed] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [ttsPending, setTtsPending] = useState(false);
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [ttsSupported, setTtsSupported] = useState(true);
+  const [ttsQuota, setTtsQuota] = useState<TtsQuotaPayload | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const ttsInFlightRef = useRef(false);
 
+  const ttsQuotaView: GuoyuTtsQuotaView | null = ttsQuota
+    ? {
+        remaining: ttsQuota.remaining,
+        cap: ttsQuota.cap,
+        isPaidMit: ttsQuota.is_paid_parent,
+      }
+    : null;
+
+  const ttsExhausted = ttsQuota
+    ? guoyuTtsQuotaExhausted(ttsQuota.remaining, ttsQuota.rpc_ready)
+    : false;
+
+  const refreshTtsQuota = useCallback(async () => {
+    const res = await fetch("/api/guoyu/tts-quota", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId }),
+    });
+    const payload = (await res.json()) as { data?: TtsQuotaPayload; error?: string };
+    if (payload.data) setTtsQuota(payload.data);
+  }, [studentId]);
+
   useEffect(() => {
     document.title = "拼音練習｜增分寶 GearUp Quiz";
   }, []);
+
+  useEffect(() => {
+    void refreshTtsQuota();
+  }, [refreshTtsQuota]);
 
   useEffect(() => {
     return () => {
@@ -39,7 +86,7 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
   };
 
   const startPlayback = async () => {
-    if (ttsInFlightRef.current) return;
+    if (ttsInFlightRef.current || ttsExhausted) return;
     ttsInFlightRef.current = true;
     setTtsPending(true);
     setTtsError(null);
@@ -52,14 +99,32 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
       const res = await fetch("/api/guoyu/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: sourceText, speaking_rate: speed }),
+        body: JSON.stringify({
+          student_id: studentId,
+          text: sourceText,
+          speaking_rate: speed,
+        }),
       });
       const payload = (await res.json()) as {
-        data?: { audio_base64: string; content_type: string };
+        data?: {
+          audio_base64: string;
+          content_type: string;
+          quota?: TtsQuotaPayload;
+        };
         error?: string;
+        quota?: TtsQuotaPayload;
       };
+      if (payload.data?.quota) {
+        setTtsQuota(payload.data.quota);
+      } else if (payload.quota) {
+        setTtsQuota(payload.quota);
+      }
       if (!res.ok || !payload.data?.audio_base64) {
-        setTtsSupported(false);
+        if (res.status === 429) {
+          setTtsError(payload.error || "本月朗讀額度已用完");
+          return;
+        }
+        setTtsSupported(res.status !== 429);
         setTtsError(payload.error || "此瀏覽器暫不支援朗讀");
         return;
       }
@@ -83,7 +148,7 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
     }
   };
 
-  const startReadAloudDisabled = ttsPending || playing;
+  const startReadAloudDisabled = ttsPending || playing || ttsExhausted;
   const startReadAloudLabel = ttsPending ? "處理中" : "開始朗讀";
 
   if (!sourceText.trim() || rows.length === 0) {
@@ -141,7 +206,7 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
                 value={speed}
                 onChange={(e) => setSpeed(Number(e.target.value))}
                 className="min-h-11 rounded-lg border border-gray-200 px-2 py-2 text-sm"
-                disabled={playing || ttsPending}
+                disabled={playing || ttsPending || ttsExhausted}
               >
                 {GUOYU_TTS_SPEED_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -150,30 +215,35 @@ export function GuoyuResultScreen({ sourceText, rows, onBack }: GuoyuResultScree
                 ))}
               </select>
             </label>
-            <div className="flex flex-1 gap-2">
-              {ttsSupported && (
-                <button
-                  type="button"
-                  onClick={() => void startPlayback()}
-                  disabled={startReadAloudDisabled}
-                  aria-busy={ttsPending}
-                  className={`min-h-11 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
-                    startReadAloudDisabled
-                      ? "cursor-not-allowed bg-emerald-600/50"
-                      : "bg-emerald-600 hover:bg-emerald-700"
-                  }`}
-                >
-                  {startReadAloudLabel}
-                </button>
-              )}
-              {playing && (
-                <button
-                  type="button"
-                  onClick={stopPlayback}
-                  className="min-h-11 flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
-                >
-                  停止
-                </button>
+            <div className="flex flex-1 flex-col gap-2">
+              <div className="flex gap-2">
+                {ttsSupported && (
+                  <button
+                    type="button"
+                    onClick={() => void startPlayback()}
+                    disabled={startReadAloudDisabled}
+                    aria-busy={ttsPending}
+                    className={`min-h-11 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
+                      startReadAloudDisabled
+                        ? "cursor-not-allowed bg-emerald-600/50"
+                        : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                  >
+                    {startReadAloudLabel}
+                  </button>
+                )}
+                {playing && (
+                  <button
+                    type="button"
+                    onClick={stopPlayback}
+                    className="min-h-11 flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                  >
+                    停止
+                  </button>
+                )}
+              </div>
+              {ttsQuotaView && (
+                <GuoyuTtsQuotaCircles view={ttsQuotaView} onUpgrade={onUpgrade} />
               )}
             </div>
           </div>

@@ -139,6 +139,9 @@ describe("anti-missing regression guards", () => {
     expect(sqlSource).toContain("guoyu_ocr_cap_for_parent");
     expect(sqlSource).toContain("paid_until >= now()");
     expect(sqlSource).toContain("guoyu_ocr_parent_is_tutor");
+    const ttsSql = readSource("supabase_guoyu_tts_quota.sql");
+    expect(ttsSql).toContain("HOLD");
+    expect(ttsSql).toContain("consume_parent_guoyu_tts_quota");
   });
 
   it("keeps parent practice email readability and wrong-question details", () => {
