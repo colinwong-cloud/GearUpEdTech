@@ -3756,7 +3756,8 @@
       "title": "國語練習 pinyin student flow with OCR quota and TTS",
       "evidence_commits": [
         "749b2d6",
-        "30f4ba5"
+        "30f4ba5",
+        "d37631b"
       ],
       "checks": [
         {
@@ -3810,33 +3811,47 @@
         },
         {
           "type": "file_contains",
-          "path": "src/lib/server/guoyu-poe-ocr.ts",
+          "path": "src/lib/server/guoyu-poe-common.ts",
           "snippet": "POE_API_KEY"
         },
         {
           "type": "file_exists",
-          "path": "src/lib/server/google-cloud-auth-config.ts"
+          "path": "src/lib/server/guoyu-poe-pinyin.ts"
         },
         {
           "type": "file_contains",
-          "path": "src/lib/server/google-cloud-auth.ts",
-          "snippet": "ExternalAccountClient"
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "GPT-5.4"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/guoyu-poe-tts.ts"
         },
         {
           "type": "file_contains",
-          "path": "src/lib/server/google-cloud-auth.ts",
-          "snippet": "getVercelOidcToken"
-        },
-        {
-          "type": "file_contains",
-          "path": "src/lib/server/google-cloud-auth-config.ts",
-          "snippet": "GCP_WORKLOAD_IDENTITY_POOL_ID"
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "Gemini-3.1-Flash-TTS"
         }
       ]
     }
   ],
-  "generated_at": "2026-11-05T04:03:20.047Z",
+  "generated_at": "2026-11-05T04:17:33.690Z",
   "commit_inventory": [
+    {
+      "sha": "ec17865fa79fdd3388e81c1dfae53571138e0eae",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract for Poe-only guoyu"
+    },
+    {
+      "sha": "d37631b88786281d7a45686a35c4a1ab45015db7",
+      "date": "2026-11-05",
+      "summary": "feat: guoyu pinyin and TTS via Poe only (Colin GO)"
+    },
+    {
+      "sha": "4b3c51bf450cbd66a226527c8c545498d34ce6d9",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for cc6b3d8"
+    },
     {
       "sha": "cc6b3d84f43fa4f1e4b561a64a712c9d5f99f682",
       "date": "2026-11-05",
@@ -6959,7 +6974,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 624,
+    "total_commits_since_start": 627,
     "total_feature_rows": 82
   }
 }
