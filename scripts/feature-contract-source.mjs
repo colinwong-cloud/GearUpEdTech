@@ -2034,7 +2034,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "high",
       title: "國語練習 pinyin student flow with OCR quota and TTS",
-      evidence_commits: ["749b2d6", "30f4ba5", "d37631b"],
+      evidence_commits: ["3823661", "d936929"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_ocr_quota.sql" },
         { type: "file_exists", path: "supabase_guoyu_tts_quota.sql" },
