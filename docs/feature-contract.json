@@ -3747,34 +3747,85 @@
           "snippet": "home_page_notice_update"
         }
       ]
+    },
+    {
+      "id": "guoyu-pinyin-practice-phase0",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "high",
+      "title": "國語練習 pinyin student flow with OCR quota and TTS",
+      "evidence_commits": [
+        "749b2d6"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_guoyu_ocr_quota.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_ocr_quota.sql",
+          "snippet": "consume_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_ocr_quota.sql",
+          "snippet": "guoyu_ocr_cap_for_parent"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/guoyu/page.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/guoyu/result/page.tsx"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/ocr/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/pinyin/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/guoyu/tts/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "國語練習"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "練習國語拼音"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "讀出文章"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-ocr.ts",
+          "snippet": "POE_API_KEY"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-05T01:35:24.931Z",
+  "generated_at": "2026-11-05T02:15:53.755Z",
   "commit_inventory": [
     {
-      "sha": "a645b241aaffccd4ddfdb715d86abdca2d65495a",
+      "sha": "749b2d6d555455b26444cfb15b022a9d91fba3c6",
       "date": "2026-11-05",
-      "summary": "chore: align countdown CTA contract evidence with main merge commit"
+      "summary": "feat: add 國語練習 pinyin flow with Finance-locked OCR quota"
     },
     {
-      "sha": "512baafdbec31376981a74a8ff7fb9a73a6440d2",
+      "sha": "9b35bb84e29fd026da7d78e9b52d6615a838c741",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature contract inventory after evidence pin"
-    },
-    {
-      "sha": "a724546cfd799c2619f9c6841218edaa9bc69766",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature contract for homepage about-us block"
-    },
-    {
-      "sha": "e2c3a7fb5f4771619b5742068c3f9e32063d1e84",
-      "date": "2026-11-05",
-      "summary": "chore: pin homepage-about-us evidence commit in contract source"
-    },
-    {
-      "sha": "d6c1eb581690342320aab028ccbdff3d3148da47",
-      "date": "2026-11-05",
-      "summary": "feat(home): add 關於我們 card above fixed footer"
+      "summary": "feat(home): 關於我們 card above fixed footer (UI-only) (#237)"
     },
     {
       "sha": "10dd43f4f6d1043f2e4d0c0698b2246bb2ec011e",
@@ -6858,7 +6909,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 621,
-    "total_feature_rows": 81
+    "total_commits_since_start": 618,
+    "total_feature_rows": 82
   }
 }
