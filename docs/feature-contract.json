@@ -3828,7 +3828,7 @@
         {
           "type": "file_contains",
           "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
-          "snippet": "練習國語拼音"
+          "snippet": "練習普通話拼音"
         },
         {
           "type": "file_contains",
@@ -3853,7 +3853,12 @@
         {
           "type": "file_contains",
           "path": "src/components/guoyu/GuoyuResultScreen.tsx",
-          "snippet": "練習卷（空白拼音）"
+          "snippet": "下載練習卷讓小朋友填寫拼音"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "? \"處理中…\" : \"練習卷\""
         },
         {
           "type": "file_contains",
@@ -3920,7 +3925,7 @@
       "priority": "high",
       "title": "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
       "evidence_commits": [
-        "3f46849"
+        "68909e4"
       ],
       "checks": [
         {
@@ -3957,24 +3962,101 @@
           "snippet": "unlockGuoyuTtsAudioInUserGesture"
         }
       ]
+    },
+    {
+      "id": "guoyu-putonghua-ui-soft-242",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "medium",
+      "title": "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
+      "evidence_commits": [
+        "428a53e",
+        "b04a2a0"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/guoyu/GuoyuBrandHeader.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuBrandHeader.tsx",
+          "snippet": "/main/gearup-quiz-logo.webp"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "GuoyuBrandHeader"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "GuoyuBrandHeader"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/quota-copy.ts",
+          "snippet": "綠勾勾＝已用額度；空心＝尚餘額度"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuParentQuotaCircles.tsx",
+          "snippet": "GUOYU_QUOTA_CIRCLE_EXPLAINER"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "練習普通話拼音"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "下載練習卷讓小朋友填寫拼音"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-05T15:05:47.035Z",
+  "generated_at": "2026-11-05T16:31:40.374Z",
   "commit_inventory": [
     {
-      "sha": "1003f46db38cbf583583c858d11514432a4a846e",
+      "sha": "a8da0d94dfb44ce4874a16cbb33892c629df7ef0",
       "date": "2026-11-05",
-      "summary": "chore: add feature-contract evidence for guoyu TTS iOS playback soft"
+      "summary": "chore(feature-contract): point guoyu TTS playback evidence at 68909e4"
     },
     {
-      "sha": "93454d9286abc0745ae82d9f57b7420831a8fdd0",
+      "sha": "236554bac00464db7481e34a2e59c09b13257b76",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory"
+      "summary": "docs: refresh feature contract inventory"
     },
     {
-      "sha": "3f4684958a0dbbf988cc0c0164f5f005c1485dc3",
+      "sha": "cfe811c989c203c8006499ae90a12ab47fdba03e",
       "date": "2026-11-05",
-      "summary": "fix(guoyu): unlock iOS audio before TTS fetch and accurate errors"
+      "summary": "chore(feature-contract): evidence commits for guoyu #242 soft row"
+    },
+    {
+      "sha": "a97dc60b8c566dd8b330b93b2dcf6e506ff9986a",
+      "date": "2026-11-05",
+      "summary": "docs: refresh feature contract after guoyu PDF wording soft"
+    },
+    {
+      "sha": "b04a2a02d57fcec0df07a3cd198779e84c169bb4",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): soften PDF download section copy on result screen (#242)"
+    },
+    {
+      "sha": "594fda9e81f989370c2a29b291b2a8d47f5f7dfa",
+      "date": "2026-11-05",
+      "summary": "docs: refresh feature contract after guoyu #242 UI soft"
+    },
+    {
+      "sha": "428a53ee3196f12c4eb263b92e3fbc71077d7fad",
+      "date": "2026-11-05",
+      "summary": "feat(guoyu): 普通話 UI polish — logo, copy, quota legend (#242)"
+    },
+    {
+      "sha": "68909e4cc7defd35b9ba7d153e608b5a9f0188df",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): iOS Chrome TTS playback after Poe API success (#241)"
     },
     {
       "sha": "a9344108cd1ccee92bc561f45fe4e44ade1393ee",
@@ -7078,7 +7160,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 623,
-    "total_feature_rows": 83
+    "total_commits_since_start": 628,
+    "total_feature_rows": 84
   }
 }

@@ -12,6 +12,7 @@ import {
 } from "@/lib/guoyu/quota-copy";
 import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
 import type { GuoyuWorksheetPdfKind } from "@/lib/guoyu/worksheet-pdf";
+import { GuoyuBrandHeader } from "@/components/guoyu/GuoyuBrandHeader";
 import { GuoyuTtsQuotaCircles } from "@/components/guoyu/GuoyuTtsQuotaCircles";
 import {
   GUOYU_TTS_ERR_BROWSER_UNSUPPORTED,
@@ -209,11 +210,18 @@ export function GuoyuResultScreen({
 
   if (!sourceText.trim() || rows.length === 0) {
     return (
-      <div className="min-h-screen bg-white/60 px-4 py-10 text-center">
-        <p className="text-gray-600">沒有練習內容</p>
-        <button type="button" onClick={onBack} className="mt-4 text-indigo-600 underline">
-          返回
-        </button>
+      <div className="min-h-screen bg-white/60 px-4 py-10">
+        <div className="mx-auto w-full max-w-md">
+          <GuoyuBrandHeader />
+          <p className="text-center text-gray-600">沒有練習內容</p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-4 w-full text-center text-indigo-600 underline"
+          >
+            返回
+          </button>
+        </div>
       </div>
     );
   }
@@ -221,6 +229,7 @@ export function GuoyuResultScreen({
   return (
     <div className="min-h-screen bg-white/60 backdrop-blur-sm px-4 pb-12 pt-6" lang="zh-Hant">
       <div className="mx-auto w-full max-w-md">
+        <GuoyuBrandHeader />
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-bold text-gray-900">拼音練習</h1>
           <button
@@ -317,7 +326,7 @@ export function GuoyuResultScreen({
         </section>
 
         <section className="mt-8 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">下載練習 PDF</h2>
+          <h2 className="text-base font-semibold text-gray-900">下載練習卷讓小朋友填寫拼音</h2>
           <div className="mt-4 flex flex-col gap-3">
             <button
               type="button"
@@ -329,7 +338,7 @@ export function GuoyuResultScreen({
                   : "bg-indigo-600 hover:bg-indigo-700"
               }`}
             >
-              {pdfBusyKind === "practice" ? "處理中…" : "練習卷（空白拼音）"}
+              {pdfBusyKind === "practice" ? "處理中…" : "練習卷"}
             </button>
             <button
               type="button"

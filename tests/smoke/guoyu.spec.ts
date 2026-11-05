@@ -30,7 +30,7 @@ test.describe("Guoyu compose smoke", () => {
     });
 
     await page.goto("/guoyu");
-    await expect(page.getByRole("heading", { name: "練習國語拼音" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "練習普通話拼音" })).toBeVisible();
     await expect(page.getByRole("button", { name: "生成練習" })).toBeVisible();
     await expect(page.getByText("使用方法：").first()).toBeVisible();
   });

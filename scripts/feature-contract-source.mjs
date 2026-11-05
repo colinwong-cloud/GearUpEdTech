@@ -2071,7 +2071,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/app/api/guoyu/pinyin/route.ts" },
         { type: "file_exists", path: "src/app/api/guoyu/tts/route.ts" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "國語練習" },
-        { type: "file_contains", path: "src/components/guoyu/GuoyuComposeScreen.tsx", snippet: "練習國語拼音" },
+        { type: "file_contains", path: "src/components/guoyu/GuoyuComposeScreen.tsx", snippet: "練習普通話拼音" },
         { type: "file_contains", path: "src/components/guoyu/GuoyuResultScreen.tsx", snippet: "讀出文章" },
         {
           type: "file_contains",
@@ -2091,7 +2091,12 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
-          snippet: "練習卷（空白拼音）",
+          snippet: "下載練習卷讓小朋友填寫拼音",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: '? "處理中…" : "練習卷"',
         },
         {
           type: "file_contains",
@@ -2141,7 +2146,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "high",
       title: "國語練習 TTS iOS WebKit playback (user-gesture unlock)",
-      evidence_commits: ["3f46849"],
+      evidence_commits: ["68909e4"],
       checks: [
         { type: "file_exists", path: "src/lib/guoyu/tts-playback.ts" },
         { type: "file_exists", path: "src/lib/guoyu/tts-playback.test.ts" },
@@ -2169,6 +2174,52 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
           snippet: "unlockGuoyuTtsAudioInUserGesture",
+        },
+      ],
+    },
+    {
+      id: "guoyu-putonghua-ui-soft-242",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
+      evidence_commits: ["428a53e", "b04a2a0"],
+      checks: [
+        { type: "file_exists", path: "src/components/guoyu/GuoyuBrandHeader.tsx" },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuBrandHeader.tsx",
+          snippet: "/main/gearup-quiz-logo.webp",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuComposeScreen.tsx",
+          snippet: "GuoyuBrandHeader",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "GuoyuBrandHeader",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/guoyu/quota-copy.ts",
+          snippet: "綠勾勾＝已用額度；空心＝尚餘額度",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuParentQuotaCircles.tsx",
+          snippet: "GUOYU_QUOTA_CIRCLE_EXPLAINER",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuComposeScreen.tsx",
+          snippet: "練習普通話拼音",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "下載練習卷讓小朋友填寫拼音",
         },
       ],
     },
