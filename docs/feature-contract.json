@@ -3828,7 +3828,7 @@
         {
           "type": "file_contains",
           "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
-          "snippet": "練習國語拼音"
+          "snippet": "練習普通話拼音"
         },
         {
           "type": "file_contains",
@@ -3957,24 +3957,63 @@
           "snippet": "unlockGuoyuTtsAudioInUserGesture"
         }
       ]
+    },
+    {
+      "id": "guoyu-putonghua-ui-soft-242",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "medium",
+      "title": "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/components/guoyu/GuoyuBrandHeader.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuBrandHeader.tsx",
+          "snippet": "/main/gearup-quiz-logo.webp"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "GuoyuBrandHeader"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuResultScreen.tsx",
+          "snippet": "GuoyuBrandHeader"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/guoyu/quota-copy.ts",
+          "snippet": "綠勾勾＝已用額度；空心＝尚餘額度"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuParentQuotaCircles.tsx",
+          "snippet": "GUOYU_QUOTA_CIRCLE_EXPLAINER"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.tsx",
+          "snippet": "練習普通話拼音"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-05T15:05:47.035Z",
+  "generated_at": "2026-11-05T15:53:21.870Z",
   "commit_inventory": [
     {
-      "sha": "1003f46db38cbf583583c858d11514432a4a846e",
+      "sha": "428a53ee3196f12c4eb263b92e3fbc71077d7fad",
       "date": "2026-11-05",
-      "summary": "chore: add feature-contract evidence for guoyu TTS iOS playback soft"
+      "summary": "feat(guoyu): 普通話 UI polish — logo, copy, quota legend (#242)"
     },
     {
-      "sha": "93454d9286abc0745ae82d9f57b7420831a8fdd0",
+      "sha": "68909e4cc7defd35b9ba7d153e608b5a9f0188df",
       "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract inventory"
-    },
-    {
-      "sha": "3f4684958a0dbbf988cc0c0164f5f005c1485dc3",
-      "date": "2026-11-05",
-      "summary": "fix(guoyu): unlock iOS audio before TTS fetch and accurate errors"
+      "summary": "fix(guoyu): iOS Chrome TTS playback after Poe API success (#241)"
     },
     {
       "sha": "a9344108cd1ccee92bc561f45fe4e44ade1393ee",
@@ -7078,7 +7117,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 623,
-    "total_feature_rows": 83
+    "total_commits_since_start": 622,
+    "total_feature_rows": 84
   }
 }
