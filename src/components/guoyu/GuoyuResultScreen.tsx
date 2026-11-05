@@ -13,6 +13,13 @@ import {
 import { filenameFromContentDisposition } from "@/lib/tutor-practice-paper";
 import type { GuoyuWorksheetPdfKind } from "@/lib/guoyu/worksheet-pdf";
 import { GuoyuTtsQuotaCircles } from "@/components/guoyu/GuoyuTtsQuotaCircles";
+import {
+  GUOYU_TTS_ERR_BROWSER_UNSUPPORTED,
+  guoyuTtsApiErrorMessage,
+  guoyuTtsPlaybackErrorMessage,
+  isHtmlAudioAvailable,
+  unlockGuoyuTtsAudioInUserGesture,
+} from "@/lib/guoyu/tts-playback";
 
 type TtsQuotaPayload = {
   rpc_ready: boolean;
@@ -72,6 +79,10 @@ export function GuoyuResultScreen({
 
   useEffect(() => {
     document.title = "拼音練習｜增分寶 GearUp Quiz";
+    if (!isHtmlAudioAvailable()) {
+      setTtsSupported(false);
+      setTtsError(GUOYU_TTS_ERR_BROWSER_UNSUPPORTED);
+    }
   }, []);
 
   useEffect(() => {
@@ -91,7 +102,7 @@ export function GuoyuResultScreen({
   };
 
   const startPlayback = async () => {
-    if (ttsInFlightRef.current || ttsExhausted) return;
+    if (ttsInFlightRef.current || ttsExhausted || !ttsSupported) return;
     ttsInFlightRef.current = true;
     setTtsPending(true);
     setTtsError(null);
@@ -100,6 +111,15 @@ export function GuoyuResultScreen({
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
+
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audioRef.current = audio;
+    }
+    unlockGuoyuTtsAudioInUserGesture(audio);
+    audio.onended = () => setPlaying(false);
+
     try {
       const res = await fetch("/api/guoyu/tts", {
         method: "POST",
@@ -125,12 +145,7 @@ export function GuoyuResultScreen({
         setTtsQuota(payload.quota);
       }
       if (!res.ok || !payload.data?.audio_base64) {
-        if (res.status === 429) {
-          setTtsError(payload.error || "本月朗讀額度已用完");
-          return;
-        }
-        setTtsSupported(res.status !== 429);
-        setTtsError(payload.error || "此瀏覽器暫不支援朗讀");
+        setTtsError(guoyuTtsApiErrorMessage(res.status, payload.error));
         return;
       }
       const binary = atob(payload.data.audio_base64);
@@ -139,14 +154,12 @@ export function GuoyuResultScreen({
       const blob = new Blob([bytes], { type: payload.data.content_type || "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       objectUrlRef.current = url;
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setPlaying(false);
+      audio.src = url;
+      audio.load();
       await audio.play();
       setPlaying(true);
-    } catch {
-      setTtsSupported(false);
-      setTtsError("此瀏覽器暫不支援朗讀");
+    } catch (err) {
+      setTtsError(guoyuTtsPlaybackErrorMessage(err));
     } finally {
       ttsInFlightRef.current = false;
       setTtsPending(false);

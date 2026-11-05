@@ -2081,6 +2081,16 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "unlockGuoyuTtsAudioInUserGesture",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/guoyu/tts-playback.ts",
+          snippet: "未能播放朗讀，請再試一次",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
           snippet: "練習卷（空白拼音）",
         },
         {
