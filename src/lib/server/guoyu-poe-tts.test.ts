@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildPoeTtsUserText,
   extractAudioFromPoeCompletion,
   speakingRateToPoePaceTag,
   synthesizeMandarinTts,
@@ -58,6 +59,12 @@ describe("guoyu-poe-tts", () => {
     }
   });
 
+  it("builds TTS user text from practice body only (no spoken preface)", () => {
+    expect(buildPoeTtsUserText("你好世界", 1)).toBe("你好世界");
+    expect(buildPoeTtsUserText("你好", 0.75)).toContain("你好");
+    expect(buildPoeTtsUserText("你好", 0.75)).not.toContain("請用普通話");
+  });
+
   it("requests Gemini TTS model with stream false", async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
@@ -74,5 +81,7 @@ describe("guoyu-poe-tts", () => {
     const body = JSON.parse(String((call[1] as RequestInit).body));
     expect(body.model).toBe("Gemini-3.1-Flash-TTS");
     expect(body.stream).toBe(false);
+    expect(String(body.messages[0].content)).not.toContain("請用普通話朗讀");
+    expect(String(body.messages[0].content)).toContain("你好");
   });
 });

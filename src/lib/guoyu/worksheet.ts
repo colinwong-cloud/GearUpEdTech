@@ -55,3 +55,5 @@ export const GUOYU_TTS_SPEED_OPTIONS = [
   { value: 1.75, label: "1.75×（更快）" },
   { value: 2.0, label: "2.0×（最快）" },
 ] as const;
+
+export const GUOYU_TTS_DEFAULT_SPEED = 0.75;

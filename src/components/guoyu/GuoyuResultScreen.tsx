@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  GUOYU_TTS_DEFAULT_SPEED,
   GUOYU_TTS_SPEED_OPTIONS,
   type GuoyuWorksheetRow,
 } from "@/lib/guoyu/worksheet";
@@ -33,7 +34,7 @@ export function GuoyuResultScreen({
   onBack,
   onUpgrade,
 }: GuoyuResultScreenProps) {
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(GUOYU_TTS_DEFAULT_SPEED);
   const [playing, setPlaying] = useState(false);
   const [ttsPending, setTtsPending] = useState(false);
   const [ttsError, setTtsError] = useState<string | null>(null);

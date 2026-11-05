@@ -93,6 +93,11 @@ export function extractAudioFromPoeCompletion(
   return Promise.resolve(null);
 }
 
+export function buildPoeTtsUserText(text: string, speakingRate: number): string {
+  const pace = speakingRateToPoePaceTag(speakingRate);
+  return `${pace}${text.slice(0, 5000)}`.trim();
+}
+
 export async function synthesizeMandarinTts(params: {
   text: string;
   speakingRate: number;
@@ -103,8 +108,7 @@ export async function synthesizeMandarinTts(params: {
   if (!key) return poeMissingKeyError("tts");
 
   const fetchFn = params.fetchImpl ?? fetch;
-  const pace = speakingRateToPoePaceTag(params.speakingRate);
-  const userText = `${pace}請用普通話朗讀以下中文課文：\n${params.text.slice(0, 5000)}`;
+  const userText = buildPoeTtsUserText(params.text, params.speakingRate);
 
   let res: Response;
   try {

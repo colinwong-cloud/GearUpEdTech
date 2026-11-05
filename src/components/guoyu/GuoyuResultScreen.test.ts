@@ -13,7 +13,7 @@ describe("GuoyuResultScreen TTS busy state and quota", () => {
     expect(source).toContain('startReadAloudLabel = ttsPending ? "處理中" : "開始朗讀"');
     expect(source).toContain("ttsExhausted");
     expect(source).toContain("GuoyuTtsQuotaCircles");
-    expect(source).toContain("student_id: studentId");
+    expect(source).toContain("GUOYU_TTS_DEFAULT_SPEED");
     const controlsIdx = source.indexOf("startReadAloudLabel");
     expect(source.indexOf("GuoyuTtsQuotaCircles", controlsIdx)).toBeGreaterThan(controlsIdx);
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sanitizeGuoyuInput, hasGuoyuPracticeContent } from "@/lib/guoyu/text";
+import { GUOYU_TTS_DEFAULT_SPEED } from "@/lib/guoyu/worksheet";
 import { synthesizeMandarinTts } from "@/lib/server/guoyu-poe-tts";
 import {
   consumeGuoyuTtsQuota,
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rateRaw = Number(body.speaking_rate ?? 1);
+  const rateRaw = Number(body.speaking_rate ?? GUOYU_TTS_DEFAULT_SPEED);
   const speakingRate = Number.isFinite(rateRaw)
     ? Math.min(2, Math.max(0.75, rateRaw))
     : 1;
