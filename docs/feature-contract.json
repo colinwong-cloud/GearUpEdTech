@@ -4012,8 +4012,7 @@
       "priority": "medium",
       "title": "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
       "evidence_commits": [
-        "428a53e",
-        "b04a2a0"
+        "74c296d"
       ],
       "checks": [
         {
@@ -4058,8 +4057,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T18:04:39.518Z",
+  "generated_at": "2026-11-05T18:05:15.603Z",
   "commit_inventory": [
+    {
+      "sha": "957bb927f7dba2583be70b058d3969a3ea004225",
+      "date": "2026-11-05",
+      "summary": "chore(feature-contract): align guoyu #242 evidence with squashed main commit"
+    },
+    {
+      "sha": "28e3ade8a66dbba9ce67cb4b4babeeefff5d01ab",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract.json after #243 evidence commit"
+    },
     {
       "sha": "d113e4a99c5cfe56d7de78b5e656d61d55297c64",
       "date": "2026-11-05",
@@ -7187,7 +7196,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 625,
+    "total_commits_since_start": 627,
     "total_feature_rows": 85
   }
 }
