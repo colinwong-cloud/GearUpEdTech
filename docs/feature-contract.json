@@ -3904,8 +3904,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T09:09:22.888Z",
+  "generated_at": "2026-11-05T09:17:06.293Z",
   "commit_inventory": [
+    {
+      "sha": "3405a20086281f3047f97c80128a6003246df3e7",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature contract inventory"
+    },
+    {
+      "sha": "9e6bd43c48fceec0545309a069fa0c43391535b2",
+      "date": "2026-11-05",
+      "summary": "fix(guoyu): tone-marked pinyin and practice PDF spacing"
+    },
     {
       "sha": "9aece0890c1e8a67e10c557a3a1cb1998ea23798",
       "date": "2026-11-05",
@@ -7003,7 +7013,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 619,
+    "total_commits_since_start": 621,
     "total_feature_rows": 82
   }
 }
