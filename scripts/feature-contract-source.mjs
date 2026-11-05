@@ -2183,7 +2183,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Guoyu pinyin UI — 普通話 copy, logo header, quota circle legend (#242)",
-      evidence_commits: [],
+      evidence_commits: ["428a53e", "b04a2a0"],
       checks: [
         { type: "file_exists", path: "src/components/guoyu/GuoyuBrandHeader.tsx" },
         {
@@ -2215,6 +2215,11 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuComposeScreen.tsx",
           snippet: "練習普通話拼音",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuResultScreen.tsx",
+          snippet: "下載練習卷讓小朋友填寫拼音",
         },
       ],
     },
