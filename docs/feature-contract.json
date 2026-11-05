@@ -3755,7 +3755,8 @@
       "priority": "high",
       "title": "國語練習 pinyin student flow with OCR quota and TTS",
       "evidence_commits": [
-        "749b2d6"
+        "749b2d6",
+        "30f4ba5"
       ],
       "checks": [
         {
@@ -3811,12 +3812,46 @@
           "type": "file_contains",
           "path": "src/lib/server/guoyu-poe-ocr.ts",
           "snippet": "POE_API_KEY"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/server/google-cloud-auth-config.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/google-cloud-auth.ts",
+          "snippet": "ExternalAccountClient"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/google-cloud-auth.ts",
+          "snippet": "getVercelOidcToken"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/google-cloud-auth-config.ts",
+          "snippet": "GCP_WORKLOAD_IDENTITY_POOL_ID"
         }
       ]
     }
   ],
-  "generated_at": "2026-11-05T02:18:17.370Z",
+  "generated_at": "2026-11-05T04:01:34.605Z",
   "commit_inventory": [
+    {
+      "sha": "30f4ba5916619e7651622803bfc85c348dc1877e",
+      "date": "2026-11-05",
+      "summary": "feat: keyless GCP auth for guoyu via Vercel OIDC and WIF"
+    },
+    {
+      "sha": "d5c9874d130efe2eadae3cda051178e4b56a1159",
+      "date": "2026-11-05",
+      "summary": "fix(sql): guoyu OCR HKT month key via HK-local to_char"
+    },
+    {
+      "sha": "ff82d851a4d728ec099cb3f3821c9f6cf1172138",
+      "date": "2026-11-05",
+      "summary": "chore: refresh feature-contract inventory for ecea966"
+    },
     {
       "sha": "ecea966b8e7a67d2c4810934b33c25af2c8e80a2",
       "date": "2026-11-05",
@@ -6919,7 +6954,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 620,
+    "total_commits_since_start": 623,
     "total_feature_rows": 82
   }
 }
