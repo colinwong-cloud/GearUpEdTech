@@ -10,6 +10,7 @@ import {
 } from "@/lib/guoyu/text";
 import { type GuoyuOcrQuotaView } from "@/lib/guoyu/quota-copy";
 import type { GuoyuWorksheetRow } from "@/lib/guoyu/worksheet";
+import { GuoyuBrandHeader } from "@/components/guoyu/GuoyuBrandHeader";
 import { GuoyuOcrQuotaCircles } from "@/components/guoyu/GuoyuOcrQuotaCircles";
 
 type QuotaPayload = {
@@ -76,7 +77,7 @@ export function GuoyuComposeScreen({
   }, [refreshQuota]);
 
   useEffect(() => {
-    document.title = "練習國語拼音｜增分寶 GearUp Quiz";
+    document.title = "練習普通話拼音｜增分寶 GearUp Quiz";
   }, []);
 
   const handleTextChange = (raw: string) => {
@@ -182,7 +183,8 @@ export function GuoyuComposeScreen({
       lang="zh-Hant"
     >
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-900">練習國語拼音</h1>
+        <GuoyuBrandHeader />
+        <h1 className="text-2xl font-bold text-gray-900">練習普通話拼音</h1>
         <p className="mt-1 text-sm text-gray-500">
           上傳課文或自行輸入，即時生成拼音練習
         </p>

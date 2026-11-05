@@ -1,4 +1,5 @@
 import {
+  GUOYU_QUOTA_CIRCLE_EXPLAINER,
   guoyuQuotaCircleTotal,
   guoyuQuotaCirclesUsed,
   type GuoyuParentQuotaView,
@@ -22,22 +23,25 @@ export function GuoyuParentQuotaCircles({
   const used = guoyuQuotaCirclesUsed(view);
 
   return (
-    <div className="flex flex-wrap items-center gap-2" role="img" aria-label={ariaLabel}>
-      <span className="sr-only">{ariaLabel}</span>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {Array.from({ length: total }, (_, i) => (
-          <GuoyuQuotaTickCircle key={i} used={i < used} />
-        ))}
+    <div>
+      <div className="flex flex-wrap items-center gap-2" role="img" aria-label={ariaLabel}>
+        <span className="sr-only">{ariaLabel}</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {Array.from({ length: total }, (_, i) => (
+            <GuoyuQuotaTickCircle key={i} used={i < used} />
+          ))}
+        </div>
+        {!view.isPaidMit && onUpgrade && (
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+          >
+            {freeTierUpsellLabel}
+          </button>
+        )}
       </div>
-      {!view.isPaidMit && onUpgrade && (
-        <button
-          type="button"
-          onClick={onUpgrade}
-          className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
-        >
-          {freeTierUpsellLabel}
-        </button>
-      )}
+      <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{GUOYU_QUOTA_CIRCLE_EXPLAINER}</p>
     </div>
   );
 }

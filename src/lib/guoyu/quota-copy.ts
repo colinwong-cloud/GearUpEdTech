@@ -13,6 +13,10 @@ export type GuoyuTtsQuotaView = GuoyuParentQuotaView;
 export const GUOYU_FREE_OCR_CAP = 1;
 export const GUOYU_PAID_OCR_CAP = 10;
 
+/** Owner-locked circle legend (BRIEF §2.3) — same on OCR landing and TTS result. */
+export const GUOYU_QUOTA_CIRCLE_EXPLAINER =
+  "綠勾勾＝已用額度；空心＝尚餘額度。月費用戶每月可享 10 次額度；免費用戶則每月 1 次。拼音、掃描同朗讀分開計。";
+
 export function guoyuQuotaCircleTotal(view: GuoyuParentQuotaView): number {
   if (view.isPaidMit && view.cap >= 10) return 10;
   return 1;
