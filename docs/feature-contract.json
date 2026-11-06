@@ -1668,7 +1668,9 @@
       "evidence_commits": [
         "bfee21b",
         "f4383da",
-        "10453ac"
+        "10453ac",
+        "6d73f8f",
+        "5b0975f"
       ],
       "checks": [
         {
@@ -4086,8 +4088,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:32:59.675Z",
+  "generated_at": "2026-11-06T04:33:04.605Z",
   "commit_inventory": [
+    {
+      "sha": "d512a768465f6241875e2ece06b7e30b3c4a10d2",
+      "date": "2026-11-06",
+      "summary": "Soft #244: home-faq-soft-244 evidence includes FC gate commits"
+    },
+    {
+      "sha": "5b0975f3640d13b81cb43c72bf783bb011355153",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json (evidence gate)"
+    },
     {
       "sha": "6d73f8f50c2594bdade5bfba20ec869e7067143c",
       "date": "2026-11-06",
@@ -7225,7 +7237,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 627,
+    "total_commits_since_start": 629,
     "total_feature_rows": 86
   }
 }
