@@ -1678,7 +1678,9 @@
         "9fc12f2",
         "0d43f94",
         "d8a8193",
-        "501f828"
+        "501f828",
+        "2dbcc2d",
+        "ff4b568"
       ],
       "checks": [
         {
@@ -4096,8 +4098,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:34:05.830Z",
+  "generated_at": "2026-11-06T04:34:13.786Z",
   "commit_inventory": [
+    {
+      "sha": "60d9c50e12e51a3f0f7159d8fcd8649bc3002c37",
+      "date": "2026-11-06",
+      "summary": "Soft #244: evidence includes final FC gate commits"
+    },
+    {
+      "sha": "ff4b5684bd37bee55ec4e7a4b53a0eba398bdb67",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
     {
       "sha": "2dbcc2dcf505a137a7c3e64b5a30eae0a3103cbb",
       "date": "2026-11-06",
@@ -7285,7 +7297,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 637,
+    "total_commits_since_start": 639,
     "total_feature_rows": 86
   }
 }
