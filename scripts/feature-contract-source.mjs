@@ -17,7 +17,17 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Quiz results screen with score summary",
-      evidence_commits: ["5019de2", "a2f7dea"],
+      evidence_commits: [
+        "bfee21b",
+        "f4383da",
+        "10453ac",
+        "6d73f8f",
+        "5b0975f",
+        "d512a76",
+        "39fb4d0",
+        "bbfbf12",
+        "40a2664",
+      ],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "測驗完成！" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "錯題解析" },
