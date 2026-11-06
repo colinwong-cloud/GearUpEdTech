@@ -1148,6 +1148,8 @@ export const FEATURE_CONTRACT_BASE = {
         "0d43f94",
         "d8a8193",
         "501f828",
+        "2dbcc2d",
+        "ff4b568",
       ],
       checks: [
         {
