@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from "react";
 import Script from "next/script";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,8 @@ import type {
   StudentBalance,
 } from "@/lib/types";
 import {
+  CHINESE_QUIZ_SUBJECT,
+  ENGLISH_QUIZ_SUBJECT,
   PRIMARY_QUIZ_SUBJECT,
   STUDENT_SUBJECT_OPTIONS,
   quizSubjectDbPatterns,
@@ -373,6 +375,7 @@ type AppScreen =
   | "profile_edit"
   | "add_student_form"
   | "parent_student_select"
+  | "check_ranking"
   | "forgot_password"
   | "payment";
 
@@ -392,6 +395,7 @@ const AUTH_REQUIRED_SCREENS = new Set<AppScreen>([
   "profile_edit",
   "add_student_form",
   "parent_student_select",
+  "check_ranking",
   "payment",
 ]);
 
@@ -430,6 +434,26 @@ interface ParentGradeRankPayload {
   total_eligible_in_grade?: number;
   is_eligible?: boolean;
 }
+
+type CheckRankingScopeKey = "grade" | "district" | "school";
+
+type CheckRankingUiState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | {
+      kind: "success";
+      scopeKey: CheckRankingScopeKey;
+      subjectKey: string;
+      rank: number;
+      total: number;
+      last10Avg: number;
+      calculatedAt: string | null;
+      summaryLine: string;
+    }
+  | { kind: "not_eligible" }
+  | { kind: "needs_school" }
+  | { kind: "tiny_cohort" }
+  | { kind: "error"; message: string };
 
 interface QuotaUsageRecord {
   id: string;
@@ -910,6 +934,14 @@ export default function QuizApp() {
     paid_until: null,
     tier_label: "免費用戶",
   });
+  const [parentStudentSelectPurpose, setParentStudentSelectPurpose] = useState<
+    "dashboard" | "check_ranking" | null
+  >(null);
+  const [checkRankingScope, setCheckRankingScope] = useState<CheckRankingScopeKey | "">("");
+  const [checkRankingSubject, setCheckRankingSubject] = useState<string>("");
+  const [checkRankingQueryLoading, setCheckRankingQueryLoading] = useState(false);
+  const [checkRankingUi, setCheckRankingUi] = useState<CheckRankingUiState>({ kind: "idle" });
+  const [checkRankingFilterError, setCheckRankingFilterError] = useState<string | null>(null);
   const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
   const authIntentRef = useRef(false);
 
@@ -1010,6 +1042,43 @@ export default function QuizApp() {
       });
     }
   }, [mobileNumber]);
+
+  useEffect(() => {
+    if (screen !== "check_ranking") return;
+    if (!mobileNumber.trim()) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error: rpcErr } = await supabase.rpc("get_parent_profile", {
+        p_mobile: mobileNumber.trim(),
+      });
+      if (cancelled || rpcErr || !data) return;
+      const studentsPayload = (data as { students?: { id: string; school_id: string | null }[] }).students;
+      if (!studentsPayload?.length) return;
+      setStudents((prev) =>
+        prev.map((s) => {
+          const row = studentsPayload.find((x) => x.id === s.id);
+          return row ? { ...s, school_id: row.school_id } : s;
+        })
+      );
+      setSelectedStudent((cur) => {
+        if (!cur) return cur;
+        const row = studentsPayload.find((x) => x.id === cur.id);
+        return row ? { ...cur, school_id: row.school_id } : cur;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [screen, mobileNumber]);
+
+  useEffect(() => {
+    if (screen !== "check_ranking") return;
+    setCheckRankingScope("");
+    setCheckRankingSubject("");
+    setCheckRankingUi({ kind: "idle" });
+    setCheckRankingFilterError(null);
+    setCheckRankingQueryLoading(false);
+  }, [screen, selectedStudent?.id]);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
@@ -1220,6 +1289,176 @@ export default function QuizApp() {
       setLoading(false);
     }
   };
+
+  const handleOpenCheckRanking = useCallback(() => {
+    setCheckRankingScope("");
+    setCheckRankingSubject("");
+    setCheckRankingUi({ kind: "idle" });
+    setCheckRankingFilterError(null);
+    setCheckRankingQueryLoading(false);
+    if (students.length > 1) {
+      setParentStudentSelectPurpose("check_ranking");
+      setScreen("parent_student_select");
+      return;
+    }
+    const only = students[0];
+    if (only) {
+      setSelectedStudent(only);
+      setScreen("check_ranking");
+    }
+  }, [students]);
+
+  const handleCheckRankingQuery = useCallback(async () => {
+    setCheckRankingFilterError(null);
+    if (!selectedStudent) {
+      setCheckRankingFilterError("請先選擇學生。");
+      return;
+    }
+    if (!checkRankingScope || !checkRankingSubject) {
+      setCheckRankingFilterError("請選擇範圍同科目。");
+      return;
+    }
+    if (!parentTierStatus.is_paid) {
+      setCheckRankingUi({
+        kind: "error",
+        message:
+          "檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。",
+      });
+      return;
+    }
+    if (!pinInput.trim() || !mobileNumber.trim()) {
+      setCheckRankingFilterError("登入狀態已失效，請重新登入後再試。");
+      return;
+    }
+
+    const subjectKey = checkRankingSubject;
+    setCheckRankingQueryLoading(true);
+    setCheckRankingUi({ kind: "loading" });
+
+    try {
+      if (checkRankingScope === "grade") {
+        const { data, error } = await supabase.rpc("get_parent_student_grade_rank", {
+          p_student_id: selectedStudent.id,
+          p_subject: subjectKey,
+        });
+        if (error) {
+          setCheckRankingUi({ kind: "error", message: "未能載入排名，請稍後再試。" });
+          return;
+        }
+        const rank = data as ParentGradeRankPayload | null;
+        if (!rank || !rank.has_snapshot) {
+          setCheckRankingUi({ kind: "error", message: "未能載入排名，請稍後再試。" });
+          return;
+        }
+        if (rank.is_eligible !== true) {
+          setCheckRankingUi({ kind: "not_eligible" });
+          return;
+        }
+        const rnk = rank.rank_in_grade;
+        const tot = rank.total_eligible_in_grade ?? 0;
+        if (rnk == null || tot < 2) {
+          setCheckRankingUi({ kind: "tiny_cohort" });
+          return;
+        }
+        const displayName = (rank.student_name || selectedStudent.student_name).trim() || "學生";
+        const summaryLine = `${displayName} 喺全級（${subjectDisplayLabel(
+          subjectKey
+        )}）排第 ${rnk} 名（共 ${tot} 人）`;
+        setCheckRankingUi({
+          kind: "success",
+          scopeKey: "grade",
+          subjectKey,
+          rank: rnk,
+          total: tot,
+          last10Avg: Number(rank.last_10_avg_correct_pct ?? 0),
+          calculatedAt: rank.calculated_at ?? null,
+          summaryLine,
+        });
+        return;
+      }
+
+      const schoolId = selectedStudent.school_id ?? null;
+      if ((checkRankingScope === "district" || checkRankingScope === "school") && !schoolId) {
+        setCheckRankingUi({ kind: "needs_school" });
+        return;
+      }
+
+      const scopeParam = checkRankingScope === "district" ? "district" : "school";
+      const { data, error } = await supabase.rpc("parent_check_ranking_peer", {
+        p_mobile_number: mobileNumber.trim(),
+        p_pin_code: pinInput.trim(),
+        p_student_id: selectedStudent.id,
+        p_subject: subjectKey,
+        p_scope: scopeParam,
+      });
+
+      if (error) {
+        setCheckRankingUi({ kind: "error", message: "未能載入排名，請稍後再試。" });
+        return;
+      }
+
+      const payload = data as Record<string, unknown> | null;
+      if (!payload || typeof payload !== "object") {
+        setCheckRankingUi({ kind: "error", message: "未能載入排名，請稍後再試。" });
+        return;
+      }
+
+      const errCode = payload.error as string | undefined;
+      if (errCode === "not_eligible") {
+        setCheckRankingUi({ kind: "not_eligible" });
+        return;
+      }
+      if (errCode === "needs_school") {
+        setCheckRankingUi({ kind: "needs_school" });
+        return;
+      }
+      if (errCode === "tiny_cohort") {
+        setCheckRankingUi({ kind: "tiny_cohort" });
+        return;
+      }
+      if (errCode === "not_paid") {
+        setCheckRankingUi({
+          kind: "error",
+          message:
+            "檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。",
+        });
+        return;
+      }
+
+      if (payload.ok === true) {
+        const rnk = Number(payload.rank_in_cohort);
+        const tot = Number(payload.total_eligible_in_cohort);
+        const avg = Number(payload.last_10_avg_correct_pct);
+        const scopeLabel = checkRankingScope === "district" ? "同區" : "同校";
+        const displayName = String(payload.student_name || selectedStudent.student_name).trim() || "學生";
+        const summaryLine = `${displayName} 喺${scopeLabel}（${subjectDisplayLabel(
+          subjectKey
+        )}）排第 ${rnk} 名（共 ${tot} 人）`;
+        setCheckRankingUi({
+          kind: "success",
+          scopeKey: checkRankingScope,
+          subjectKey,
+          rank: rnk,
+          total: tot,
+          last10Avg: avg,
+          calculatedAt: null,
+          summaryLine,
+        });
+        return;
+      }
+
+      setCheckRankingUi({ kind: "error", message: "未能載入排名，請稍後再試。" });
+    } finally {
+      setCheckRankingQueryLoading(false);
+    }
+  }, [
+    selectedStudent,
+    checkRankingScope,
+    checkRankingSubject,
+    parentTierStatus.is_paid,
+    pinInput,
+    mobileNumber,
+  ]);
 
   const handleParentMonthChange = (year: number, month: number) => {
     if (!selectedStudent) return;
@@ -1820,6 +2059,7 @@ export default function QuizApp() {
       paid_until: null,
       tier_label: "免費用戶",
     });
+    setParentStudentSelectPurpose(null);
     setError(null);
   };
 
@@ -1861,6 +2101,7 @@ export default function QuizApp() {
               p_student_id: firstStudent.id,
             });
           }
+          setParentStudentSelectPurpose("dashboard");
           if (students.length > 1) {
             setScreen("parent_student_select");
           } else if (firstStudent) {
@@ -1868,6 +2109,7 @@ export default function QuizApp() {
             loadParentSessions(firstStudent.id, parentSubject, parentMonth.year, parentMonth.month);
           }
         }}
+        onCheckRanking={handleOpenCheckRanking}
         onAccount={() => setScreen("account_menu")}
         tierStatus={parentTierStatus}
         onUpgrade={() => setScreen("payment")}
@@ -1966,7 +2208,28 @@ export default function QuizApp() {
     );
   }
 
+  if (screen === "check_ranking") {
+    return (
+      <CheckRankingScreen
+        student={selectedStudent}
+        tierStatus={parentTierStatus}
+        scope={checkRankingScope}
+        subject={checkRankingSubject}
+        onScopeChange={setCheckRankingScope}
+        onSubjectChange={setCheckRankingSubject}
+        onQuery={handleCheckRankingQuery}
+        queryLoading={checkRankingQueryLoading}
+        ui={checkRankingUi}
+        filterError={checkRankingFilterError}
+        onBack={() => setScreen("login_role")}
+        onUpgrade={() => setScreen("payment")}
+        onAccount={() => setScreen("account_menu")}
+      />
+    );
+  }
+
   if (screen === "parent_student_select") {
+    const purpose = parentStudentSelectPurpose ?? "dashboard";
     return (
       <StudentSelectScreen
         students={students}
@@ -1978,11 +2241,23 @@ export default function QuizApp() {
               p_student_id: student.id,
             });
           }
+          if (purpose === "check_ranking") {
+            setParentStudentSelectPurpose(null);
+            setScreen("check_ranking");
+            return;
+          }
           loadParentSessions(student.id, parentSubject, parentMonth.year, parentMonth.month);
         }}
-        onBack={() => setScreen("login_role")}
+        onBack={() => {
+          setParentStudentSelectPurpose(null);
+          setScreen("login_role");
+        }}
         title="選擇學生"
-        subtitle="請選擇要查看報告的學生"
+        subtitle={
+          purpose === "check_ranking"
+            ? "請選擇要比較排名的學生"
+            : "請選擇要查看報告的學生"
+        }
       />
     );
   }
@@ -5168,9 +5443,284 @@ function ContactFooter() {
   );
 }
 
+const CHECK_RANKING_SUBJECT_OPTIONS: { key: string; label: string }[] = [
+  { key: CHINESE_QUIZ_SUBJECT, label: "中文" },
+  { key: ENGLISH_QUIZ_SUBJECT, label: "英文" },
+  { key: PRIMARY_QUIZ_SUBJECT, label: "數學" },
+];
+
+const CHECK_RANKING_SCOPE_OPTIONS: { key: CheckRankingScopeKey; label: string }[] = [
+  { key: "grade", label: "全級" },
+  { key: "district", label: "同區" },
+  { key: "school", label: "同校" },
+];
+
+function CheckRankingScreen({
+  student,
+  tierStatus,
+  scope,
+  subject,
+  onScopeChange,
+  onSubjectChange,
+  onQuery,
+  queryLoading,
+  ui,
+  filterError,
+  onBack,
+  onUpgrade,
+  onAccount,
+}: {
+  student: Student | null;
+  tierStatus: ParentTierStatus;
+  scope: CheckRankingScopeKey | "";
+  subject: string;
+  onScopeChange: (s: CheckRankingScopeKey | "") => void;
+  onSubjectChange: (s: string) => void;
+  onQuery: () => void;
+  queryLoading: boolean;
+  ui: CheckRankingUiState;
+  filterError: string | null;
+  onBack: () => void;
+  onUpgrade: () => void;
+  onAccount: () => void;
+}) {
+  const paid = tierStatus.is_paid;
+  const filtersDisabled = !paid || queryLoading;
+  const emptyCopy = "請先選擇範圍同科目並查詢排名。";
+  const loadingCopy = "正在載入排名…";
+  const footnote =
+    "僅計算該科目累積完成至少 100 題的同級學生；以最近 10 次練習平均正確率排序。全級資料每日更新；同區／同校為即時比較。";
+
+  const posPct = (rank: number, total: number) =>
+    total <= 1 ? 50 : Math.min(100, Math.max(0, ((total - rank) / (total - 1)) * 100));
+
+  const cardBody = (slot: "summary" | "bar" | "metric" | "note"): string | ReactNode => {
+    if (!paid) return emptyCopy;
+    if (ui.kind === "idle") return emptyCopy;
+    if (ui.kind === "loading") return loadingCopy;
+    if (ui.kind === "not_eligible") {
+      return "此科目累積未滿 100 題，暫時未能顯示排名。完成更多練習後再查詢。";
+    }
+    if (ui.kind === "needs_school") {
+      if (slot === "summary") {
+        return (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              尚未設定學校資料。請先到「戶口管理」為學生選擇學校，再查詢同區或同校排名。
+            </p>
+            <button
+              type="button"
+              onClick={onAccount}
+              className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              前往戶口管理
+            </button>
+          </div>
+        );
+      }
+      return emptyCopy;
+    }
+    if (ui.kind === "tiny_cohort") {
+      return "此範圍暫時未有足夠同級學生可比較，請稍後再試或改選「全級」。";
+    }
+    if (ui.kind === "error") {
+      return ui.message;
+    }
+    if (ui.kind !== "success") return emptyCopy;
+
+    if (slot === "summary") {
+      return <p className="text-sm text-gray-800 font-medium leading-relaxed">{ui.summaryLine}</p>;
+    }
+    if (slot === "bar") {
+      const pct = posPct(ui.rank, ui.total);
+      return (
+        <div className="relative h-9 select-none" role="img" aria-label="相對位置（紅至綠）">
+          <div className="absolute inset-0 flex rounded-lg overflow-hidden">
+            <div className="flex-1 bg-gradient-to-b from-rose-400 to-rose-500" />
+            <div className="flex-1 bg-gradient-to-b from-amber-300 to-amber-400" />
+            <div className="flex-1 bg-gradient-to-b from-emerald-400 to-emerald-500" />
+          </div>
+          <div
+            className="absolute -top-1 w-0 h-0 border-l-[7px] border-r-[7px] border-b-[9px] border-l-transparent border-r-transparent border-b-gray-800 -translate-x-1/2"
+            style={{ left: `${pct}%` }}
+          />
+        </div>
+      );
+    }
+    if (slot === "metric") {
+      const t = ui.calculatedAt ? new Date(ui.calculatedAt) : null;
+      const updatedStr =
+        t && ui.scopeKey === "grade"
+          ? `${t.getFullYear()}/${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`
+          : null;
+      return (
+        <div className="text-sm text-gray-800">
+          <p>
+            最近 10 次練習平均正確率：
+            {(Math.round(Number(ui.last10Avg) * 10) / 10).toFixed(1)}%
+          </p>
+          {updatedStr && <p className="mt-1 text-xs text-gray-500">更新：{updatedStr}</p>}
+          {!updatedStr && ui.scopeKey !== "grade" && (
+            <p className="mt-1 text-xs text-gray-500">同區／同校為即時比較。</p>
+          )}
+        </div>
+      );
+    }
+    return <p className="text-xs text-gray-600 leading-relaxed">{footnote}</p>;
+  };
+
+  if (!student) {
+    return (
+      <div
+        className="min-h-screen bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center px-4"
+        onContextMenu={preventContextMenu}
+      >
+        <p className="text-gray-600 mb-6">請先選擇學生。</p>
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 hover:bg-sky-50"
+        >
+          返回
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white/60 backdrop-blur-sm" onContextMenu={preventContextMenu}>
+      <div className="bg-white/80 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-medium text-sky-700 hover:text-sky-800"
+        >
+          ← 返回
+        </button>
+        <h1 className="text-lg font-bold text-gray-900 flex-1 text-center pr-14">檢查排名</h1>
+      </div>
+      <div className="max-w-4xl mx-auto px-4 py-5 sm:px-6">
+        <p className="text-sm text-gray-600 mb-4">
+          學生：{student.student_name}　{student.grade_level}
+        </p>
+
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
+          <p className="text-sm font-semibold text-indigo-900">選擇比較範圍</p>
+          <p className="text-xs text-indigo-700 leading-relaxed">
+            請先選擇範圍同科目，再按「查詢排名」。排名唔會喺開啟頁面時自動載入。
+          </p>
+
+          {!paid && (
+            <div className="rounded-lg border border-indigo-200 bg-white/90 p-3 space-y-3">
+              <p className="text-sm text-gray-800 leading-relaxed">
+                檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。
+              </p>
+              <button
+                type="button"
+                onClick={onUpgrade}
+                className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                升級月費會員
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end">
+            <div className="min-w-0 sm:min-w-[180px]">
+              <label className="block text-xs font-medium text-gray-700 mb-1">範圍</label>
+              <select
+                className="w-full p-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 disabled:opacity-50"
+                value={scope}
+                disabled={filtersDisabled}
+                onChange={(e) => onScopeChange(e.target.value as CheckRankingScopeKey | "")}
+              >
+                <option value="">請選擇範圍</option>
+                {CHECK_RANKING_SCOPE_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0 sm:min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-700 mb-1">科目</label>
+              <select
+                className="w-full p-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 disabled:opacity-50"
+                value={subject}
+                disabled={filtersDisabled}
+                onChange={(e) => onSubjectChange(e.target.value)}
+              >
+                <option value="">請選擇科目</option>
+                {CHECK_RANKING_SUBJECT_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={onQuery}
+              disabled={filtersDisabled}
+              className="sm:ml-auto px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 w-full sm:w-auto"
+            >
+              {queryLoading ? "查詢中…" : "查詢排名"}
+            </button>
+          </div>
+          {filterError && <p className="text-sm text-red-600">{filterError}</p>}
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-bold text-gray-800">排名結果</p>
+          <p className="text-xs text-gray-500 mt-1 mb-3 leading-relaxed">
+            以下結果會按你已選擇的範圍／科目顯示；未查詢前唔顯示數據。
+          </p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-h-[120px] flex flex-col">
+              <p className="text-xs font-semibold text-gray-600 mb-2">名次摘要</p>
+              <div className="flex-1 flex items-center justify-center text-center px-1">
+                <div className="text-xs text-gray-500 w-full [&_.text-sm]:text-sm [&_.text-sm]:text-gray-800">
+                  {cardBody("summary")}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-h-[120px] flex flex-col">
+              <p className="text-xs font-semibold text-gray-600 mb-2">相對位置</p>
+              <div className="flex-1 flex items-center justify-center text-center px-1">
+                <div className="text-xs text-gray-500 w-full">{cardBody("bar")}</div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-h-[120px] flex flex-col">
+              <p className="text-xs font-semibold text-gray-600 mb-2">正確率</p>
+              <div className="flex-1 flex items-center justify-center text-center px-1">
+                <div className="text-xs text-gray-500 w-full">{cardBody("metric")}</div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-3 min-h-[120px] flex flex-col">
+              <p className="text-xs font-semibold text-gray-600 mb-2">比較說明</p>
+              <div className="flex-1 flex items-center justify-center text-center px-1">
+                <div className="text-xs text-gray-500 w-full">{cardBody("note")}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-8 inline-flex w-full max-w-sm mx-auto flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-8 py-3.5 font-semibold text-sky-700 hover:bg-sky-50"
+        >
+          返回
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RoleSelectScreen({
   onStudent,
   onParent,
+  onCheckRanking,
   onAccount,
   onUpgrade,
   tierStatus,
@@ -5178,6 +5728,7 @@ function RoleSelectScreen({
 }: {
   onStudent: () => void;
   onParent: () => void;
+  onCheckRanking: () => void;
   onAccount: () => void;
   onUpgrade: () => void;
   tierStatus: ParentTierStatus;
@@ -5244,6 +5795,19 @@ function RoleSelectScreen({
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">家長</p>
               <p className="text-sm text-gray-500">查看練習報告</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onCheckRanking}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-400 to-indigo-600 flex items-center justify-center text-white text-xl">
+              📈
+            </div>
+            <div className="text-left">
+              <p className="text-base font-semibold text-gray-900">檢查排名</p>
+              <p className="text-sm text-gray-500">全級／同區／同校比較</p>
             </div>
           </button>
           <button

@@ -17,6 +17,8 @@ export interface Student {
   avatar_style: string;
   grade_level: string;
   created_at: string;
+  /** Filled client-side from profile when needed (e.g. 同區／同校排名); omit from login payload */
+  school_id?: string | null;
   /** "M" | "F" | null — optional, see profile edit / admin business KPIs */
   gender?: string | null;
 }
