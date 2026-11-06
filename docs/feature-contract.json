@@ -1624,7 +1624,7 @@
       "priority": "medium",
       "title": "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
       "evidence_commits": [
-        "ee8c1ff"
+        "9598830"
       ],
       "checks": [
         {
@@ -1656,6 +1656,33 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "CHENGFENSHI_GUIDE_PATH"
+        }
+      ]
+    },
+    {
+      "id": "home-faq-soft-244",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "medium",
+      "title": "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
+      "evidence_commits": [
+        "bfee21b"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "系統點幫到我拎呈分試 RO ？"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "付費家長可喺系統 dashboard 睇到「全港，同區以及同校」同一級別的練習排名。排名以該科近 10 次平均正確率"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "HOME_FAQ_CHENGFENSHI_ANSWER"
         }
       ]
     },
@@ -4057,32 +4084,22 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T18:05:15.603Z",
+  "generated_at": "2026-11-06T04:16:39.562Z",
   "commit_inventory": [
     {
-      "sha": "957bb927f7dba2583be70b058d3969a3ea004225",
-      "date": "2026-11-05",
-      "summary": "chore(feature-contract): align guoyu #242 evidence with squashed main commit"
+      "sha": "f4383dae0eb298144a76d00faa7571b920169005",
+      "date": "2026-11-06",
+      "summary": "Soft #244: point home-faq-soft-244 evidence at feature commit"
     },
     {
-      "sha": "28e3ade8a66dbba9ce67cb4b4babeeefff5d01ab",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json after #243 evidence commit"
+      "sha": "bfee21bff8053f12cb0f2fca41ec377a1ef4a08e",
+      "date": "2026-11-06",
+      "summary": "Soft #244: cut FAQ #6 opener; retain ranking copy"
     },
     {
-      "sha": "d113e4a99c5cfe56d7de78b5e656d61d55297c64",
-      "date": "2026-11-05",
-      "summary": "chore(feature-contract): evidence commit for home FAQ soft #243 row"
-    },
-    {
-      "sha": "a7eb778816265a57ba8a7f7b3c7ea61aa0751022",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json for home FAQ soft #243"
-    },
-    {
-      "sha": "ee8c1ff893ccf39c3923ab973b804c0d95223ad9",
-      "date": "2026-11-05",
-      "summary": "feat(home): Soft #243 locked FAQ #6 copy and new FAQ #7 (#243)"
+      "sha": "95988306d01c4cf047a9c9a95dc60459b0142be2",
+      "date": "2026-11-06",
+      "summary": "Soft #243: Home FAQ #6–#7 locked copy (呈分試 RO + AI 精準輔導) (#243)"
     },
     {
       "sha": "74c296d4eaecd53dc73271adcbe70bf840042df7",
@@ -7196,7 +7213,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 627,
-    "total_feature_rows": 85
+    "total_commits_since_start": 625,
+    "total_feature_rows": 86
   }
 }
