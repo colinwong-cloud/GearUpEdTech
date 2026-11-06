@@ -29,7 +29,10 @@
         "d512a76",
         "39fb4d0",
         "bbfbf12",
-        "40a2664"
+        "40a2664",
+        "9fc12f2",
+        "0d43f94",
+        "0f96aef"
       ],
       "checks": [
         {
@@ -1679,7 +1682,11 @@
         "6d73f8f",
         "5b0975f",
         "d512a76",
-        "39fb4d0"
+        "39fb4d0",
+        "bbfbf12",
+        "40a2664",
+        "9fc12f2",
+        "0d43f94"
       ],
       "checks": [
         {
@@ -4097,8 +4104,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:33:33.743Z",
+  "generated_at": "2026-11-06T04:33:47.958Z",
   "commit_inventory": [
+    {
+      "sha": "d8a8193f7131903c36ff9ae2de0ec1535bd93187",
+      "date": "2026-11-06",
+      "summary": "Soft #244: home-faq-soft-244 evidence covers Soft tip and FC commits"
+    },
+    {
+      "sha": "0d43f94beb36b46bcc1e87a82e13ce61b02232cb",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
     {
       "sha": "9fc12f23a9f1916c2d59ee6fa9b3dfb991242dfb",
       "date": "2026-11-06",
@@ -7266,7 +7283,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 633,
+    "total_commits_since_start": 635,
     "total_feature_rows": 86
   }
 }
