@@ -1680,7 +1680,9 @@
         "d8a8193",
         "501f828",
         "2dbcc2d",
-        "ff4b568"
+        "ff4b568",
+        "60d9c50",
+        "32068a2"
       ],
       "checks": [
         {
@@ -4098,8 +4100,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:34:13.786Z",
+  "generated_at": "2026-11-06T04:34:22.992Z",
   "commit_inventory": [
+    {
+      "sha": "7757aaf2c5088b3e3f7f4bdaf26fb5f1f72c41f5",
+      "date": "2026-11-06",
+      "summary": "Soft #244: evidence_commits include contract gate tip 32068a2"
+    },
+    {
+      "sha": "32068a2e01f0f6c8df8fdc83ee36dfddba359bcc",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
     {
       "sha": "60d9c50e12e51a3f0f7159d8fcd8649bc3002c37",
       "date": "2026-11-06",
@@ -7297,7 +7309,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 639,
+    "total_commits_since_start": 641,
     "total_feature_rows": 86
   }
 }
