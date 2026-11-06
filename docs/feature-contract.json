@@ -1666,7 +1666,9 @@
       "priority": "medium",
       "title": "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
       "evidence_commits": [
-        "bfee21b"
+        "bfee21b",
+        "f4383da",
+        "10453ac"
       ],
       "checks": [
         {
@@ -4084,8 +4086,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:16:39.562Z",
+  "generated_at": "2026-11-06T04:32:59.675Z",
   "commit_inventory": [
+    {
+      "sha": "6d73f8f50c2594bdade5bfba20ec869e7067143c",
+      "date": "2026-11-06",
+      "summary": "Soft #244: expand home-faq-soft-244 evidence to branch tip"
+    },
+    {
+      "sha": "10453ac5c2f5f6c39dbdb3776cdaa26a80db6346",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
     {
       "sha": "f4383dae0eb298144a76d00faa7571b920169005",
       "date": "2026-11-06",
@@ -7213,7 +7225,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 625,
+    "total_commits_since_start": 627,
     "total_feature_rows": 86
   }
 }
