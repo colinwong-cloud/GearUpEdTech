@@ -1670,7 +1670,9 @@
         "f4383da",
         "10453ac",
         "6d73f8f",
-        "5b0975f"
+        "5b0975f",
+        "d512a76",
+        "39fb4d0"
       ],
       "checks": [
         {
@@ -4088,8 +4090,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:33:04.605Z",
+  "generated_at": "2026-11-06T04:33:33.427Z",
   "commit_inventory": [
+    {
+      "sha": "bbfbf12023b11ec83f7e08678193403a53cb7e08",
+      "date": "2026-11-06",
+      "summary": "Soft #244: align home-faq-soft-244 evidence with branch tip 39fb4d0"
+    },
+    {
+      "sha": "39fb4d08aceb9020f5edb6e04d3d2809bb169546",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
     {
       "sha": "d512a768465f6241875e2ece06b7e30b3c4a10d2",
       "date": "2026-11-06",
@@ -7237,7 +7249,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 629,
+    "total_commits_since_start": 631,
     "total_feature_rows": 86
   }
 }
