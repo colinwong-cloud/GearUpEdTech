@@ -27,6 +27,9 @@ export const FEATURE_CONTRACT_BASE = {
         "39fb4d0",
         "bbfbf12",
         "40a2664",
+        "9fc12f2",
+        "0d43f94",
+        "0f96aef",
       ],
       checks: [
         { type: "file_contains", path: "src/app/page.tsx", snippet: "測驗完成！" },
@@ -1152,6 +1155,10 @@ export const FEATURE_CONTRACT_BASE = {
         "5b0975f",
         "d512a76",
         "39fb4d0",
+        "bbfbf12",
+        "40a2664",
+        "9fc12f2",
+        "0d43f94",
       ],
       checks: [
         {
