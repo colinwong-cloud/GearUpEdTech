@@ -1094,7 +1094,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "medium",
       title: "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
-      evidence_commits: ["ee8c1ff"],
+      evidence_commits: ["9598830"],
       checks: [
         {
           type: "file_contains",
@@ -1125,6 +1125,32 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/page.tsx",
           snippet: "CHENGFENSHI_GUIDE_PATH",
+        },
+      ],
+    },
+    {
+      id: "home-faq-soft-244",
+      month: "2026-11",
+      category: "growth",
+      priority: "medium",
+      title: "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
+      evidence_commits: ["177399a"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "系統點幫到我拎呈分試 RO ？",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet:
+            "付費家長可喺系統 dashboard 睇到「全港，同區以及同校」同一級別的練習排名。排名以該科近 10 次平均正確率",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "HOME_FAQ_CHENGFENSHI_ANSWER",
         },
       ],
     },

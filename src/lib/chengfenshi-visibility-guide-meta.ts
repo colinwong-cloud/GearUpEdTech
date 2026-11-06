@@ -20,7 +20,7 @@ export const TUTOR_CHENGFENSHI_CTA_LABEL = "呈分試中英數練習指南";
 /** Home FAQ item #6 — question/answer from locked 公開頁面 FAQ (teaser + link to guide). */
 export const HOME_FAQ_CHENGFENSHI_QUESTION = "系統點幫到我拎呈分試 RO ？";
 export const HOME_FAQ_CHENGFENSHI_ANSWER =
-  "可以。適合 P1–P6 中英數日常操練、自動改卷同弱項追蹤。付費家長可喺系統 dashboard 睇到「全港，同區以及同校」同一級別的練習排名。排名以該科近 10 次平均正確率；該科累積夠 100 題先顯示先計入以示公允。詳見「呈分試中英數練習指南」。";
+  "付費家長可喺系統 dashboard 睇到「全港，同區以及同校」同一級別的練習排名。排名以該科近 10 次平均正確率；該科累積夠 100 題先顯示先計入以示公允。詳見「呈分試中英數練習指南」。";
 
 /** Home FAQ item #7 — AI 精準輔導 (locked Colin copy). */
 export const HOME_FAQ_AI_TUTORING_QUESTION = "咩係 AI 精準輔導？";
