@@ -3285,7 +3285,9 @@
       "evidence_commits": [
         "17de76d",
         "4cf7175",
-        "62bfb79"
+        "62bfb79",
+        "7e66402",
+        "6ce2248"
       ],
       "checks": [
         {
@@ -4122,8 +4124,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T15:58:25.835Z",
+  "generated_at": "2026-11-06T15:59:05.322Z",
   "commit_inventory": [
+    {
+      "sha": "4ce29094de45045e28039c80e5966fe3abd6d6e2",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): parent-check-ranking-peer-soft-245 evidence through Soft #245 kick"
+    },
+    {
+      "sha": "6ce22481d8dcdab80c1b2d442586fd97f149cc9b",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): refresh docs/feature-contract.json (Soft #245 evidence kick)"
+    },
     {
       "sha": "7e6640223c1aba72d7bebbfb7a8205310f4e7b37",
       "date": "2026-11-06",
@@ -7266,7 +7278,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 628,
+    "total_commits_since_start": 630,
     "total_feature_rows": 87
   }
 }
