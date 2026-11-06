@@ -3291,7 +3291,9 @@
         "4ce2909",
         "8779631",
         "a7a7a2d",
-        "ccbb3cf"
+        "ccbb3cf",
+        "7b2bf3a",
+        "ff02055"
       ],
       "checks": [
         {
@@ -4128,8 +4130,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T16:00:24.424Z",
+  "generated_at": "2026-11-06T16:01:00.097Z",
   "commit_inventory": [
+    {
+      "sha": "dfa85935df6cee6e5625ed8175019dbbf62780f7",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): Soft #245 evidence_commits include final source+JSON kick"
+    },
+    {
+      "sha": "ff020556e9aa618eaa67c93937c9155041dc02ac",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+    },
     {
       "sha": "7b2bf3a2e98ca3cbfc5c2c28cb18fecad9ee60c9",
       "date": "2026-11-06",
@@ -7302,7 +7314,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 634,
+    "total_commits_since_start": 636,
     "total_feature_rows": 87
   }
 }
