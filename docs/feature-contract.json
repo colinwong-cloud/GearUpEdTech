@@ -1666,23 +1666,7 @@
       "priority": "medium",
       "title": "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
       "evidence_commits": [
-        "bfee21b",
-        "f4383da",
-        "10453ac",
-        "6d73f8f",
-        "5b0975f",
-        "d512a76",
-        "39fb4d0",
-        "bbfbf12",
-        "40a2664",
-        "9fc12f2",
-        "0d43f94",
-        "d8a8193",
-        "501f828",
-        "2dbcc2d",
-        "ff4b568",
-        "60d9c50",
-        "32068a2"
+        "524fc9a"
       ],
       "checks": [
         {
@@ -3293,6 +3277,42 @@
       ]
     },
     {
+      "id": "parent-check-ranking-peer-soft-245",
+      "month": "2026-11",
+      "category": "parent",
+      "priority": "high",
+      "title": "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
+      "evidence_commits": [
+        "17de76d"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_parent_check_ranking_peer.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_parent_check_ranking_peer.sql",
+          "snippet": "parent_check_ranking_peer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "\"check_ranking\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "全級／同區／同校比較"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "parent_check_ranking_peer"
+        }
+      ]
+    },
+    {
       "id": "grade-averages-performance-optimizations",
       "month": "2026-04",
       "category": "analytics",
@@ -4100,97 +4120,22 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T04:34:22.992Z",
+  "generated_at": "2026-11-06T15:50:33.045Z",
   "commit_inventory": [
     {
-      "sha": "7757aaf2c5088b3e3f7f4bdaf26fb5f1f72c41f5",
+      "sha": "4cf717589716f96ddb5962492eb7ab17e5d1aece",
       "date": "2026-11-06",
-      "summary": "Soft #244: evidence_commits include contract gate tip 32068a2"
+      "summary": "chore(feature-contract): Soft #245 retention + fix FAQ #244 evidence SHA"
     },
     {
-      "sha": "32068a2e01f0f6c8df8fdc83ee36dfddba359bcc",
+      "sha": "17de76d0735c65b3b6a16a61ffc7db0874b4fd3d",
       "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
+      "summary": "feat(parent): add paid check_ranking screen with peer SQL (Soft #245)"
     },
     {
-      "sha": "60d9c50e12e51a3f0f7159d8fcd8649bc3002c37",
+      "sha": "524fc9ad276ea68cb865e51bb6c493057c5de86a",
       "date": "2026-11-06",
-      "summary": "Soft #244: evidence includes final FC gate commits"
-    },
-    {
-      "sha": "ff4b5684bd37bee55ec4e7a4b53a0eba398bdb67",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "2dbcc2dcf505a137a7c3e64b5a30eae0a3103cbb",
-      "date": "2026-11-06",
-      "summary": "Soft #244: fix FC evidence (restore core-quiz row, cover branch tip)"
-    },
-    {
-      "sha": "501f828dc49692e26fc1d1eb183a418a0258344b",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "d8a8193f7131903c36ff9ae2de0ec1535bd93187",
-      "date": "2026-11-06",
-      "summary": "Soft #244: home-faq-soft-244 evidence covers Soft tip and FC commits"
-    },
-    {
-      "sha": "0d43f94beb36b46bcc1e87a82e13ce61b02232cb",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "9fc12f23a9f1916c2d59ee6fa9b3dfb991242dfb",
-      "date": "2026-11-06",
-      "summary": "Soft #244: evidence_commits cover full Soft branch history"
-    },
-    {
-      "sha": "40a2664733826495eda8acd3be12c7128e2ce7de",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "bbfbf12023b11ec83f7e08678193403a53cb7e08",
-      "date": "2026-11-06",
-      "summary": "Soft #244: align home-faq-soft-244 evidence with branch tip 39fb4d0"
-    },
-    {
-      "sha": "39fb4d08aceb9020f5edb6e04d3d2809bb169546",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "d512a768465f6241875e2ece06b7e30b3c4a10d2",
-      "date": "2026-11-06",
-      "summary": "Soft #244: home-faq-soft-244 evidence includes FC gate commits"
-    },
-    {
-      "sha": "5b0975f3640d13b81cb43c72bf783bb011355153",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json (evidence gate)"
-    },
-    {
-      "sha": "6d73f8f50c2594bdade5bfba20ec869e7067143c",
-      "date": "2026-11-06",
-      "summary": "Soft #244: expand home-faq-soft-244 evidence to branch tip"
-    },
-    {
-      "sha": "10453ac5c2f5f6c39dbdb3776cdaa26a80db6346",
-      "date": "2026-11-06",
-      "summary": "Soft #244: refresh feature-contract.json"
-    },
-    {
-      "sha": "f4383dae0eb298144a76d00faa7571b920169005",
-      "date": "2026-11-06",
-      "summary": "Soft #244: point home-faq-soft-244 evidence at feature commit"
-    },
-    {
-      "sha": "bfee21bff8053f12cb0f2fca41ec377a1ef4a08e",
-      "date": "2026-11-06",
-      "summary": "Soft #244: cut FAQ #6 opener; retain ranking copy"
+      "summary": "Soft #244: Home FAQ #6 — cut P1–P6 opener (呈分試 RO) (#244)"
     },
     {
       "sha": "95988306d01c4cf047a9c9a95dc60459b0142be2",
@@ -7309,7 +7254,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 641,
-    "total_feature_rows": 86
+    "total_commits_since_start": 626,
+    "total_feature_rows": 87
   }
 }
