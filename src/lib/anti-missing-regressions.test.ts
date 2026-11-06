@@ -361,5 +361,16 @@ describe("anti-missing regression guards", () => {
     expect(releaseSopSource).toContain("create a fresh branch **for every new task**");
     expect(releaseSopSource).toContain("git checkout -b cursor/<task-name>-2d42 origin/main");
   });
+
+  it("keeps paid parent check ranking screen and peer SQL (Soft #245 Phase 1)", () => {
+    const pageSource = readSource("src/app/page.tsx");
+    expect(pageSource).toContain("\"check_ranking\"");
+    expect(pageSource).toContain("onCheckRanking={handleOpenCheckRanking}");
+    expect(pageSource).toContain("parent_check_ranking_peer");
+    expect(pageSource).toContain("全級／同區／同校比較");
+    const sqlSource = readSource("supabase_parent_check_ranking_peer.sql");
+    expect(sqlSource).toContain("parent_check_ranking_peer");
+    expect(sqlSource).toContain("last-10");
+  });
 });
 
