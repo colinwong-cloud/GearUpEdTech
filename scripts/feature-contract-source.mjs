@@ -1856,7 +1856,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "parent",
       priority: "high",
       title: "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
-      evidence_commits: ["17de76d"],
+      evidence_commits: ["17de76d", "4cf7175", "62bfb79"],
       checks: [
         { type: "file_exists", path: "supabase_parent_check_ranking_peer.sql" },
         { type: "file_contains", path: "supabase_parent_check_ranking_peer.sql", snippet: "parent_check_ranking_peer" },
