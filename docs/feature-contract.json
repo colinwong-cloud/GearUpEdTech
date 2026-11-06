@@ -3283,7 +3283,9 @@
       "priority": "high",
       "title": "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
       "evidence_commits": [
-        "17de76d"
+        "17de76d",
+        "4cf7175",
+        "62bfb79"
       ],
       "checks": [
         {
@@ -4120,8 +4122,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T15:50:33.045Z",
+  "generated_at": "2026-11-06T15:58:25.835Z",
   "commit_inventory": [
+    {
+      "sha": "7e6640223c1aba72d7bebbfb7a8205310f4e7b37",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): Soft #245 evidence_commits cover preview tip stack"
+    },
+    {
+      "sha": "62bfb798b1d93ac02a03b1a795707af81d258be1",
+      "date": "2026-11-06",
+      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+    },
     {
       "sha": "4cf717589716f96ddb5962492eb7ab17e5d1aece",
       "date": "2026-11-06",
@@ -7254,7 +7266,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 626,
+    "total_commits_since_start": 628,
     "total_feature_rows": 87
   }
 }
