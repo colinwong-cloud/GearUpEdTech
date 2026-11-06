@@ -1624,7 +1624,7 @@
       "priority": "medium",
       "title": "Home FAQ #6–#7 locked copy — 呈分試 RO + AI 精準輔導 (#243 soft)",
       "evidence_commits": [
-        "ee8c1ff"
+        "9598830"
       ],
       "checks": [
         {
@@ -1656,6 +1656,49 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "CHENGFENSHI_GUIDE_PATH"
+        }
+      ]
+    },
+    {
+      "id": "home-faq-soft-244",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "medium",
+      "title": "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
+      "evidence_commits": [
+        "bfee21b",
+        "f4383da",
+        "10453ac",
+        "6d73f8f",
+        "5b0975f",
+        "d512a76",
+        "39fb4d0",
+        "bbfbf12",
+        "40a2664",
+        "9fc12f2",
+        "0d43f94",
+        "d8a8193",
+        "501f828",
+        "2dbcc2d",
+        "ff4b568",
+        "60d9c50",
+        "32068a2"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "系統點幫到我拎呈分試 RO ？"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "付費家長可喺系統 dashboard 睇到「全港，同區以及同校」同一級別的練習排名。排名以該科近 10 次平均正確率"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "HOME_FAQ_CHENGFENSHI_ANSWER"
         }
       ]
     },
@@ -4057,32 +4100,102 @@
       ]
     }
   ],
-  "generated_at": "2026-11-05T18:05:15.603Z",
+  "generated_at": "2026-11-06T04:34:22.992Z",
   "commit_inventory": [
     {
-      "sha": "957bb927f7dba2583be70b058d3969a3ea004225",
-      "date": "2026-11-05",
-      "summary": "chore(feature-contract): align guoyu #242 evidence with squashed main commit"
+      "sha": "7757aaf2c5088b3e3f7f4bdaf26fb5f1f72c41f5",
+      "date": "2026-11-06",
+      "summary": "Soft #244: evidence_commits include contract gate tip 32068a2"
     },
     {
-      "sha": "28e3ade8a66dbba9ce67cb4b4babeeefff5d01ab",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json after #243 evidence commit"
+      "sha": "32068a2e01f0f6c8df8fdc83ee36dfddba359bcc",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
     },
     {
-      "sha": "d113e4a99c5cfe56d7de78b5e656d61d55297c64",
-      "date": "2026-11-05",
-      "summary": "chore(feature-contract): evidence commit for home FAQ soft #243 row"
+      "sha": "60d9c50e12e51a3f0f7159d8fcd8649bc3002c37",
+      "date": "2026-11-06",
+      "summary": "Soft #244: evidence includes final FC gate commits"
     },
     {
-      "sha": "a7eb778816265a57ba8a7f7b3c7ea61aa0751022",
-      "date": "2026-11-05",
-      "summary": "chore: refresh feature-contract.json for home FAQ soft #243"
+      "sha": "ff4b5684bd37bee55ec4e7a4b53a0eba398bdb67",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
     },
     {
-      "sha": "ee8c1ff893ccf39c3923ab973b804c0d95223ad9",
-      "date": "2026-11-05",
-      "summary": "feat(home): Soft #243 locked FAQ #6 copy and new FAQ #7 (#243)"
+      "sha": "2dbcc2dcf505a137a7c3e64b5a30eae0a3103cbb",
+      "date": "2026-11-06",
+      "summary": "Soft #244: fix FC evidence (restore core-quiz row, cover branch tip)"
+    },
+    {
+      "sha": "501f828dc49692e26fc1d1eb183a418a0258344b",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
+    {
+      "sha": "d8a8193f7131903c36ff9ae2de0ec1535bd93187",
+      "date": "2026-11-06",
+      "summary": "Soft #244: home-faq-soft-244 evidence covers Soft tip and FC commits"
+    },
+    {
+      "sha": "0d43f94beb36b46bcc1e87a82e13ce61b02232cb",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
+    {
+      "sha": "9fc12f23a9f1916c2d59ee6fa9b3dfb991242dfb",
+      "date": "2026-11-06",
+      "summary": "Soft #244: evidence_commits cover full Soft branch history"
+    },
+    {
+      "sha": "40a2664733826495eda8acd3be12c7128e2ce7de",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
+    {
+      "sha": "bbfbf12023b11ec83f7e08678193403a53cb7e08",
+      "date": "2026-11-06",
+      "summary": "Soft #244: align home-faq-soft-244 evidence with branch tip 39fb4d0"
+    },
+    {
+      "sha": "39fb4d08aceb9020f5edb6e04d3d2809bb169546",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
+    {
+      "sha": "d512a768465f6241875e2ece06b7e30b3c4a10d2",
+      "date": "2026-11-06",
+      "summary": "Soft #244: home-faq-soft-244 evidence includes FC gate commits"
+    },
+    {
+      "sha": "5b0975f3640d13b81cb43c72bf783bb011355153",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json (evidence gate)"
+    },
+    {
+      "sha": "6d73f8f50c2594bdade5bfba20ec869e7067143c",
+      "date": "2026-11-06",
+      "summary": "Soft #244: expand home-faq-soft-244 evidence to branch tip"
+    },
+    {
+      "sha": "10453ac5c2f5f6c39dbdb3776cdaa26a80db6346",
+      "date": "2026-11-06",
+      "summary": "Soft #244: refresh feature-contract.json"
+    },
+    {
+      "sha": "f4383dae0eb298144a76d00faa7571b920169005",
+      "date": "2026-11-06",
+      "summary": "Soft #244: point home-faq-soft-244 evidence at feature commit"
+    },
+    {
+      "sha": "bfee21bff8053f12cb0f2fca41ec377a1ef4a08e",
+      "date": "2026-11-06",
+      "summary": "Soft #244: cut FAQ #6 opener; retain ranking copy"
+    },
+    {
+      "sha": "95988306d01c4cf047a9c9a95dc60459b0142be2",
+      "date": "2026-11-06",
+      "summary": "Soft #243: Home FAQ #6–#7 locked copy (呈分試 RO + AI 精準輔導) (#243)"
     },
     {
       "sha": "74c296d4eaecd53dc73271adcbe70bf840042df7",
@@ -7196,7 +7309,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 627,
-    "total_feature_rows": 85
+    "total_commits_since_start": 641,
+    "total_feature_rows": 86
   }
 }
