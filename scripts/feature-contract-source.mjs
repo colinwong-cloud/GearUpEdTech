@@ -1134,7 +1134,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "medium",
       title: "Home FAQ #6 answer cut — remove P1–P6 opener (#244 soft)",
-      evidence_commits: ["bfee21b"],
+      evidence_commits: ["bfee21b", "f4383da", "10453ac"],
       checks: [
         {
           type: "file_contains",
