@@ -1863,6 +1863,9 @@ export const FEATURE_CONTRACT_BASE = {
         "7e66402",
         "6ce2248",
         "4ce2909",
+        "8779631",
+        "a7a7a2d",
+        "ccbb3cf",
       ],
       checks: [
         { type: "file_exists", path: "supabase_parent_check_ranking_peer.sql" },
