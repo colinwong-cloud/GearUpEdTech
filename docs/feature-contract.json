@@ -702,7 +702,7 @@
       "priority": "critical",
       "title": "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
       "evidence_commits": [
-        "627265a"
+        "94b9651"
       ],
       "checks": [
         {
@@ -4295,8 +4295,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T05:20:38.201Z",
+  "generated_at": "2026-11-07T05:24:06.706Z",
   "commit_inventory": [
+    {
+      "sha": "304c6d1dcf0946d3f08394d83325543bb8a7e6fc",
+      "date": "2026-11-07",
+      "summary": "fix(feature-contract): use 94b9651 for stamp Phase 8 evidence commit"
+    },
+    {
+      "sha": "57d6655d1998674b6110e18fad4b46d91bbf227d",
+      "date": "2026-11-07",
+      "summary": "Refresh feature-contract.json after Soft #250 ranking UX"
+    },
     {
       "sha": "73ad11cad9d68c790175dcd7769bc3736533d793",
       "date": "2026-11-07",
@@ -7449,7 +7459,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 630,
+    "total_commits_since_start": 632,
     "total_feature_rows": 91
   }
 }
