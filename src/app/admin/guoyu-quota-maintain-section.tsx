@@ -9,7 +9,10 @@ export type GuoyuAdminQuotaView = {
   mobile_number: string;
   parent_name: string | null;
   hkt_month: string;
+  /** effective_cap — 目前上限 */
   cap: number;
+  tier_cap?: number;
+  admin_cap?: number | null;
   usage_count: number;
   remaining: number;
   is_paid_parent: boolean;
@@ -61,6 +64,11 @@ function tierLabel(view: GuoyuAdminQuotaView): string {
   if (view.is_tutor_parent) return "導師";
   if (view.is_paid_parent) return "月費用戶";
   return "免費用戶";
+}
+
+function showAdminGrantHint(view: GuoyuAdminQuotaView): boolean {
+  const tierCap = view.tier_cap ?? view.cap;
+  return view.cap > tierCap;
 }
 
 function kindProductLabel(kind: GuoyuQuotaKind): "OCR" | "朗讀" {
@@ -275,6 +283,9 @@ export function GuoyuQuotaMaintainBlock({
             <p className="text-xs text-sky-700">
               目前上限：{quota.cap} 次（{tierLabel(quota)}）
             </p>
+            {showAdminGrantHint(quota) && (
+              <p className="text-xs text-amber-700">含管理員加額</p>
+            )}
             <p className="text-xs text-sky-700">
               本月已用：{quota.usage_count} 次
             </p>

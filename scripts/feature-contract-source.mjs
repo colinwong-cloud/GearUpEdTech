@@ -1856,7 +1856,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
-      evidence_commits: ["78ed979"],
+      evidence_commits: ["d04cca3"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_admin_quota.sql" },
         {
@@ -1875,6 +1875,47 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/api/admin/console/route.ts",
           snippet: "adjust_guoyu_ocr_quota_by_mobile",
+        },
+      ],
+    },
+    {
+      id: "admin-quota-maint-guoyu-effective-cap-soft-247",
+      month: "2026-11",
+      category: "admin",
+      priority: "high",
+      title: "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
+      evidence_commits: ["cfcfd08", "aa2473c"],
+      checks: [
+        { type: "file_exists", path: "supabase_guoyu_admin_quota_v2.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "guoyu_effective_cap",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "consume_parent_guoyu_ocr_quota",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "admin_get_parent_guoyu_ocr_quota",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "含管理員加額",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "目前上限：",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "supabase_guoyu_admin_quota_v2.sql",
         },
       ],
     },

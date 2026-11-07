@@ -3283,7 +3283,7 @@
       "priority": "high",
       "title": "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
       "evidence_commits": [
-        "78ed979"
+        "d04cca3"
       ],
       "checks": [
         {
@@ -3314,6 +3314,53 @@
           "type": "file_contains",
           "path": "src/app/api/admin/console/route.ts",
           "snippet": "adjust_guoyu_ocr_quota_by_mobile"
+        }
+      ]
+    },
+    {
+      "id": "admin-quota-maint-guoyu-effective-cap-soft-247",
+      "month": "2026-11",
+      "category": "admin",
+      "priority": "high",
+      "title": "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
+      "evidence_commits": [
+        "cfcfd08",
+        "aa2473c"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_guoyu_admin_quota_v2.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_admin_quota_v2.sql",
+          "snippet": "guoyu_effective_cap"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_admin_quota_v2.sql",
+          "snippet": "consume_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_admin_quota_v2.sql",
+          "snippet": "admin_get_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "含管理員加額"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "目前上限："
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "supabase_guoyu_admin_quota_v2.sql"
         }
       ]
     },
@@ -4161,42 +4208,47 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T01:36:53.331Z",
+  "generated_at": "2026-11-07T02:34:21.903Z",
   "commit_inventory": [
     {
-      "sha": "52e7cf97015cdd79b0ae6fa96a3182b45fb6f917",
+      "sha": "e500faf32b857e1bad093cdf54f1f6da85ea225a",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): Soft #246 checks point OCR title at maintain section"
+      "summary": "chore: fix Soft #246 feature-contract evidence commit ref (d04cca3)"
     },
     {
-      "sha": "ac9ecdfa3f8bb3a5d1fa5fb3775e636f49ed6a9e",
+      "sha": "c562bce2fde7a4fe5d968a1d6f24433cea2baf5a",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+      "summary": "chore: refresh feature-contract.json"
     },
     {
-      "sha": "b3406ff74125c812f6456e860ee501a38693b368",
+      "sha": "6a8f2e04072646767c1770c854e113f90c3943e0",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): repair Soft #245 evidence to main merge 279a3eb"
+      "summary": "chore: Soft #247 feature-contract evidence and retention checks"
     },
     {
-      "sha": "3c9d6457c1e5a4e28ae91cd14a6354de534a90de",
+      "sha": "3ea2d1171b451b82f3d47ac2ea5621401f72ff99",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+      "summary": "chore: refresh feature-contract.json"
     },
     {
-      "sha": "6588505beb01f533e79043d1fbe205f41d42831c",
+      "sha": "aa2473c9ecae538cadd90ecfd1220ab4fcbd7fbd",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): Soft #246 evidence_commits kick"
+      "summary": "fix(admin): lock #247 balance card hint 含管理員加額 (BRIEF §3)"
     },
     {
-      "sha": "790e1c22a478a6315de84e944f1061cdf8806703",
+      "sha": "a34266f9257aa365ff59fe00ea9a6aa0b91dd459",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json (Soft #246)"
+      "summary": "chore: refresh feature-contract.json for Soft #247"
     },
     {
-      "sha": "78ed979443a86bf13ec27b0b03918394fdab8b7d",
+      "sha": "cfcfd082ce866e6fcff9215ff0d5239685b1c9e4",
       "date": "2026-11-07",
-      "summary": "feat(admin): Soft #246 Phase 1 — 配額維護 OCR/TTS admin adjust (LOCK B)"
+      "summary": "feat(admin): Soft #247 effective_cap quota remaining (Option B HOLD SQL)"
+    },
+    {
+      "sha": "d04cca3755a236ed551a80585829a55e579e8bc4",
+      "date": "2026-11-07",
+      "summary": "Soft #246 Phase 1 — admin 配額維護 OCR/TTS (LOCK B) (#246)"
     },
     {
       "sha": "279a3eb2f868cd9b61c02f3e3a3d7e3f3ba8e0b4",
@@ -7325,7 +7377,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 632,
-    "total_feature_rows": 88
+    "total_commits_since_start": 633,
+    "total_feature_rows": 89
   }
 }
