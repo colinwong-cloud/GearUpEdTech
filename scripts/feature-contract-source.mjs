@@ -1856,7 +1856,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
-      evidence_commits: [],
+      evidence_commits: ["78ed979"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_admin_quota.sql" },
         {
