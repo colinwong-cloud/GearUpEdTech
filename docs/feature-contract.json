@@ -3342,7 +3342,7 @@
         {
           "type": "file_contains",
           "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
-          "snippet": "管理員加額"
+          "snippet": "含管理員加額"
         }
       ]
     },
@@ -4190,8 +4190,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T02:30:02.564Z",
+  "generated_at": "2026-11-07T02:31:41.895Z",
   "commit_inventory": [
+    {
+      "sha": "aa2473c9ecae538cadd90ecfd1220ab4fcbd7fbd",
+      "date": "2026-11-07",
+      "summary": "fix(admin): lock #247 balance card hint 含管理員加額 (BRIEF §3)"
+    },
+    {
+      "sha": "a34266f9257aa365ff59fe00ea9a6aa0b91dd459",
+      "date": "2026-11-07",
+      "summary": "chore: refresh feature-contract.json for Soft #247"
+    },
     {
       "sha": "cfcfd082ce866e6fcff9215ff0d5239685b1c9e4",
       "date": "2026-11-07",
@@ -7329,7 +7339,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 627,
+    "total_commits_since_start": 629,
     "total_feature_rows": 89
   }
 }
