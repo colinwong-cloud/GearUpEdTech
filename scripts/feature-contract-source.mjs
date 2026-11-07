@@ -433,7 +433,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
-      evidence_commits: ["627265a"],
+      evidence_commits: ["94b9651"],
       checks: [
         {
           type: "file_exists",
