@@ -1884,7 +1884,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
-      evidence_commits: ["cfcfd08", "aa2473c"],
+      evidence_commits: ["69ad254"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_admin_quota_v2.sql" },
         {
@@ -2220,7 +2220,7 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/app/api/guoyu/ocr/route.ts" },
         { type: "file_exists", path: "src/app/api/guoyu/pinyin/route.ts" },
         { type: "file_exists", path: "src/app/api/guoyu/tts/route.ts" },
-        { type: "file_contains", path: "src/app/page.tsx", snippet: "國語練習" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "普通話練習" },
         { type: "file_contains", path: "src/components/guoyu/GuoyuComposeScreen.tsx", snippet: "練習普通話拼音" },
         { type: "file_contains", path: "src/components/guoyu/GuoyuResultScreen.tsx", snippet: "讀出文章" },
         {
@@ -2370,6 +2370,40 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/components/guoyu/GuoyuResultScreen.tsx",
           snippet: "下載練習卷讓小朋友填寫拼音",
+        },
+      ],
+    },
+    {
+      id: "layout-soft-248",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Soft #248 — guoyu OCR quota below upload; subject select order + 普通話練習 label",
+      evidence_commits: ["20a9027"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: "普通話練習",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/quiz-subjects.ts",
+          snippet: 'label: "中文"',
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/quiz-subjects.ts",
+          snippet: `export const STUDENT_SUBJECT_OPTIONS = [
+  { key: CHINESE_QUIZ_SUBJECT, label: "中文", icon: "📖" },
+  { key: ENGLISH_QUIZ_SUBJECT, label: "英文", icon: "🔤" },
+  { key: PRIMARY_QUIZ_SUBJECT, label: "數學", icon: "🔢" },
+] as const;`,
+        },
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuComposeScreen.test.ts",
+          snippet: "expect(practiceLabelIdx).toBeGreaterThan(quotaIdx);",
         },
       ],
     },
