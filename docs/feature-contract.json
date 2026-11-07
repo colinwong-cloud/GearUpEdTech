@@ -4295,22 +4295,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T05:24:06.706Z",
+  "generated_at": "2026-11-07T12:34:02.469Z",
   "commit_inventory": [
     {
-      "sha": "304c6d1dcf0946d3f08394d83325543bb8a7e6fc",
+      "sha": "b5fa513b337d6649e662649f4474c06a136d1797",
       "date": "2026-11-07",
-      "summary": "fix(feature-contract): use 94b9651 for stamp Phase 8 evidence commit"
+      "summary": "fix(guoyu): double practice PDF line spacing on all rows"
     },
     {
-      "sha": "57d6655d1998674b6110e18fad4b46d91bbf227d",
+      "sha": "3c2bc9b406906f96d84c5861672dba8e4b94ac80",
       "date": "2026-11-07",
-      "summary": "Refresh feature-contract.json after Soft #250 ranking UX"
-    },
-    {
-      "sha": "73ad11cad9d68c790175dcd7769bc3736533d793",
-      "date": "2026-11-07",
-      "summary": "Soft #250: 檢查排名 UX wording, geo pickers, extended peer SQL"
+      "summary": "Soft #250: 檢查排名 UX (全港同級 + pick-any district/school) (#250)"
     },
     {
       "sha": "94b9651298f8b73dd150c899b9f6ec6fdc73aa51",
@@ -7459,7 +7454,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 632,
+    "total_commits_since_start": 631,
     "total_feature_rows": 91
   }
 }
