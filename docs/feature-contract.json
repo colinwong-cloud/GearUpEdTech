@@ -3414,7 +3414,7 @@
       "month": "2026-11",
       "category": "parent",
       "priority": "high",
-      "title": "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
+      "title": "Paid parent check ranking (全港同級／比較地區／比較學校) and parent_check_ranking_peer RPC SQL",
       "evidence_commits": [
         "279a3eb"
       ],
@@ -3430,18 +3430,28 @@
         },
         {
           "type": "file_contains",
+          "path": "supabase_parent_check_ranking_peer.sql",
+          "snippet": "p_district"
+        },
+        {
+          "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "\"check_ranking\""
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "全級／同區／同校比較"
+          "snippet": "全港同級／比較地區／比較學校比較"
         },
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "parent_check_ranking_peer"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "p_district"
         }
       ]
     },
@@ -4285,22 +4295,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T03:55:14.870Z",
+  "generated_at": "2026-11-07T05:20:38.201Z",
   "commit_inventory": [
     {
-      "sha": "8f34bb99bff30f74119b6a0b538a50a10195c464",
+      "sha": "73ad11cad9d68c790175dcd7769bc3736533d793",
       "date": "2026-11-07",
-      "summary": "chore(feature-contract): phase 8 stamp adjust evidence + #248 merge SHA (#249)"
+      "summary": "Soft #250: 檢查排名 UX wording, geo pickers, extended peer SQL"
     },
     {
-      "sha": "194ded62fb8e10d436ba9635791c7f54cd54676c",
+      "sha": "94b9651298f8b73dd150c899b9f6ec6fdc73aa51",
       "date": "2026-11-07",
-      "summary": "chore: refresh feature contract for phase 8 stamp adjust"
-    },
-    {
-      "sha": "627265ac2993074e2a8c664fbf88df697cad3727",
-      "date": "2026-11-07",
-      "summary": "feat(admin): add 印花調整 stamp count adjust UI (#249)"
+      "summary": "feat(admin): 印花調整 — admin stamp count set (#249 Soft) (#249)"
     },
     {
       "sha": "8f1ebf28b0b26b4ab7f4a0e0b512e9ae8e1c6ea1",
@@ -7444,7 +7449,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 631,
+    "total_commits_since_start": 630,
     "total_feature_rows": 91
   }
 }
