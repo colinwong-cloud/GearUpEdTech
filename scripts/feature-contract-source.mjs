@@ -2379,7 +2379,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #248 — guoyu OCR quota below upload; subject select order + 普通話練習 label",
-      evidence_commits: ["20a9027"],
+      evidence_commits: ["deed97c"],
       checks: [
         {
           type: "file_contains",
