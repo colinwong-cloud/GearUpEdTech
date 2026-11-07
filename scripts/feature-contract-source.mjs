@@ -1900,7 +1900,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/admin/guoyu-quota-maintain-section.tsx",
-          snippet: "管理員加額",
+          snippet: "含管理員加額",
         },
       ],
     },

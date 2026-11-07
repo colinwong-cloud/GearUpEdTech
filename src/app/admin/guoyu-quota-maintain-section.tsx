@@ -66,15 +66,9 @@ function tierLabel(view: GuoyuAdminQuotaView): string {
   return "免費用戶";
 }
 
-function capHint(view: GuoyuAdminQuotaView): string {
+function showAdminGrantHint(view: GuoyuAdminQuotaView): boolean {
   const tierCap = view.tier_cap ?? view.cap;
-  const hasAdminGrant =
-    view.cap > tierCap ||
-    (view.admin_cap != null && view.admin_cap > tierCap);
-  if (hasAdminGrant) {
-    return `（${tierLabel(view)} · 管理員加額）`;
-  }
-  return `（${tierLabel(view)}）`;
+  return view.cap > tierCap;
 }
 
 function kindProductLabel(kind: GuoyuQuotaKind): "OCR" | "朗讀" {
@@ -287,8 +281,11 @@ export function GuoyuQuotaMaintainBlock({
               本月尚餘：{quota.remaining} 次
             </p>
             <p className="text-xs text-sky-700">
-              目前上限：{quota.cap} 次{capHint(quota)}
+              目前上限：{quota.cap} 次（{tierLabel(quota)}）
             </p>
+            {showAdminGrantHint(quota) && (
+              <p className="text-xs text-amber-700">含管理員加額</p>
+            )}
             <p className="text-xs text-sky-700">
               本月已用：{quota.usage_count} 次
             </p>
