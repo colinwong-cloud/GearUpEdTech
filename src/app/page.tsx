@@ -942,6 +942,10 @@ export default function QuizApp() {
   const [checkRankingQueryLoading, setCheckRankingQueryLoading] = useState(false);
   const [checkRankingUi, setCheckRankingUi] = useState<CheckRankingUiState>({ kind: "idle" });
   const [checkRankingFilterError, setCheckRankingFilterError] = useState<string | null>(null);
+  const [checkRankingDistrict, setCheckRankingDistrict] = useState("");
+  const [checkRankingSchoolId, setCheckRankingSchoolId] = useState("");
+  const [checkRankingSchools, setCheckRankingSchools] = useState<SchoolOption[]>([]);
+  const [checkRankingSchoolsLoaded, setCheckRankingSchoolsLoaded] = useState(false);
   const hasLoginContext = mobileNumber.trim().length > 0 && students.length > 0;
   const authIntentRef = useRef(false);
 
@@ -1075,10 +1079,45 @@ export default function QuizApp() {
     if (screen !== "check_ranking") return;
     setCheckRankingScope("");
     setCheckRankingSubject("");
+    setCheckRankingDistrict("");
+    setCheckRankingSchoolId("");
     setCheckRankingUi({ kind: "idle" });
     setCheckRankingFilterError(null);
     setCheckRankingQueryLoading(false);
   }, [screen, selectedStudent?.id]);
+
+  useEffect(() => {
+    if (screen !== "check_ranking") return;
+    let cancelled = false;
+    setCheckRankingSchoolsLoaded(false);
+    void supabase.rpc("get_schools").then(({ data }) => {
+      if (cancelled) return;
+      if (data) setCheckRankingSchools(data as SchoolOption[]);
+      setCheckRankingSchoolsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [screen]);
+
+  useEffect(() => {
+    if (screen !== "check_ranking") return;
+    if (!checkRankingSchoolsLoaded || !selectedStudent?.school_id) return;
+    const own = checkRankingSchools.find((s) => s.id === selectedStudent.school_id);
+    if (!own) return;
+    setCheckRankingDistrict((prev) => (prev.trim() ? prev : own.district));
+    setCheckRankingSchoolId((prev) => {
+      if (checkRankingScope === "school" && !prev) return own.id;
+      return prev;
+    });
+  }, [
+    screen,
+    checkRankingSchoolsLoaded,
+    checkRankingSchools,
+    selectedStudent?.id,
+    selectedStudent?.school_id,
+    checkRankingScope,
+  ]);
 
   const handleMobileSubmit = useCallback(async () => {
     if (!mobileNumber.trim() || !pinInput.trim()) return;
@@ -1290,9 +1329,39 @@ export default function QuizApp() {
     }
   };
 
+  const handleCheckRankingScopeChange = useCallback((s: CheckRankingScopeKey | "") => {
+    setCheckRankingScope(s);
+    setCheckRankingUi({ kind: "idle" });
+    setCheckRankingFilterError(null);
+    if (s === "grade") {
+      setCheckRankingDistrict("");
+      setCheckRankingSchoolId("");
+    } else if (s === "district") {
+      setCheckRankingSchoolId("");
+    }
+  }, []);
+
+  const handleCheckRankingDistrictChange = useCallback(
+    (district: string) => {
+      setCheckRankingDistrict(district);
+      setCheckRankingSchoolId((prev) => {
+        if (!prev) return prev;
+        const stillValid = checkRankingSchools.some(
+          (sch) => sch.id === prev && sch.district === district
+        );
+        return stillValid ? prev : "";
+      });
+      setCheckRankingUi({ kind: "idle" });
+      setCheckRankingFilterError(null);
+    },
+    [checkRankingSchools]
+  );
+
   const handleOpenCheckRanking = useCallback(() => {
     setCheckRankingScope("");
     setCheckRankingSubject("");
+    setCheckRankingDistrict("");
+    setCheckRankingSchoolId("");
     setCheckRankingUi({ kind: "idle" });
     setCheckRankingFilterError(null);
     setCheckRankingQueryLoading(false);
@@ -1318,11 +1387,25 @@ export default function QuizApp() {
       setCheckRankingFilterError("請選擇範圍同科目。");
       return;
     }
+    if (checkRankingScope === "district" && !checkRankingDistrict.trim()) {
+      setCheckRankingFilterError("請先選擇地區。");
+      return;
+    }
+    if (checkRankingScope === "school") {
+      if (!checkRankingDistrict.trim()) {
+        setCheckRankingFilterError("請先選擇地區。");
+        return;
+      }
+      if (!checkRankingSchoolId) {
+        setCheckRankingFilterError("請先選擇學校。");
+        return;
+      }
+    }
     if (!parentTierStatus.is_paid) {
       setCheckRankingUi({
         kind: "error",
         message:
-          "檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。",
+          "檢查排名只供月費用戶使用。升級月費會員後，即可比較全港同級／比較地區／比較學校表現。",
       });
       return;
     }
@@ -1361,7 +1444,7 @@ export default function QuizApp() {
           return;
         }
         const displayName = (rank.student_name || selectedStudent.student_name).trim() || "學生";
-        const summaryLine = `${displayName} 喺全級（${subjectDisplayLabel(
+        const summaryLine = `${displayName} 喺全港同級（${subjectDisplayLabel(
           subjectKey
         )}）排第 ${rnk} 名（共 ${tot} 人）`;
         setCheckRankingUi({
@@ -1384,12 +1467,18 @@ export default function QuizApp() {
       }
 
       const scopeParam = checkRankingScope === "district" ? "district" : "school";
+      const districtArg =
+        checkRankingScope === "district" ? checkRankingDistrict.trim() || null : null;
+      const schoolArg =
+        checkRankingScope === "school" ? checkRankingSchoolId || null : null;
       const { data, error } = await supabase.rpc("parent_check_ranking_peer", {
         p_mobile_number: mobileNumber.trim(),
         p_pin_code: pinInput.trim(),
         p_student_id: selectedStudent.id,
         p_subject: subjectKey,
         p_scope: scopeParam,
+        p_district: districtArg,
+        p_school_id: schoolArg,
       });
 
       if (error) {
@@ -1420,7 +1509,7 @@ export default function QuizApp() {
         setCheckRankingUi({
           kind: "error",
           message:
-            "檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。",
+            "檢查排名只供月費用戶使用。升級月費會員後，即可比較全港同級／比較地區／比較學校表現。",
         });
         return;
       }
@@ -1429,7 +1518,7 @@ export default function QuizApp() {
         const rnk = Number(payload.rank_in_cohort);
         const tot = Number(payload.total_eligible_in_cohort);
         const avg = Number(payload.last_10_avg_correct_pct);
-        const scopeLabel = checkRankingScope === "district" ? "同區" : "同校";
+        const scopeLabel = checkRankingScope === "district" ? "比較地區" : "比較學校";
         const displayName = String(payload.student_name || selectedStudent.student_name).trim() || "學生";
         const summaryLine = `${displayName} 喺${scopeLabel}（${subjectDisplayLabel(
           subjectKey
@@ -1455,6 +1544,8 @@ export default function QuizApp() {
     selectedStudent,
     checkRankingScope,
     checkRankingSubject,
+    checkRankingDistrict,
+    checkRankingSchoolId,
     parentTierStatus.is_paid,
     pinInput,
     mobileNumber,
@@ -2215,8 +2306,14 @@ export default function QuizApp() {
         tierStatus={parentTierStatus}
         scope={checkRankingScope}
         subject={checkRankingSubject}
-        onScopeChange={setCheckRankingScope}
+        district={checkRankingDistrict}
+        schoolId={checkRankingSchoolId}
+        schools={checkRankingSchools}
+        schoolsLoaded={checkRankingSchoolsLoaded}
+        onScopeChange={handleCheckRankingScopeChange}
         onSubjectChange={setCheckRankingSubject}
+        onDistrictChange={handleCheckRankingDistrictChange}
+        onSchoolChange={setCheckRankingSchoolId}
         onQuery={handleCheckRankingQuery}
         queryLoading={checkRankingQueryLoading}
         ui={checkRankingUi}
@@ -5450,9 +5547,9 @@ const CHECK_RANKING_SUBJECT_OPTIONS: { key: string; label: string }[] = [
 ];
 
 const CHECK_RANKING_SCOPE_OPTIONS: { key: CheckRankingScopeKey; label: string }[] = [
-  { key: "grade", label: "全級" },
-  { key: "district", label: "同區" },
-  { key: "school", label: "同校" },
+  { key: "grade", label: "全港同級" },
+  { key: "district", label: "比較地區" },
+  { key: "school", label: "比較學校" },
 ];
 
 function CheckRankingScreen({
@@ -5460,8 +5557,14 @@ function CheckRankingScreen({
   tierStatus,
   scope,
   subject,
+  district,
+  schoolId,
+  schools,
+  schoolsLoaded,
   onScopeChange,
   onSubjectChange,
+  onDistrictChange,
+  onSchoolChange,
   onQuery,
   queryLoading,
   ui,
@@ -5474,8 +5577,14 @@ function CheckRankingScreen({
   tierStatus: ParentTierStatus;
   scope: CheckRankingScopeKey | "";
   subject: string;
+  district: string;
+  schoolId: string;
+  schools: SchoolOption[];
+  schoolsLoaded: boolean;
   onScopeChange: (s: CheckRankingScopeKey | "") => void;
   onSubjectChange: (s: string) => void;
+  onDistrictChange: (d: string) => void;
+  onSchoolChange: (id: string) => void;
   onQuery: () => void;
   queryLoading: boolean;
   ui: CheckRankingUiState;
@@ -5485,11 +5594,26 @@ function CheckRankingScreen({
   onAccount: () => void;
 }) {
   const paid = tierStatus.is_paid;
+  const needsSchoolHard =
+    (scope === "district" || scope === "school") && !student?.school_id;
+  const districtOptions = [...new Set(schools.map((s) => s.district).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b, "zh-Hant")
+  );
+  const schoolsInDistrict = schools.filter((s) => s.district === district);
+  const geoReady =
+    scope === "grade" ||
+    (scope === "district" && district.trim().length > 0) ||
+    (scope === "school" && district.trim().length > 0 && Boolean(schoolId));
+  const queryReady =
+    Boolean(scope) && Boolean(subject) && geoReady && !needsSchoolHard;
   const filtersDisabled = !paid || queryLoading;
+  const ctaDisabled = filtersDisabled || !queryReady;
   const emptyCopy = "請先選擇範圍同科目並查詢排名。";
   const loadingCopy = "正在載入排名…";
   const footnote =
-    "僅計算該科目累積完成至少 100 題的同級學生；以最近 10 次練習平均正確率排序。全級資料每日更新；同區／同校為即時比較。";
+    "僅計算該科目累積完成至少 100 題的同級學生；以最近 10 次練習平均正確率排序。全港同級資料每日更新；比較地區／比較學校為即時比較。";
+  const showGeoHelper =
+    scope === "district" || scope === "school";
 
   const posPct = (rank: number, total: number) =>
     total <= 1 ? 50 : Math.min(100, Math.max(0, ((total - rank) / (total - 1)) * 100));
@@ -5506,7 +5630,7 @@ function CheckRankingScreen({
         return (
           <div className="space-y-3">
             <p className="text-sm text-gray-700 leading-relaxed">
-              尚未設定學校資料。請先到「戶口管理」為學生選擇學校，再查詢同區或同校排名。
+              尚未設定學校資料。請先到「戶口管理」為學生選擇學校，再查詢比較地區或比較學校排名。
             </p>
             <button
               type="button"
@@ -5521,7 +5645,7 @@ function CheckRankingScreen({
       return emptyCopy;
     }
     if (ui.kind === "tiny_cohort") {
-      return "此範圍暫時未有足夠同級學生可比較，請稍後再試或改選「全級」。";
+      return "此範圍暫時未有足夠同級學生可比較，請稍後再試或改選「全港同級」。";
     }
     if (ui.kind === "error") {
       return ui.message;
@@ -5561,7 +5685,7 @@ function CheckRankingScreen({
           </p>
           {updatedStr && <p className="mt-1 text-xs text-gray-500">更新：{updatedStr}</p>}
           {!updatedStr && ui.scopeKey !== "grade" && (
-            <p className="mt-1 text-xs text-gray-500">同區／同校為即時比較。</p>
+            <p className="mt-1 text-xs text-gray-500">比較地區／比較學校為即時比較。</p>
           )}
         </div>
       );
@@ -5613,7 +5737,7 @@ function CheckRankingScreen({
           {!paid && (
             <div className="rounded-lg border border-indigo-200 bg-white/90 p-3 space-y-3">
               <p className="text-sm text-gray-800 leading-relaxed">
-                檢查排名只供月費用戶使用。升級月費會員後，即可比較全級／同區／同校表現。
+                檢查排名只供月費用戶使用。升級月費會員後，即可比較全港同級／比較地區／比較學校表現。
               </p>
               <button
                 type="button"
@@ -5658,15 +5782,95 @@ function CheckRankingScreen({
                 ))}
               </select>
             </div>
+            {scope === "district" && (
+              <div className="min-w-0 sm:min-w-[200px]">
+                <label className="block text-xs font-medium text-gray-700 mb-1">地區</label>
+                <select
+                  className="w-full p-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 disabled:opacity-50"
+                  value={district}
+                  disabled={filtersDisabled || needsSchoolHard || !schoolsLoaded}
+                  onChange={(e) => onDistrictChange(e.target.value)}
+                >
+                  <option value="">請選擇地區</option>
+                  {districtOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {scope === "school" && (
+              <>
+                <div className="min-w-0 sm:min-w-[200px]">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">地區</label>
+                  <select
+                    className="w-full p-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 disabled:opacity-50"
+                    value={district}
+                    disabled={filtersDisabled || needsSchoolHard || !schoolsLoaded}
+                    onChange={(e) => onDistrictChange(e.target.value)}
+                  >
+                    <option value="">請選擇地區</option>
+                    {districtOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="min-w-0 sm:min-w-[220px]">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">學校</label>
+                  <select
+                    className="w-full p-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 disabled:opacity-50"
+                    value={schoolId}
+                    disabled={
+                      filtersDisabled ||
+                      needsSchoolHard ||
+                      !schoolsLoaded ||
+                      !district.trim()
+                    }
+                    onChange={(e) => onSchoolChange(e.target.value)}
+                  >
+                    <option value="">
+                      {district.trim() ? "請選擇學校" : "請先選擇地區"}
+                    </option>
+                    {schoolsInDistrict.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name_zh || s.name_en}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
             <button
               type="button"
               onClick={onQuery}
-              disabled={filtersDisabled}
+              disabled={ctaDisabled}
               className="sm:ml-auto px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 w-full sm:w-auto"
             >
               {queryLoading ? "查詢中…" : "查詢排名"}
             </button>
           </div>
+          {showGeoHelper && !needsSchoolHard && (
+            <p className="text-xs text-indigo-700 leading-relaxed">
+              可選擇任意地區／學校作比較；預設為學生本身地區／學校。
+            </p>
+          )}
+          {needsSchoolHard && (
+            <div className="rounded-lg border border-indigo-200 bg-white/90 p-3 space-y-3">
+              <p className="text-sm text-gray-800 leading-relaxed">
+                尚未設定學校資料。請先到「戶口管理」為學生選擇學校，再查詢比較地區或比較學校排名。
+              </p>
+              <button
+                type="button"
+                onClick={onAccount}
+                className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                前往戶口管理
+              </button>
+            </div>
+          )}
           {filterError && <p className="text-sm text-red-600">{filterError}</p>}
         </div>
 
@@ -5807,7 +6011,7 @@ function RoleSelectScreen({
             </div>
             <div className="text-left">
               <p className="text-base font-semibold text-gray-900">檢查排名</p>
-              <p className="text-sm text-gray-500">全級／同區／同校比較</p>
+              <p className="text-sm text-gray-500">全港同級／比較地區／比較學校比較</p>
             </div>
           </button>
           <button

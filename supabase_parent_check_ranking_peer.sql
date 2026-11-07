@@ -1,5 +1,6 @@
--- Parent-callable peer ranking for「同區」「同校」scope (Soft #245 Phase 1).
+-- Parent-callable peer ranking for「比較地區」「比較學校」scope (Soft #245 Phase 1 · Soft #250 pick-any).
 -- Mirrors tutor_student_peer_comparison last-10 session average, subject + grade filters.
+-- Optional p_district / p_school_id: null or blank → student's own school district / school_id (compat).
 -- SECURITY DEFINER: verifies mobile + PIN + parent paid + student ownership before returning data.
 --
 -- **Deploy:** Apply in Supabase SQL Editor when approved (shared-db preview = prod). Do not run from agent without owner sign-off.
@@ -7,13 +8,16 @@
 BEGIN;
 
 DROP FUNCTION IF EXISTS public.parent_check_ranking_peer(text, text, uuid, text, text);
+DROP FUNCTION IF EXISTS public.parent_check_ranking_peer(text, text, uuid, text, text, text, uuid);
 
 CREATE OR REPLACE FUNCTION public.parent_check_ranking_peer(
   p_mobile_number text,
   p_pin_code text,
   p_student_id uuid,
   p_subject text,
-  p_scope text
+  p_scope text,
+  p_district text DEFAULT NULL,
+  p_school_id uuid DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -31,6 +35,8 @@ DECLARE
   v_grade text;
   v_school_id uuid;
   v_district text;
+  v_compare_district text;
+  v_compare_school_id uuid;
   v_student_name text;
   v_lifetime int := 0;
   v_my_accuracy numeric;
@@ -113,6 +119,24 @@ BEGIN
     RETURN json_build_object('error', 'needs_school', 'subject', v_subject);
   END IF;
 
+  v_compare_district := NULLIF(btrim(coalesce(p_district, '')), '');
+  IF v_compare_district IS NULL THEN
+    v_compare_district := v_district;
+  END IF;
+
+  v_compare_school_id := p_school_id;
+  IF v_compare_school_id IS NULL THEN
+    v_compare_school_id := v_school_id;
+  END IF;
+
+  IF v_scope = 'district' AND (v_compare_district IS NULL OR v_compare_district = '') THEN
+    RETURN json_build_object('error', 'needs_school', 'subject', v_subject);
+  END IF;
+
+  IF v_scope = 'school' AND v_compare_school_id IS NULL THEN
+    RETURN json_build_object('error', 'needs_school', 'subject', v_subject);
+  END IF;
+
   WITH sessions_norm AS (
     SELECT
       qs.student_id,
@@ -175,8 +199,8 @@ BEGIN
     LEFT JOIN public.parents pa ON pa.id = s.parent_id
     WHERE s.grade_level = v_grade
       AND (
-        (v_scope = 'district' AND NULLIF(btrim(sch.district), '') = v_district)
-        OR (v_scope = 'school' AND s.school_id IS NOT DISTINCT FROM v_school_id)
+        (v_scope = 'district' AND NULLIF(btrim(sch.district), '') = v_compare_district)
+        OR (v_scope = 'school' AND s.school_id IS NOT DISTINCT FROM v_compare_school_id)
       )
   ),
   eligible AS (
@@ -235,7 +259,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.parent_check_ranking_peer(text, text, uuid, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.parent_check_ranking_peer(text, text, uuid, text, text) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.parent_check_ranking_peer(text, text, uuid, text, text, text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.parent_check_ranking_peer(text, text, uuid, text, text, text, uuid) TO anon, authenticated, service_role;
 
 COMMIT;

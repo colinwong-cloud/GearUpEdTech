@@ -367,7 +367,8 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("\"check_ranking\"");
     expect(pageSource).toContain("onCheckRanking={handleOpenCheckRanking}");
     expect(pageSource).toContain("parent_check_ranking_peer");
-    expect(pageSource).toContain("全級／同區／同校比較");
+    expect(pageSource).toContain("全港同級／比較地區／比較學校比較");
+    expect(pageSource).toContain("p_district");
     const sqlSource = readSource("supabase_parent_check_ranking_peer.sql");
     expect(sqlSource).toContain("parent_check_ranking_peer");
     expect(sqlSource).toContain("last-10");
