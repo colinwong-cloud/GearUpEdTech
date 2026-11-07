@@ -20,6 +20,10 @@ import {
   STAMP_GIFT_CODE_IMPORT_SUMMARY_LABEL,
   parseAdminResumeTargetStampCount,
   STAMP_ADMIN_PROGRESS_RESUME_STAMP_COUNT_INVALID,
+  formatStampAdminAdjustConfirmBody,
+  formatStampAdminAdjustParentLine,
+  formatStampAdminAdjustSuccessMessage,
+  STAMP_ADMIN_ADJUST_SECTION_TITLE,
 } from "@/lib/admin-stamp-card";
 
 describe("parseGiftCodeCsv", () => {
@@ -296,5 +300,35 @@ describe("admin student stamp progress", () => {
       key: "student_name",
       direction: "asc",
     });
+  });
+});
+
+describe("stamp admin adjust copy (#249)", () => {
+  it("exposes locked subsection title", () => {
+    expect(STAMP_ADMIN_ADJUST_SECTION_TITLE).toBe("印花調整");
+  });
+
+  it("formats parent and confirm/success lines", () => {
+    expect(
+      formatStampAdminAdjustParentLine({ mobile: "91234567", parentName: "陳太" })
+    ).toBe("家長：91234567（陳太）");
+    expect(formatStampAdminAdjustParentLine({ mobile: "91234567", parentName: null })).toBe(
+      "家長：91234567"
+    );
+    expect(
+      formatStampAdminAdjustConfirmBody({
+        studentName: "陳小華",
+        target: 12,
+        beforeCount: 7,
+        beforeStreak: 7,
+      })
+    ).toContain("蓋印數 7 → 12");
+    expect(
+      formatStampAdminAdjustSuccessMessage({
+        studentName: "陳小華",
+        target: 12,
+        beforeCount: 7,
+      })
+    ).toBe('成功將「陳小華」印花進度設為 12（蓋印數 7 → 12）');
   });
 });

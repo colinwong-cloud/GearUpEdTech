@@ -48,8 +48,10 @@ import {
   adminStampProgramSetOpen,
   adminStampProgramSettingsGet,
   adminStampRedemptionReport,
+  adminStampStudentAdjustCardGet,
   adminStampStudentProgressList,
   adminStampStudentProgressResume,
+  adminStampStudentSetProgress,
 } from "@/lib/server/admin-stamp-card";
 import {
   adminHomePageNoticeGet,
@@ -104,6 +106,8 @@ type AdminAction =
   | "stamp_redemption_report"
   | "stamp_student_progress_list"
   | "stamp_student_progress_resume"
+  | "stamp_student_adjust_card_get"
+  | "stamp_student_set_progress"
   | "home_page_notice_get"
   | "home_page_notice_update";
 
@@ -3380,6 +3384,16 @@ export async function POST(req: NextRequest) {
       case "stamp_student_progress_resume": {
         return NextResponse.json({
           data: await adminStampStudentProgressResume(admin, payload, adminUser),
+        });
+      }
+      case "stamp_student_adjust_card_get": {
+        return NextResponse.json({
+          data: await adminStampStudentAdjustCardGet(admin, payload),
+        });
+      }
+      case "stamp_student_set_progress": {
+        return NextResponse.json({
+          data: await adminStampStudentSetProgress(admin, payload, adminUser),
         });
       }
       case "home_page_notice_get": {

@@ -428,6 +428,50 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-card-phase8-admin-stamp-adjust",
+      month: "2026-11",
+      category: "product",
+      priority: "critical",
+      title: "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_exists",
+          path: "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          snippet: "DO NOT RUN",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          snippet: "admin_stamp_student_set_progress",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/admin-stamp-card.ts",
+          snippet: "印花調整",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/stamp-admin-adjust-section.tsx",
+          snippet: "StampAdminAdjustSection",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "stamp_student_set_progress",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/admin-stamp-card.ts",
+          snippet: "adminStampStudentSetProgress",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-card-phase6-admin-student-progress",
       month: "2026-10",
       category: "product",
