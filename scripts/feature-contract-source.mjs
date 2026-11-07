@@ -433,7 +433,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "product",
       priority: "critical",
       title: "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
-      evidence_commits: [],
+      evidence_commits: ["627265a"],
       checks: [
         {
           type: "file_exists",
@@ -2423,7 +2423,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #248 — guoyu OCR quota below upload; subject select order + 普通話練習 label",
-      evidence_commits: ["deed97c"],
+      evidence_commits: ["8f1ebf2"],
       checks: [
         {
           type: "file_contains",
