@@ -3283,7 +3283,7 @@
       "priority": "high",
       "title": "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
       "evidence_commits": [
-        "78ed979"
+        "d04cca3"
       ],
       "checks": [
         {
@@ -4208,8 +4208,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T02:34:14.271Z",
+  "generated_at": "2026-11-07T02:34:21.903Z",
   "commit_inventory": [
+    {
+      "sha": "e500faf32b857e1bad093cdf54f1f6da85ea225a",
+      "date": "2026-11-07",
+      "summary": "chore: fix Soft #246 feature-contract evidence commit ref (d04cca3)"
+    },
+    {
+      "sha": "c562bce2fde7a4fe5d968a1d6f24433cea2baf5a",
+      "date": "2026-11-07",
+      "summary": "chore: refresh feature-contract.json"
+    },
     {
       "sha": "6a8f2e04072646767c1770c854e113f90c3943e0",
       "date": "2026-11-07",
@@ -7367,7 +7377,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 631,
+    "total_commits_since_start": 633,
     "total_feature_rows": 89
   }
 }
