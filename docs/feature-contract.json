@@ -3323,7 +3323,10 @@
       "category": "admin",
       "priority": "high",
       "title": "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "cfcfd08",
+        "aa2473c"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -3337,12 +3340,27 @@
         {
           "type": "file_contains",
           "path": "supabase_guoyu_admin_quota_v2.sql",
-          "snippet": "admin_cap"
+          "snippet": "consume_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_admin_quota_v2.sql",
+          "snippet": "admin_get_parent_guoyu_ocr_quota"
         },
         {
           "type": "file_contains",
           "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
           "snippet": "含管理員加額"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "目前上限："
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "supabase_guoyu_admin_quota_v2.sql"
         }
       ]
     },
@@ -4190,8 +4208,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T02:31:41.895Z",
+  "generated_at": "2026-11-07T02:34:14.271Z",
   "commit_inventory": [
+    {
+      "sha": "6a8f2e04072646767c1770c854e113f90c3943e0",
+      "date": "2026-11-07",
+      "summary": "chore: Soft #247 feature-contract evidence and retention checks"
+    },
+    {
+      "sha": "3ea2d1171b451b82f3d47ac2ea5621401f72ff99",
+      "date": "2026-11-07",
+      "summary": "chore: refresh feature-contract.json"
+    },
     {
       "sha": "aa2473c9ecae538cadd90ecfd1220ab4fcbd7fbd",
       "date": "2026-11-07",
@@ -7339,7 +7367,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 629,
+    "total_commits_since_start": 631,
     "total_feature_rows": 89
   }
 }
