@@ -4295,12 +4295,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T12:34:02.469Z",
+  "generated_at": "2026-11-07T13:09:44.894Z",
   "commit_inventory": [
     {
-      "sha": "b5fa513b337d6649e662649f4474c06a136d1797",
+      "sha": "ef4ffcff211aaf600c0dcce79d2e213ca3df51f9",
       "date": "2026-11-07",
-      "summary": "fix(guoyu): double practice PDF line spacing on all rows"
+      "summary": "fix(growth): refresh 呈分試 guide copy for Soft #252"
+    },
+    {
+      "sha": "90de1a006c01e5868e502202171fe2e469aac170",
+      "date": "2026-11-07",
+      "summary": "fix(guoyu): 2× practice PDF line spacing (#251)"
     },
     {
       "sha": "3c2bc9b406906f96d84c5861672dba8e4b94ac80",
@@ -7454,7 +7459,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 631,
+    "total_commits_since_start": 632,
     "total_feature_rows": 91
   }
 }
