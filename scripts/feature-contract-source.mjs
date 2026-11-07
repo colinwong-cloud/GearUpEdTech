@@ -1851,6 +1851,30 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "admin-quota-maint-guoyu-ocr-tts-soft-246",
+      month: "2026-11",
+      category: "admin",
+      priority: "high",
+      title: "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_guoyu_admin_quota.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota.sql",
+          snippet: "admin_adjust_parent_guoyu_ocr_quota",
+        },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "配額維護" },
+        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "OCR 配額維護" },
+        { type: "file_contains", path: "src/app/admin/guoyu-quota-maintain-section.tsx", snippet: "調整後尚餘不可高於 10" },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "adjust_guoyu_ocr_quota_by_mobile",
+        },
+      ],
+    },
+    {
       id: "parent-check-ranking-peer-soft-245",
       month: "2026-11",
       category: "parent",

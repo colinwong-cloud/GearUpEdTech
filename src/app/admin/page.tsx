@@ -11,6 +11,7 @@ import {
   type PaidTransactionAuditRow,
 } from "@/lib/admin-paid-summary";
 import { formatTutorUsageCount, tutorPasswordError, tutorRegistrationSourceLabel } from "@/lib/tutor-registration";
+import { GuoyuQuotaMaintainBlock } from "./guoyu-quota-maintain-section";
 
 type AdminConsoleAction =
   | "search_parent"
@@ -576,7 +577,7 @@ export default function AdminPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "business", label: "業務概覽" },
-    { key: "quota", label: "題目配額" },
+    { key: "quota", label: "配額維護" },
     { key: "student_practice_summary", label: "學生練習摘要" },
     { key: "payment_status", label: "付款狀態查詢" },
     { key: "delete", label: "刪除帳戶" },
@@ -611,7 +612,19 @@ export default function AdminPage() {
         </div>
 
         {tab === "business" && <BusinessKpiSection sessionToken={sessionToken} />}
-        {tab === "quota" && <QuotaSection sessionToken={sessionToken} />}
+        {tab === "quota" && (
+          <div className="space-y-6">
+            <p className="text-xs text-gray-500">
+              國語練習：掃描（OCR）同朗讀（TTS）分開計；只改本月尚餘。
+            </p>
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-800">題目配額</h2>
+              <QuotaSection sessionToken={sessionToken} />
+            </div>
+            <GuoyuQuotaMaintainBlock kind="ocr" sessionToken={sessionToken} />
+            <GuoyuQuotaMaintainBlock kind="tts" sessionToken={sessionToken} />
+          </div>
+        )}
         {tab === "student_practice_summary" && <StudentPracticeSummarySection sessionToken={sessionToken} />}
         {tab === "payment_status" && <PaymentStatusSection sessionToken={sessionToken} />}
         {tab === "delete" && <DeleteSection sessionToken={sessionToken} />}

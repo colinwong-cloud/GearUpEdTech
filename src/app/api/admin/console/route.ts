@@ -64,6 +64,10 @@ type AdminAction =
   | "today_practice_details_summary"
   | "mtd_parent_questions_summary"
   | "add_quota"
+  | "get_guoyu_ocr_quota_by_mobile"
+  | "adjust_guoyu_ocr_quota_by_mobile"
+  | "get_guoyu_tts_quota_by_mobile"
+  | "adjust_guoyu_tts_quota_by_mobile"
   | "delete_parent"
   | "get_settings"
   | "set_setting"
@@ -1335,6 +1339,126 @@ export async function POST(req: NextRequest) {
             rows,
           },
         });
+      }
+      case "get_guoyu_ocr_quota_by_mobile": {
+        const mobile = String(payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const { data, error } = await admin.rpc("admin_get_parent_guoyu_ocr_quota", {
+          p_mobile: mobile,
+        });
+        if (error) {
+          const msg = error.message ?? "";
+          if (msg.includes("admin_get_parent_guoyu_ocr_quota")) {
+            return NextResponse.json(
+              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { status: 503 }
+            );
+          }
+          throw error;
+        }
+        return NextResponse.json({ data: data ?? { found: false } });
+      }
+      case "adjust_guoyu_ocr_quota_by_mobile": {
+        const mobile = String(payload.p_mobile ?? "").trim();
+        const direction = String(payload.p_direction ?? "").trim();
+        const amount = Number(payload.p_amount ?? 0);
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return NextResponse.json({ error: "請輸入有效數量" }, { status: 400 });
+        }
+        const { data, error } = await admin.rpc("admin_adjust_parent_guoyu_ocr_quota", {
+          p_mobile: mobile,
+          p_direction: direction,
+          p_amount: amount,
+        });
+        if (error) {
+          const msg = error.message ?? "";
+          if (msg.includes("admin_adjust_parent_guoyu_ocr_quota")) {
+            return NextResponse.json(
+              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { status: 503 }
+            );
+          }
+          throw error;
+        }
+        const row = (data ?? {}) as { ok?: boolean; error?: string };
+        if (row.ok === false) {
+          if (row.error === "clamp_reject") {
+            return NextResponse.json(
+              { error: "調整超出允許範圍，請重新查詢後再試" },
+              { status: 400 }
+            );
+          }
+          if (row.error === "parent_not_found") {
+            return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+          }
+          return NextResponse.json({ error: "調整失敗" }, { status: 400 });
+        }
+        return NextResponse.json({ data });
+      }
+      case "get_guoyu_tts_quota_by_mobile": {
+        const mobile = String(payload.p_mobile ?? "").trim();
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        const { data, error } = await admin.rpc("admin_get_parent_guoyu_tts_quota", {
+          p_mobile: mobile,
+        });
+        if (error) {
+          const msg = error.message ?? "";
+          if (msg.includes("admin_get_parent_guoyu_tts_quota")) {
+            return NextResponse.json(
+              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { status: 503 }
+            );
+          }
+          throw error;
+        }
+        return NextResponse.json({ data: data ?? { found: false } });
+      }
+      case "adjust_guoyu_tts_quota_by_mobile": {
+        const mobile = String(payload.p_mobile ?? "").trim();
+        const direction = String(payload.p_direction ?? "").trim();
+        const amount = Number(payload.p_amount ?? 0);
+        if (!mobile) {
+          return NextResponse.json({ error: "請輸入電話號碼" }, { status: 400 });
+        }
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return NextResponse.json({ error: "請輸入有效數量" }, { status: 400 });
+        }
+        const { data, error } = await admin.rpc("admin_adjust_parent_guoyu_tts_quota", {
+          p_mobile: mobile,
+          p_direction: direction,
+          p_amount: amount,
+        });
+        if (error) {
+          const msg = error.message ?? "";
+          if (msg.includes("admin_adjust_parent_guoyu_tts_quota")) {
+            return NextResponse.json(
+              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { status: 503 }
+            );
+          }
+          throw error;
+        }
+        const row = (data ?? {}) as { ok?: boolean; error?: string };
+        if (row.ok === false) {
+          if (row.error === "clamp_reject") {
+            return NextResponse.json(
+              { error: "調整超出允許範圍，請重新查詢後再試" },
+              { status: 400 }
+            );
+          }
+          if (row.error === "parent_not_found") {
+            return NextResponse.json({ error: "找不到此電話號碼" }, { status: 404 });
+          }
+          return NextResponse.json({ error: "調整失敗" }, { status: 400 });
+        }
+        return NextResponse.json({ data });
       }
       case "add_quota": {
         const amount = Number(payload.p_amount ?? 0);
