@@ -696,6 +696,50 @@
       ]
     },
     {
+      "id": "practice-stamp-card-phase8-admin-stamp-adjust",
+      "month": "2026-11",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          "snippet": "admin_stamp_student_set_progress"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "印花調整"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/stamp-admin-adjust-section.tsx",
+          "snippet": "StampAdminAdjustSection"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_student_set_progress"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/admin-stamp-card.ts",
+          "snippet": "adminStampStudentSetProgress"
+        }
+      ]
+    },
+    {
       "id": "practice-stamp-card-phase6-admin-student-progress",
       "month": "2026-10",
       "category": "product",
@@ -4239,22 +4283,12 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T02:58:10.000Z",
+  "generated_at": "2026-11-07T03:49:38.967Z",
   "commit_inventory": [
     {
-      "sha": "cf16af819a37926757ccbfb19ee1ecd7d9d1e9c4",
+      "sha": "8f1ebf28b0b26b4ab7f4a0e0b512e9ae8e1c6ea1",
       "date": "2026-11-07",
-      "summary": "chore: refresh feature-contract.json for Soft #248"
-    },
-    {
-      "sha": "46e76d8b44429d641fb6c179fa60150eceaf61b9",
-      "date": "2026-11-07",
-      "summary": "chore: align Soft #248 feature-contract evidence commit"
-    },
-    {
-      "sha": "deed97cf294b46cd95041b555972918796ca487c",
-      "date": "2026-11-07",
-      "summary": "feat(layout): Soft #248 — OCR quota below upload; subject select order"
+      "summary": "Soft #248 — layout (quota bar order + subject select) (#248)"
     },
     {
       "sha": "69ad2544b96514fbf027222059f735f4b8f7c9af",
@@ -7393,7 +7427,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 630,
-    "total_feature_rows": 90
+    "total_commits_since_start": 628,
+    "total_feature_rows": 91
   }
 }
