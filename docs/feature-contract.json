@@ -3302,7 +3302,7 @@
         },
         {
           "type": "file_contains",
-          "path": "src/app/admin/page.tsx",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
           "snippet": "OCR 配額維護"
         },
         {
@@ -4161,8 +4161,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T01:36:47.252Z",
+  "generated_at": "2026-11-07T01:36:53.331Z",
   "commit_inventory": [
+    {
+      "sha": "52e7cf97015cdd79b0ae6fa96a3182b45fb6f917",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): Soft #246 checks point OCR title at maintain section"
+    },
+    {
+      "sha": "ac9ecdfa3f8bb3a5d1fa5fb3775e636f49ed6a9e",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+    },
     {
       "sha": "b3406ff74125c812f6456e860ee501a38693b368",
       "date": "2026-11-07",
@@ -7315,7 +7325,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 630,
+    "total_commits_since_start": 632,
     "total_feature_rows": 88
   }
 }
