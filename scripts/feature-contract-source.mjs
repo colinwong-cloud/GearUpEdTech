@@ -1879,6 +1879,32 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "admin-quota-maint-guoyu-effective-cap-soft-247",
+      month: "2026-11",
+      category: "admin",
+      priority: "high",
+      title: "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_guoyu_admin_quota_v2.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "guoyu_effective_cap",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "admin_cap",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "管理員加額",
+        },
+      ],
+    },
+    {
       id: "parent-check-ranking-peer-soft-245",
       month: "2026-11",
       category: "parent",

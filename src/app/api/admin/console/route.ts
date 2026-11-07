@@ -1352,7 +1352,7 @@ export async function POST(req: NextRequest) {
           const msg = error.message ?? "";
           if (msg.includes("admin_get_parent_guoyu_ocr_quota")) {
             return NextResponse.json(
-              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota_v2.sql）" },
               { status: 503 }
             );
           }
@@ -1379,7 +1379,7 @@ export async function POST(req: NextRequest) {
           const msg = error.message ?? "";
           if (msg.includes("admin_adjust_parent_guoyu_ocr_quota")) {
             return NextResponse.json(
-              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { error: "OCR 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota_v2.sql）" },
               { status: 503 }
             );
           }
@@ -1412,7 +1412,7 @@ export async function POST(req: NextRequest) {
           const msg = error.message ?? "";
           if (msg.includes("admin_get_parent_guoyu_tts_quota")) {
             return NextResponse.json(
-              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota_v2.sql）" },
               { status: 503 }
             );
           }
@@ -1439,7 +1439,7 @@ export async function POST(req: NextRequest) {
           const msg = error.message ?? "";
           if (msg.includes("admin_adjust_parent_guoyu_tts_quota")) {
             return NextResponse.json(
-              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota.sql）" },
+              { error: "TTS 配額維護 RPC 尚未部署（supabase_guoyu_admin_quota_v2.sql）" },
               { status: 503 }
             );
           }
