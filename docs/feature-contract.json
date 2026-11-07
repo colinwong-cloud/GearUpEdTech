@@ -3324,8 +3324,7 @@
       "priority": "high",
       "title": "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
       "evidence_commits": [
-        "cfcfd08",
-        "aa2473c"
+        "69ad254"
       ],
       "checks": [
         {
@@ -4016,7 +4015,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "國語練習"
+          "snippet": "普通話練習"
         },
         {
           "type": "file_contains",
@@ -4206,44 +4205,56 @@
           "snippet": "下載練習卷讓小朋友填寫拼音"
         }
       ]
+    },
+    {
+      "id": "layout-soft-248",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "medium",
+      "title": "Soft #248 — guoyu OCR quota below upload; subject select order + 普通話練習 label",
+      "evidence_commits": [
+        "deed97c"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "普通話練習"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "label: \"中文\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/quiz-subjects.ts",
+          "snippet": "export const STUDENT_SUBJECT_OPTIONS = [\n  { key: CHINESE_QUIZ_SUBJECT, label: \"中文\", icon: \"📖\" },\n  { key: ENGLISH_QUIZ_SUBJECT, label: \"英文\", icon: \"🔤\" },\n  { key: PRIMARY_QUIZ_SUBJECT, label: \"數學\", icon: \"🔢\" },\n] as const;"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/guoyu/GuoyuComposeScreen.test.ts",
+          "snippet": "expect(practiceLabelIdx).toBeGreaterThan(quotaIdx);"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-07T02:34:21.903Z",
+  "generated_at": "2026-11-07T02:50:43.265Z",
   "commit_inventory": [
     {
-      "sha": "e500faf32b857e1bad093cdf54f1f6da85ea225a",
+      "sha": "46e76d8b44429d641fb6c179fa60150eceaf61b9",
       "date": "2026-11-07",
-      "summary": "chore: fix Soft #246 feature-contract evidence commit ref (d04cca3)"
+      "summary": "chore: align Soft #248 feature-contract evidence commit"
     },
     {
-      "sha": "c562bce2fde7a4fe5d968a1d6f24433cea2baf5a",
+      "sha": "deed97cf294b46cd95041b555972918796ca487c",
       "date": "2026-11-07",
-      "summary": "chore: refresh feature-contract.json"
+      "summary": "feat(layout): Soft #248 — OCR quota below upload; subject select order"
     },
     {
-      "sha": "6a8f2e04072646767c1770c854e113f90c3943e0",
+      "sha": "69ad2544b96514fbf027222059f735f4b8f7c9af",
       "date": "2026-11-07",
-      "summary": "chore: Soft #247 feature-contract evidence and retention checks"
-    },
-    {
-      "sha": "3ea2d1171b451b82f3d47ac2ea5621401f72ff99",
-      "date": "2026-11-07",
-      "summary": "chore: refresh feature-contract.json"
-    },
-    {
-      "sha": "aa2473c9ecae538cadd90ecfd1220ab4fcbd7fbd",
-      "date": "2026-11-07",
-      "summary": "fix(admin): lock #247 balance card hint 含管理員加額 (BRIEF §3)"
-    },
-    {
-      "sha": "a34266f9257aa365ff59fe00ea9a6aa0b91dd459",
-      "date": "2026-11-07",
-      "summary": "chore: refresh feature-contract.json for Soft #247"
-    },
-    {
-      "sha": "cfcfd082ce866e6fcff9215ff0d5239685b1c9e4",
-      "date": "2026-11-07",
-      "summary": "feat(admin): Soft #247 effective_cap quota remaining (Option B HOLD SQL)"
+      "summary": "Soft #247 — admin 配額維護 effective_cap (Option B) (#247)"
     },
     {
       "sha": "d04cca3755a236ed551a80585829a55e579e8bc4",
@@ -7377,7 +7388,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 633,
-    "total_feature_rows": 89
+    "total_commits_since_start": 629,
+    "total_feature_rows": 90
   }
 }
