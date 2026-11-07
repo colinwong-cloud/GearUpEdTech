@@ -3277,23 +3277,54 @@
       ]
     },
     {
+      "id": "admin-quota-maint-guoyu-ocr-tts-soft-246",
+      "month": "2026-11",
+      "category": "admin",
+      "priority": "high",
+      "title": "Admin 配額維護 tab — 題目 + OCR/TTS 本月尚餘 (LOCK B admin clamp 0–10)",
+      "evidence_commits": [
+        "78ed979"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_guoyu_admin_quota.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_guoyu_admin_quota.sql",
+          "snippet": "admin_adjust_parent_guoyu_ocr_quota"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/page.tsx",
+          "snippet": "配額維護"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "OCR 配額維護"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "調整後尚餘不可高於 10"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "adjust_guoyu_ocr_quota_by_mobile"
+        }
+      ]
+    },
+    {
       "id": "parent-check-ranking-peer-soft-245",
       "month": "2026-11",
       "category": "parent",
       "priority": "high",
       "title": "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
       "evidence_commits": [
-        "17de76d",
-        "4cf7175",
-        "62bfb79",
-        "7e66402",
-        "6ce2248",
-        "4ce2909",
-        "8779631",
-        "a7a7a2d",
-        "ccbb3cf",
-        "7b2bf3a",
-        "ff02055"
+        "279a3eb"
       ],
       "checks": [
         {
@@ -4130,67 +4161,47 @@
       ]
     }
   ],
-  "generated_at": "2026-11-06T16:01:00.097Z",
+  "generated_at": "2026-11-07T01:36:53.331Z",
   "commit_inventory": [
     {
-      "sha": "dfa85935df6cee6e5625ed8175019dbbf62780f7",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): Soft #245 evidence_commits include final source+JSON kick"
+      "sha": "52e7cf97015cdd79b0ae6fa96a3182b45fb6f917",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): Soft #246 checks point OCR title at maintain section"
     },
     {
-      "sha": "ff020556e9aa618eaa67c93937c9155041dc02ac",
-      "date": "2026-11-06",
+      "sha": "ac9ecdfa3f8bb3a5d1fa5fb3775e636f49ed6a9e",
+      "date": "2026-11-07",
       "summary": "chore(feature-contract): refresh docs/feature-contract.json"
     },
     {
-      "sha": "7b2bf3a2e98ca3cbfc5c2c28cb18fecad9ee60c9",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): Soft #245 evidence_commits through preview tip ccbb3cf"
+      "sha": "b3406ff74125c812f6456e860ee501a38693b368",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): repair Soft #245 evidence to main merge 279a3eb"
     },
     {
-      "sha": "ccbb3cf34c1ff358b2fa9aaeb56cb06f99ea09c0",
-      "date": "2026-11-06",
+      "sha": "3c9d6457c1e5a4e28ae91cd14a6354de534a90de",
+      "date": "2026-11-07",
       "summary": "chore(feature-contract): refresh docs/feature-contract.json"
     },
     {
-      "sha": "a7a7a2d4e4b49dc4452cb35a8c3bd2263835ed27",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): Soft #245 evidence_commits complete stack (exclude self-doc-only tip)"
+      "sha": "6588505beb01f533e79043d1fbe205f41d42831c",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): Soft #246 evidence_commits kick"
     },
     {
-      "sha": "877963130278d50224393b29312b75d5e0c7ccd7",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
+      "sha": "790e1c22a478a6315de84e944f1061cdf8806703",
+      "date": "2026-11-07",
+      "summary": "chore(feature-contract): refresh docs/feature-contract.json (Soft #246)"
     },
     {
-      "sha": "4ce29094de45045e28039c80e5966fe3abd6d6e2",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): parent-check-ranking-peer-soft-245 evidence through Soft #245 kick"
+      "sha": "78ed979443a86bf13ec27b0b03918394fdab8b7d",
+      "date": "2026-11-07",
+      "summary": "feat(admin): Soft #246 Phase 1 — 配額維護 OCR/TTS admin adjust (LOCK B)"
     },
     {
-      "sha": "6ce22481d8dcdab80c1b2d442586fd97f149cc9b",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json (Soft #245 evidence kick)"
-    },
-    {
-      "sha": "7e6640223c1aba72d7bebbfb7a8205310f4e7b37",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): Soft #245 evidence_commits cover preview tip stack"
-    },
-    {
-      "sha": "62bfb798b1d93ac02a03b1a795707af81d258be1",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): refresh docs/feature-contract.json"
-    },
-    {
-      "sha": "4cf717589716f96ddb5962492eb7ab17e5d1aece",
-      "date": "2026-11-06",
-      "summary": "chore(feature-contract): Soft #245 retention + fix FAQ #244 evidence SHA"
-    },
-    {
-      "sha": "17de76d0735c65b3b6a16a61ffc7db0874b4fd3d",
-      "date": "2026-11-06",
-      "summary": "feat(parent): add paid check_ranking screen with peer SQL (Soft #245)"
+      "sha": "279a3eb2f868cd9b61c02f3e3a3d7e3f3ba8e0b4",
+      "date": "2026-11-07",
+      "summary": "feat(parent): Soft #245 Phase 1 — 檢查排名 (check_ranking) + peer RPC SQL (#245)"
     },
     {
       "sha": "524fc9ad276ea68cb865e51bb6c493057c5de86a",
@@ -7314,7 +7325,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 636,
-    "total_feature_rows": 87
+    "total_commits_since_start": 632,
+    "total_feature_rows": 88
   }
 }
