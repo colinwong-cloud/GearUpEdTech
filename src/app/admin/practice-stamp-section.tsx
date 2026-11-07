@@ -39,6 +39,7 @@ import {
   type StampStudentProgressSortKey,
 } from "@/lib/admin-stamp-card";
 import { getHktCalendarDate } from "@/lib/practice-stamp-card";
+import { StampAdminAdjustSection } from "./stamp-admin-adjust-section";
 
 type StampAdminAction =
   | "stamp_program_settings_get"
@@ -915,6 +916,8 @@ export function PracticeStampAdminSection({ sessionToken }: { sessionToken: stri
           </table>
         </div>
       </section>
+
+      <StampAdminAdjustSection sessionToken={sessionToken} />
     </div>
   );
 }

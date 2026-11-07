@@ -696,6 +696,52 @@
       ]
     },
     {
+      "id": "practice-stamp-card-phase8-admin-stamp-adjust",
+      "month": "2026-11",
+      "category": "product",
+      "priority": "critical",
+      "title": "Practice stamp card Phase 8 admin stamp count adjust (印花調整)",
+      "evidence_commits": [
+        "627265a"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          "snippet": "DO NOT RUN"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql",
+          "snippet": "admin_stamp_student_set_progress"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/admin-stamp-card.ts",
+          "snippet": "印花調整"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/stamp-admin-adjust-section.tsx",
+          "snippet": "StampAdminAdjustSection"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "stamp_student_set_progress"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/admin-stamp-card.ts",
+          "snippet": "adminStampStudentSetProgress"
+        }
+      ]
+    },
+    {
       "id": "practice-stamp-card-phase6-admin-student-progress",
       "month": "2026-10",
       "category": "product",
@@ -4213,7 +4259,7 @@
       "priority": "medium",
       "title": "Soft #248 — guoyu OCR quota below upload; subject select order + 普通話練習 label",
       "evidence_commits": [
-        "deed97c"
+        "8f1ebf2"
       ],
       "checks": [
         {
@@ -4239,22 +4285,27 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T02:58:10.000Z",
+  "generated_at": "2026-11-07T03:55:14.870Z",
   "commit_inventory": [
     {
-      "sha": "cf16af819a37926757ccbfb19ee1ecd7d9d1e9c4",
+      "sha": "8f34bb99bff30f74119b6a0b538a50a10195c464",
       "date": "2026-11-07",
-      "summary": "chore: refresh feature-contract.json for Soft #248"
+      "summary": "chore(feature-contract): phase 8 stamp adjust evidence + #248 merge SHA (#249)"
     },
     {
-      "sha": "46e76d8b44429d641fb6c179fa60150eceaf61b9",
+      "sha": "194ded62fb8e10d436ba9635791c7f54cd54676c",
       "date": "2026-11-07",
-      "summary": "chore: align Soft #248 feature-contract evidence commit"
+      "summary": "chore: refresh feature contract for phase 8 stamp adjust"
     },
     {
-      "sha": "deed97cf294b46cd95041b555972918796ca487c",
+      "sha": "627265ac2993074e2a8c664fbf88df697cad3727",
       "date": "2026-11-07",
-      "summary": "feat(layout): Soft #248 — OCR quota below upload; subject select order"
+      "summary": "feat(admin): add 印花調整 stamp count adjust UI (#249)"
+    },
+    {
+      "sha": "8f1ebf28b0b26b4ab7f4a0e0b512e9ae8e1c6ea1",
+      "date": "2026-11-07",
+      "summary": "Soft #248 — layout (quota bar order + subject select) (#248)"
     },
     {
       "sha": "69ad2544b96514fbf027222059f735f4b8f7c9af",
@@ -7393,7 +7444,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 630,
-    "total_feature_rows": 90
+    "total_commits_since_start": 631,
+    "total_feature_rows": 91
   }
 }

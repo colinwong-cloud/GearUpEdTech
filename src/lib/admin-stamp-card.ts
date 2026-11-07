@@ -671,3 +671,101 @@ export function isMissingStampProgressResumeRpcError(message: string): boolean {
     message
   );
 }
+
+/** Admin 印花調整 (#249) — Traditional Chinese copy (DESIGN LOCKED). */
+export const STAMP_ADMIN_ADJUST_SECTION_TITLE = "印花調整";
+export const STAMP_ADMIN_ADJUST_SECTION_HELPER =
+  "輸入家長電話，查詢學生印花卡並將蓋印進度設為指定數量（0–20）。";
+export const STAMP_ADMIN_ADJUST_LOOKUP_PLACEHOLDER = "輸入電話號碼";
+export const STAMP_ADMIN_ADJUST_LOOKUP_IDLE = "查詢";
+export const STAMP_ADMIN_ADJUST_LOOKUP_LOADING = "查詢中…";
+export const STAMP_ADMIN_ADJUST_UNKNOWN_MOBILE = "找不到此電話號碼";
+export const STAMP_ADMIN_ADJUST_SEARCH_FAIL = "搜尋失敗";
+export const STAMP_ADMIN_ADJUST_LIST_HEADING = "選擇學生";
+export const STAMP_ADMIN_ADJUST_NO_STUDENTS = "此家長帳戶下沒有學生";
+export const STAMP_ADMIN_ADJUST_UNNAMED_STUDENT = "未命名學生";
+export const STAMP_ADMIN_ADJUST_NO_ACTIVE_CARD = "此學生目前沒有進行中的印花卡";
+export const STAMP_ADMIN_ADJUST_COUNT_LABEL = "目前蓋印數";
+export const STAMP_ADMIN_ADJUST_STREAK_LABEL = "連續天數";
+export const STAMP_ADMIN_ADJUST_LAST_NONE = "尚未蓋印";
+export const STAMP_ADMIN_ADJUST_LAST_PREFIX = "最後蓋印：";
+export const STAMP_ADMIN_ADJUST_STATUS_PREFIX = "卡狀態：";
+export const STAMP_ADMIN_ADJUST_AMOUNT_LABEL = "設為蓋印數";
+export const STAMP_ADMIN_ADJUST_AMOUNT_PLACEHOLDER = "0–20";
+export const STAMP_ADMIN_ADJUST_AMOUNT_HELPER =
+  "輸入 0 至 20 的整數；儲存後蓋印數與連續天數會一併更新為該值。";
+export const STAMP_ADMIN_ADJUST_PRIMARY_CTA = "調整印花";
+export const STAMP_ADMIN_ADJUST_NEED_STUDENT = "請先選擇學生";
+export const STAMP_ADMIN_ADJUST_AMOUNT_INVALID = "請輸入 0 至 20 的整數";
+export const STAMP_ADMIN_ADJUST_CONFIRM_TITLE = "確認調整";
+export const STAMP_ADMIN_ADJUST_CONFIRM_CTA = "確認調整";
+export const STAMP_ADMIN_ADJUST_CANCEL_CTA = "取消";
+export const STAMP_ADMIN_ADJUST_WRITE_FAIL = "調整失敗";
+export const STAMP_ADMIN_ADJUST_CLAMP_REJECT =
+  "蓋印數須為 0 至 20 的整數，請重新查詢後再試";
+export const STAMP_ADMIN_ADJUST_NO_CARD_WRITE = "無法調整：此學生沒有可更新的印花卡";
+export const STAMP_ADMIN_ADJUST_RPC_HINT =
+  "缺少印花調整功能，請先在 Supabase 執行 supabase_practice_stamp_card_phase8_admin_set_stamp_count.sql（需 Colin 批准）。";
+
+export type StampAdminAdjustCardView = {
+  stamp_card_id: string;
+  student_id: string;
+  student_name: string;
+  stamp_count: number;
+  current_streak: number;
+  last_stamp_hkt_date: string | null;
+  card_status: "active";
+  card_status_label: string;
+};
+
+export function formatStampAdminAdjustParentLine(input: {
+  mobile: string;
+  parentName: string | null;
+}): string {
+  const mobile = input.mobile.trim();
+  const name = (input.parentName ?? "").trim();
+  if (name) return `家長：${mobile}（${name}）`;
+  return `家長：${mobile}`;
+}
+
+export function formatStampAdminAdjustStudentLine(input: {
+  studentName: string | null;
+  gradeLevel: string | null;
+}): string {
+  const name = (input.studentName ?? "").trim() || STAMP_ADMIN_ADJUST_UNNAMED_STUDENT;
+  const grade = (input.gradeLevel ?? "").trim();
+  if (grade) return `${name}（${grade}）`;
+  return name;
+}
+
+export function formatStampAdminAdjustConfirmBody(input: {
+  studentName: string;
+  target: number;
+  beforeCount: number;
+  beforeStreak: number;
+}): string {
+  return `將「${input.studentName}」的印花進度設為 ${input.target}（蓋印數 ${input.beforeCount} → ${input.target} · 連續天數 ${input.beforeStreak} → ${input.target}）。最後蓋印日會調為昨日（香港時間）。不會自動換領。`;
+}
+
+export function formatStampAdminAdjustSuccessMessage(input: {
+  studentName: string;
+  target: number;
+  beforeCount: number;
+}): string {
+  return `成功將「${input.studentName}」印花進度設為 ${input.target}（蓋印數 ${input.beforeCount} → ${input.target}）`;
+}
+
+export function formatStampAdminAdjustLastOpDetail(input: {
+  mobile: string;
+  studentName: string;
+  beforeCount: number;
+  afterCount: number;
+}): string {
+  return `上次操作：${input.mobile} · ${input.studentName} · 蓋印數 ${input.beforeCount} → ${input.afterCount}`;
+}
+
+export function isMissingStampAdminSetProgressRpcError(message: string): boolean {
+  return /admin_stamp_student_set_progress|student_stamp_card_admin_set_audit|42883|PGRST202|does not exist|Could not find the function/i.test(
+    message
+  );
+}

@@ -8,10 +8,16 @@ import {
   parseGiftCodeCsv,
   STAMP_INVENTORY_TABLE_HINT,
   STAMP_ADMIN_PROGRESS_RESUME_RPC_HINT,
+  STAMP_ADMIN_ADJUST_NO_CARD_WRITE,
+  STAMP_ADMIN_ADJUST_RPC_HINT,
+  STAMP_ADMIN_ADJUST_UNNAMED_STUDENT,
   computeStampStudentProgressTotals,
+  isMissingStampAdminSetProgressRpcError,
   isMissingStampProgressResumeRpcError,
   mapStampStudentProgressRow,
+  stampCardStatusLabelTc,
   stampProgressRowInHktRange,
+  type StampAdminAdjustCardView,
   type StampGiftInventoryRow,
   type StampGiftStatus,
   type StampProgramSettingsPayload,
@@ -542,6 +548,111 @@ export async function adminStampStudentProgressList(
   }
 
   return { rows: mapped, totals: computeStampStudentProgressTotals(mapped) };
+}
+
+export async function adminStampStudentAdjustCardGet(
+  admin: SupabaseClient,
+  payload: Record<string, unknown>
+): Promise<StampAdminAdjustCardView | null> {
+  const studentId = String(payload.student_id ?? "").trim();
+  if (!studentId) throw new Error("缺少學生 id");
+
+  const { data: studentRow, error: studentErr } = await admin
+    .from("students")
+    .select("id, student_name")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (studentErr) {
+    const msg = studentErr.message ?? "";
+    if (/students|42P01|PGRST205|does not exist/i.test(msg)) {
+      throw new Error(STAMP_PROGRESS_SETTINGS_HINT);
+    }
+    throw new Error(msg);
+  }
+  if (!studentRow) throw new Error("找不到學生");
+
+  const { data: card, error: cardErr } = await admin
+    .from("student_stamp_cards")
+    .select("id, stamp_count, current_streak, last_stamp_hkt_date, status")
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (cardErr) {
+    const msg = cardErr.message ?? "";
+    if (/student_stamp_cards|42P01|PGRST205|does not exist/i.test(msg)) {
+      throw new Error(STAMP_PROGRESS_SETTINGS_HINT);
+    }
+    throw new Error(msg);
+  }
+  if (!card) return null;
+
+  const studentName = String(studentRow.student_name ?? "").trim() || STAMP_ADMIN_ADJUST_UNNAMED_STUDENT;
+  return {
+    stamp_card_id: String(card.id),
+    student_id: studentId,
+    student_name: studentName,
+    stamp_count: Math.max(0, Number(card.stamp_count) || 0),
+    current_streak: Math.max(0, Number(card.current_streak) || 0),
+    last_stamp_hkt_date: card.last_stamp_hkt_date ? String(card.last_stamp_hkt_date) : null,
+    card_status: "active",
+    card_status_label: stampCardStatusLabelTc("active"),
+  };
+}
+
+export async function adminStampStudentSetProgress(
+  admin: SupabaseClient,
+  payload: Record<string, unknown>,
+  adminIdentifier: string
+): Promise<StampAdminAdjustCardView> {
+  const studentId = String(payload.student_id ?? "").trim();
+  if (!studentId) throw new Error("缺少學生 id");
+
+  const rawTarget = payload.target_stamp_count;
+  const targetStampCount = Number(rawTarget);
+  if (!Number.isInteger(targetStampCount) || targetStampCount < 0 || targetStampCount > 20) {
+    throw new Error("蓋印數須為 0 至 20 的整數");
+  }
+
+  const { data, error } = await admin.rpc("admin_stamp_student_set_progress", {
+    p_student_id: studentId,
+    p_target_stamp_count: targetStampCount,
+    p_admin_identifier: adminIdentifier,
+  });
+  if (error) {
+    const msg = error.message ?? "";
+    if (isMissingStampAdminSetProgressRpcError(msg)) {
+      throw new Error(STAMP_ADMIN_ADJUST_RPC_HINT);
+    }
+    if (/無法調整|沒有可更新的印花卡/i.test(msg)) {
+      throw new Error(STAMP_ADMIN_ADJUST_NO_CARD_WRITE);
+    }
+    if (/蓋印數須為/i.test(msg)) {
+      throw new Error("蓋印數須為 0 至 20 的整數，請重新查詢後再試");
+    }
+    throw new Error(msg);
+  }
+
+  const refreshed = await adminStampStudentAdjustCardGet(admin, { student_id: studentId });
+  if (refreshed) return refreshed;
+
+  const body = data as {
+    stamp_card_id?: string;
+    student_id?: string;
+    stamp_count?: number;
+    current_streak?: number;
+    last_stamp_hkt_date?: string;
+  };
+  return {
+    stamp_card_id: String(body.stamp_card_id ?? ""),
+    student_id: String(body.student_id ?? studentId),
+    student_name: STAMP_ADMIN_ADJUST_UNNAMED_STUDENT,
+    stamp_count: Number(body.stamp_count) || 0,
+    current_streak: Number(body.current_streak) || 0,
+    last_stamp_hkt_date: body.last_stamp_hkt_date ? String(body.last_stamp_hkt_date) : null,
+    card_status: "active",
+    card_status_label: stampCardStatusLabelTc("active"),
+  };
 }
 
 export async function adminStampStudentProgressResume(
