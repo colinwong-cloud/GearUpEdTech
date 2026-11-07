@@ -1865,7 +1865,11 @@ export const FEATURE_CONTRACT_BASE = {
           snippet: "admin_adjust_parent_guoyu_ocr_quota",
         },
         { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "配額維護" },
-        { type: "file_contains", path: "src/app/admin/page.tsx", snippet: "OCR 配額維護" },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "OCR 配額維護",
+        },
         { type: "file_contains", path: "src/app/admin/guoyu-quota-maintain-section.tsx", snippet: "調整後尚餘不可高於 10" },
         {
           type: "file_contains",
