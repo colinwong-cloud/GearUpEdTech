@@ -120,12 +120,12 @@ describe("anti-missing regression guards", () => {
     expect(pageSource).toContain("getRankSampleImageUrl()");
   });
 
-  it("keeps 國語練習 entry above quiz subjects and guoyu compose chrome", () => {
+  it("keeps 普通話練習 entry above quiz subjects and guoyu compose chrome", () => {
     const pageSource = readSource("src/app/page.tsx");
-    const guoyuIdx = pageSource.indexOf("國語練習");
-    const mathIdx = pageSource.indexOf("STUDENT_SUBJECT_OPTIONS.map");
+    const guoyuIdx = pageSource.indexOf("普通話練習");
+    const subjectsIdx = pageSource.indexOf("STUDENT_SUBJECT_OPTIONS.map");
     expect(guoyuIdx).toBeGreaterThan(-1);
-    expect(mathIdx).toBeGreaterThan(guoyuIdx);
+    expect(subjectsIdx).toBeGreaterThan(guoyuIdx);
     expect(pageSource).toContain("onGuoyu");
     expect(pageSource).toContain('window.location.assign("/guoyu")');
 

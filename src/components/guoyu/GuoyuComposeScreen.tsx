@@ -196,10 +196,6 @@ export function GuoyuComposeScreen({
           <li>按「生成練習」進入拼音工作紙，並可朗讀全文。</li>
         </ol>
 
-        {quotaView && (
-          <GuoyuOcrQuotaCircles view={quotaView} onUpgrade={onUpgrade} />
-        )}
-
         <div className="mt-5 space-y-5">
           <div className={ocrExhausted ? "opacity-50 pointer-events-none" : ""}>
             <label className="text-sm font-semibold text-gray-800">
@@ -269,6 +265,10 @@ export function GuoyuComposeScreen({
               <p className="mt-2 text-sm text-emerald-700">{ocrToast}</p>
             )}
           </div>
+
+          {quotaView && (
+            <GuoyuOcrQuotaCircles view={quotaView} onUpgrade={onUpgrade} />
+          )}
 
           <div>
             <label className="text-sm font-semibold text-gray-800">練習文字</label>

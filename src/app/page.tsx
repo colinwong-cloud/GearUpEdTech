@@ -3759,7 +3759,7 @@ function SubjectSelectScreen({
             className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
           >
             <span className="text-3xl">🗣️</span>
-            <span className="text-lg font-semibold text-gray-900">國語練習</span>
+            <span className="text-lg font-semibold text-gray-900">普通話練習</span>
           </button>
           {subjects.map((s) => (
             <button

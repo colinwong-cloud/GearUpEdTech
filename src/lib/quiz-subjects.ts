@@ -20,9 +20,9 @@ export function quizSubjectDbPatterns(subjectKey: string): readonly string[] {
 
 /** Student / parent UI: `key` must match DB `subject` */
 export const STUDENT_SUBJECT_OPTIONS = [
-  { key: PRIMARY_QUIZ_SUBJECT, label: "數學", icon: "🔢" },
   { key: CHINESE_QUIZ_SUBJECT, label: "中文", icon: "📖" },
   { key: ENGLISH_QUIZ_SUBJECT, label: "英文", icon: "🔤" },
+  { key: PRIMARY_QUIZ_SUBJECT, label: "數學", icon: "🔢" },
 ] as const;
 
 export type QuizSubjectKey = (typeof STUDENT_SUBJECT_OPTIONS)[number]["key"];

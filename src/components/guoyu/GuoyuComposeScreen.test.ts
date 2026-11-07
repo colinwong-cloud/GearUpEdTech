@@ -13,6 +13,12 @@ describe("GuoyuComposeScreen layout", () => {
     expect(generateIdx).toBeGreaterThan(-1);
     expect(backIdx).toBeGreaterThan(generateIdx);
     expect(source).toContain("GuoyuOcrQuotaCircles");
+    const ocrPickIdx = source.indexOf("選擇圖片");
+    const quotaIdx = source.indexOf("<GuoyuOcrQuotaCircles");
+    const practiceLabelIdx = source.indexOf('">練習文字</label>');
+    expect(ocrPickIdx).toBeGreaterThan(-1);
+    expect(quotaIdx).toBeGreaterThan(ocrPickIdx);
+    expect(practiceLabelIdx).toBeGreaterThan(quotaIdx);
     expect(source).not.toMatch(
       /<h1[\s\S]*返回[\s\S]*生成練習/
     );
