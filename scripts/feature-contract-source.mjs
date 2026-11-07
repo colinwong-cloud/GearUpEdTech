@@ -1884,7 +1884,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Admin 配額維護 v2 — effective_cap / admin_cap remaining (Soft #247 Option B)",
-      evidence_commits: [],
+      evidence_commits: ["cfcfd08", "aa2473c"],
       checks: [
         { type: "file_exists", path: "supabase_guoyu_admin_quota_v2.sql" },
         {
@@ -1895,12 +1895,27 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "supabase_guoyu_admin_quota_v2.sql",
-          snippet: "admin_cap",
+          snippet: "consume_parent_guoyu_ocr_quota",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_guoyu_admin_quota_v2.sql",
+          snippet: "admin_get_parent_guoyu_ocr_quota",
         },
         {
           type: "file_contains",
           path: "src/app/admin/guoyu-quota-maintain-section.tsx",
           snippet: "含管理員加額",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "目前上限：",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "supabase_guoyu_admin_quota_v2.sql",
         },
       ],
     },
