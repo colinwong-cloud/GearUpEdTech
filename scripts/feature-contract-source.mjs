@@ -1968,14 +1968,16 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-11",
       category: "parent",
       priority: "high",
-      title: "Paid parent check ranking (全級／同區／同校) and parent_check_ranking_peer RPC SQL",
+      title: "Paid parent check ranking (全港同級／比較地區／比較學校) and parent_check_ranking_peer RPC SQL",
       evidence_commits: ["279a3eb"],
       checks: [
         { type: "file_exists", path: "supabase_parent_check_ranking_peer.sql" },
         { type: "file_contains", path: "supabase_parent_check_ranking_peer.sql", snippet: "parent_check_ranking_peer" },
+        { type: "file_contains", path: "supabase_parent_check_ranking_peer.sql", snippet: "p_district" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "\"check_ranking\"" },
-        { type: "file_contains", path: "src/app/page.tsx", snippet: "全級／同區／同校比較" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "全港同級／比較地區／比較學校比較" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "parent_check_ranking_peer" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "p_district" },
       ],
     },
     {
