@@ -25,8 +25,10 @@ const CELL_GAP = 4;
 const PRACTICE_CELL_GAP = CELL_GAP * 1.5;
 const ROW_GAP = 18;
 const PRACTICE_LINE_HEIGHT = 14;
-/** Practice sheet: every other row gets 2× trailing vertical gap for writing. */
-const PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER = 2;
+/** Practice sheet: 2× vertical write-band and row gap (all rows) vs answer-sheet baseline. */
+const PRACTICE_VERTICAL_SPACING_MULTIPLIER = 2;
+const PRACTICE_WRITE_BAND_HEIGHT = PRACTICE_LINE_HEIGHT * PRACTICE_VERTICAL_SPACING_MULTIPLIER;
+const PRACTICE_ROW_GAP = ROW_GAP * PRACTICE_VERTICAL_SPACING_MULTIPLIER;
 const TITLE_SIZE = 20;
 const META_SIZE = 13;
 const BRAND_INSET = 22;
@@ -142,7 +144,7 @@ function drawWorksheetRow(
   row: GuoyuWorksheetRow,
   mode: GuoyuWorksheetPdfKind,
   contentWidth: number,
-  options?: { rowIndex?: number; practiceSpacing?: boolean }
+  options?: { practiceSpacing?: boolean }
 ): number {
   const cellGap = options?.practiceSpacing ? PRACTICE_CELL_GAP : CELL_GAP;
   const startX = MARGIN;
@@ -178,10 +180,7 @@ function drawWorksheetRow(
 
   let nextY = minY - PINYIN_SIZE - CHAR_SIZE - 6;
   if (row.blankPracticeLine) {
-    const writeLineHeight =
-      options?.practiceSpacing && (options.rowIndex ?? 0) % 2 === 0
-        ? PRACTICE_LINE_HEIGHT * PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER
-        : PRACTICE_LINE_HEIGHT;
+    const writeLineHeight = options?.practiceSpacing ? PRACTICE_WRITE_BAND_HEIGHT : PRACTICE_LINE_HEIGHT;
     nextY -= 4;
     page.drawLine({
       start: { x: MARGIN, y: nextY },
@@ -192,10 +191,7 @@ function drawWorksheetRow(
     });
     nextY -= writeLineHeight;
   }
-  const rowGap =
-    options?.practiceSpacing && (options.rowIndex ?? 0) % 2 === 0
-      ? ROW_GAP * PRACTICE_ALTERNATE_ROW_GAP_MULTIPLIER
-      : ROW_GAP;
+  const rowGap = options?.practiceSpacing ? PRACTICE_ROW_GAP : ROW_GAP;
   return nextY - rowGap;
 }
 
@@ -278,11 +274,9 @@ export async function buildGuoyuWorksheetPdf({
   y -= 22;
 
   if (kind === "practice") {
-    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-      const row = rows[rowIndex]!;
-      ensureSpace(CHAR_SIZE + PINYIN_SIZE + PRACTICE_LINE_HEIGHT * 2 + ROW_GAP * 2);
+    for (const row of rows) {
+      ensureSpace(CHAR_SIZE + PINYIN_SIZE + PRACTICE_WRITE_BAND_HEIGHT + PRACTICE_ROW_GAP + 10);
       y = drawWorksheetRow(page, font, glyphCache, y, row, "practice", contentWidth, {
-        rowIndex,
         practiceSpacing: true,
       });
     }

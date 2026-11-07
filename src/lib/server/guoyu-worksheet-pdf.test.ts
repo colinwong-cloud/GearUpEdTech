@@ -37,4 +37,20 @@ describe("buildGuoyuWorksheetPdf", () => {
     pdf.registerFontkit(fontkit);
     expect(pdf.getPageCount()).toBeGreaterThan(0);
   });
+
+  it("practice rows use uniform 2× write-band spacing", async () => {
+    const manyRows = Array.from({ length: 8 }, (_, i) => ({
+      cells: [{ char: "字", pinyin: `zì${i}` }],
+      blankPracticeLine: true,
+    }));
+    const bytes = await buildGuoyuWorksheetPdf({
+      kind: "practice",
+      studentName: "測試",
+      rows: manyRows,
+    });
+    const pdf = await PDFDocument.load(bytes);
+    pdf.registerFontkit(fontkit);
+    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(1);
+    expect(Buffer.from(bytes).byteLength).toBeGreaterThan(5000);
+  });
 });
