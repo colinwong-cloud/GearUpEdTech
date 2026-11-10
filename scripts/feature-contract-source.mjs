@@ -1137,18 +1137,33 @@ export const FEATURE_CONTRACT_BASE = {
       month: "2026-11",
       category: "growth",
       priority: "high",
-      title: "呈分試 guide P3 locked copy + per-page OG + http→https 301 (#253 soft)",
+      title: "呈分試 guide P3 REV locked copy + per-page OG + http→https 301 (#253 soft)",
       evidence_commits: [],
       checks: [
         {
           type: "file_contains",
           path: "src/lib/chengfenshi-visibility-guide-meta.ts",
-          snippet: "小朋友呈分試或測驗成績未如理想，可試增分寶（GearUp Quiz）",
+          snippet: "付費可睇全港、同區以及同校比較",
         },
         {
           type: "file_contains",
           path: "src/components/chengfenshi-visibility-guide-content.tsx",
           snippet: "系統會按題型追蹤表現",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "全港，同區以及同校",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "自訂普通話拼音練習",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "普通話拼音練習點計次數？",
         },
         {
           type: "file_contains",
@@ -1173,12 +1188,12 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_missing",
           path: "src/components/chengfenshi-visibility-guide-content.tsx",
-          snippet: "自訂普通話拼音練習",
+          snippet: "系統用 AI 按小朋友表現調整練習",
         },
         {
           type: "file_missing",
           path: "src/components/chengfenshi-visibility-guide-content.tsx",
-          snippet: "系統用 AI 按小朋友表現調整練習",
+          snippet: "Official site: https://www.gearupquiz.com — practice:",
         },
       ],
     },

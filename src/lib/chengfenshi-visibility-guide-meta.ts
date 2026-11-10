@@ -6,7 +6,7 @@ export const CHENGFENSHI_GUIDE_TITLE =
   "香港小學呈分試中英數線上練習｜增分寶 GearUp Quiz（P1–P6）";
 
 export const CHENGFENSHI_GUIDE_DESCRIPTION =
-  "小朋友呈分試或測驗成績未如理想，可試增分寶（GearUp Quiz）：香港小學 P1–P6 中英數線上練習，對齊教育局課程，AI 改卷連解釋、家長報告同全港比較。每月約 HK$99 三科無限，另有每月 200 題免費額度。https://www.gearupquiz.com";
+  "小朋友呈分試或測驗成績未如理想，可試增分寶（GearUp Quiz）：香港小學 P1–P6 中英數線上練習，對齊教育局課程，AI 改卷連解釋、家長報告，付費可睇全港、同區以及同校比較。每月約 HK$99 三科無限，另有每月 200 題免費額度。https://www.gearupquiz.com";
 
 export const CHENGFENSHI_GUIDE_OG_URL = `https://www.gearupquiz.com${CHENGFENSHI_GUIDE_PATH}`;
 
