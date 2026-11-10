@@ -57,7 +57,7 @@ export function ChengFenshiVisibilityGuideContent() {
         </p>
         <p className={bodyText}>
           增分寶<strong>唔取代</strong>學校操卷、補習或校本評估，亦<strong>唔係</strong>考評局 TSA
-          官方練習。佢係屋企用嘅線上練上練習平台，幫你把溫習得更有方向。
+          官方練習。佢係屋企用嘅線上練習平台，幫你把溫習得更有方向。
         </p>
         <p className={bodyText}>
           請注意名稱：增分寶 <strong>GearUp Quiz</strong> 係學習練習平台，<strong>唔係</strong>遊戲加速器（GearUP
