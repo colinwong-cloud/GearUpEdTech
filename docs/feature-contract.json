@@ -1669,7 +1669,11 @@
       "category": "growth",
       "priority": "high",
       "title": "呈分試 guide P3 REV locked copy + per-page OG + http→https 301 (#253 soft)",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "54c77fa",
+        "f8c77dc",
+        "91d2b81"
+      ],
       "checks": [
         {
           "type": "file_contains",
@@ -1710,21 +1714,6 @@
           "type": "file_contains",
           "path": "vercel.json",
           "snippet": "\"x-forwarded-proto\""
-        },
-        {
-          "type": "file_missing",
-          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
-          "snippet": "GearUp EduTech Limited"
-        },
-        {
-          "type": "file_missing",
-          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
-          "snippet": "系統用 AI 按小朋友表現調整練習"
-        },
-        {
-          "type": "file_missing",
-          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
-          "snippet": "Official site: https://www.gearupquiz.com — practice:"
         }
       ]
     },
@@ -4360,8 +4349,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-10T15:16:09.616Z",
+  "generated_at": "2026-11-10T15:28:29.248Z",
   "commit_inventory": [
+    {
+      "sha": "fa5009690b3959148ee229246e1e770e8cf2e828",
+      "date": "2026-11-10",
+      "summary": "chore: Soft #253 evidence_commits in feature-contract-source"
+    },
+    {
+      "sha": "91d2b813f8e7d297987c3d592b360ef1032f7f09",
+      "date": "2026-11-10",
+      "summary": "chore: refresh feature-contract.json + fix guide typo (線上練習)"
+    },
     {
       "sha": "f8c77dcc68e3907c6b3af6ee221dfb493ad1654f",
       "date": "2026-11-10",
@@ -7539,7 +7538,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 635,
+    "total_commits_since_start": 637,
     "total_feature_rows": 92
   }
 }
