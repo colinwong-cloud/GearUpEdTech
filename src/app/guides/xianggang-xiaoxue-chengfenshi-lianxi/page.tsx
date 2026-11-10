@@ -3,14 +3,39 @@ import Link from "next/link";
 import { ChengFenshiVisibilityGuideContent } from "@/components/chengfenshi-visibility-guide-content";
 import {
   CHENGFENSHI_GUIDE_DESCRIPTION,
+  CHENGFENSHI_GUIDE_OG_URL,
   CHENGFENSHI_GUIDE_TITLE,
 } from "@/lib/chengfenshi-visibility-guide-meta";
+
+const primaryShareImagePath = "https://www.gearupquiz.com/share/gearup-share-banner.jpg?v=20260508b";
 
 export const metadata: Metadata = {
   title: CHENGFENSHI_GUIDE_TITLE,
   description: CHENGFENSHI_GUIDE_DESCRIPTION,
   alternates: {
-    canonical: "https://www.gearupquiz.com/guides/xianggang-xiaoxue-chengfenshi-lianxi",
+    canonical: CHENGFENSHI_GUIDE_OG_URL,
+  },
+  openGraph: {
+    url: CHENGFENSHI_GUIDE_OG_URL,
+    title: CHENGFENSHI_GUIDE_TITLE,
+    description: CHENGFENSHI_GUIDE_DESCRIPTION,
+    type: "website",
+    locale: "zh_HK",
+    images: [
+      {
+        url: primaryShareImagePath,
+        width: 1424,
+        height: 752,
+        alt: "增分寶 GearUp Quiz 平台橫幅",
+        type: "image/jpeg",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: CHENGFENSHI_GUIDE_TITLE,
+    description: CHENGFENSHI_GUIDE_DESCRIPTION,
+    images: [primaryShareImagePath],
   },
 };
 

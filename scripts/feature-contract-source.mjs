@@ -1133,6 +1133,56 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "chengfenshi-guide-p3-soft-253",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "呈分試 guide P3 locked copy + per-page OG + http→https 301 (#253 soft)",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "小朋友呈分試或測驗成績未如理想，可試增分寶（GearUp Quiz）",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "系統會按題型追蹤表現",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx",
+          snippet: "CHENGFENSHI_GUIDE_OG_URL",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/layout.tsx",
+          snippet: "openGraph",
+        },
+        {
+          type: "file_contains",
+          path: "vercel.json",
+          snippet: "\"x-forwarded-proto\"",
+        },
+        {
+          type: "file_missing",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "GearUp EduTech Limited",
+        },
+        {
+          type: "file_missing",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "自訂普通話拼音練習",
+        },
+        {
+          type: "file_missing",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "系統用 AI 按小朋友表現調整練習",
+        },
+      ],
+    },
+    {
       id: "home-faq-soft-243",
       month: "2026-11",
       category: "growth",
