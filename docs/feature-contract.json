@@ -1664,6 +1664,60 @@
       ]
     },
     {
+      "id": "chengfenshi-guide-p3-soft-253",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "high",
+      "title": "呈分試 guide P3 REV locked copy + per-page OG + http→https 301 (#253 soft)",
+      "evidence_commits": [
+        "54c77fa",
+        "f8c77dc",
+        "91d2b81"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "付費可睇全港、同區以及同校比較"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
+          "snippet": "系統會按題型追蹤表現"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
+          "snippet": "全港，同區以及同校"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
+          "snippet": "自訂普通話拼音練習"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
+          "snippet": "普通話拼音練習點計次數？"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx",
+          "snippet": "CHENGFENSHI_GUIDE_OG_URL"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/layout.tsx",
+          "snippet": "openGraph"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "\"x-forwarded-proto\""
+        }
+      ]
+    },
+    {
       "id": "home-faq-soft-243",
       "month": "2026-11",
       "category": "growth",
@@ -4295,12 +4349,37 @@
       ]
     }
   ],
-  "generated_at": "2026-11-07T13:09:44.894Z",
+  "generated_at": "2026-11-10T15:28:29.248Z",
   "commit_inventory": [
     {
-      "sha": "ef4ffcff211aaf600c0dcce79d2e213ca3df51f9",
-      "date": "2026-11-07",
-      "summary": "fix(growth): refresh 呈分試 guide copy for Soft #252"
+      "sha": "fa5009690b3959148ee229246e1e770e8cf2e828",
+      "date": "2026-11-10",
+      "summary": "chore: Soft #253 evidence_commits in feature-contract-source"
+    },
+    {
+      "sha": "91d2b813f8e7d297987c3d592b360ef1032f7f09",
+      "date": "2026-11-10",
+      "summary": "chore: refresh feature-contract.json + fix guide typo (線上練習)"
+    },
+    {
+      "sha": "f8c77dcc68e3907c6b3af6ee221dfb493ad1654f",
+      "date": "2026-11-10",
+      "summary": "fix(growth): Soft #253 REV — 同校比較 + 拼音 FAQ，HOLD lead trailer"
+    },
+    {
+      "sha": "0ab50f26aba9e5d846f82e214d4762b7a532a56d",
+      "date": "2026-11-10",
+      "summary": "chore: refresh feature-contract.json for Soft #253"
+    },
+    {
+      "sha": "54c77fa53dfa005287db4f99e6f85a937c81acf1",
+      "date": "2026-11-10",
+      "summary": "feat(growth): Soft #253 — 呈分試 guide P3 locked copy, OG tags, http 301"
+    },
+    {
+      "sha": "b038e52d7e0228f8c747c498b9ae7165ab4c1e56",
+      "date": "2026-11-08",
+      "summary": "Soft #252: 呈分試 guide copy refresh + remove cross-links block (#252)"
     },
     {
       "sha": "90de1a006c01e5868e502202171fe2e469aac170",
@@ -7459,7 +7538,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 632,
-    "total_feature_rows": 91
+    "total_commits_since_start": 637,
+    "total_feature_rows": 92
   }
 }
