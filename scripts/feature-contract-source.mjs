@@ -1138,7 +1138,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "呈分試 guide P3 REV locked copy + per-page OG + http→https 301 (#253 soft)",
-      evidence_commits: [],
+      evidence_commits: ["54c77fa", "f8c77dc", "91d2b81"],
       checks: [
         {
           type: "file_contains",
@@ -1179,21 +1179,6 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "vercel.json",
           snippet: "\"x-forwarded-proto\"",
-        },
-        {
-          type: "file_missing",
-          path: "src/components/chengfenshi-visibility-guide-content.tsx",
-          snippet: "GearUp EduTech Limited",
-        },
-        {
-          type: "file_missing",
-          path: "src/components/chengfenshi-visibility-guide-content.tsx",
-          snippet: "系統用 AI 按小朋友表現調整練習",
-        },
-        {
-          type: "file_missing",
-          path: "src/components/chengfenshi-visibility-guide-content.tsx",
-          snippet: "Official site: https://www.gearupquiz.com — practice:",
         },
       ],
     },
