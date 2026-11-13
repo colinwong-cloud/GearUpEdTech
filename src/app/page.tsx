@@ -975,7 +975,7 @@ export default function QuizApp() {
       setScreen("payment");
       return;
     }
-    if (resume.returnScreen === "guoyu_compose") {
+    if (resume.returnScreen === "guoyu_compose" || resume.returnScreen === "zhongwen_xiezuo") {
       return;
     }
     clearGuoyuStudentResume();
@@ -2475,6 +2475,22 @@ export default function QuizApp() {
           });
           window.location.assign("/guoyu");
         }}
+        onZhongwenXiezuo={() => {
+          if (!selectedStudent || !mobileNumber.trim()) return;
+          saveGuoyuStudentResume({
+            mobileNumber: mobileNumber.trim(),
+            students,
+            selectedStudentId: selectedStudent.id,
+            parentTier: {
+              tier: parentTierStatus.tier,
+              is_paid: parentTierStatus.is_paid,
+              paid_until: parentTierStatus.paid_until ?? null,
+              tier_label: parentTierStatus.tier_label,
+            },
+            returnScreen: "subject_select",
+          });
+          window.location.assign("/zhongwen-xiezuo");
+        }}
         onBack={() => {
           setError(null);
           setScreen("login_student");
@@ -3790,6 +3806,7 @@ function SubjectSelectScreen({
   studentId,
   onSelect,
   onGuoyu,
+  onZhongwenXiezuo,
   onBack,
   onUpgrade,
   isPaid,
@@ -3799,6 +3816,7 @@ function SubjectSelectScreen({
   studentId: string | null;
   onSelect: (s: string) => void;
   onGuoyu: () => void;
+  onZhongwenXiezuo: () => void;
   onBack: () => void;
   onUpgrade: () => void;
   isPaid: boolean;
@@ -3857,6 +3875,14 @@ function SubjectSelectScreen({
           >
             <span className="text-3xl">🗣️</span>
             <span className="text-lg font-semibold text-gray-900">普通話練習</span>
+          </button>
+          <button
+            type="button"
+            onClick={onZhongwenXiezuo}
+            className="w-full bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex items-center gap-4 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+          >
+            <span className="text-3xl">✍️</span>
+            <span className="text-lg font-semibold text-gray-900">中文寫作</span>
           </button>
           {subjects.map((s) => (
             <button

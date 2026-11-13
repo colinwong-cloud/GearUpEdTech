@@ -20,8 +20,9 @@ export type GuoyuStudentResume = {
     paid_until: string | null;
     tier_label: string;
   };
-  returnScreen: "subject_select" | "guoyu_compose" | "payment";
+  returnScreen: "subject_select" | "guoyu_compose" | "zhongwen_xiezuo" | "payment";
   guoyuDraftText?: string;
+  zhongwenXiezuoDraftText?: string;
 };
 
 export function saveGuoyuStudentResume(payload: GuoyuStudentResume): void {

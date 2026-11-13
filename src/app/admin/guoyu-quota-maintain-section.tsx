@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type GuoyuQuotaKind = "ocr" | "tts";
+type GuoyuQuotaKind = "ocr" | "tts" | "xiezuo";
 
 export type GuoyuAdminQuotaView = {
   parent_id: string;
@@ -36,7 +36,9 @@ type GuoyuAdminConsoleAction =
   | "get_guoyu_ocr_quota_by_mobile"
   | "adjust_guoyu_ocr_quota_by_mobile"
   | "get_guoyu_tts_quota_by_mobile"
-  | "adjust_guoyu_tts_quota_by_mobile";
+  | "adjust_guoyu_tts_quota_by_mobile"
+  | "get_zhongwen_xiezuo_quota_by_mobile"
+  | "adjust_zhongwen_xiezuo_quota_by_mobile";
 
 async function guoyuAdminConsoleRequest<T>(
   action: GuoyuAdminConsoleAction,
@@ -71,20 +73,28 @@ function showAdminGrantHint(view: GuoyuAdminQuotaView): boolean {
   return view.cap > tierCap;
 }
 
-function kindProductLabel(kind: GuoyuQuotaKind): "OCR" | "朗讀" {
-  return kind === "ocr" ? "OCR" : "朗讀";
+function kindProductLabel(kind: GuoyuQuotaKind): string {
+  if (kind === "ocr") return "OCR";
+  if (kind === "tts") return "朗讀";
+  return "中文寫作";
 }
 
 function sectionTitle(kind: GuoyuQuotaKind): string {
-  return kind === "ocr" ? "OCR 配額維護" : "TTS 配額維護";
+  if (kind === "ocr") return "OCR 配額維護";
+  if (kind === "tts") return "TTS 配額維護";
+  return "中文寫作 配額維護";
 }
 
 function getAction(kind: GuoyuQuotaKind): GuoyuAdminConsoleAction {
-  return kind === "ocr" ? "get_guoyu_ocr_quota_by_mobile" : "get_guoyu_tts_quota_by_mobile";
+  if (kind === "ocr") return "get_guoyu_ocr_quota_by_mobile";
+  if (kind === "tts") return "get_guoyu_tts_quota_by_mobile";
+  return "get_zhongwen_xiezuo_quota_by_mobile";
 }
 
 function adjustAction(kind: GuoyuQuotaKind): GuoyuAdminConsoleAction {
-  return kind === "ocr" ? "adjust_guoyu_ocr_quota_by_mobile" : "adjust_guoyu_tts_quota_by_mobile";
+  if (kind === "ocr") return "adjust_guoyu_ocr_quota_by_mobile";
+  if (kind === "tts") return "adjust_guoyu_tts_quota_by_mobile";
+  return "adjust_zhongwen_xiezuo_quota_by_mobile";
 }
 
 export function GuoyuQuotaMaintainBlock({
