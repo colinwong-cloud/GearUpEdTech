@@ -15,10 +15,11 @@ export default function ZhongwenXiezuoPage() {
 
   useEffect(() => {
     const next = readGuoyuStudentResume();
-    setResume(next);
     if (!next?.selectedStudentId) {
       router.replace("/");
+      return;
     }
+    setResume(next);
   }, [router]);
 
   const student = useMemo(() => {
