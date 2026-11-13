@@ -72,7 +72,7 @@ export function ZhongwenXiezuoScreen({
   }, [refreshQuota]);
 
   useEffect(() => {
-    document.title = "中文寫作練習｜增分寶 GearUp Quiz";
+    document.title = "中文寫作練習｜增分寶";
   }, []);
 
   const handleGenerate = async () => {
@@ -96,7 +96,7 @@ export function ZhongwenXiezuoScreen({
         quota?: QuotaPayload;
       };
       if (!res.ok || !payload.data) {
-        setGenerateError(payload.error || "無法生成練習，請稍後再試。");
+        setGenerateError(payload.error || "無法產生練習，請稍後再試。");
         if (payload.quota) setQuota(payload.quota);
         else await refreshQuota();
         return;
@@ -106,7 +106,7 @@ export function ZhongwenXiezuoScreen({
       if (payload.data.quota) setQuota(payload.data.quota);
       else await refreshQuota();
     } catch {
-      setGenerateError("無法生成練習，請稍後再試。");
+      setGenerateError("無法產生練習，請稍後再試。");
     } finally {
       setGenerateBusy(false);
     }
@@ -131,7 +131,7 @@ export function ZhongwenXiezuoScreen({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = kind === "answer" ? "zhongwen-xiezuo-answer.pdf" : "zhongwen-xiezuo-practice.pdf";
+      a.download = kind === "answer" ? "中文寫作-答案卷.pdf" : "中文寫作-練習卷.pdf";
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -149,10 +149,10 @@ export function ZhongwenXiezuoScreen({
       lang="zh-Hant"
     >
       <div className="w-full max-w-md">
-        <GuoyuBrandHeader />
+        <GuoyuBrandHeader logoAlt="增分寶" />
         <h1 className="text-2xl font-bold text-gray-900">中文寫作練習</h1>
         <p className="mt-1 text-sm text-gray-500">
-          輸入自訂詞語，生成三頁學生練習卷及家長答案卷
+          輸入自訂詞語，產生三頁學生練習卷及家長答案卷
         </p>
 
         <section className="mt-6 space-y-4 rounded-2xl border border-indigo-100 bg-white/90 p-4 shadow-sm">
@@ -186,17 +186,17 @@ export function ZhongwenXiezuoScreen({
                 : "cursor-not-allowed bg-indigo-200 text-white/80"
             }`}
           >
-            {generateBusy ? "正在生成…" : "generate"}
+            {generateBusy ? "正在產生…" : "產生"}
           </button>
         </section>
 
         <section className="mt-6 space-y-4 rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-800">輸出</h2>
           {!content ? (
-            <p className="text-sm text-gray-500">按 generate 後，練習內容會顯示於此。</p>
+            <p className="text-sm text-gray-500">按「產生」後，練習內容會顯示於此。</p>
           ) : (
             <div className="space-y-3 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">已生成三頁練習（填空 ×2 + 範文抄寫）</p>
+              <p className="font-medium text-gray-900">已產生三頁練習（兩頁填空＋範文抄寫）</p>
               {previewText && (
                 <p className="text-xs text-gray-500">詞語：{previewText.slice(0, 120)}</p>
               )}
@@ -231,7 +231,7 @@ export function ZhongwenXiezuoScreen({
                 : "cursor-not-allowed bg-gray-300"
             }`}
           >
-            {pdfBusy ? "準備 PDF…" : "download PDF"}
+            {pdfBusy ? "準備 PDF…" : "下載 PDF"}
           </button>
           {content && (
             <button

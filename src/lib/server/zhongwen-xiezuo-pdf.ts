@@ -171,7 +171,7 @@ export async function buildZhongwenXiezuoPdf({
   };
 
   const title =
-    kind === "answer" ? "GearUp 中文寫作 · 答案卷（家長）" : "GearUp 中文寫作 · 學生練習卷";
+    kind === "answer" ? "增分寶 中文寫作 · 答案卷（家長）" : "增分寶 中文寫作 · 學生練習卷";
 
   // Page 1
   let { page, yRef } = addPage();

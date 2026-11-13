@@ -2459,7 +2459,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "critical",
       title: "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
-      evidence_commits: ["b2e4999"],
+      evidence_commits: ["b2e4999", "PLACEHOLDER"],
       checks: [
         { type: "file_exists", path: "supabase_parent_zhongwen_xiezuo_usage.sql" },
         {
@@ -2470,8 +2470,8 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_exists", path: "src/app/zhongwen-xiezuo/page.tsx" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: "中文寫作" },
         { type: "file_contains", path: "src/app/page.tsx", snippet: 'assign("/zhongwen-xiezuo")' },
-        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "generate" },
-        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "download PDF" },
+        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "產生" },
+        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "下載 PDF" },
         { type: "file_exists", path: "src/lib/zhongwen-xiezuo/rhetoric.ts" },
         {
           type: "file_contains",

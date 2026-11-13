@@ -117,7 +117,7 @@ ${phrases.map((p, i) => `${i + 1}. ${p}`).join("\n")}
   const parsed = extractJsonObject(raw);
   const content = parseZhongwenXiezuoGeneratedContent(parsed);
   if (!content) {
-    return { ok: false, error: "生成內容格式不正確，請稍後再試。" };
+    return { ok: false, error: "產生內容格式不正確，請稍後再試。" };
   }
 
   if (content.rhetoric_marks.some((m) => m.device === "夸張")) {

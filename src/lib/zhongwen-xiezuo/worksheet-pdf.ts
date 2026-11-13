@@ -28,8 +28,8 @@ export function zhongwenXiezuoPdfDownloadFilename(input: {
   const kindLabel = input.kind === "answer" ? "答案卷" : "學生練習卷";
   const student = safeDownloadSegment(input.studentName, "學生");
   return {
-    ascii: `gearup-xiezuo-${tail}-${stamp}-${kindAscii}.pdf`,
-    unicode: `GearUp-${SUBJECT_LABEL}-${student}-${tail}-${stamp}-${kindLabel}.pdf`,
+    ascii: `zengfenbao-xiezuo-${tail}-${stamp}-${kindAscii}.pdf`,
+    unicode: `增分寶-${SUBJECT_LABEL}-${student}-${tail}-${stamp}-${kindLabel}.pdf`,
   };
 }
 

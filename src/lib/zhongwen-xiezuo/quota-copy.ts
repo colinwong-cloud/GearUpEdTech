@@ -16,7 +16,7 @@ export function formatZhongwenXiezuoQuotaLine(view: ZhongwenXiezuoQuotaView): st
   if (n > 0) {
     return `免費中文寫作：本月尚餘 ${n} 次（每月 1 次）。`;
   }
-  return "免費中文寫作額度已用完（每月 1 次）。請升級月費以繼續生成。";
+  return "免費中文寫作額度已用完（每月 1 次）。請升級月費以繼續產生。";
 }
 
 export const ZHONGWEN_XIEZUO_QUOTA_EXPLAINER =
