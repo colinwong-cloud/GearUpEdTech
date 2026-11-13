@@ -623,6 +623,7 @@ export default function AdminPage() {
             </div>
             <GuoyuQuotaMaintainBlock kind="ocr" sessionToken={sessionToken} />
             <GuoyuQuotaMaintainBlock kind="tts" sessionToken={sessionToken} />
+            <GuoyuQuotaMaintainBlock kind="xiezuo" sessionToken={sessionToken} />
           </div>
         )}
         {tab === "student_practice_summary" && <StudentPracticeSummarySection sessionToken={sessionToken} />}

@@ -2453,6 +2453,48 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "zhongwen-xiezuo-offline-soft-254",
+      month: "2026-11",
+      category: "student",
+      priority: "critical",
+      title: "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
+      evidence_commits: ["b2e4999", "5ba5ebc", "8647f1a", "a90178f", "f6703e0", "603bd13"],
+      checks: [
+        { type: "file_exists", path: "supabase_parent_zhongwen_xiezuo_usage.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_parent_zhongwen_xiezuo_usage.sql",
+          snippet: "consume_parent_zhongwen_xiezuo_quota",
+        },
+        { type: "file_exists", path: "src/app/zhongwen-xiezuo/page.tsx" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "中文寫作" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: 'assign("/zhongwen-xiezuo")' },
+        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "產生" },
+        { type: "file_contains", path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx", snippet: "下載 PDF" },
+        { type: "file_exists", path: "src/lib/zhongwen-xiezuo/rhetoric.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/rhetoric.ts",
+          snippet: '"誇張"',
+        },
+        { type: "file_exists", path: "src/app/api/zhongwen-xiezuo/generate/route.ts" },
+        { type: "file_exists", path: "src/app/api/zhongwen-xiezuo/pdf/route.ts" },
+        { type: "file_exists", path: "src/app/api/zhongwen-xiezuo/quota/route.ts" },
+        {
+          type: "file_contains",
+          path: "src/app/admin/guoyu-quota-maintain-section.tsx",
+          snippet: "中文寫作 配額維護",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "get_zhongwen_xiezuo_quota_by_mobile",
+        },
+        { type: "file_contains", path: "src/lib/server/zhongwen-xiezuo-poe.ts", snippet: "誇張" },
+        { type: "file_contains", path: "src/lib/server/guoyu-poe-common.ts", snippet: "POE_MODEL_OCR_PINYIN" },
+      ],
+    },
   ],
 };
 
