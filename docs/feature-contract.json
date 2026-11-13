@@ -4302,7 +4302,11 @@
       "title": "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
       "evidence_commits": [
         "b2e4999",
-        "5ba5ebc"
+        "5ba5ebc",
+        "8647f1a",
+        "a90178f",
+        "f6703e0",
+        "603bd13"
       ],
       "checks": [
         {
@@ -4382,8 +4386,33 @@
       ]
     }
   ],
-  "generated_at": "2026-11-13T16:21:34.233Z",
+  "generated_at": "2026-11-13T16:33:03.864Z",
   "commit_inventory": [
+    {
+      "sha": "df516bcc6f1b66967b9ea5c46923f639685ca25d",
+      "date": "2026-11-13",
+      "summary": "chore: extend Soft #254 feature contract evidence commits"
+    },
+    {
+      "sha": "603bd13eadce712f561d0fe98ef9b8cff5a0acf8",
+      "date": "2026-11-13",
+      "summary": "fix(ci): pin ubuntu-24.04 runners and align zhongwen resume read with guoyu"
+    },
+    {
+      "sha": "f6703e005d50a12d6fe461be8fddcc5b23595c66",
+      "date": "2026-11-13",
+      "summary": "fix(zhongwen-xiezuo): only set resume when student context is valid"
+    },
+    {
+      "sha": "a90178f919e2e7f8185c6843df0794ec0fb595cc",
+      "date": "2026-11-13",
+      "summary": "fix(zhongwen-xiezuo): read student resume after client mount"
+    },
+    {
+      "sha": "4a6a640d4ba65a1776917bf3c74e9974adb983ea",
+      "date": "2026-11-13",
+      "summary": "chore: refresh feature contract for TC UI labels (5ba5ebc)"
+    },
     {
       "sha": "5ba5ebc19c555e97756231de1a0bf26037e833ea",
       "date": "2026-11-13",
@@ -7566,7 +7595,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 636,
+    "total_commits_since_start": 641,
     "total_feature_rows": 92
   }
 }
