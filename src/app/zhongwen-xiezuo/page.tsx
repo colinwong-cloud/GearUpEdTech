@@ -1,26 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { ZhongwenXiezuoScreen } from "@/components/zhongwen-xiezuo/ZhongwenXiezuoScreen";
 import {
   readGuoyuStudentResume,
   saveGuoyuStudentResume,
-  type GuoyuStudentResume,
 } from "@/lib/guoyu/student-resume";
 
 export default function ZhongwenXiezuoPage() {
   const router = useRouter();
-  const [resume, setResume] = useState<GuoyuStudentResume | null>(null);
+  const resume = useMemo(() => readGuoyuStudentResume(), []);
 
   useEffect(() => {
-    const next = readGuoyuStudentResume();
-    if (!next?.selectedStudentId) {
+    if (!resume?.selectedStudentId) {
       router.replace("/");
-      return;
     }
-    setResume(next);
-  }, [router]);
+  }, [resume, router]);
 
   const student = useMemo(() => {
     if (!resume) return null;
