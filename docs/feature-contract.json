@@ -4293,14 +4293,105 @@
           "snippet": "expect(practiceLabelIdx).toBeGreaterThan(quotaIdx);"
         }
       ]
+    },
+    {
+      "id": "zhongwen-xiezuo-offline-soft-254",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "critical",
+      "title": "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
+      "evidence_commits": [
+        "b2e4999"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "supabase_parent_zhongwen_xiezuo_usage.sql"
+        },
+        {
+          "type": "file_contains",
+          "path": "supabase_parent_zhongwen_xiezuo_usage.sql",
+          "snippet": "consume_parent_zhongwen_xiezuo_quota"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/zhongwen-xiezuo/page.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "中文寫作"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "assign(\"/zhongwen-xiezuo\")"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          "snippet": "generate"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          "snippet": "download PDF"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/lib/zhongwen-xiezuo/rhetoric.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/rhetoric.ts",
+          "snippet": "\"誇張\""
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/zhongwen-xiezuo/generate/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/zhongwen-xiezuo/pdf/route.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "src/app/api/zhongwen-xiezuo/quota/route.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/admin/guoyu-quota-maintain-section.tsx",
+          "snippet": "中文寫作 配額維護"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/api/admin/console/route.ts",
+          "snippet": "get_zhongwen_xiezuo_quota_by_mobile"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/zhongwen-xiezuo-poe.ts",
+          "snippet": "誇張"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/guoyu-poe-common.ts",
+          "snippet": "POE_MODEL_OCR_PINYIN"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-07T13:09:44.894Z",
+  "generated_at": "2026-11-13T16:15:33.470Z",
   "commit_inventory": [
     {
-      "sha": "ef4ffcff211aaf600c0dcce79d2e213ca3df51f9",
-      "date": "2026-11-07",
-      "summary": "fix(growth): refresh 呈分試 guide copy for Soft #252"
+      "sha": "b2e4999465bf1de498e0dca88aae81fa3647867f",
+      "date": "2026-11-13",
+      "summary": "feat(zhongwen-xiezuo): Soft #254 offline writing practice with PDF quota"
+    },
+    {
+      "sha": "b038e52d7e0228f8c747c498b9ae7165ab4c1e56",
+      "date": "2026-11-08",
+      "summary": "Soft #252: 呈分試 guide copy refresh + remove cross-links block (#252)"
     },
     {
       "sha": "90de1a006c01e5868e502202171fe2e469aac170",
@@ -7459,7 +7550,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 632,
-    "total_feature_rows": 91
+    "total_commits_since_start": 633,
+    "total_feature_rows": 92
   }
 }
