@@ -19,6 +19,7 @@ export function ZhongwenXiezuoQuotaCircles({
         ariaLabel={formatZhongwenXiezuoQuotaLine(view)}
         freeTierUpsellLabel="了解月費（享 10 次中文寫作）"
         onUpgrade={onUpgrade}
+        hideExplainer
       />
       <p className="mt-2 text-xs text-gray-500">{ZHONGWEN_XIEZUO_QUOTA_EXPLAINER}</p>
     </div>

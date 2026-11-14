@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GuoyuBrandHeader } from "@/components/guoyu/GuoyuBrandHeader";
 import { sanitizeGuoyuInput, countGuoyuChars } from "@/lib/guoyu/text";
-import { hasZhongwenXiezuoInput } from "@/lib/zhongwen-xiezuo/content";
+import {
+  hasZhongwenXiezuoInput,
+  ZHONGWEN_XIEZUO_PHRASE_DELIMITER_HINT,
+  ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT,
+} from "@/lib/zhongwen-xiezuo/content";
 import type { ZhongwenXiezuoGeneratedContent } from "@/lib/zhongwen-xiezuo/content";
 import { ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL } from "@/lib/zhongwen-xiezuo/rhetoric";
 import {
@@ -54,8 +58,11 @@ export function ZhongwenXiezuoScreen({
   const quotaExhausted = Boolean(
     quota?.rpc_ready && quota.remaining <= 0
   );
+  const hasEnoughPhrases = hasZhongwenXiezuoInput(text);
+  const showPhraseCountHint =
+    text.trim().length > 0 && !hasEnoughPhrases && !generateBusy;
   const canGenerate =
-    hasZhongwenXiezuoInput(text) && !generateBusy && !quotaExhausted;
+    hasEnoughPhrases && !generateBusy && !quotaExhausted;
 
   const refreshQuota = useCallback(async () => {
     const res = await fetch("/api/zhongwen-xiezuo/quota", {
@@ -158,7 +165,8 @@ export function ZhongwenXiezuoScreen({
         <section className="mt-6 space-y-4 rounded-2xl border border-indigo-100 bg-white/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-800">自訂詞語／句式</h2>
           <p className="text-xs text-gray-500">
-            請以換行、逗號或頓號分隔多個詞語。範文將按學生年級調整難度，並運用修辭（含誇張）：{ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}。
+            {ZHONGWEN_XIEZUO_PHRASE_DELIMITER_HINT}
+            範文將按學生年級調整難度，並運用修辭（含誇張）：{ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}。
           </p>
           {quotaView && (
             <ZhongwenXiezuoQuotaCircles view={quotaView} onUpgrade={onUpgrade} />
@@ -173,6 +181,9 @@ export function ZhongwenXiezuoScreen({
             className="min-h-[140px] w-full rounded-xl border-2 border-gray-200 px-3 py-3 text-base focus:border-indigo-400 focus:outline-none"
           />
           <p className="text-right text-xs text-gray-500">{len} 字</p>
+          {showPhraseCountHint && (
+            <p className="text-sm text-amber-700">{ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT}</p>
+          )}
           {generateError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{generateError}</p>
           )}

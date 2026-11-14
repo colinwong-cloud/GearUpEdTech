@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hasZhongwenXiezuoInput } from "@/lib/zhongwen-xiezuo/content";
+import {
+  hasZhongwenXiezuoInput,
+  ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT,
+} from "@/lib/zhongwen-xiezuo/content";
 import { sanitizeGuoyuInput } from "@/lib/guoyu/text";
 import { generateZhongwenXiezuoContent } from "@/lib/server/zhongwen-xiezuo-poe";
 import {
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   const text = sanitizeGuoyuInput(String(body.text ?? ""));
   if (!hasZhongwenXiezuoInput(text)) {
-    return NextResponse.json({ error: "請輸入至少兩個詞語或短語（以換行、逗號或頓號分隔）。" }, { status: 400 });
+    return NextResponse.json({ error: ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT }, { status: 400 });
   }
 
   const parentCtx = await resolveStudentParent(admin, studentId);
