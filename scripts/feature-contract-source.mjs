@@ -2495,6 +2495,42 @@ export const FEATURE_CONTRACT_BASE = {
         { type: "file_contains", path: "src/lib/server/guoyu-poe-common.ts", snippet: "POE_MODEL_OCR_PINYIN" },
       ],
     },
+    {
+      id: "zhongwen-xiezuo-quota-ux-soft-255",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Soft #255 — 中文寫作 quota legend once; space-delimited phrase input UX",
+      evidence_commits: ["a3a99f73a72cc90292dc258442ef45a2fe675163"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/components/guoyu/GuoyuParentQuotaCircles.tsx",
+          snippet: "hideExplainer",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoQuotaCircles.tsx",
+          snippet: "hideExplainer",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/content.ts",
+          snippet: ".split(/[\\n,，、;；\\s\\u3000]+/u)",
+        },
+        {
+          type: "file_contains",
+          path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          snippet: "ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT",
+        },
+        { type: "file_exists", path: "src/lib/zhongwen-xiezuo/content.test.ts" },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/content.test.ts",
+          snippet: "歡樂年年 龍馬精神",
+        },
+      ],
+    },
   ],
 };
 
