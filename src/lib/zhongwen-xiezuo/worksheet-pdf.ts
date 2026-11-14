@@ -4,6 +4,10 @@ import {
 } from "@/lib/tutor-practice-paper";
 import type { ZhongwenXiezuoGeneratedContent } from "@/lib/zhongwen-xiezuo/content";
 import { parseZhongwenXiezuoGeneratedContent } from "@/lib/zhongwen-xiezuo/content";
+import {
+  ZHONGWEN_XIEZUO_RHETORIC_DEVICES,
+  ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL,
+} from "@/lib/zhongwen-xiezuo/rhetoric";
 
 export type ZhongwenXiezuoPdfKind = "practice" | "answer";
 
@@ -37,14 +41,42 @@ export function parseZhongwenXiezuoContentForPdf(value: unknown): ZhongwenXiezuo
   return parseZhongwenXiezuoGeneratedContent(value);
 }
 
+/** Ruled-line spacing for student 抄寫 band (PDF units); was 28 before Soft #256. */
+export const ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING = 56;
+
+/** Every static label on 學生練習卷 and 家長答案卷 must appear here so subset-font retains glyphs. */
+export const ZHONGWEN_XIEZUO_PDF_STATIC_LABELS = [
+  "增分寶 中文寫作 · 答案卷（家長）",
+  "增分寶 中文寫作 · 學生練習卷",
+  "學生：—",
+  "日期：________________",
+  "家長參考。標示修辭手法（含誇張等）。",
+  "第一頁：選詞填空（詞語庫）",
+  "第二頁：選詞填空（無詞語庫）",
+  "第三頁：範文（請抄寫）",
+  "詞語庫：",
+  "抄寫區（橫線）：",
+  `修辭手法（${ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}）`,
+  ...ZHONGWEN_XIEZUO_RHETORIC_DEVICES,
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+  "，。？！、；：「」『』（）【】《》〈〉—…．·×÷＿_　／",
+].join("");
+
 export function zhongwenXiezuoPdfFontCorpus(content: ZhongwenXiezuoGeneratedContent): string {
-  const parts = [
+  const chunks = [
+    ZHONGWEN_XIEZUO_PDF_STATIC_LABELS,
     ...content.source_phrases,
     ...content.page1_cloze.flatMap((c) => [c.sentence_with_blank, c.answer]),
     ...content.page2_cloze.flatMap((c) => [c.sentence_with_blank, c.answer]),
     content.essay,
     ...content.rhetoric_marks.flatMap((m) => [m.device, m.excerpt]),
-    "修辭手法誇張詞語庫填空練習範文抄寫",
   ];
-  return parts.join("");
+  const seen = new Set<string>();
+  for (const chunk of chunks) {
+    for (const character of chunk) {
+      if (character === "\n" || character === "\r" || character === "\t") continue;
+      seen.add(character);
+    }
+  }
+  return Array.from(seen).join("");
 }

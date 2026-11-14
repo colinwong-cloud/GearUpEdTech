@@ -20,7 +20,7 @@ export type ZhongwenXiezuoPoeResult =
 
 const XIEZUO_SYSTEM = `你是香港小學中文寫作練習出題助手。只輸出單一 JSON 物件，不要 markdown 或解釋。
 必須使用繁體中文。
-範文須約 180–220 字，並在故事中自然融入家長提供的詞語。
+範文須約 180–220 字，同一篇故事中須將家長提供的每個詞語／短語各至少使用一次；詞語出現順序不必跟家長輸入順序相同。
 範文須運用修辭手法，並在 rhetoric_marks 標註；device 只能取自以下清單（措辭辭須一致，誇張須用「誇張」二字，勿用簡化「夸張」）：
 ${ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}
 
@@ -78,7 +78,7 @@ export async function generateZhongwenXiezuoContent(input: {
   const userContent = `學生年級：${input.gradeLevel || "未設定"}
 ${gradeHint}
 
-家長自訂詞語／句式（請用於 page1 詞語庫與範文）：
+家長自訂詞語清單（以下編號僅供盤點，勿視為範文或填空的出現順序；每個詞語仍須在範文與詞語庫中各至少出現一次）：
 ${phrases.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 
 請按 system 指示輸出 JSON。修辭 device 範例（含誇張）：${ZHONGWEN_XIEZUO_RHETORIC_DEVICES.slice(0, 4).join("、")} 等。`;

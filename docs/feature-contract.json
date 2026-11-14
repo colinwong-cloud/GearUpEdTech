@@ -4387,7 +4387,7 @@
       "priority": "medium",
       "title": "Soft #255 — 中文寫作 quota legend once; space-delimited phrase input UX",
       "evidence_commits": [
-        "a3a99f73a72cc90292dc258442ef45a2fe675163"
+        "26c26f0"
       ],
       "checks": [
         {
@@ -4420,34 +4420,71 @@
           "snippet": "歡樂年年 龍馬精神"
         }
       ]
+    },
+    {
+      "id": "zhongwen-xiezuo-ux-pdf-soft-256",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "medium",
+      "title": "Soft #256 — 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap",
+      "evidence_commits": [
+        "3a74624"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          "snippet": "open\n                className=\"rounded-lg border border-gray-100 bg-gray-50/80 p-3\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          "snippet": "AI 工作中"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/zhongwen-xiezuo-poe.ts",
+          "snippet": "編號僅供盤點"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          "snippet": "ZHONGWEN_XIEZUO_PDF_STATIC_LABELS"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          "snippet": "ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING = 56"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          "snippet": "missingGlyphs"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          "snippet": "第二頁：選詞填空（無詞語庫）"
+        }
+      ]
     }
   ],
-  "generated_at": "2026-11-14T03:12:38.202Z",
+  "generated_at": "2026-11-14T14:47:44.894Z",
   "commit_inventory": [
     {
-      "sha": "139b7ec6f5ce84a2237e7ac504fd46430bb18cab",
+      "sha": "782092c23f25815a9df6ba01319c1e9efaa8bffa",
       "date": "2026-11-14",
-      "summary": "Retarget Soft #254 evidence_commits to squash merge on main"
+      "summary": "docs: feature contract Soft #256 evidence and inventory refresh"
     },
     {
-      "sha": "1df3642f13771028d38cd0b780a5f0c3b21e2ce7",
+      "sha": "3a746242de0bee663f0564f502777d8b79dc8e4f",
       "date": "2026-11-14",
-      "summary": "Refresh feature-contract.json inventory (include f5dbac38)"
+      "summary": "Soft #256: 中文寫作 preview open, wait timer, phrase inventory, PDF labels"
     },
     {
-      "sha": "dfb8e1598e803e820cd20afa2af2ab5d848f6725",
+      "sha": "26c26f03747eaa660d06eb8b424635372b3ac417",
       "date": "2026-11-14",
-      "summary": "Refresh feature-contract.json inventory"
-    },
-    {
-      "sha": "f5dbac38c2be7444ad3947ccb7e41b300cdabb30",
-      "date": "2026-11-14",
-      "summary": "Add Soft #255 feature-contract-source row"
-    },
-    {
-      "sha": "a3a99f73a72cc90292dc258442ef45a2fe675163",
-      "date": "2026-11-14",
-      "summary": "Soft #255: 中文寫作 quota legend once; space phrase parsing"
+      "summary": "Soft #255: 中文寫作 quota legend once; space phrase parsing (#255)"
     },
     {
       "sha": "d6b0d5ea662cc2f93e1d42d3815c8c5a0b2726cd",
@@ -7616,7 +7653,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 638,
-    "total_feature_rows": 93
+    "total_commits_since_start": 636,
+    "total_feature_rows": 94
   }
 }

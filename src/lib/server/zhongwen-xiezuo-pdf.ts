@@ -6,6 +6,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFImage } from "pdf-lib";
 import subsetFont from "subset-font";
 import type { ZhongwenXiezuoGeneratedContent } from "@/lib/zhongwen-xiezuo/content";
 import {
+  ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING,
   zhongwenXiezuoPdfFontCorpus,
   type ZhongwenXiezuoPdfKind,
 } from "@/lib/zhongwen-xiezuo/worksheet-pdf";
@@ -231,11 +232,17 @@ export async function buildZhongwenXiezuoPdf({
 
   if (kind === "practice") {
     drawWrapped(page, yRef, "抄寫區（橫線）：", META_SIZE);
-    const lineYStart = yRef.y;
-    let lineY = lineYStart;
-    const lineSpacing = 28;
+    const lineSpacing = ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING;
     const minY = MARGIN + 40;
-    while (lineY > minY) {
+    const essayLineCount = wrapText(font, sanitizeText(font, content.essay, glyphCache), contentWidth, BODY_SIZE).length;
+    const ruledLineTarget = Math.max(essayLineCount + 2, 8);
+    let lineY = yRef.y;
+    let drawn = 0;
+    while (drawn < ruledLineTarget) {
+      if (lineY <= minY) {
+        ({ page, yRef } = addPage());
+        lineY = yRef.y - 8;
+      }
       page.drawLine({
         start: { x: MARGIN, y: lineY },
         end: { x: PAGE_WIDTH - MARGIN, y: lineY },
@@ -243,7 +250,9 @@ export async function buildZhongwenXiezuoPdf({
         color: MUTED,
       });
       lineY -= lineSpacing;
+      drawn += 1;
     }
+    yRef.y = lineY;
   }
 
   return pdf.save();

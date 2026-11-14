@@ -2501,7 +2501,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #255 — 中文寫作 quota legend once; space-delimited phrase input UX",
-      evidence_commits: ["a3a99f73a72cc90292dc258442ef45a2fe675163"],
+      evidence_commits: ["26c26f0"],
       checks: [
         {
           type: "file_contains",
@@ -2528,6 +2528,51 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/lib/zhongwen-xiezuo/content.test.ts",
           snippet: "歡樂年年 龍馬精神",
+        },
+      ],
+    },
+    {
+      id: "zhongwen-xiezuo-ux-pdf-soft-256",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Soft #256 — 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap",
+      evidence_commits: ["3a74624"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          snippet: 'open\n                className="rounded-lg border border-gray-100 bg-gray-50/80 p-3"',
+        },
+        {
+          type: "file_contains",
+          path: "src/components/zhongwen-xiezuo/ZhongwenXiezuoScreen.tsx",
+          snippet: "AI 工作中",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/zhongwen-xiezuo-poe.ts",
+          snippet: "編號僅供盤點",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          snippet: "ZHONGWEN_XIEZUO_PDF_STATIC_LABELS",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          snippet: "ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING = 56",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          snippet: "missingGlyphs",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          snippet: "第二頁：選詞填空（無詞語庫）",
         },
       ],
     },

@@ -12,13 +12,19 @@ describe("zhongwen-xiezuo-poe", () => {
       rhetoric_marks: [{ device: "夸張", excerpt: "風聲響徹雲霄" }],
     };
 
-    const fetchImpl = async () =>
-      ({
+    let capturedUser = "";
+    const fetchImpl = async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        messages?: Array<{ role: string; content: string }>;
+      };
+      capturedUser = body.messages?.find((m) => m.role === "user")?.content ?? "";
+      return {
         ok: true,
         json: async () => ({
           choices: [{ message: { content: JSON.stringify(mockJson) } }],
         }),
-      }) as Response;
+      } as Response;
+    };
 
     const result = await generateZhongwenXiezuoContent({
       parentText: "晴朗\n微風",
@@ -27,6 +33,8 @@ describe("zhongwen-xiezuo-poe", () => {
       apiKey: "test-key",
     });
 
+    expect(capturedUser).toContain("編號僅供盤點");
+    expect(capturedUser).toContain("勿視為範文或填空的出現順序");
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.content.rhetoric_marks[0]?.device).toBe("誇張");

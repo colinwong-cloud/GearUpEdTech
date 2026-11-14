@@ -45,6 +45,8 @@ export function ZhongwenXiezuoScreen({
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [content, setContent] = useState<ZhongwenXiezuoGeneratedContent | null>(null);
   const [previewText, setPreviewText] = useState<string | null>(null);
+  const [previewExpandKey, setPreviewExpandKey] = useState(0);
+  const [generateWaitSeconds, setGenerateWaitSeconds] = useState(0);
 
   const quotaView: ZhongwenXiezuoQuotaView | null = useMemo(() => {
     if (!quota) return null;
@@ -82,6 +84,18 @@ export function ZhongwenXiezuoScreen({
     document.title = "中文寫作練習｜增分寶";
   }, []);
 
+  useEffect(() => {
+    if (!generateBusy) {
+      setGenerateWaitSeconds(0);
+      return;
+    }
+    setGenerateWaitSeconds(1);
+    const id = window.setInterval(() => {
+      setGenerateWaitSeconds((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [generateBusy]);
+
   const handleGenerate = async () => {
     if (!canGenerate) return;
     setGenerateBusy(true);
@@ -110,6 +124,7 @@ export function ZhongwenXiezuoScreen({
       }
       setContent(payload.data.content);
       setPreviewText(payload.data.source_text);
+      setPreviewExpandKey((k) => k + 1);
       if (payload.data.quota) setQuota(payload.data.quota);
       else await refreshQuota();
     } catch {
@@ -197,7 +212,7 @@ export function ZhongwenXiezuoScreen({
                 : "cursor-not-allowed bg-indigo-200 text-white/80"
             }`}
           >
-            {generateBusy ? "正在產生…" : "產生"}
+            {generateBusy ? `AI 工作中 ${generateWaitSeconds || 1}s` : "產生"}
           </button>
         </section>
 
@@ -211,7 +226,11 @@ export function ZhongwenXiezuoScreen({
               {previewText && (
                 <p className="text-xs text-gray-500">詞語：{previewText.slice(0, 120)}</p>
               )}
-              <details className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
+              <details
+                key={previewExpandKey}
+                open
+                className="rounded-lg border border-gray-100 bg-gray-50/80 p-3"
+              >
                 <summary className="cursor-pointer font-semibold text-gray-800">預覽範文</summary>
                 <p className="mt-2 whitespace-pre-wrap leading-relaxed">{content.essay}</p>
                 {content.rhetoric_marks.length > 0 && (
