@@ -2459,7 +2459,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "critical",
       title: "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
-      evidence_commits: ["b2e4999", "5ba5ebc", "8647f1a", "a90178f", "f6703e0", "603bd13"],
+      evidence_commits: ["d6b0d5e"],
       checks: [
         { type: "file_exists", path: "supabase_parent_zhongwen_xiezuo_usage.sql" },
         {
