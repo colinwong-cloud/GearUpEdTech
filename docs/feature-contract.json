@@ -4301,12 +4301,7 @@
       "priority": "critical",
       "title": "Soft #254 — 中文寫作 offline practice with GPT-5.4 PDF and quota",
       "evidence_commits": [
-        "b2e4999",
-        "5ba5ebc",
-        "8647f1a",
-        "a90178f",
-        "f6703e0",
-        "603bd13"
+        "d6b0d5e"
       ],
       "checks": [
         {
@@ -4427,8 +4422,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-14T03:06:29.573Z",
+  "generated_at": "2026-11-14T03:12:38.202Z",
   "commit_inventory": [
+    {
+      "sha": "139b7ec6f5ce84a2237e7ac504fd46430bb18cab",
+      "date": "2026-11-14",
+      "summary": "Retarget Soft #254 evidence_commits to squash merge on main"
+    },
+    {
+      "sha": "1df3642f13771028d38cd0b780a5f0c3b21e2ce7",
+      "date": "2026-11-14",
+      "summary": "Refresh feature-contract.json inventory (include f5dbac38)"
+    },
     {
       "sha": "dfb8e1598e803e820cd20afa2af2ab5d848f6725",
       "date": "2026-11-14",
@@ -7611,7 +7616,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 636,
+    "total_commits_since_start": 638,
     "total_feature_rows": 93
   }
 }
