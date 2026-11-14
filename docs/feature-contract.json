@@ -4427,8 +4427,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-14T03:02:29.583Z",
+  "generated_at": "2026-11-14T03:06:29.573Z",
   "commit_inventory": [
+    {
+      "sha": "dfb8e1598e803e820cd20afa2af2ab5d848f6725",
+      "date": "2026-11-14",
+      "summary": "Refresh feature-contract.json inventory"
+    },
+    {
+      "sha": "f5dbac38c2be7444ad3947ccb7e41b300cdabb30",
+      "date": "2026-11-14",
+      "summary": "Add Soft #255 feature-contract-source row"
+    },
     {
       "sha": "a3a99f73a72cc90292dc258442ef45a2fe675163",
       "date": "2026-11-14",
@@ -7601,7 +7611,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 634,
+    "total_commits_since_start": 636,
     "total_feature_rows": 93
   }
 }
