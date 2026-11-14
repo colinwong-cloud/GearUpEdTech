@@ -4469,8 +4469,13 @@
       ]
     }
   ],
-  "generated_at": "2026-11-14T14:44:50.242Z",
+  "generated_at": "2026-11-14T14:47:44.894Z",
   "commit_inventory": [
+    {
+      "sha": "782092c23f25815a9df6ba01319c1e9efaa8bffa",
+      "date": "2026-11-14",
+      "summary": "docs: feature contract Soft #256 evidence and inventory refresh"
+    },
     {
       "sha": "3a746242de0bee663f0564f502777d8b79dc8e4f",
       "date": "2026-11-14",
@@ -7648,7 +7653,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 635,
+    "total_commits_since_start": 636,
     "total_feature_rows": 94
   }
 }
