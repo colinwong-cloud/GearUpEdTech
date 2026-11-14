@@ -11,6 +11,8 @@ export type GuoyuParentQuotaCirclesProps = {
   ariaLabel: string;
   freeTierUpsellLabel: string;
   onUpgrade?: () => void;
+  /** When true, omit the shared 普通話 quota legend (page supplies its own). */
+  hideExplainer?: boolean;
 };
 
 export function GuoyuParentQuotaCircles({
@@ -18,6 +20,7 @@ export function GuoyuParentQuotaCircles({
   ariaLabel,
   freeTierUpsellLabel,
   onUpgrade,
+  hideExplainer = false,
 }: GuoyuParentQuotaCirclesProps) {
   const total = guoyuQuotaCircleTotal(view);
   const used = guoyuQuotaCirclesUsed(view);
@@ -41,7 +44,9 @@ export function GuoyuParentQuotaCircles({
           </button>
         )}
       </div>
-      <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{GUOYU_QUOTA_CIRCLE_EXPLAINER}</p>
+      {!hideExplainer && (
+        <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{GUOYU_QUOTA_CIRCLE_EXPLAINER}</p>
+      )}
     </div>
   );
 }

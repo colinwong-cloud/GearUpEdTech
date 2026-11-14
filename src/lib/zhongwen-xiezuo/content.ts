@@ -24,9 +24,16 @@ export type ZhongwenXiezuoGeneratedContent = {
 const MAX_CLOZE_ITEMS = 12;
 const MAX_ESSAY_CHARS = 1200;
 
+/** Owner copy: delimiter guidance for parent phrase input (Traditional Chinese). */
+export const ZHONGWEN_XIEZUO_PHRASE_DELIMITER_HINT =
+  "請以換行、逗號、頓號或空格分隔多個詞語。";
+
+export const ZHONGWEN_XIEZUO_PHRASE_MIN_COUNT_HINT =
+  "請至少輸入兩個詞語（以換行、逗號、頓號或空格分隔）。";
+
 export function parseParentPhraseInput(raw: string): string[] {
   const parts = raw
-    .split(/[\n,，、;；]+/u)
+    .split(/[\n,，、;；\s\u3000]+/u)
     .map((p) => p.trim())
     .filter(Boolean);
   const seen = new Set<string>();
