@@ -7,6 +7,9 @@ import subsetFont from "subset-font";
 import type { ZhongwenXiezuoGeneratedContent } from "@/lib/zhongwen-xiezuo/content";
 import {
   ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING,
+  ZHONGWEN_XIEZUO_SECTION1_TITLE,
+  ZHONGWEN_XIEZUO_SECTION2_TITLE,
+  ZHONGWEN_XIEZUO_SECTION3_TITLE,
   zhongwenXiezuoPdfFontCorpus,
   type ZhongwenXiezuoPdfKind,
 } from "@/lib/zhongwen-xiezuo/worksheet-pdf";
@@ -25,6 +28,8 @@ const SMALL_SIZE = 11;
 const BRAND_INSET = 22;
 const LOGO_HEIGHT = 42;
 const MASCOT_HEIGHT = 72;
+const LINE_GAP = 6;
+const BOTTOM_Y = MARGIN + 20;
 
 const practiceFontUrl = new URL("./assets/NotoSansTC-subset.ttf", import.meta.url);
 const practiceLogoUrl = new URL("./assets/gearup-edutech-logo.png", import.meta.url);
@@ -57,7 +62,7 @@ async function embedFont(pdf: PDFDocument, text: string): Promise<PDFFont> {
   } catch {
     // fall back
   }
-  return pdf.embedFont(source, { subset: false });
+  return await pdf.embedFont(source, { subset: false });
 }
 
 function canDraw(font: PDFFont, character: string, cache: Map<string, boolean>): boolean {
@@ -133,6 +138,15 @@ function drawFirstPageBrand(
   return top - MASCOT_HEIGHT - 16;
 }
 
+export function zhongwenXiezuoClozeLineForPdf(
+  kind: ZhongwenXiezuoPdfKind,
+  item: { number: number; sentence_with_blank: string; answer: string }
+): string {
+  return kind === "answer"
+    ? `${item.number}. ${item.sentence_with_blank.replace(/＿+/gu, item.answer)}`
+    : `${item.number}. ${item.sentence_with_blank}`;
+}
+
 export async function buildZhongwenXiezuoPdf({
   kind,
   studentName,
@@ -150,37 +164,41 @@ export async function buildZhongwenXiezuoPdf({
   const logo = await pdf.embedPng(readBundledFile(practiceLogoUrl, "gearup-edutech-logo.png"));
   const mascot = await pdf.embedPng(readBundledFile(practiceMascotUrl, "gearup-banana-mascot.png"));
 
+  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let yRef = { y: drawFirstPageBrand(page, logo, mascot) };
+
+  const addPage = () => {
+    page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    yRef = { y: drawFirstPageBrand(page, logo, mascot) };
+  };
+
+  const needsNewPage = (lineSize: number) => yRef.y < BOTTOM_Y + lineSize;
+
   const drawWrapped = (
-    page: ReturnType<PDFDocument["addPage"]>,
-    yRef: { y: number },
     text: string,
     size: number,
-    color = BODY
+    color = BODY,
+    onContinuation?: () => void
   ) => {
     const safe = sanitizeText(font, text, glyphCache);
     for (const line of wrapText(font, safe, contentWidth, size)) {
-      if (yRef.y < MARGIN + size) break;
+      if (needsNewPage(size)) {
+        addPage();
+        onContinuation?.();
+      }
       page.drawText(line, { x: MARGIN, y: yRef.y - size, size, font, color });
-      yRef.y -= size + 6;
+      yRef.y -= size + LINE_GAP;
     }
-  };
-
-  const addPage = () => {
-    const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    const yRef = { y: drawFirstPageBrand(page, logo, mascot) };
-    return { page, yRef };
   };
 
   const title =
     kind === "answer" ? "增分寶 中文寫作 · 答案卷（家長）" : "增分寶 中文寫作 · 學生練習卷";
 
-  // Page 1
-  let { page, yRef } = addPage();
-  drawWrapped(page, yRef, title, TITLE_SIZE);
-  drawWrapped(page, yRef, `學生：${studentName || "—"}`, META_SIZE);
-  drawWrapped(page, yRef, practicePaperDateLine(), META_SIZE);
+  drawWrapped(title, TITLE_SIZE);
+  drawWrapped(`學生：${studentName || "—"}`, META_SIZE);
+  drawWrapped(practicePaperDateLine(), META_SIZE);
   if (kind === "answer") {
-    drawWrapped(page, yRef, "家長參考。標示修辭手法（含誇張等）。", META_SIZE, MUTED);
+    drawWrapped("家長參考。標示修辭手法（含誇張等）。", META_SIZE, MUTED);
   }
   yRef.y -= 8;
   page.drawLine({
@@ -191,47 +209,47 @@ export async function buildZhongwenXiezuoPdf({
   });
   yRef.y -= 20;
 
-  drawWrapped(page, yRef, "第一頁：選詞填空（詞語庫）", META_SIZE);
-  if (kind === "practice") {
-    drawWrapped(page, yRef, `詞語庫：${content.source_phrases.join("　")}`, BODY_SIZE);
-    yRef.y -= 4;
-  }
+  const drawSection1Header = () => {
+    drawWrapped(ZHONGWEN_XIEZUO_SECTION1_TITLE, META_SIZE);
+    if (kind === "practice") {
+      drawWrapped(`詞語庫：${content.source_phrases.join("　")}`, BODY_SIZE);
+      yRef.y -= 4;
+    }
+  };
+
+  drawSection1Header();
   for (const item of content.page1_cloze) {
-    const line =
-      kind === "answer"
-        ? `${item.number}. ${item.sentence_with_blank.replace(/＿+/gu, item.answer)}`
-        : `${item.number}. ${item.sentence_with_blank}`;
-    drawWrapped(page, yRef, line, BODY_SIZE);
+    drawWrapped(zhongwenXiezuoClozeLineForPdf(kind, item), BODY_SIZE, BODY, drawSection1Header);
   }
 
-  // Page 2
-  ({ page, yRef } = addPage());
-  drawWrapped(page, yRef, "第二頁：選詞填空（無詞語庫）", META_SIZE);
+  addPage();
+  const drawSection2Header = () => {
+    drawWrapped(ZHONGWEN_XIEZUO_SECTION2_TITLE, META_SIZE);
+  };
+  drawSection2Header();
   for (const item of content.page2_cloze) {
-    const line =
-      kind === "answer"
-        ? `${item.number}. ${item.sentence_with_blank.replace(/＿+/gu, item.answer)}`
-        : `${item.number}. ${item.sentence_with_blank}`;
-    drawWrapped(page, yRef, line, BODY_SIZE);
+    drawWrapped(zhongwenXiezuoClozeLineForPdf(kind, item), BODY_SIZE, BODY, drawSection2Header);
   }
 
-  // Page 3
-  ({ page, yRef } = addPage());
-  drawWrapped(page, yRef, "第三頁：範文（請抄寫）", META_SIZE);
-  drawWrapped(page, yRef, content.essay, BODY_SIZE);
+  addPage();
+  const drawSection3Header = () => {
+    drawWrapped(ZHONGWEN_XIEZUO_SECTION3_TITLE, META_SIZE);
+  };
+  drawSection3Header();
+  drawWrapped(content.essay, BODY_SIZE, BODY, drawSection3Header);
   yRef.y -= 6;
 
   if (kind === "answer" && content.rhetoric_marks.length > 0) {
-    drawWrapped(page, yRef, `修辭手法（${ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}）`, META_SIZE);
+    drawWrapped(`修辭手法（${ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}）`, META_SIZE);
     for (const mark of content.rhetoric_marks) {
       const device = mark.device === "夸張" ? "誇張" : mark.device;
-      drawWrapped(page, yRef, `【${device}】${mark.excerpt}`, SMALL_SIZE, MUTED);
+      drawWrapped(`【${device}】${mark.excerpt}`, SMALL_SIZE, MUTED);
     }
     yRef.y -= 6;
   }
 
   if (kind === "practice") {
-    drawWrapped(page, yRef, "抄寫區（橫線）：", META_SIZE);
+    drawWrapped("抄寫區（橫線）：", META_SIZE);
     const lineSpacing = ZHONGWEN_XIEZUO_COPY_RULED_LINE_SPACING;
     const minY = MARGIN + 40;
     const essayLineCount = wrapText(font, sanitizeText(font, content.essay, glyphCache), contentWidth, BODY_SIZE).length;
@@ -240,7 +258,7 @@ export async function buildZhongwenXiezuoPdf({
     let drawn = 0;
     while (drawn < ruledLineTarget) {
       if (lineY <= minY) {
-        ({ page, yRef } = addPage());
+        addPage();
         lineY = yRef.y - 8;
       }
       page.drawLine({

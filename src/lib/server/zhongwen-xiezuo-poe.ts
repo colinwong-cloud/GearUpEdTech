@@ -2,6 +2,7 @@ import {
   gradeLevelWritingHint,
   parseParentPhraseInput,
   parseZhongwenXiezuoGeneratedContent,
+  zhongwenXiezuoClozeCountPerSection,
   type ZhongwenXiezuoGeneratedContent,
 } from "@/lib/zhongwen-xiezuo/content";
 import {
@@ -35,8 +36,8 @@ JSON schema:
 }
 
 規則：
-- page1_cloze：6–8 題，句中用「＿＿＿」留白，答案須來自家長詞語（詞語庫參考）。
-- page2_cloze：6–8 題，不同於 page1，同樣用「＿＿＿」留白，不提示詞語庫。
+- 設 n 為家長詞語數。page1_cloze 與 page2_cloze 各須恰好 ceil(1.5×n) 題（可重用詞語以湊足題數；盡量讓每個家長詞語在兩個 section 都至少出現一次）。
+- 句中用「＿＿＿」留白。page1 答案須來自家長詞語（詞語庫參考）；page2 同樣留白，不提示詞語庫。
 - page1 與 page2 題目不可重複。
 - source_phrases 須與家長輸入一致。`;
 
@@ -75,11 +76,14 @@ export async function generateZhongwenXiezuoContent(input: {
   }
 
   const gradeHint = gradeLevelWritingHint(input.gradeLevel);
+  const clozeEach = zhongwenXiezuoClozeCountPerSection(phrases.length);
   const userContent = `學生年級：${input.gradeLevel || "未設定"}
 ${gradeHint}
 
 家長自訂詞語清單（以下編號僅供盤點，勿視為範文或填空的出現順序；每個詞語仍須在範文與詞語庫中各至少出現一次）：
 ${phrases.map((p, i) => `${i + 1}. ${p}`).join("\n")}
+
+詞語數 n=${phrases.length}。page1_cloze 與 page2_cloze 各須 ${clozeEach} 題（ceil(1.5×n)）。
 
 請按 system 指示輸出 JSON。修辭 device 範例（含誇張）：${ZHONGWEN_XIEZUO_RHETORIC_DEVICES.slice(0, 4).join("、")} 等。`;
 

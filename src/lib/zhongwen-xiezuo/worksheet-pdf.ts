@@ -11,6 +11,10 @@ import {
 
 export type ZhongwenXiezuoPdfKind = "practice" | "answer";
 
+export const ZHONGWEN_XIEZUO_SECTION1_TITLE = "第一部份：供詞填充";
+export const ZHONGWEN_XIEZUO_SECTION2_TITLE = "第二部份：不供詞填充";
+export const ZHONGWEN_XIEZUO_SECTION3_TITLE = "第三部份：範文（請抄寫）";
+
 const SUBJECT_LABEL = "中文寫作";
 
 function safeDownloadSegment(value: string, fallback: string): string {
@@ -51,9 +55,9 @@ export const ZHONGWEN_XIEZUO_PDF_STATIC_LABELS = [
   "學生：—",
   "日期：________________",
   "家長參考。標示修辭手法（含誇張等）。",
-  "第一頁：選詞填空（詞語庫）",
-  "第二頁：選詞填空（無詞語庫）",
-  "第三頁：範文（請抄寫）",
+  ZHONGWEN_XIEZUO_SECTION1_TITLE,
+  ZHONGWEN_XIEZUO_SECTION2_TITLE,
+  ZHONGWEN_XIEZUO_SECTION3_TITLE,
   "詞語庫：",
   "抄寫區（橫線）：",
   `修辭手法（${ZHONGWEN_XIEZUO_RHETORIC_LIST_LABEL}）`,

@@ -2576,6 +2576,36 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "zhongwen-xiezuo-pdf-soft-259",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
+      evidence_commits: [],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          snippet: "第一部份：供詞填充",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/content.ts",
+          snippet: "zhongwenXiezuoClozeCountPerSection",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          snippet: "buildTenPhraseOverflowContent",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/zhongwen-xiezuo-pdf.ts",
+          snippet: "drawSection1Header",
+        },
+      ],
+    },
   ],
 };
 
