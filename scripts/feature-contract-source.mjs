@@ -2537,7 +2537,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #256 — 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap",
-      evidence_commits: ["3a74624"],
+      evidence_commits: ["77f5acc"],
       checks: [
         {
           type: "file_contains",
@@ -2582,7 +2582,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
-      evidence_commits: [],
+      evidence_commits: ["d5c2a40"],
       checks: [
         {
           type: "file_contains",
