@@ -2599,7 +2599,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
-      evidence_commits: ["d5c2a40"],
+      evidence_commits: ["359a194"],
       checks: [
         {
           type: "file_contains",
