@@ -4521,7 +4521,7 @@
       "priority": "medium",
       "title": "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
       "evidence_commits": [
-        "d5c2a40"
+        "359a194"
       ],
       "checks": [
         {
@@ -4547,8 +4547,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-16T05:46:05.329Z",
+  "generated_at": "2026-11-16T05:46:29.053Z",
   "commit_inventory": [
+    {
+      "sha": "030ac611b6687d0107d80992bee96607b177bf59",
+      "date": "2026-11-16",
+      "summary": "chore: fix Soft #259 feature-contract evidence to merged main SHA"
+    },
+    {
+      "sha": "63fc03074c9445c7ccb80ea214767c7280df0886",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract inventory after evidence"
+    },
     {
       "sha": "ab2921c74065675c3fd9e6e78fe0dc05c4acd955",
       "date": "2026-11-16",
@@ -7746,7 +7756,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 639,
+    "total_commits_since_start": 641,
     "total_feature_rows": 96
   }
 }
