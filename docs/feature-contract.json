@@ -311,7 +311,9 @@
       "category": "quiz-core",
       "priority": "critical",
       "title": "Student practice UX: collapsible 題型, 上一題/下一題/完成, answered border",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "90f2697"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -4545,8 +4547,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-16T05:46:02.690Z",
+  "generated_at": "2026-11-16T05:46:05.329Z",
   "commit_inventory": [
+    {
+      "sha": "ab2921c74065675c3fd9e6e78fe0dc05c4acd955",
+      "date": "2026-11-16",
+      "summary": "chore: set feature-contract evidence for Soft #260"
+    },
+    {
+      "sha": "335526c65d3744230bf97048f6a93edf12f41f87",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract.json for Soft #260"
+    },
     {
       "sha": "90f269795f6708aa03bd38e183b8b5a6c15334eb",
       "date": "2026-11-16",
@@ -7734,7 +7746,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 637,
+    "total_commits_since_start": 639,
     "total_feature_rows": 96
   }
 }
