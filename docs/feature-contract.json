@@ -1455,7 +1455,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\""
+          "snippet": "logAntiMissingQuizSubmitLatency(\"result-screen-shown-fast\""
         },
         {
           "type": "file_contains",
@@ -4547,8 +4547,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-16T05:46:29.053Z",
+  "generated_at": "2026-11-16T05:46:45.858Z",
   "commit_inventory": [
+    {
+      "sha": "33d0ec86036e34a15dc820d2804f089d0239b1d7",
+      "date": "2026-11-16",
+      "summary": "chore: align feature-contract quiz latency check with Soft #260 submit flow"
+    },
+    {
+      "sha": "b34eab4826dcc6461b4110899aef107b10beaa4c",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract after Soft #259 evidence fix"
+    },
     {
       "sha": "030ac611b6687d0107d80992bee96607b177bf59",
       "date": "2026-11-16",
@@ -7756,7 +7766,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 641,
+    "total_commits_since_start": 643,
     "total_feature_rows": 96
   }
 }
