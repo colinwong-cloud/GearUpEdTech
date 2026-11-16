@@ -168,13 +168,30 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "<StarProgress answeredCount={currentIndex} total={totalQuestions} />",
+          snippet: "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />",
         },
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
           snippet: "scale-100 text-slate-400",
         },
+      ],
+    },
+    {
+      id: "student-practice-ux-260",
+      month: "2026-11",
+      category: "quiz-core",
+      priority: "critical",
+      title: "Student practice UX: collapsible 題型, 上一題/下一題/完成, answered border",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "src/lib/student-practice-ux.ts" },
+        { type: "file_contains", path: "src/lib/student-practice-ux.ts", snippet: "尚有題目未作答" },
+        { type: "file_contains", path: "src/lib/student-practice-ux.ts", snippet: "上一題" },
+        { type: "file_contains", path: "src/components/student-quiz-experience.tsx", snippet: "border-indigo-600" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "typesSectionExpanded" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "handleFinishPractice" },
+        { type: "file_contains", path: "src/app/page.tsx", snippet: "persistAllAnswersAndFinish" },
       ],
     },
     {

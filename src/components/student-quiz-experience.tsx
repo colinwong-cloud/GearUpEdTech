@@ -4,6 +4,12 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Question } from "@/lib/types";
 import { OPTION_KEYS, OPTION_LABELS } from "@/lib/student-quiz-constants";
+import {
+  PRACTICE_FINISH_DISABLED_REASON,
+  PRACTICE_NAV_FINISH_LABEL,
+  PRACTICE_NAV_NEXT_LABEL,
+  PRACTICE_NAV_PREV_LABEL,
+} from "@/lib/student-practice-ux";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 
 const OPTION_STYLES: Record<string, { bg: string; ring: string }> = {
@@ -111,6 +117,7 @@ function OptionButton({
   disabled,
   onPress,
   title,
+  selected,
 }: {
   label: string;
   text: string;
@@ -118,6 +125,7 @@ function OptionButton({
   disabled: boolean;
   onPress: () => void;
   title?: string;
+  selected?: boolean;
 }) {
   return (
     <motion.button
@@ -129,8 +137,13 @@ function OptionButton({
       whileTap={disabled ? undefined : { scale: 0.95 }}
       className={`
         group relative flex w-full min-w-0 items-start justify-start gap-3
-        rounded-2xl border-2 border-white/50 bg-gradient-to-br ${optionStyle.bg}
+        rounded-2xl bg-gradient-to-br ${optionStyle.bg}
         px-3 py-3 text-left shadow-md transition-shadow sm:px-4 sm:py-3.5
+        ${
+          selected
+            ? "border-[3px] border-indigo-600 ring-2 ring-indigo-400/90"
+            : "border-2 border-white/50"
+        }
         ${disabled ? "cursor-not-allowed opacity-60" : "hover:shadow-xl cursor-pointer"}
       `}
       style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
@@ -150,8 +163,9 @@ function OptionButton({
 
 export function StudentQuizExperience({
   currentQuestion,
-  currentIndex,
+  currentIndex: _currentIndex,
   totalQuestions,
+  answeredQuestionCount,
   shortAnswer,
   hasImage,
   getImageUrl,
@@ -160,7 +174,7 @@ export function StudentQuizExperience({
   submitting,
   onSubmit,
   canSubmit,
-  isLastQuestion,
+  isLastQuestion: _isLastQuestion,
   onToggleSound,
   soundEnabled,
   encouragementIndex,
@@ -169,10 +183,19 @@ export function StudentQuizExperience({
   showSubmitButton,
   submitNotice,
   onClearSubmitNotice,
+  selectedMcqOption,
+  onPrevQuestion,
+  onNextQuestion,
+  onFinishPractice,
+  canGoPrev,
+  canGoNext,
+  showFinishAction,
+  canFinishPractice,
 }: {
   currentQuestion: Question;
   currentIndex: number;
   totalQuestions: number;
+  answeredQuestionCount: number;
   shortAnswer: boolean;
   hasImage: (q: Question) => boolean;
   getImageUrl: (q: Question) => string | null;
@@ -190,6 +213,14 @@ export function StudentQuizExperience({
   showSubmitButton: boolean;
   submitNotice?: string | null;
   onClearSubmitNotice?: () => void;
+  selectedMcqOption?: string | null;
+  onPrevQuestion: () => void;
+  onNextQuestion: () => void;
+  onFinishPractice: () => void;
+  canGoPrev: boolean;
+  canGoNext: boolean;
+  showFinishAction: boolean;
+  canFinishPractice: boolean;
 }) {
   const img = hasImage(currentQuestion) ? getImageUrl(currentQuestion) : null;
   const e = ENCOURAGE[encouragementIndex % ENCOURAGE.length]!;
@@ -222,7 +253,7 @@ export function StudentQuizExperience({
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-3 pb-6 sm:px-4 sm:pb-8">
         <div className="mb-2">
-          <StarProgress answeredCount={currentIndex} total={totalQuestions} />
+          <StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />
         </div>
 
         <AnimatePresence mode="wait">
@@ -299,6 +330,7 @@ export function StudentQuizExperience({
                         disabled={submitting}
                         onPress={() => onSelectOption(label)}
                         title={t}
+                        selected={selectedMcqOption === label}
                       />
                     );
                   })}
@@ -324,14 +356,14 @@ export function StudentQuizExperience({
         )}
       </div>
 
-      {showSubmitButton && (
-        <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-rose-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
+      <div className="sticky bottom-0 border-t border-white/30 bg-gradient-to-b from-amber-50/90 to-rose-50/95 px-3 pb-4 pt-2 backdrop-blur sm:px-4 sm:pb-5">
+        {showSubmitButton && (
           <button
             type="button"
             onClick={onSubmit}
             disabled={!canSubmit || submitting}
             className={`
-            relative mx-auto block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-4 text-center text-xl font-extrabold sm:text-2xl
+            relative mx-auto mb-3 block w-full max-w-2xl overflow-hidden rounded-2xl border-b-[6px] border-violet-700/30 py-3 text-center text-lg font-extrabold sm:text-xl
             text-white shadow-[0_4px_0_#7c3aed] transition-all
             ${
               canSubmit && !submitting
@@ -341,10 +373,61 @@ export function StudentQuizExperience({
           `}
             style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
           >
-            {submitting ? "提交中…" : isLastQuestion ? "提交並查看結果" : "提交答案"}
+            {submitting ? "提交中…" : "儲存此題答案"}
           </button>
+        )}
+        <div className="mx-auto flex w-full max-w-2xl items-stretch gap-3">
+          <button
+            type="button"
+            onClick={onPrevQuestion}
+            disabled={!canGoPrev || submitting}
+            className={`flex-1 rounded-2xl border-2 px-3 py-3.5 text-center text-base font-bold sm:text-lg ${
+              canGoPrev && !submitting
+                ? "border-indigo-300 bg-white/90 text-indigo-800 shadow-sm active:scale-[0.98]"
+                : "cursor-not-allowed border-gray-200 bg-gray-100/80 text-gray-400"
+            }`}
+            style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+          >
+            {PRACTICE_NAV_PREV_LABEL}
+          </button>
+          {showFinishAction ? (
+            <div className="flex flex-[1.4] flex-col gap-1">
+              <button
+                type="button"
+                onClick={onFinishPractice}
+                disabled={!canFinishPractice || submitting}
+                className={`w-full rounded-2xl border-b-[5px] px-3 py-3.5 text-center text-base font-extrabold sm:text-lg ${
+                  canFinishPractice && !submitting
+                    ? "border-violet-700/30 bg-gradient-to-b from-fuchsia-400 via-violet-500 to-indigo-600 text-white shadow-[0_3px_0_#7c3aed] active:translate-y-0.5"
+                    : "cursor-not-allowed border-b-0 bg-slate-300/90 text-slate-500"
+                }`}
+                style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+              >
+                {submitting ? "提交中…" : PRACTICE_NAV_FINISH_LABEL}
+              </button>
+              {!canFinishPractice && !submitting && (
+                <p className="text-center text-xs font-medium text-slate-500">
+                  {PRACTICE_FINISH_DISABLED_REASON}
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onNextQuestion}
+              disabled={!canGoNext || submitting}
+              className={`flex-1 rounded-2xl border-2 px-3 py-3.5 text-center text-base font-bold sm:text-lg ${
+                canGoNext && !submitting
+                  ? "border-indigo-500 bg-indigo-600 text-white shadow-sm active:scale-[0.98]"
+                  : "cursor-not-allowed border-gray-200 bg-gray-100/80 text-gray-400"
+              }`}
+              style={{ fontFamily: "var(--font-baloo2), system-ui, sans-serif" }}
+            >
+              {PRACTICE_NAV_NEXT_LABEL}
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
