@@ -950,7 +950,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/app/page.tsx",
-          snippet: "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\"",
+          snippet: "logAntiMissingQuizSubmitLatency(\"result-screen-shown-fast\"",
         },
         {
           type: "file_contains",
