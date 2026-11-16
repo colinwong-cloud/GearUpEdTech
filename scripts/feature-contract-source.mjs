@@ -183,7 +183,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Student practice UX: collapsible 題型, 上一題/下一題/完成, answered border",
-      evidence_commits: [],
+      evidence_commits: ["90f2697"],
       checks: [
         { type: "file_exists", path: "src/lib/student-practice-ux.ts" },
         { type: "file_contains", path: "src/lib/student-practice-ux.ts", snippet: "尚有題目未作答" },
