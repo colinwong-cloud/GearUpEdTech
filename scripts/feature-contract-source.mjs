@@ -2537,7 +2537,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "student",
       priority: "medium",
       title: "Soft #256 — 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap",
-      evidence_commits: ["3a74624"],
+      evidence_commits: ["77f5acc"],
       checks: [
         {
           type: "file_contains",
@@ -2573,6 +2573,36 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
           snippet: "第二頁：選詞填空（無詞語庫）",
+        },
+      ],
+    },
+    {
+      id: "zhongwen-xiezuo-pdf-soft-259",
+      month: "2026-11",
+      category: "student",
+      priority: "medium",
+      title: "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
+      evidence_commits: ["d5c2a40"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          snippet: "第一部份：供詞填充",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/content.ts",
+          snippet: "zhongwenXiezuoClozeCountPerSection",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          snippet: "buildTenPhraseOverflowContent",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/server/zhongwen-xiezuo-pdf.ts",
+          snippet: "drawSection1Header",
         },
       ],
     },

@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
+import { zhongwenXiezuoClozeCountPerSection } from "@/lib/zhongwen-xiezuo/content";
 import { generateZhongwenXiezuoContent } from "@/lib/server/zhongwen-xiezuo-poe";
 
 describe("zhongwen-xiezuo-poe", () => {
   it("parses mocked Poe JSON and normalizes 夸張 → 誇張 in rhetoric marks", async () => {
+    const perSection = zhongwenXiezuoClozeCountPerSection(2);
     const mockJson = {
       version: 1,
       source_phrases: ["晴朗", "微風"],
-      page1_cloze: [{ number: 1, sentence_with_blank: "今天天氣天氣＿＿＿。", answer: "晴朗" }],
-      page2_cloze: [{ number: 1, sentence_with_blank: "樹葉隨樹葉隨＿＿＿搖動。", answer: "微風" }],
+      page1_cloze: Array.from({ length: perSection }, (_, i) => ({
+        number: i + 1,
+        sentence_with_blank: "今天天氣＿＿＿（" + String(i + 1) + "）。",
+        answer: "晴朗",
+      })),
+      page2_cloze: Array.from({ length: perSection }, (_, i) => ({
+        number: i + 1,
+        sentence_with_blank: "樹葉隨＿＿＿搖動（" + String(i + 1) + "）。",
+        answer: "微風",
+      })),
       essay: "今天是個晴朗的日子，微風輕輕吹過，像母親的手撫過臉龐。",
       rhetoric_marks: [{ device: "夸張", excerpt: "風聲響徹雲霄" }],
     };
@@ -35,6 +45,7 @@ describe("zhongwen-xiezuo-poe", () => {
 
     expect(capturedUser).toContain("編號僅供盤點");
     expect(capturedUser).toContain("勿視為範文或填空的出現順序");
+    expect(capturedUser).toContain("各須 3 題");
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.content.rhetoric_marks[0]?.device).toBe("誇張");

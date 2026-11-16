@@ -4428,7 +4428,7 @@
       "priority": "medium",
       "title": "Soft #256 — 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap",
       "evidence_commits": [
-        "3a74624"
+        "77f5acc"
       ],
       "checks": [
         {
@@ -4467,19 +4467,61 @@
           "snippet": "第二頁：選詞填空（無詞語庫）"
         }
       ]
-    }
-  ],
-  "generated_at": "2026-11-14T14:47:44.894Z",
-  "commit_inventory": [
-    {
-      "sha": "782092c23f25815a9df6ba01319c1e9efaa8bffa",
-      "date": "2026-11-14",
-      "summary": "docs: feature contract Soft #256 evidence and inventory refresh"
     },
     {
-      "sha": "3a746242de0bee663f0564f502777d8b79dc8e4f",
+      "id": "zhongwen-xiezuo-pdf-soft-259",
+      "month": "2026-11",
+      "category": "student",
+      "priority": "medium",
+      "title": "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
+      "evidence_commits": [
+        "d5c2a40"
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.ts",
+          "snippet": "第一部份：供詞填充"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/content.ts",
+          "snippet": "zhongwenXiezuoClozeCountPerSection"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/zhongwen-xiezuo/worksheet-pdf.test.ts",
+          "snippet": "buildTenPhraseOverflowContent"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/server/zhongwen-xiezuo-pdf.ts",
+          "snippet": "drawSection1Header"
+        }
+      ]
+    }
+  ],
+  "generated_at": "2026-11-15T23:42:17.975Z",
+  "commit_inventory": [
+    {
+      "sha": "ab3aeebd379a3478f9a2fb13759afd0c6b742ee1",
+      "date": "2026-11-15",
+      "summary": "chore: feature contract evidence for Soft #259 and inventory refresh"
+    },
+    {
+      "sha": "32bd956eb24ff5d1d9897cdbb876ba694f75c6d0",
+      "date": "2026-11-15",
+      "summary": "chore: refresh feature-contract.json for Soft #259"
+    },
+    {
+      "sha": "d5c2a40ce1b1d469ed6b4246afcfb56da3d543ef",
+      "date": "2026-11-15",
+      "summary": "Soft #259: 中文寫作 PDF 部份標題、1.5× cloze 與多頁 overflow"
+    },
+    {
+      "sha": "77f5accaa43e7493565e434359a9e2e8fd4a6b84",
       "date": "2026-11-14",
-      "summary": "Soft #256: 中文寫作 preview open, wait timer, phrase inventory, PDF labels"
+      "summary": "Soft #256: 中文寫作 preview open, wait timer, phrase inventory, PDF glyphs + copy-line gap (#256)"
     },
     {
       "sha": "26c26f03747eaa660d06eb8b424635372b3ac417",
@@ -7653,7 +7695,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 636,
-    "total_feature_rows": 94
+    "total_commits_since_start": 638,
+    "total_feature_rows": 95
   }
 }

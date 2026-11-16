@@ -21,8 +21,17 @@ export type ZhongwenXiezuoGeneratedContent = {
   rhetoric_marks: ZhongwenXiezuoRhetoricMark[];
 };
 
-const MAX_CLOZE_ITEMS = 12;
+const MAX_PARENT_PHRASES = 40;
 const MAX_ESSAY_CHARS = 1200;
+
+/** Soft #259: each cloze section holds ceil(1.5 × n) questions. */
+export function zhongwenXiezuoClozeCountPerSection(phraseCount: number): number {
+  if (!Number.isFinite(phraseCount) || phraseCount < 1) return 0;
+  return Math.ceil(1.5 * phraseCount);
+}
+
+export const ZHONGWEN_XIEZUO_MAX_CLOZE_PER_SECTION =
+  zhongwenXiezuoClozeCountPerSection(MAX_PARENT_PHRASES);
 
 /** Owner copy: delimiter guidance for parent phrase input (Traditional Chinese). */
 export const ZHONGWEN_XIEZUO_PHRASE_DELIMITER_HINT =
@@ -55,8 +64,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseClozeList(value: unknown): ZhongwenXiezuoClozeItem[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_CLOZE_ITEMS) return null;
+function parseClozeList(value: unknown, expectedCount: number): ZhongwenXiezuoClozeItem[] | null {
+  if (!Array.isArray(value) || value.length !== expectedCount) return null;
+  if (expectedCount < 1 || expectedCount > ZHONGWEN_XIEZUO_MAX_CLOZE_PER_SECTION) return null;
   const items: ZhongwenXiezuoClozeItem[] = [];
   for (const row of value) {
     if (!isRecord(row)) return null;
@@ -76,8 +86,9 @@ export function parseZhongwenXiezuoGeneratedContent(value: unknown): ZhongwenXie
     ? value.source_phrases.map((p) => String(p).trim()).filter(Boolean)
     : null;
   if (!source_phrases || source_phrases.length < 2) return null;
-  const page1_cloze = parseClozeList(value.page1_cloze);
-  const page2_cloze = parseClozeList(value.page2_cloze);
+  const clozePerSection = zhongwenXiezuoClozeCountPerSection(source_phrases.length);
+  const page1_cloze = parseClozeList(value.page1_cloze, clozePerSection);
+  const page2_cloze = parseClozeList(value.page2_cloze, clozePerSection);
   if (!page1_cloze || !page2_cloze) return null;
   const essay = String(value.essay ?? "").trim();
   if (!essay || essay.length > MAX_ESSAY_CHARS) return null;

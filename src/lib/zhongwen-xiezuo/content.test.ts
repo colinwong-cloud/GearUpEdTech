@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { hasZhongwenXiezuoInput, parseParentPhraseInput } from "@/lib/zhongwen-xiezuo/content";
+import {
+  hasZhongwenXiezuoInput,
+  parseParentPhraseInput,
+  zhongwenXiezuoClozeCountPerSection,
+} from "@/lib/zhongwen-xiezuo/content";
 
 const OWNER_SPACE_PHRASES =
   "歡樂年年 龍馬精神 萬事大吉 家中長輩 開年飯 利是 遊戲 團圓";
+
+describe("zhongwenXiezuoClozeCountPerSection", () => {
+  it("returns ceil(1.5×n) for owner lock examples", () => {
+    expect(zhongwenXiezuoClozeCountPerSection(2)).toBe(3);
+    expect(zhongwenXiezuoClozeCountPerSection(10)).toBe(15);
+    expect(zhongwenXiezuoClozeCountPerSection(11)).toBe(17);
+  });
+});
 
 describe("parseParentPhraseInput", () => {
   it("splits on ASCII spaces", () => {
