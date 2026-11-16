@@ -296,12 +296,58 @@
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "<StarProgress answeredCount={currentIndex} total={totalQuestions} />"
+          "snippet": "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />"
         },
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
           "snippet": "scale-100 text-slate-400"
+        }
+      ]
+    },
+    {
+      "id": "student-practice-ux-260",
+      "month": "2026-11",
+      "category": "quiz-core",
+      "priority": "critical",
+      "title": "Student practice UX: collapsible 題型, 上一題/下一題/完成, answered border",
+      "evidence_commits": [
+        "90f2697"
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "src/lib/student-practice-ux.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/student-practice-ux.ts",
+          "snippet": "尚有題目未作答"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/student-practice-ux.ts",
+          "snippet": "上一題"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/student-quiz-experience.tsx",
+          "snippet": "border-indigo-600"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "typesSectionExpanded"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "handleFinishPractice"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/page.tsx",
+          "snippet": "persistAllAnswersAndFinish"
         }
       ]
     },
@@ -1409,7 +1455,7 @@
         {
           "type": "file_contains",
           "path": "src/app/page.tsx",
-          "snippet": "logAntiMissingQuizSubmitLatency(\"fast-path-advanced\""
+          "snippet": "logAntiMissingQuizSubmitLatency(\"result-screen-shown-fast\""
         },
         {
           "type": "file_contains",
@@ -4475,7 +4521,7 @@
       "priority": "medium",
       "title": "Soft #259 — 中文寫作 PDF 1.5× cloze, 部份 labels, multi-page overflow",
       "evidence_commits": [
-        "d5c2a40"
+        "359a194"
       ],
       "checks": [
         {
@@ -4501,22 +4547,47 @@
       ]
     }
   ],
-  "generated_at": "2026-11-15T23:42:17.975Z",
+  "generated_at": "2026-11-16T05:46:45.858Z",
   "commit_inventory": [
     {
-      "sha": "ab3aeebd379a3478f9a2fb13759afd0c6b742ee1",
-      "date": "2026-11-15",
-      "summary": "chore: feature contract evidence for Soft #259 and inventory refresh"
+      "sha": "33d0ec86036e34a15dc820d2804f089d0239b1d7",
+      "date": "2026-11-16",
+      "summary": "chore: align feature-contract quiz latency check with Soft #260 submit flow"
     },
     {
-      "sha": "32bd956eb24ff5d1d9897cdbb876ba694f75c6d0",
-      "date": "2026-11-15",
-      "summary": "chore: refresh feature-contract.json for Soft #259"
+      "sha": "b34eab4826dcc6461b4110899aef107b10beaa4c",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract after Soft #259 evidence fix"
     },
     {
-      "sha": "d5c2a40ce1b1d469ed6b4246afcfb56da3d543ef",
-      "date": "2026-11-15",
-      "summary": "Soft #259: 中文寫作 PDF 部份標題、1.5× cloze 與多頁 overflow"
+      "sha": "030ac611b6687d0107d80992bee96607b177bf59",
+      "date": "2026-11-16",
+      "summary": "chore: fix Soft #259 feature-contract evidence to merged main SHA"
+    },
+    {
+      "sha": "63fc03074c9445c7ccb80ea214767c7280df0886",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract inventory after evidence"
+    },
+    {
+      "sha": "ab2921c74065675c3fd9e6e78fe0dc05c4acd955",
+      "date": "2026-11-16",
+      "summary": "chore: set feature-contract evidence for Soft #260"
+    },
+    {
+      "sha": "335526c65d3744230bf97048f6a93edf12f41f87",
+      "date": "2026-11-16",
+      "summary": "chore: refresh feature-contract.json for Soft #260"
+    },
+    {
+      "sha": "90f269795f6708aa03bd38e183b8b5a6c15334eb",
+      "date": "2026-11-16",
+      "summary": "feat(quiz): Soft #260 student practice UX locks"
+    },
+    {
+      "sha": "359a194f7b33271a375ad27a7863b5509733e8d9",
+      "date": "2026-11-16",
+      "summary": "Soft #259 — 中文寫作 PDF: 1.5× cloze, 部份 labels, multi-page overflow (#257)"
     },
     {
       "sha": "77f5accaa43e7493565e434359a9e2e8fd4a6b84",
@@ -7695,7 +7766,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 638,
-    "total_feature_rows": 95
+    "total_commits_since_start": 643,
+    "total_feature_rows": 96
   }
 }

@@ -349,7 +349,7 @@ describe("anti-missing regression guards", () => {
     );
     expect(quizUiSource).toContain("data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}");
     expect(quizUiSource).toContain(
-      "<StarProgress answeredCount={currentIndex} total={totalQuestions} />"
+      "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />"
     );
     expect(quizUiSource).toContain("scale-100 text-slate-400");
     expect(quizUiSource).not.toContain("opacity-35 grayscale");

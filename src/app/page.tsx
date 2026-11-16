@@ -63,6 +63,14 @@ import {
   setQuizSoundEnabled,
   playClickSound,
 } from "@/components/student-quiz-experience";
+import {
+  canUsePracticeNext,
+  canUsePracticePrev,
+  countSessionAnswers,
+  practiceFinishEnabled,
+  showPracticeFinishButton,
+  summarizeCollapsedQuestionTypes,
+} from "@/lib/student-practice-ux";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 import {
   PracticeStampCard,
@@ -861,6 +869,7 @@ export default function QuizApp() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [textAnswer, setTextAnswer] = useState("");
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
+  const [sessionChoices, setSessionChoices] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1632,6 +1641,7 @@ export default function QuizApp() {
     setCurrentIndex(0);
     setTextAnswer("");
     setAnswers([]);
+    setSessionChoices({});
     startTimeRef.current = Date.now();
     setShowSpeedReminder(false);
     speedReminderShownRef.current = false;
@@ -1723,16 +1733,30 @@ export default function QuizApp() {
     }
   };
 
-  const runSubmitWithAnswer = async (answer: string) => {
+  const buildAnswerRecord = (question: Question, answer: string): AnswerRecord => {
+    const isCorrect = isShortAnswer(question)
+      ? answer.toLowerCase() === question.correct_answer.toLowerCase()
+      : answer === question.correct_answer;
+    return { question, studentAnswer: answer, isCorrect };
+  };
+
+  const mergeChoicesForCurrentQuestion = (
+    choices: Record<number, string>
+  ): Record<number, string> => {
     const currentQuestion = questions[currentIndex];
-    if (!currentQuestion || !sessionId || submitting) return;
-    const submitStartedAt = Date.now();
-    setQuizSubmitNotice(null);
+    if (currentQuestion && isShortAnswer(currentQuestion)) {
+      const trimmed = textAnswer.trim();
+      if (trimmed) return { ...choices, [currentIndex]: trimmed };
+    }
+    return choices;
+  };
 
-    const isCorrect = isShortAnswer(currentQuestion)
-      ? answer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()
-      : answer === currentQuestion.correct_answer;
+  const buildAnswerRecordsFromChoices = (
+    choices: Record<number, string>
+  ): AnswerRecord[] =>
+    questions.map((q, i) => buildAnswerRecord(q, choices[i] ?? ""));
 
+  const noteAnswerSpeedIfNeeded = () => {
     answerTimestampsRef.current.push(Date.now());
     if (!speedReminderShownRef.current && answerTimestampsRef.current.length >= 3) {
       const ts = answerTimestampsRef.current;
@@ -1742,218 +1766,154 @@ export default function QuizApp() {
         speedReminderShownRef.current = true;
       }
     }
+  };
 
+  const completeQuizSession = async (
+    updatedAnswers: AnswerRecord[],
+    submitStartedAt: number
+  ) => {
+    if (!selectedStudent || !sessionId || !selectedSubject) return;
+    const finalSessionId = sessionId;
+    const finalStudent = selectedStudent;
+    const finalSubject = selectedSubject;
+    const newScore = updatedAnswers.filter((a) => a.isCorrect).length;
+    const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
+    const currentPct = currentAnswersPercent(updatedAnswers);
+    const comparison = buildPracticeComparison(
+      currentPct,
+      priorPracticeSessionsRef.current,
+      { historyKnown: priorHistoryKnownRef.current }
+    );
+    const summary = buildSessionPracticeSummary(updatedAnswers, finalSubject, comparison);
+    const summaryParent = buildSessionPracticeSummaryForParent(
+      updatedAnswers,
+      finalSubject,
+      finalStudent.student_name || "",
+      comparison
+    );
+    setAnswers(updatedAnswers);
+    setSessionPracticeSummary(summary);
+    setScreen("results");
+    const elapsedToResultsMs = Date.now() - submitStartedAt;
+    logAntiMissingQuizSubmitLatency("result-screen-shown-fast", {
+      session_id: finalSessionId,
+      question_order: questions.length,
+      elapsed_ms_to_results: elapsedToResultsMs,
+    });
+    if (elapsedToResultsMs > QUIZ_RESULT_SCREEN_WARNING_MS) {
+      logAntiMissingQuizSubmitLatency("result-screen-latency-warning", {
+        session_id: finalSessionId,
+        question_order: questions.length,
+        threshold_ms: QUIZ_RESULT_SCREEN_WARNING_MS,
+        elapsed_ms_to_results: elapsedToResultsMs,
+      });
+    }
+    void (async () => {
+      const finalPersistStartedAt = Date.now();
+      try {
+        const pendingWait = await waitForPendingQuizSubmissions(350);
+        if (pendingWait.timedOut) {
+          logAntiMissingQuizSubmitLatency("pending-submit-timeout-before-results", {
+            session_id: finalSessionId,
+            pending_count: pendingWait.pendingCount,
+            timeout_ms: 350,
+          });
+        }
+        const { data: updateSessionData } = await supabase.rpc("update_quiz_session", {
+          p_session_id: finalSessionId,
+          p_questions_attempted: updatedAnswers.length,
+          p_score: newScore,
+          p_time_spent_seconds: timeSpent,
+        });
+        setPracticeStampAwardFeedback(
+          parsePracticeStampAwardFromUpdateSession(updateSessionData)
+        );
+        await finalizeQuizAndSummary({
+          finalAnswers: updatedAnswers,
+          summary,
+          summaryParent,
+          sessionIdSnapshot: finalSessionId,
+          studentSnapshot: finalStudent,
+          subjectSnapshot: finalSubject,
+        });
+        const finalPersistElapsedMs = Date.now() - finalPersistStartedAt;
+        logAntiMissingQuizSubmitLatency("final-submit-persisted", {
+          session_id: finalSessionId,
+          question_order: questions.length,
+          elapsed_ms_persist: finalPersistElapsedMs,
+          pending_count: pendingWait.pendingCount,
+          pending_timed_out: pendingWait.timedOut,
+        });
+        if (finalPersistElapsedMs > QUIZ_FINAL_PERSIST_WARNING_MS) {
+          logAntiMissingQuizSubmitLatency("final-submit-persist-latency-warning", {
+            session_id: finalSessionId,
+            question_order: questions.length,
+            threshold_ms: QUIZ_FINAL_PERSIST_WARNING_MS,
+            elapsed_ms_persist: finalPersistElapsedMs,
+          });
+        }
+      } catch (finalErr) {
+        const submitErrorMessage = getErrorMessage(finalErr) || "提交答案失敗。";
+        const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
+        logAntiMissingQuizSubmitLatency("final-submit-background-failed", {
+          session_id: finalSessionId,
+          question_order: questions.length,
+          elapsed_ms_persist: Date.now() - finalPersistStartedAt,
+          retryable,
+          error_message: submitErrorMessage.slice(0, 160),
+        });
+        if (activeSessionIdRef.current !== finalSessionId) {
+          return;
+        }
+        if (submitErrorMessage.includes("重新登入")) {
+          setError(submitErrorMessage);
+          return;
+        }
+        setQuizSubmitNotice(
+          retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
+        );
+      }
+    })();
+  };
+
+  const persistAllAnswersAndFinish = async (choices: Record<number, string>) => {
+    if (!selectedStudent || !sessionId || submitting) return;
+    if (!practiceFinishEnabled(choices, questions.length)) return;
+    const submitStartedAt = Date.now();
+    setQuizSubmitNotice(null);
+    const updatedAnswers = buildAnswerRecordsFromChoices(choices);
     setSubmitting(true);
     try {
-      if (!selectedStudent) {
-        throw new Error("找不到學生資料，請重新登入。");
+      for (let i = 0; i < questions.length; i++) {
+        const currentQuestion = questions[i]!;
+        const answer = choices[i] ?? "";
+        const record = updatedAnswers[i]!;
+        const submitRpcPayload = {
+          studentId: selectedStudent.id,
+          p_session_id: sessionId,
+          p_question_id: currentQuestion.id,
+          p_student_answer: answer,
+          p_is_correct: record.isCorrect,
+          p_question_order: i + 1,
+        };
+        await submitAnswerWithQuotaFallback(submitRpcPayload);
       }
-      const newAnswer: AnswerRecord = {
-        question: currentQuestion,
-        studentAnswer: answer,
-        isCorrect,
-      };
-      const updatedAnswers = [...answers, newAnswer];
-      setAnswers(updatedAnswers);
-
-      const newScore = updatedAnswers.filter((a) => a.isCorrect).length;
-      const timeSpent = Math.round(
-        (Date.now() - startTimeRef.current) / 1000
-      );
-      const isLastQ = currentIndex + 1 >= questions.length;
-
       if (balance && balance.remaining_questions >= 0) {
         setBalance({
           ...balance,
-          remaining_questions: Math.max(balance.remaining_questions - 1, 0),
+          remaining_questions: Math.max(
+            balance.remaining_questions - questions.length,
+            0
+          ),
         });
       }
-      if (!isLastQ) {
-        setCurrentIndex((i) => i + 1);
-        setTextAnswer("");
-        setQuizTransition((k) => k + 1);
-        setEncourageIndex((e) => e + 1);
-      }
-
-      const submitRpcPayload = {
-        studentId: selectedStudent.id,
-        p_session_id: sessionId,
-        p_question_id: currentQuestion.id,
-        p_student_answer: answer,
-        p_is_correct: isCorrect,
-        p_question_order: currentIndex + 1,
-      };
-
-      const persistAnswerTask = async () => {
-        await submitAnswerWithQuotaFallback(submitRpcPayload);
-      };
-
-      if (isLastQ) {
-        const finalSessionId = sessionId;
-        const finalStudent = selectedStudent;
-        const finalSubject = selectedSubject;
-        const currentPct = currentAnswersPercent(updatedAnswers);
-        const comparison = buildPracticeComparison(
-          currentPct,
-          priorPracticeSessionsRef.current,
-          { historyKnown: priorHistoryKnownRef.current }
-        );
-        const summary = finalSubject
-          ? buildSessionPracticeSummary(updatedAnswers, finalSubject, comparison)
-          : "";
-        const summaryParent =
-          finalSubject
-            ? buildSessionPracticeSummaryForParent(
-                updatedAnswers,
-                finalSubject,
-                finalStudent.student_name || "",
-                comparison
-              )
-            : "";
-        setSessionPracticeSummary(summary);
-        setScreen("results");
-        const elapsedToResultsMs = Date.now() - submitStartedAt;
-        logAntiMissingQuizSubmitLatency("result-screen-shown-fast", {
-          session_id: finalSessionId,
-          question_order: currentIndex + 1,
-          elapsed_ms_to_results: elapsedToResultsMs,
-        });
-        if (elapsedToResultsMs > QUIZ_RESULT_SCREEN_WARNING_MS) {
-          logAntiMissingQuizSubmitLatency("result-screen-latency-warning", {
-            session_id: finalSessionId,
-            question_order: currentIndex + 1,
-            threshold_ms: QUIZ_RESULT_SCREEN_WARNING_MS,
-            elapsed_ms_to_results: elapsedToResultsMs,
-          });
-        }
-        void (async () => {
-          const finalPersistStartedAt = Date.now();
-          try {
-            await persistAnswerTask();
-            const pendingWait = await waitForPendingQuizSubmissions(350);
-            if (pendingWait.timedOut) {
-              logAntiMissingQuizSubmitLatency("pending-submit-timeout-before-results", {
-                session_id: finalSessionId,
-                pending_count: pendingWait.pendingCount,
-                timeout_ms: 350,
-              });
-            }
-            const { data: updateSessionData } = await supabase.rpc("update_quiz_session", {
-              p_session_id: finalSessionId,
-              p_questions_attempted: updatedAnswers.length,
-              p_score: newScore,
-              p_time_spent_seconds: timeSpent,
-            });
-            setPracticeStampAwardFeedback(
-              parsePracticeStampAwardFromUpdateSession(updateSessionData)
-            );
-            await finalizeQuizAndSummary({
-              finalAnswers: updatedAnswers,
-              summary,
-              summaryParent,
-              sessionIdSnapshot: finalSessionId,
-              studentSnapshot: finalStudent,
-              subjectSnapshot: finalSubject,
-            });
-            const finalPersistElapsedMs = Date.now() - finalPersistStartedAt;
-            logAntiMissingQuizSubmitLatency("final-submit-persisted", {
-              session_id: finalSessionId,
-              question_order: currentIndex + 1,
-              elapsed_ms_persist: finalPersistElapsedMs,
-              pending_count: pendingWait.pendingCount,
-              pending_timed_out: pendingWait.timedOut,
-            });
-            if (finalPersistElapsedMs > QUIZ_FINAL_PERSIST_WARNING_MS) {
-              logAntiMissingQuizSubmitLatency("final-submit-persist-latency-warning", {
-                session_id: finalSessionId,
-                question_order: currentIndex + 1,
-                threshold_ms: QUIZ_FINAL_PERSIST_WARNING_MS,
-                elapsed_ms_persist: finalPersistElapsedMs,
-              });
-            }
-          } catch (finalErr) {
-            const submitErrorMessage = getErrorMessage(finalErr) || "提交答案失敗。";
-            const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
-            logAntiMissingQuizSubmitLatency("final-submit-background-failed", {
-              session_id: finalSessionId,
-              question_order: currentIndex + 1,
-              elapsed_ms_persist: Date.now() - finalPersistStartedAt,
-              retryable,
-              error_message: submitErrorMessage.slice(0, 160),
-            });
-            if (activeSessionIdRef.current !== finalSessionId) {
-              return;
-            }
-            if (submitErrorMessage.includes("重新登入")) {
-              setError(submitErrorMessage);
-              return;
-            }
-            setQuizSubmitNotice(
-              retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
-            );
-          }
-        })();
-        return;
-      }
-
-      logAntiMissingQuizSubmitLatency("fast-path-advanced", {
-        session_id: sessionId,
-        question_order: currentIndex + 1,
-        elapsed_ms_submit: Date.now() - submitStartedAt,
-        is_last_question: false,
-      });
-      const elapsedSubmitMs = Date.now() - submitStartedAt;
-      if (elapsedSubmitMs > QUIZ_ADVANCE_WARNING_MS) {
-        logAntiMissingQuizSubmitLatency("fast-path-latency-warning", {
-          session_id: sessionId,
-          question_order: currentIndex + 1,
-          threshold_ms: QUIZ_ADVANCE_WARNING_MS,
-          elapsed_ms_submit: elapsedSubmitMs,
-        });
-      }
-      logAntiMissingQuizSubmitLatency("deferred-post-submit-started", {
-        session_id: sessionId,
-        question_order: currentIndex + 1,
-      });
-      const backgroundPersistPromise = (async () => {
-        const deferredStartedAt = Date.now();
-        try {
-          await persistAnswerTask();
-          logAntiMissingQuizSubmitLatency("deferred-post-submit-finished", {
-            session_id: sessionId,
-            question_order: currentIndex + 1,
-            elapsed_ms_deferred: Date.now() - deferredStartedAt,
-            is_last_question: false,
-          });
-        } catch (deferredErr) {
-          const submitErrorMessage = getErrorMessage(deferredErr) || "提交答案失敗。";
-          const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
-          logAntiMissingQuizSubmitLatency("deferred-post-submit-failed", {
-            session_id: sessionId,
-            question_order: currentIndex + 1,
-            elapsed_ms_deferred: Date.now() - deferredStartedAt,
-            retryable,
-            error_message: submitErrorMessage.slice(0, 160),
-          });
-          if (activeSessionIdRef.current !== submitRpcPayload.p_session_id) {
-            return;
-          }
-          if (submitErrorMessage.includes("重新登入")) {
-            setError(submitErrorMessage);
-            return;
-          }
-          setQuizSubmitNotice(
-            retryable ? "網絡稍慢，系統已重試。請再按一次提交。" : submitErrorMessage
-          );
-        }
-      })();
-      trackPendingQuizSubmitPromise(backgroundPersistPromise);
+      await completeQuizSession(updatedAnswers, submitStartedAt);
     } catch (err) {
       const submitErrorMessage = getErrorMessage(err) || "提交答案失敗。";
       const retryable = QUIZ_SUBMIT_RETRYABLE_ERROR_RE.test(submitErrorMessage);
       logAntiMissingQuizSubmitLatency("submit-error-nonblocking", {
         session_id: sessionId,
-        question_order: currentIndex + 1,
+        question_order: questions.length,
         retryable,
         error_message: submitErrorMessage.slice(0, 160),
       });
@@ -1969,18 +1929,63 @@ export default function QuizApp() {
     }
   };
 
+  const syncChoiceForCurrentIndex = useCallback(
+    (value: string) => {
+      setSessionChoices((prev) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          if (!(currentIndex in prev)) return prev;
+          const next = { ...prev };
+          delete next[currentIndex];
+          return next;
+        }
+        if (prev[currentIndex] === trimmed) return prev;
+        return { ...prev, [currentIndex]: trimmed };
+      });
+    },
+    [currentIndex]
+  );
+
   const handleSubmitAnswer = async () => {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion || !isShortAnswer(currentQuestion)) return;
     const answer = textAnswer.trim();
     if (!answer) return;
-    await runSubmitWithAnswer(answer);
+    syncChoiceForCurrentIndex(answer);
+    noteAnswerSpeedIfNeeded();
   };
 
-  const handleSelectMcqOption = async (label: string) => {
+  const handleSelectMcqOption = (label: string) => {
     if (submitting) return;
     if (getQuizSoundEnabled()) playClickSound();
-    await runSubmitWithAnswer(label);
+    setSessionChoices((prev) => ({ ...prev, [currentIndex]: label }));
+    noteAnswerSpeedIfNeeded();
+  };
+
+  const navigateToQuestionIndex = (nextIndex: number) => {
+    if (submitting || nextIndex < 0 || nextIndex >= questions.length) return;
+    const merged = mergeChoicesForCurrentQuestion(sessionChoices);
+    setSessionChoices(merged);
+    setCurrentIndex(nextIndex);
+    setTextAnswer(merged[nextIndex] ?? "");
+    setQuizTransition((k) => k + 1);
+    setEncourageIndex((e) => e + 1);
+  };
+
+  const handlePrevQuestion = () => {
+    if (!canUsePracticePrev(currentIndex)) return;
+    navigateToQuestionIndex(currentIndex - 1);
+  };
+
+  const handleNextQuestion = () => {
+    if (!canUsePracticeNext(currentIndex, questions.length)) return;
+    navigateToQuestionIndex(currentIndex + 1);
+  };
+
+  const handleFinishPractice = async () => {
+    const merged = mergeChoicesForCurrentQuestion(sessionChoices);
+    setSessionChoices(merged);
+    await persistAllAnswersAndFinish(merged);
   };
 
   const finalizeQuizAndSummary = async ({
@@ -2108,6 +2113,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionChoices({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2121,6 +2127,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionChoices({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2140,6 +2147,7 @@ export default function QuizApp() {
     setQuestions([]);
     setSessionId(null);
     setAnswers([]);
+    setSessionChoices({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2556,6 +2564,14 @@ export default function QuizApp() {
   const shortAnswer = isShortAnswer(currentQuestion);
   const canSubmit =
     shortAnswer && textAnswer.trim().length > 0 && !submitting;
+  const mergedSessionChoices = mergeChoicesForCurrentQuestion(sessionChoices);
+  const answeredQuestionCount = countSessionAnswers(
+    mergedSessionChoices,
+    questions.length
+  );
+  const selectedMcqOption = shortAnswer
+    ? null
+    : mergedSessionChoices[currentIndex] ?? null;
 
   return (
     <div
@@ -2574,11 +2590,15 @@ export default function QuizApp() {
           currentQuestion={currentQuestion}
           currentIndex={currentIndex}
           totalQuestions={questions.length}
+          answeredQuestionCount={answeredQuestionCount}
           shortAnswer={shortAnswer}
           hasImage={hasImage}
           getImageUrl={getImagePublicUrl}
           textAnswer={textAnswer}
-          onTextChange={(v) => setTextAnswer(v)}
+          onTextChange={(v) => {
+            setTextAnswer(v);
+            syncChoiceForCurrentIndex(v);
+          }}
           submitting={submitting}
           onSubmit={handleSubmitAnswer}
           canSubmit={canSubmit}
@@ -2592,9 +2612,23 @@ export default function QuizApp() {
           encouragementIndex={encourageIndex}
           transitionKey={quizTransition}
           onSelectOption={handleSelectMcqOption}
-          showSubmitButton={shortAnswer}
+          showSubmitButton={false}
           submitNotice={quizSubmitNotice}
           onClearSubmitNotice={() => setQuizSubmitNotice(null)}
+          selectedMcqOption={selectedMcqOption}
+          onPrevQuestion={handlePrevQuestion}
+          onNextQuestion={handleNextQuestion}
+          onFinishPractice={() => void handleFinishPractice()}
+          canGoPrev={canUsePracticePrev(currentIndex)}
+          canGoNext={canUsePracticeNext(currentIndex, questions.length)}
+          showFinishAction={showPracticeFinishButton(
+            currentIndex,
+            questions.length
+          )}
+          canFinishPractice={practiceFinishEnabled(
+            mergedSessionChoices,
+            questions.length
+          )}
         />
       </div>
       {showSpeedReminder && (
@@ -3934,6 +3968,7 @@ function QuestionCountScreen({
   const [enabledTypeKeys, setEnabledTypeKeys] = useState<Set<string>>(
     () => new Set(questionTypes)
   );
+  const [typesSectionExpanded, setTypesSectionExpanded] = useState(false);
 
   const enabledTypesList = questionTypes.filter((t) =>
     enabledTypeKeys.has(t)
@@ -4031,29 +4066,56 @@ function QuestionCountScreen({
         </div>
 
         {questionTypes.length > 0 && (
-          <div className="mt-6">
-            <p className="text-sm font-semibold text-gray-700 mb-2">題型</p>
-            <div className="flex flex-wrap gap-2">
-              {questionTypes.map((type) => {
-                const on = enabledTypeKeys.has(type);
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => toggleType(type)}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                      on
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-800"
-                        : "border-gray-200 bg-white text-gray-500"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-white/80 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setTypesSectionExpanded((open) => !open)}
+              aria-expanded={typesSectionExpanded}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+            >
+              <div>
+                <p className="text-sm font-semibold text-gray-800">題型</p>
+                {!typesSectionExpanded && (
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {summarizeCollapsedQuestionTypes(
+                      questionTypes.length,
+                      enabledTypesList.length
+                    )}
+                  </p>
+                )}
+              </div>
+              <span
+                className="text-lg font-bold text-indigo-600"
+                aria-hidden
+              >
+                {typesSectionExpanded ? "−" : "+"}
+              </span>
+            </button>
+            {typesSectionExpanded && (
+              <div className="border-t border-gray-100 px-4 pb-4 pt-3">
+                <div className="flex flex-wrap gap-2">
+                  {questionTypes.map((type) => {
+                    const on = enabledTypeKeys.has(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => toggleType(type)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                          on
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                            : "border-gray-200 bg-white text-gray-500"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {allOff && (
-              <p className="mt-2 text-sm text-red-600 text-center">
+              <p className="px-4 pb-3 text-sm text-red-600 text-center">
                 {buildQuestionTypeMixAllOffMessage()}
               </p>
             )}
