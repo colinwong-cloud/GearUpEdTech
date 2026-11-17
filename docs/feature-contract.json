@@ -4679,7 +4679,7 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T23:55:55.536Z",
+  "generated_at": "2026-11-17T23:58:22.350Z",
   "commit_inventory": [
     {
       "sha": "145e9e7649961070dfec17e4a956732eaba12040",
@@ -7867,11 +7867,6 @@
       "summary": "Soft #260 — Student practice UX (題型 collapse, 上一題/下一題/完成) (#258)"
     },
     {
-      "sha": "0e7914421d8153e473061caf1e09a6a8a3582d5d",
-      "date": "2026-11-17",
-      "summary": "chore: refresh feature-contract.json inventory (Soft #262)"
-    },
-    {
       "sha": "15d3c43671560091b5ba91d02c169394d6f97721",
       "date": "2026-11-17",
       "summary": "Soft #253 — 呈分試 guide P3 + /guides/IA (#260)"
@@ -7890,6 +7885,11 @@
       "sha": "c0cad82523525e6d7984565e5c55ccc829b1e58c",
       "date": "2026-11-17",
       "summary": "Soft #261 — Pending question review in 題目管理 (#259)"
+    },
+    {
+      "sha": "f3e2e4a76e56dff9ec459d48895943a47004d72b",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory (Soft #262)"
     }
   ],
   "inventory_stats": {
