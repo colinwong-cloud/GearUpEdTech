@@ -4648,8 +4648,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T10:04:27.172Z",
+  "generated_at": "2026-11-17T10:06:06.639Z",
   "commit_inventory": [
+    {
+      "sha": "4bbcbecfca070f9fd5f27db44e499829d4d8dde5",
+      "date": "2026-11-17",
+      "summary": "fix: case-exact /guides/ia redirect via middleware (avoid IA loop)"
+    },
+    {
+      "sha": "17ca400b54e2935e831c51eb98c5a89ecf6bcfd6",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory"
+    },
     {
       "sha": "5ee51ea0c77f5441f47d58a8f5571db45703cae6",
       "date": "2026-11-17",
@@ -7887,7 +7897,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 647,
+    "total_commits_since_start": 649,
     "total_feature_rows": 98
   }
 }
