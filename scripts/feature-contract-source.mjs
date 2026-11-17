@@ -1240,8 +1240,8 @@ export const FEATURE_CONTRACT_BASE = {
         },
         {
           type: "file_contains",
-          path: "src/app/guides/IA/page.tsx",
-          snippet: "https://www.gearupquiz.com/guides/IA",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: 'CHENGFENSHI_GUIDE_PATH = "/guides/IA"',
         },
         {
           type: "file_contains",
