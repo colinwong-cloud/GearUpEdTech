@@ -183,7 +183,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "quiz-core",
       priority: "critical",
       title: "Student practice UX: collapsible 題型, 上一題/下一題/完成, answered border",
-      evidence_commits: ["90f2697"],
+      evidence_commits: ["eeb64b0"],
       checks: [
         { type: "file_exists", path: "src/lib/student-practice-ux.ts" },
         { type: "file_contains", path: "src/lib/student-practice-ux.ts", snippet: "尚有題目未作答" },
@@ -2620,6 +2620,44 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/lib/server/zhongwen-xiezuo-pdf.ts",
           snippet: "drawSection1Header",
+        },
+      ],
+    },
+    {
+      id: "question-bank-expand-261",
+      month: "2026-11",
+      category: "admin",
+      priority: "high",
+      title: "Soft #261 — pending question review in 題目管理 (not in practice until approve)",
+      evidence_commits: ["174f2ec"],
+      checks: [
+        { type: "file_exists", path: "supabase_question_pending_review_261.sql" },
+        { type: "file_exists", path: "src/lib/pending-questions.ts" },
+        { type: "file_exists", path: "docs/grok-bot-pending-insert-261.md" },
+        {
+          type: "file_contains",
+          path: "src/app/admin/page.tsx",
+          snippet: "批准所選題目",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/admin/page.tsx",
+          snippet: "拒絕所選題目",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/api/admin/console/route.ts",
+          snippet: "pending_questions_list",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/pending-questions.ts",
+          snippet: "立即在 www 上線",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/page.tsx",
+          snippet: '.from("questions")',
         },
       ],
     },

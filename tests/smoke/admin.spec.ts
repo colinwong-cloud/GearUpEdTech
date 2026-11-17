@@ -22,4 +22,17 @@ test.describe("Admin smoke", () => {
     await expect(page.getByRole("button", { name: "練習印花卡" })).toBeVisible();
     await expect(page.getByRole("button", { name: "主頁公告" })).toBeVisible();
   });
+
+  test("題目管理 shows pending review bulk actions", async ({ page }) => {
+    await page.goto("/admin");
+
+    await page.getByPlaceholder("帳號").fill(ADMIN_USER);
+    await page.getByPlaceholder("密碼").fill(ADMIN_PASS);
+    await page.getByRole("button", { name: "登入" }).click();
+
+    await page.getByRole("button", { name: "題目管理" }).click();
+    await expect(page.getByRole("heading", { name: "待審題目" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "批准所選題目" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "拒絕所選題目" })).toBeVisible();
+  });
 });
