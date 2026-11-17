@@ -4596,8 +4596,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T00:41:42.764Z",
+  "generated_at": "2026-11-17T00:47:20.719Z",
   "commit_inventory": [
+    {
+      "sha": "2dcc87b32f01c79c2c56d2a33d298504e326336b",
+      "date": "2026-11-17",
+      "summary": "fix(sql): Soft #261 hardening mirror 9-arg pending update grants"
+    },
+    {
+      "sha": "e540f5d19d020b0c249f431116328114bb228cfc",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json after Soft #261 grants fix"
+    },
     {
       "sha": "3d5fb33975f398fa0566b9a7edc9301771571b1f",
       "date": "2026-11-17",
@@ -7805,7 +7815,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 641,
+    "total_commits_since_start": 643,
     "total_feature_rows": 97
   }
 }
