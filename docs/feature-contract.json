@@ -1805,8 +1805,8 @@
         },
         {
           "type": "file_contains",
-          "path": "src/app/guides/IA/page.tsx",
-          "snippet": "https://www.gearupquiz.com/guides/IA"
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "CHENGFENSHI_GUIDE_PATH = \"/guides/IA\""
         },
         {
           "type": "file_contains",
@@ -4648,8 +4648,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T10:04:18.552Z",
+  "generated_at": "2026-11-17T10:04:27.172Z",
   "commit_inventory": [
+    {
+      "sha": "5ee51ea0c77f5441f47d58a8f5571db45703cae6",
+      "date": "2026-11-17",
+      "summary": "chore(feature-contract): fix Soft #253 snippet check"
+    },
+    {
+      "sha": "e057afb0b5dfa30891f2afbf224281586bba0c2d",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory"
+    },
     {
       "sha": "abecc801c1e1d94ad7b9ba7219b432fa6a3305aa",
       "date": "2026-11-17",
@@ -7877,7 +7887,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 645,
+    "total_commits_since_start": 647,
     "total_feature_rows": 98
   }
 }
