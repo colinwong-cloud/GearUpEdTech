@@ -1680,7 +1680,12 @@
       "checks": [
         {
           "type": "file_exists",
-          "path": "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx"
+          "path": "src/app/guides/IA/page.tsx"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "CHENGFENSHI_GUIDE_PATH = \"/guides/IA\""
         },
         {
           "type": "file_contains",
@@ -1775,6 +1780,51 @@
           "type": "file_contains",
           "path": "src/app/page.tsx",
           "snippet": "HOME_FAQ_CHENGFENSHI_ANSWER"
+        }
+      ]
+    },
+    {
+      "id": "chengfenshi-guide-p3-ia-253",
+      "month": "2026-11",
+      "category": "growth",
+      "priority": "high",
+      "title": "Soft #253 — 呈分試 guide P3 copy + /guides/IA + redirects + og",
+      "evidence_commits": [],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "src/lib/chengfenshi-visibility-guide-meta.ts",
+          "snippet": "小朋友呈分試或測驗成績未如理想"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/guides/IA/page.tsx",
+          "snippet": "CHENGFENSHI_GUIDE_OG_URL"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/guides/IA/page.tsx",
+          "snippet": "https://www.gearupquiz.com/guides/IA"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/components/chengfenshi-visibility-guide-content.tsx",
+          "snippet": "系統會按題型追蹤表現"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "/guides/ia"
+        },
+        {
+          "type": "file_contains",
+          "path": "vercel.json",
+          "snippet": "xianggang-xiaoxue-chengfenshi-lianxi"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/app/tutor/layout.tsx",
+          "snippet": "TUTOR_PORTAL_OG_URL"
         }
       ]
     },
@@ -4596,37 +4646,17 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T00:47:20.719Z",
+  "generated_at": "2026-11-17T10:03:14.657Z",
   "commit_inventory": [
     {
-      "sha": "2dcc87b32f01c79c2c56d2a33d298504e326336b",
+      "sha": "314ac21e09972a81d2e716d3e085262e9ec1f97d",
       "date": "2026-11-17",
-      "summary": "fix(sql): Soft #261 hardening mirror 9-arg pending update grants"
+      "summary": "Soft #253 — P3 呈分試 guide copy, /guides/IA, redirects, OG"
     },
     {
-      "sha": "e540f5d19d020b0c249f431116328114bb228cfc",
+      "sha": "c0cad82523525e6d7984565e5c55ccc829b1e58c",
       "date": "2026-11-17",
-      "summary": "chore: refresh feature-contract.json after Soft #261 grants fix"
-    },
-    {
-      "sha": "3d5fb33975f398fa0566b9a7edc9301771571b1f",
-      "date": "2026-11-17",
-      "summary": "fix(sql): Soft #261 grants use 9-arg admin_update_pending_question"
-    },
-    {
-      "sha": "a0513ca3baeb0cefc10f2dc02363e0a95e5c43c6",
-      "date": "2026-11-17",
-      "summary": "chore: refresh feature-contract.json inventory for Soft #261 gate"
-    },
-    {
-      "sha": "1d88fce6cdba5f83442d35799d873a7107a2901b",
-      "date": "2026-11-17",
-      "summary": "chore: refresh feature-contract.json for question-bank-expand-261"
-    },
-    {
-      "sha": "174f2ec55b14bcae30bda29c8c8c166544d4939b",
-      "date": "2026-11-17",
-      "summary": "feat(admin): Soft #261 pending question review and batch RPCs"
+      "summary": "Soft #261 — Pending question review in 題目管理 (#259)"
     },
     {
       "sha": "eeb64b0fb3bc5e79d10c76c49b6bbe0847ad2832",
@@ -7815,7 +7845,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 643,
-    "total_feature_rows": 97
+    "total_commits_since_start": 639,
+    "total_feature_rows": 98
   }
 }
