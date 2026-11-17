@@ -13,16 +13,6 @@ const nextConfig: NextConfig = {
         destination: "/guides/IA",
         permanent: true,
       },
-      {
-        source: "/guides/ia",
-        destination: "/guides/IA",
-        permanent: true,
-      },
-      {
-        source: "/guides/ia/",
-        destination: "/guides/IA",
-        permanent: true,
-      },
     ];
   },
   serverExternalPackages: ["subset-font", "harfbuzzjs", "fontverter"],
