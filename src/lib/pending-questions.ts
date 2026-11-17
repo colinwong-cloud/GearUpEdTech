@@ -7,6 +7,19 @@ export const PENDING_REVIEW_STATUS_ALL = "all";
 
 export const PENDING_QUESTIONS_SQL_FILE = "supabase_question_pending_review_261.sql";
 export const PENDING_QUESTIONS_GRANTS_SQL_FILE = "supabase_question_pending_review_261_grants.sql";
+/** Soft #262 — RPC/default fix; apply only after Colin apply-yes (HOLD). */
+export const PENDING_PAPER_RANK_RPC_DEFAULT_262_SQL =
+  "supabase_pending_paper_rank_rpc_default_262.sql";
+
+export const PENDING_LIVE_PAPER_RANKS = ["AA", "A", "B", "C"] as const;
+export const PENDING_PAPER_RANK_DEFAULT = "A";
+
+export function coercePendingPaperRank(rank: string | null | undefined): string {
+  const normalized = String(rank ?? "").trim();
+  return (PENDING_LIVE_PAPER_RANKS as readonly string[]).includes(normalized)
+    ? normalized
+    : PENDING_PAPER_RANK_DEFAULT;
+}
 
 export const PENDING_BATCH_INSERT_DOC_PATH = "docs/grok-bot-pending-insert-261.md";
 

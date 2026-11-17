@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBulkApproveConfirmMessage,
   buildBulkRejectConfirmMessage,
+  coercePendingPaperRank,
   isPracticeQuestionTableOnly,
   summarizeBulkPendingResult,
 } from "@/lib/pending-questions";
@@ -19,6 +20,19 @@ describe("pending-questions confirm copy", () => {
     const msg = buildBulkRejectConfirmMessage(1);
     expect(msg).toContain("不會進入學生練習題庫");
     expect(msg).toContain("拒絕所選題目");
+  });
+});
+
+describe("pending paper_rank coercion (Soft #262)", () => {
+  it("keeps valid live ranks", () => {
+    expect(coercePendingPaperRank("AA")).toBe("AA");
+    expect(coercePendingPaperRank("B")).toBe("B");
+  });
+
+  it("maps legacy AI insert default to A", () => {
+    expect(coercePendingPaperRank("AI")).toBe("A");
+    expect(coercePendingPaperRank("")).toBe("A");
+    expect(coercePendingPaperRank(undefined)).toBe("A");
   });
 });
 
