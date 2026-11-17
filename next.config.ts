@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/guides/xianggang-xiaoxue-chengfenshi-lianxi",
+        destination: "/guides/IA",
+        permanent: true,
+      },
+      {
+        source: "/guides/xianggang-xiaoxue-chengfenshi-lianxi/",
+        destination: "/guides/IA",
+        permanent: true,
+      },
+    ];
+  },
   serverExternalPackages: ["subset-font", "harfbuzzjs", "fontverter"],
   outputFileTracingIncludes: {
     "/countdown": ["./public/countdown.html"],

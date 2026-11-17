@@ -1120,7 +1120,12 @@ export const FEATURE_CONTRACT_BASE = {
       checks: [
         {
           type: "file_exists",
-          path: "src/app/guides/xianggang-xiaoxue-chengfenshi-lianxi/page.tsx",
+          path: "src/app/guides/IA/page.tsx",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: 'CHENGFENSHI_GUIDE_PATH = "/guides/IA"',
         },
         {
           type: "file_contains",
@@ -1212,6 +1217,51 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_contains",
           path: "src/app/page.tsx",
           snippet: "HOME_FAQ_CHENGFENSHI_ANSWER",
+        },
+      ],
+    },
+    {
+      id: "chengfenshi-guide-p3-ia-253",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Soft #253 — 呈分試 guide P3 copy + /guides/IA + redirects + og",
+      evidence_commits: ["314ac21"],
+      checks: [
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: "小朋友呈分試或測驗成績未如理想",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/guides/IA/page.tsx",
+          snippet: "CHENGFENSHI_GUIDE_OG_URL",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/chengfenshi-visibility-guide-meta.ts",
+          snippet: 'CHENGFENSHI_GUIDE_PATH = "/guides/IA"',
+        },
+        {
+          type: "file_contains",
+          path: "src/components/chengfenshi-visibility-guide-content.tsx",
+          snippet: "系統會按題型追蹤表現",
+        },
+        {
+          type: "file_contains",
+          path: "vercel.json",
+          snippet: "/guides/ia",
+        },
+        {
+          type: "file_contains",
+          path: "vercel.json",
+          snippet: "xianggang-xiaoxue-chengfenshi-lianxi",
+        },
+        {
+          type: "file_contains",
+          path: "src/app/tutor/layout.tsx",
+          snippet: "TUTOR_PORTAL_OG_URL",
         },
       ],
     },
@@ -2629,7 +2679,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Soft #261 — pending question review in 題目管理 (not in practice until approve)",
-      evidence_commits: ["174f2ec"],
+      evidence_commits: ["c0cad82"],
       checks: [
         { type: "file_exists", path: "supabase_question_pending_review_261.sql" },
         { type: "file_exists", path: "src/lib/pending-questions.ts" },
