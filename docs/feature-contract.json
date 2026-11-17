@@ -1789,7 +1789,9 @@
       "category": "growth",
       "priority": "high",
       "title": "Soft #253 — 呈分試 guide P3 copy + /guides/IA + redirects + og",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "314ac21"
+      ],
       "checks": [
         {
           "type": "file_contains",
@@ -4646,8 +4648,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T10:03:17.943Z",
+  "generated_at": "2026-11-17T10:03:23.672Z",
   "commit_inventory": [
+    {
+      "sha": "b9f788c92c58c4be35693a0809f737c0956ec323",
+      "date": "2026-11-17",
+      "summary": "chore(feature-contract): add Soft #253 evidence commit"
+    },
+    {
+      "sha": "083b70d8eca1a71191ab775a7351787e5b5053c4",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory (Soft #253 follow-up)"
+    },
     {
       "sha": "29ec6c63767f8df48b05d0e67ca6a86bdc40dc8e",
       "date": "2026-11-17",
@@ -7850,7 +7862,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 640,
+    "total_commits_since_start": 642,
     "total_feature_rows": 98
   }
 }
