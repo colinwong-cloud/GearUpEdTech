@@ -4596,8 +4596,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T00:22:47.027Z",
+  "generated_at": "2026-11-17T00:41:42.764Z",
   "commit_inventory": [
+    {
+      "sha": "3d5fb33975f398fa0566b9a7edc9301771571b1f",
+      "date": "2026-11-17",
+      "summary": "fix(sql): Soft #261 grants use 9-arg admin_update_pending_question"
+    },
+    {
+      "sha": "a0513ca3baeb0cefc10f2dc02363e0a95e5c43c6",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory for Soft #261 gate"
+    },
     {
       "sha": "1d88fce6cdba5f83442d35799d873a7107a2901b",
       "date": "2026-11-17",
@@ -7795,7 +7805,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 639,
+    "total_commits_since_start": 641,
     "total_feature_rows": 97
   }
 }
