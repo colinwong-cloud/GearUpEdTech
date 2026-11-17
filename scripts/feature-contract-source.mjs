@@ -2679,7 +2679,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "admin",
       priority: "high",
       title: "Soft #261 — pending question review in 題目管理 (not in practice until approve)",
-      evidence_commits: ["174f2ec"],
+      evidence_commits: ["c0cad82"],
       checks: [
         { type: "file_exists", path: "supabase_question_pending_review_261.sql" },
         { type: "file_exists", path: "src/lib/pending-questions.ts" },
