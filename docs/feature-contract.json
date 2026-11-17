@@ -4646,8 +4646,13 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T10:03:14.657Z",
+  "generated_at": "2026-11-17T10:03:17.943Z",
   "commit_inventory": [
+    {
+      "sha": "29ec6c63767f8df48b05d0e67ca6a86bdc40dc8e",
+      "date": "2026-11-17",
+      "summary": "chore: refresh feature-contract.json inventory (Soft #253)"
+    },
     {
       "sha": "314ac21e09972a81d2e716d3e085262e9ec1f97d",
       "date": "2026-11-17",
@@ -7845,7 +7850,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 639,
+    "total_commits_since_start": 640,
     "total_feature_rows": 98
   }
 }
