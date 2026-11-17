@@ -12,6 +12,15 @@ import {
 } from "@/lib/admin-paid-summary";
 import { formatTutorUsageCount, tutorPasswordError, tutorRegistrationSourceLabel } from "@/lib/tutor-registration";
 import { GuoyuQuotaMaintainBlock } from "./guoyu-quota-maintain-section";
+import {
+  buildBulkApproveConfirmMessage,
+  buildBulkRejectConfirmMessage,
+  summarizeBulkPendingResult,
+  type BulkPendingMutationResult,
+  type PendingQuestionListResult,
+  type PendingQuestionRow,
+  type PendingReviewStatus,
+} from "@/lib/pending-questions";
 
 type AdminConsoleAction =
   | "search_parent"
@@ -22,6 +31,10 @@ type AdminConsoleAction =
   | "set_email_notification"
   | "search_questions"
   | "update_question"
+  | "pending_questions_list"
+  | "pending_question_update"
+  | "pending_questions_bulk_approve"
+  | "pending_questions_bulk_reject"
   | "parent_students_practice_summary"
   | "grade_level_practice_frequency_summary"
   | "today_practice_details_summary"
@@ -1014,18 +1027,39 @@ function EmailSection({ sessionToken }: { sessionToken: string }) {
   );
 }
 
+const PENDING_GRADE_OPTIONS = ["", "P1", "P2", "P3", "P4", "P5", "P6", "F1", "F2", "F3"];
+const PENDING_SUBJECT_OPTIONS = ["", "Math", "Chinese", "English"];
+
+function pendingStatusLabel(status: PendingQuestionRow["review_status"]): string {
+  if (status === "pending") return "待審";
+  if (status === "approved") return "已批准";
+  return "已拒絕";
+}
+
 function QuestionsSection({ sessionToken }: { sessionToken: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<QuestionResult[]>([]);
-  const [editing, setEditing] = useState<QuestionResult | null>(null);
+  const [editingLive, setEditingLive] = useState<QuestionResult | null>(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [pendingGrade, setPendingGrade] = useState("");
+  const [pendingSubject, setPendingSubject] = useState("");
+  const [pendingBatch, setPendingBatch] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<PendingReviewStatus>("pending");
+  const [pendingItems, setPendingItems] = useState<PendingQuestionRow[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingMsg, setPendingMsg] = useState("");
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
+  const [editingPending, setEditingPending] = useState<PendingQuestionRow | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     setMsg("");
-    setEditing(null);
+    setEditingLive(null);
     try {
       const data = await adminConsoleRequest<QuestionResult[]>("search_questions", {
         p_query: query.trim(),
@@ -1036,113 +1070,439 @@ function QuestionsSection({ sessionToken }: { sessionToken: string }) {
     finally { setLoading(false); }
   };
 
-  const handleSave = async () => {
-    if (!editing) return;
+  const handleSaveLive = async () => {
+    if (!editingLive) return;
     setLoading(true);
     try {
       await adminConsoleRequest<null>("update_question", {
-        p_id: editing.id,
-        p_content: editing.content,
-        p_opt_a: editing.opt_a,
-        p_opt_b: editing.opt_b,
-        p_opt_c: editing.opt_c,
-        p_opt_d: editing.opt_d,
-        p_correct_answer: editing.correct_answer,
-        p_explanation: editing.explanation,
+        p_id: editingLive.id,
+        p_content: editingLive.content,
+        p_opt_a: editingLive.opt_a,
+        p_opt_b: editingLive.opt_b,
+        p_opt_c: editingLive.opt_c,
+        p_opt_d: editingLive.opt_d,
+        p_correct_answer: editingLive.correct_answer,
+        p_explanation: editingLive.explanation,
       }, sessionToken);
       setMsg("題目已更新");
-      setResults(results.map((r) => (r.id === editing.id ? editing : r)));
-      setEditing(null);
+      setResults(results.map((r) => (r.id === editingLive.id ? editingLive : r)));
+      setEditingLive(null);
     } catch { setMsg("更新失敗"); }
     finally { setLoading(false); }
   };
 
-  const field = (label: string, key: keyof QuestionResult, multiline = false) => {
-    if (!editing) return null;
-    const val = (editing[key] as string) || "";
+  const loadPending = useCallback(async () => {
+    setPendingLoading(true);
+    setPendingMsg("");
+    setEditingPending(null);
+    try {
+      const data = await adminConsoleRequest<PendingQuestionListResult>(
+        "pending_questions_list",
+        {
+          p_grade_level: pendingGrade || null,
+          p_subject: pendingSubject || null,
+          p_batch_key: pendingBatch.trim() || null,
+          p_review_status: pendingStatus,
+          p_limit: 100,
+          p_offset: 0,
+        },
+        sessionToken
+      );
+      const items = data?.items ?? [];
+      setPendingItems(items);
+      setPendingTotal(data?.total ?? items.length);
+      setSelectedPendingIds(new Set());
+      if (items.length === 0) setPendingMsg("沒有符合條件的待審題目");
+    } catch (err) {
+      setPendingMsg(err instanceof Error ? err.message : "載入待審題目失敗");
+      setPendingItems([]);
+      setPendingTotal(0);
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [pendingBatch, pendingGrade, pendingStatus, pendingSubject, sessionToken]);
+
+  useEffect(() => {
+    void loadPending();
+  }, [loadPending]);
+
+  const togglePendingSelected = (id: string) => {
+    setSelectedPendingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllPending = () => {
+    const selectable = pendingItems.filter((p) => p.review_status === "pending");
+    if (selectedPendingIds.size >= selectable.length && selectable.length > 0) {
+      setSelectedPendingIds(new Set());
+      return;
+    }
+    setSelectedPendingIds(new Set(selectable.map((p) => p.id)));
+  };
+
+  const handleSavePending = async () => {
+    if (!editingPending) return;
+    setPendingLoading(true);
+    try {
+      const updated = await adminConsoleRequest<PendingQuestionRow>("pending_question_update", {
+        p_id: editingPending.id,
+        p_content: editingPending.content,
+        p_opt_a: editingPending.opt_a,
+        p_opt_b: editingPending.opt_b,
+        p_opt_c: editingPending.opt_c,
+        p_opt_d: editingPending.opt_d,
+        p_correct_answer: editingPending.correct_answer,
+        p_explanation: editingPending.explanation,
+        p_question_type: editingPending.question_type,
+      }, sessionToken);
+      setPendingMsg("待審題目已更新");
+      if (updated) {
+        setPendingItems((rows) => rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      }
+      setEditingPending(null);
+    } catch (err) {
+      setPendingMsg(err instanceof Error ? err.message : "更新待審題目失敗");
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const runBulkPending = async (action: "approve" | "reject") => {
+    const ids = Array.from(selectedPendingIds);
+    if (ids.length === 0) {
+      setPendingMsg("請先勾選題目");
+      return;
+    }
+    const confirmMsg =
+      action === "approve"
+        ? buildBulkApproveConfirmMessage(ids.length)
+        : buildBulkRejectConfirmMessage(ids.length);
+    if (!window.confirm(confirmMsg)) return;
+
+    setBulkLoading(true);
+    setPendingMsg("");
+    try {
+      const rpc =
+        action === "approve" ? "pending_questions_bulk_approve" : "pending_questions_bulk_reject";
+      const data = await adminConsoleRequest<BulkPendingMutationResult>(
+        rpc,
+        { p_ids: ids },
+        sessionToken
+      );
+      setPendingMsg(summarizeBulkPendingResult(action, data ?? { skipped_count: 0 }));
+      await loadPending();
+    } catch (err) {
+      setPendingMsg(err instanceof Error ? err.message : "批次操作失敗");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const liveField = (label: string, key: keyof QuestionResult, multiline = false) => {
+    if (!editingLive) return null;
+    const val = (editingLive[key] as string) || "";
     return (
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
         {multiline ? (
-          <textarea value={val} onChange={(e) => setEditing({ ...editing, [key]: e.target.value || null })}
+          <textarea value={val} onChange={(e) => setEditingLive({ ...editingLive, [key]: e.target.value || null })}
             rows={3} className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400 resize-y" />
         ) : (
-          <input value={val} onChange={(e) => setEditing({ ...editing, [key]: e.target.value || null })}
+          <input value={val} onChange={(e) => setEditingLive({ ...editingLive, [key]: e.target.value || null })}
             className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400" />
         )}
       </div>
     );
   };
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-gray-800">題目管理</h2>
-      <div className="flex gap-2">
-        <input value={query} onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="輸入題目 ID 或關鍵字搜尋"
-          className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400" />
-        <button onClick={handleSearch} disabled={loading}
-          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
-          搜尋
-        </button>
+  const pendingField = (label: string, key: keyof PendingQuestionRow, multiline = false) => {
+    if (!editingPending) return null;
+    const val = (editingPending[key] as string) || "";
+    return (
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
+        {multiline ? (
+          <textarea
+            value={val}
+            onChange={(e) => setEditingPending({ ...editingPending, [key]: e.target.value })}
+            rows={3}
+            className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400 resize-y"
+          />
+        ) : (
+          <input
+            value={val}
+            onChange={(e) => setEditingPending({ ...editingPending, [key]: e.target.value })}
+            className="w-full p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400"
+          />
+        )}
       </div>
+    );
+  };
 
-      {msg && <p className={`text-sm ${msg.includes("已更新") ? "text-emerald-600" : "text-red-500"}`}>{msg}</p>}
-
-      {editing ? (
-        <div className="bg-white rounded-xl border border-indigo-200 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-indigo-700">編輯題目</h3>
-            <p className="text-xs text-gray-400">{editing.id}</p>
-          </div>
-          {field("題目內容", "content", true)}
-          <div className="grid grid-cols-2 gap-3">
-            {field("選項 A", "opt_a")}
-            {field("選項 B", "opt_b")}
-            {field("選項 C", "opt_c")}
-            {field("選項 D", "opt_d")}
-          </div>
-          {field("正確答案", "correct_answer")}
-          {field("解釋", "explanation", true)}
-          <div className="flex gap-2 pt-2">
-            <button onClick={handleSave} disabled={loading}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
-              儲存
-            </button>
-            <button onClick={() => setEditing(null)}
-              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300">
-              取消
-            </button>
-          </div>
+  return (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-gray-800">題目管理</h2>
+        <p className="text-xs text-gray-500">搜尋並編輯已上線題庫（public.questions）。</p>
+        <div className="flex gap-2">
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="輸入題目 ID 或關鍵字搜尋"
+            className="flex-1 p-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-indigo-400" />
+          <button onClick={handleSearch} disabled={loading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+            搜尋
+          </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {results.map((q) => (
-            <div key={q.id} className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-1">{q.id} · {q.subject} · {q.question_type} · {q.grade_level}</p>
-                  <p className="text-sm text-gray-800">{q.content}</p>
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-gray-600">
-                {q.opt_a && <p>A: {q.opt_a}</p>}
-                {q.opt_b && <p>B: {q.opt_b}</p>}
-                {q.opt_c && <p>C: {q.opt_c}</p>}
-                {q.opt_d && <p>D: {q.opt_d}</p>}
-              </div>
-              <p className="mt-1 text-xs"><span className="text-emerald-600 font-semibold">正確：{q.correct_answer}</span></p>
-              {q.explanation && <p className="mt-1 text-xs text-gray-500">解釋：{q.explanation}</p>}
-              <button onClick={() => setEditing({ ...q })}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-all">
-                修改
+
+        {msg && <p className={`text-sm ${msg.includes("已更新") ? "text-emerald-600" : "text-red-500"}`}>{msg}</p>}
+
+        {editingLive ? (
+          <div className="bg-white rounded-xl border border-indigo-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-indigo-700">編輯上線題目</h3>
+              <p className="text-xs text-gray-400">{editingLive.id}</p>
+            </div>
+            {liveField("題目內容", "content", true)}
+            <div className="grid grid-cols-2 gap-3">
+              {liveField("選項 A", "opt_a")}
+              {liveField("選項 B", "opt_b")}
+              {liveField("選項 C", "opt_c")}
+              {liveField("選項 D", "opt_d")}
+            </div>
+            {liveField("正確答案", "correct_answer")}
+            {liveField("解釋", "explanation", true)}
+            <div className="flex gap-2 pt-2">
+              <button onClick={handleSaveLive} disabled={loading}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                儲存
+              </button>
+              <button onClick={() => setEditingLive(null)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300">
+                取消
               </button>
             </div>
-          ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {results.map((q) => (
+              <div key={q.id} className="bg-white rounded-xl border border-gray-100 p-4">
+                <LiveQuestionCard q={q} onEdit={() => setEditingLive({ ...q })} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4 border-t border-gray-200 pt-6">
+        <div>
+          <h3 className="text-lg font-bold text-gray-800">待審題目</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            新產生題目僅存於待審區，不會出現在學生練習。批准後立即上線 www。
+          </p>
         </div>
-      )}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <select
+            value={pendingGrade}
+            onChange={(e) => setPendingGrade(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm"
+          >
+            <option value="">全部年級</option>
+            {PENDING_GRADE_OPTIONS.filter(Boolean).map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <select
+            value={pendingSubject}
+            onChange={(e) => setPendingSubject(e.target.value)}
+            className="p-2 rounded-lg border border-gray-200 text-sm"
+          >
+            <option value="">全部科目</option>
+            {PENDING_SUBJECT_OPTIONS.filter(Boolean).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <input
+            value={pendingBatch}
+            onChange={(e) => setPendingBatch(e.target.value)}
+            placeholder="批次編號"
+            className="p-2 rounded-lg border border-gray-200 text-sm"
+          />
+          <select
+            value={pendingStatus}
+            onChange={(e) => setPendingStatus(e.target.value as PendingReviewStatus)}
+            className="p-2 rounded-lg border border-gray-200 text-sm"
+          >
+            <option value="pending">待審（預設）</option>
+            <option value="approved">已批准</option>
+            <option value="rejected">已拒絕</option>
+            <option value="all">全部狀態</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void loadPending()}
+            disabled={pendingLoading}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-800 text-sm font-semibold hover:bg-gray-200 disabled:opacity-50"
+          >
+            重新載入
+          </button>
+          <button
+            type="button"
+            onClick={() => void runBulkPending("approve")}
+            disabled={bulkLoading || pendingLoading}
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+          >
+            批准所選題目
+          </button>
+          <button
+            type="button"
+            onClick={() => void runBulkPending("reject")}
+            disabled={bulkLoading || pendingLoading}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+          >
+            拒絕所選題目
+          </button>
+          <p className="text-xs text-gray-400 self-center">共 {pendingTotal} 題</p>
+        </div>
+
+        {pendingMsg && (
+          <p className={`text-sm ${pendingMsg.includes("已") && !pendingMsg.includes("失敗") ? "text-emerald-600" : "text-red-500"}`}>
+            {pendingMsg}
+          </p>
+        )}
+
+        {editingPending ? (
+          <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-amber-800">編輯待審題目</h4>
+              <p className="text-xs text-gray-400">{editingPending.id}</p>
+            </div>
+            {pendingField("題目內容", "content", true)}
+            <div className="grid grid-cols-2 gap-3">
+              {pendingField("選項 A", "opt_a")}
+              {pendingField("選項 B", "opt_b")}
+              {pendingField("選項 C", "opt_c")}
+              {pendingField("選項 D", "opt_d")}
+            </div>
+            {pendingField("正確答案", "correct_answer")}
+            {pendingField("解釋", "explanation", true)}
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => void handleSavePending()} disabled={pendingLoading}
+                className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50">
+                儲存
+              </button>
+              <button onClick={() => setEditingPending(null)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300">
+                取消
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pendingItems.length > 0 && (
+              <label className="flex items-center gap-2 text-xs text-gray-600">
+                <input type="checkbox" checked={selectedPendingIds.size > 0}
+                  onChange={toggleSelectAllPending}
+                  className="rounded border-gray-300" />
+                全選待審題目
+              </label>
+            )}
+            {pendingItems.map((pq) => (
+              <div key={pq.id} className="bg-white rounded-xl border border-gray-100 p-4">
+                <div className="flex gap-3 items-start">
+                  {pq.review_status === "pending" ? (
+                    <input
+                      type="checkbox"
+                      checked={selectedPendingIds.has(pq.id)}
+                      onChange={() => togglePendingSelected(pq.id)}
+                      className="mt-1 rounded border-gray-300"
+                    />
+                  ) : (
+                    <span className="w-4" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">
+                      {pq.id} · {pq.subject} · {pq.question_type} · {pq.grade_level} · 批次 {pq.batch_key} ·{" "}
+                      <span className="font-semibold">{pendingStatusLabel(pq.review_status)}</span>
+                    </p>
+                    <p className="text-sm text-gray-800">{pq.content}</p>
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-gray-600">
+                      <p>A: {pq.opt_a}</p>
+                      <p>B: {pq.opt_b}</p>
+                      <p>C: {pq.opt_c}</p>
+                      <p>D: {pq.opt_d}</p>
+                    </div>
+                    <p className="mt-1 text-xs">
+                      <span className="text-emerald-600 font-semibold">正確：{pq.correct_answer}</span>
+                    </p>
+                    {pq.explanation && <p className="mt-1 text-xs text-gray-500">解釋：{pq.explanation}</p>}
+                    {pq.needs_figure && (
+                      <p className="mt-1 text-xs text-amber-600">需圖解（此票不自動產圖）</p>
+                    )}
+                    {pq.review_status === "pending" && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingPending({ ...pq })}
+                        className="mt-2 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100"
+                      >
+                        編輯
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function LiveQuestionCard({ q, onEdit }: { q: QuestionResult; onEdit: () => void }) {
+  return (
+    <>
+      <LiveQuestionMeta q={q} />
+      <LiveQuestionOptions q={q} />
+      <button onClick={onEdit}
+        className="mt-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-all">
+        修改
+      </button>
+    </>
+  );
+}
+
+function LiveQuestionMeta({ q }: { q: QuestionResult }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex-1">
+        <p className="text-xs text-gray-400 mb-1">{q.id} · {q.subject} · {q.question_type} · {q.grade_level}</p>
+        <p className="text-sm text-gray-800">{q.content}</p>
+      </div>
+    </div>
+  );
+}
+
+function LiveQuestionOptions({ q }: { q: QuestionResult }) {
+  return (
+    <>
+      <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-gray-600">
+        {q.opt_a && <p>A: {q.opt_a}</p>}
+        {q.opt_b && <p>B: {q.opt_b}</p>}
+        {q.opt_c && <p>C: {q.opt_c}</p>}
+        {q.opt_d && <p>D: {q.opt_d}</p>}
+      </div>
+      <p className="mt-1 text-xs"><span className="text-emerald-600 font-semibold">正確：{q.correct_answer}</span></p>
+      {q.explanation && <p className="mt-1 text-xs text-gray-500">解釋：{q.explanation}</p>}
+    </>
   );
 }
 

@@ -58,6 +58,7 @@ import {
   adminHomePageNoticeUpdate,
 } from "@/lib/server/admin-home-page-notice";
 import { buildGiftCodesExportCsv } from "@/lib/admin-stamp-card";
+import { PENDING_QUESTIONS_SQL_FILE } from "@/lib/pending-questions";
 
 type AdminAction =
   | "search_parent"
@@ -78,6 +79,12 @@ type AdminAction =
   | "set_email_notification"
   | "search_questions"
   | "update_question"
+  | "pending_questions_list"
+  | "pending_question_get"
+  | "pending_question_update"
+  | "pending_questions_bulk_approve"
+  | "pending_questions_bulk_reject"
+  | "pending_batch_insert"
   | "discount_code_list"
   | "discount_code_create"
   | "discount_code_update"
@@ -321,6 +328,23 @@ function isMissingTutorReferralTableError(message: string): boolean {
 
 function isMissingTutorPortalTableError(message: string): boolean {
   return /tutor_portal_accounts|42P01|42703|does not exist/i.test(message);
+}
+
+const PENDING_QUESTIONS_TABLE_HINT =
+  `缺少待審題目資料表或函數，請先在 Supabase 執行 ${PENDING_QUESTIONS_SQL_FILE} 及 supabase_question_pending_review_261_grants.sql。`;
+
+function isMissingPendingQuestionsError(message: string): boolean {
+  return /pending_questions|question_generation_batches|admin_list_pending_questions|admin_pending_batch_insert|42P01|42883|does not exist/i.test(
+    message
+  );
+}
+
+function throwPendingQuestionsSetupError(error: { message?: string }): never {
+  const message = String(error.message ?? "");
+  if (isMissingPendingQuestionsError(message)) {
+    throw new Error(PENDING_QUESTIONS_TABLE_HINT);
+  }
+  throw new Error(message || "待審題目操作失敗");
 }
 type AdminClient = ReturnType<typeof getAdminClient> extends infer T ? Exclude<T, null> : never;
 
@@ -1731,6 +1755,81 @@ export async function POST(req: NextRequest) {
         });
         if (error) throw error;
         return NextResponse.json({ data: { ok: true } });
+      }
+      case "pending_questions_list": {
+        const { data, error } = await admin.rpc("admin_list_pending_questions", {
+          p_grade_level: payload.p_grade_level ?? null,
+          p_subject: payload.p_subject ?? null,
+          p_batch_key: payload.p_batch_key ?? null,
+          p_review_status: payload.p_review_status ?? "pending",
+          p_limit: Number(payload.p_limit ?? 100),
+          p_offset: Number(payload.p_offset ?? 0),
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? { items: [], total: 0 } });
+      }
+      case "pending_question_get": {
+        const { data, error } = await admin.rpc("admin_get_pending_question", {
+          p_id: String(payload.p_id ?? ""),
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? null });
+      }
+      case "pending_question_update": {
+        const { data, error } = await admin.rpc("admin_update_pending_question", {
+          p_id: String(payload.p_id ?? ""),
+          p_content: payload.p_content,
+          p_opt_a: payload.p_opt_a,
+          p_opt_b: payload.p_opt_b,
+          p_opt_c: payload.p_opt_c,
+          p_opt_d: payload.p_opt_d,
+          p_correct_answer: payload.p_correct_answer,
+          p_explanation: payload.p_explanation,
+          p_question_type: payload.p_question_type ?? null,
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? { ok: true } });
+      }
+      case "pending_questions_bulk_approve": {
+        const rawIds = payload.p_ids;
+        const pIds = Array.isArray(rawIds) ? rawIds.map((id) => String(id)) : [];
+        const { data, error } = await admin.rpc("admin_bulk_approve_pending_questions", {
+          p_ids: pIds,
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? { approved_count: 0, skipped_count: 0 } });
+      }
+      case "pending_questions_bulk_reject": {
+        const rawIds = payload.p_ids;
+        const pIds = Array.isArray(rawIds) ? rawIds.map((id) => String(id)) : [];
+        const { data, error } = await admin.rpc("admin_bulk_reject_pending_questions", {
+          p_ids: pIds,
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? { rejected_count: 0, skipped_count: 0 } });
+      }
+      case "pending_batch_insert": {
+        const { data, error } = await admin.rpc("admin_pending_batch_insert", {
+          p_batch_key: String(payload.p_batch_key ?? ""),
+          p_grade_level: String(payload.p_grade_level ?? ""),
+          p_subject: String(payload.p_subject ?? ""),
+          p_requested_pdf_seed_count: Number(payload.p_requested_pdf_seed_count ?? 0),
+          p_requested_ai_seed_count: Number(payload.p_requested_ai_seed_count ?? 0),
+          p_requested_new_question_count: Number(payload.p_requested_new_question_count ?? 0),
+          p_actual_pdf_seed_count:
+            payload.p_actual_pdf_seed_count === undefined || payload.p_actual_pdf_seed_count === null
+              ? null
+              : Number(payload.p_actual_pdf_seed_count),
+          p_actual_ai_seed_count:
+            payload.p_actual_ai_seed_count === undefined || payload.p_actual_ai_seed_count === null
+              ? null
+              : Number(payload.p_actual_ai_seed_count),
+          p_type_mix_plan: payload.p_type_mix_plan ?? null,
+          p_question_key_prefix: String(payload.p_question_key_prefix ?? "GEN261-"),
+          p_questions: payload.p_questions ?? [],
+        });
+        if (error) throwPendingQuestionsSetupError(error);
+        return NextResponse.json({ data: data ?? { inserted_count: 0 } });
       }
       case "discount_code_list": {
         const q = String(payload.q ?? "").trim();
