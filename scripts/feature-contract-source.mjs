@@ -2711,6 +2711,33 @@ export const FEATURE_CONTRACT_BASE = {
         },
       ],
     },
+    {
+      id: "question-pending-paper-rank-262",
+      month: "2026-11",
+      category: "admin",
+      priority: "high",
+      title:
+        "Soft #262 — pending paper_rank default A + approve coercion (CONDITIONAL/HOLD until supabase_pending_paper_rank_rpc_default_262.sql applied)",
+      evidence_commits: ["84c6d66"],
+      checks: [
+        { type: "file_exists", path: "supabase_pending_paper_rank_rpc_default_262.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_pending_paper_rank_rpc_default_262.sql",
+          snippet: "ALTER COLUMN paper_rank SET DEFAULT 'A'",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_pending_paper_rank_rpc_default_262.sql",
+          snippet: "v_paper_rank NOT IN ('AA', 'A', 'B', 'C')",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/pending-questions.ts",
+          snippet: "coercePendingPaperRank",
+        },
+      ],
+    },
   ],
 };
 
