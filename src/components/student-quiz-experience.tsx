@@ -9,6 +9,9 @@ import {
   PRACTICE_NAV_FINISH_LABEL,
   PRACTICE_NAV_NEXT_LABEL,
   PRACTICE_NAV_PREV_LABEL,
+  buildQuestionProgressMarkers,
+  countSessionAnswers,
+  type PracticeProgressMarkerVisual,
 } from "@/lib/student-practice-ux";
 import { QuestionContentParagraphs } from "@/components/question-content-paragraphs";
 
@@ -26,7 +29,7 @@ const ENCOURAGE = [
 ] as const;
 
 const SOUND_KEY = "gearup-quiz-sound-enabled";
-const STAR_PROGRESS_POLICY_VERSION = "quiz-star-answered-circle-v2";
+const STAR_PROGRESS_POLICY_VERSION = "quiz-star-per-question-v3";
 const STAR_PROGRESS_COLUMNS = 10;
 
 function logAntiMissingStarProgress(event: string, payload: Record<string, unknown>) {
@@ -60,28 +63,65 @@ function playClickSound() {
   }
 }
 
+function StarProgressMarker({ visual }: { visual: PracticeProgressMarkerVisual }) {
+  const isCurrent = visual.startsWith("current-");
+  const isDot = visual === "unvisited-dot";
+  const isGrey =
+    visual === "skipped-grey-star" || visual === "current-skipped-grey-star";
+  const showStar = !isDot;
+
+  const glyph = showStar ? "⭐" : "○";
+
+  return (
+    <span
+      className={`relative inline-flex h-8 w-8 items-center justify-center text-xl leading-none transition-all duration-300 sm:h-10 sm:w-10 sm:text-3xl ${
+        isDot ? "text-slate-400" : isGrey ? "text-slate-400 grayscale opacity-80" : "drop-shadow-sm"
+      }`}
+    >
+      <span aria-hidden>{glyph}</span>
+      {isCurrent ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full border-2 border-indigo-500/90 ring-2 ring-indigo-300/50"
+        />
+      ) : null}
+    </span>
+  );
+}
+
 function StarProgress({
-  answeredCount,
+  currentIndex,
   total,
+  visited,
+  skipped,
+  choicesByIndex,
 }: {
-  answeredCount: number;
+  currentIndex: number;
   total: number;
+  visited: Record<number, boolean>;
+  skipped: Record<number, boolean>;
+  choicesByIndex: Record<number, string | undefined>;
 }) {
   const safeTotal = Math.max(0, Math.trunc(total));
-  const answered = Math.min(Math.max(0, Math.trunc(answeredCount)), safeTotal);
-  const remainingCircles = Math.max(safeTotal - answered, 0);
+  const markers = buildQuestionProgressMarkers(
+    safeTotal,
+    currentIndex,
+    visited,
+    skipped,
+    choicesByIndex
+  );
+  const answered = countSessionAnswers(choicesByIndex, safeTotal);
 
-  // Fixed-column LTR grid: answered = yellow star, not answered = plain circle.
   useEffect(() => {
     logAntiMissingStarProgress("layout-applied", {
       answered_count: answered,
       total: safeTotal,
+      current_index: currentIndex,
       columns: STAR_PROGRESS_COLUMNS,
-      filled_yellow: answered,
-      remaining_circles: remainingCircles,
-      marker_rule: "answered-yellow-unanswered-circle",
+      marker_rule: "per-question-visited-answered-skipped-current-ring",
+      marker_sample: markers.slice(0, Math.min(10, markers.length)),
     });
-  }, [answered, remainingCircles, safeTotal]);
+  }, [answered, currentIndex, markers, safeTotal]);
 
   return (
     <div
@@ -90,22 +130,11 @@ function StarProgress({
       role="img"
       aria-label={`已完成 ${answered} 題，共 ${safeTotal} 題`}
       data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}
+      data-star-progress-interactive="false"
     >
-      {Array.from({ length: safeTotal }, (_, i) => {
-        const isAnswered = i < answered;
-        return (
-          <span
-            key={i}
-            className={`text-xl leading-none transition-all duration-300 sm:text-3xl ${
-              isAnswered
-                ? "scale-100 drop-shadow-sm"
-                : "scale-100 text-slate-400"
-            }`}
-          >
-            {isAnswered ? "⭐" : "○"}
-          </span>
-        );
-      })}
+      {markers.map((visual, i) => (
+        <StarProgressMarker key={i} visual={visual} />
+      ))}
     </div>
   );
 }
@@ -163,9 +192,11 @@ function OptionButton({
 
 export function StudentQuizExperience({
   currentQuestion,
-  currentIndex: _currentIndex,
+  currentIndex,
   totalQuestions,
-  answeredQuestionCount,
+  practiceVisited,
+  practiceSkipped,
+  sessionChoicesByIndex,
   shortAnswer,
   hasImage,
   getImageUrl,
@@ -195,7 +226,9 @@ export function StudentQuizExperience({
   currentQuestion: Question;
   currentIndex: number;
   totalQuestions: number;
-  answeredQuestionCount: number;
+  practiceVisited: Record<number, boolean>;
+  practiceSkipped: Record<number, boolean>;
+  sessionChoicesByIndex: Record<number, string | undefined>;
   shortAnswer: boolean;
   hasImage: (q: Question) => boolean;
   getImageUrl: (q: Question) => string | null;
@@ -253,7 +286,13 @@ export function StudentQuizExperience({
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-3 pb-6 sm:px-4 sm:pb-8">
         <div className="mb-2">
-          <StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />
+          <StarProgress
+            currentIndex={currentIndex}
+            total={totalQuestions}
+            visited={practiceVisited}
+            skipped={practiceSkipped}
+            choicesByIndex={sessionChoicesByIndex}
+          />
         </div>
 
         <AnimatePresence mode="wait">

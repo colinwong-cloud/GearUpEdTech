@@ -22,10 +22,17 @@ describe("StudentQuizExperience (Soft #260)", () => {
     expect(source).toContain("border-indigo-600");
   });
 
-  it("uses answered count for star progress (not current index)", () => {
-    expect(source).toContain(
-      "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />"
+  it("uses per-question star progress (Soft #263)", () => {
+    expect(source).toContain("quiz-star-per-question-v3");
+    expect(source).toContain("buildQuestionProgressMarkers");
+    expect(source).toContain("data-star-progress-interactive=\"false\"");
+    expect(source).toContain("practiceVisited: Record<number, boolean>");
+    const starBlock = source.slice(
+      source.indexOf("function StarProgress"),
+      source.indexOf("function OptionButton")
     );
+    expect(starBlock).not.toContain("onClick");
+    expect(starBlock).not.toContain("<button");
   });
 });
 
