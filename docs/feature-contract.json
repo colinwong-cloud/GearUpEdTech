@@ -975,7 +975,9 @@
       "category": "growth",
       "priority": "high",
       "title": "Soft #264 practice stamp off-period visibility and enrol rules",
-      "evidence_commits": [],
+      "evidence_commits": [
+        "8d3e1f4"
+      ],
       "checks": [
         {
           "type": "file_exists",
@@ -4726,8 +4728,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-22T16:02:49.564Z",
+  "generated_at": "2026-11-22T16:03:05.040Z",
   "commit_inventory": [
+    {
+      "sha": "f3ac6a133f9abf08349feee6dca45549b7b0a08f",
+      "date": "2026-11-22",
+      "summary": "fix(feature-contract): evidence commit for Soft #264 row"
+    },
+    {
+      "sha": "d918d130409ac5b52c31921c0a0ce26d686555f2",
+      "date": "2026-11-22",
+      "summary": "chore: refresh feature-contract inventory (Soft #264)"
+    },
     {
       "sha": "8d3e1f4464cf9c3800fbd2e5f1e250c9341e132b",
       "date": "2026-11-22",
@@ -7940,7 +7952,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 642,
+    "total_commits_since_start": 644,
     "total_feature_rows": 100
   }
 }
