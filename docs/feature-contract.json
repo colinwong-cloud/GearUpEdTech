@@ -4703,7 +4703,7 @@
       "priority": "high",
       "title": "Soft #262 — pending paper_rank default A + approve coercion (CONDITIONAL/HOLD until supabase_pending_paper_rank_rpc_default_262.sql applied)",
       "evidence_commits": [
-        "84c6d66"
+        "6b7454a"
       ],
       "checks": [
         {
@@ -4728,8 +4728,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-22T16:03:32.338Z",
+  "generated_at": "2026-11-22T16:03:46.373Z",
   "commit_inventory": [
+    {
+      "sha": "61ae7dd8a3ec2b124c101389d7684852adf007c7",
+      "date": "2026-11-22",
+      "summary": "fix(feature-contract): Soft #262 evidence on main merge commit"
+    },
+    {
+      "sha": "2723f54ac6f7a884dbf1c333582c66d7c944c682",
+      "date": "2026-11-22",
+      "summary": "chore: refresh feature-contract inventory"
+    },
     {
       "sha": "0662a5ed7566a640ff72d6fc0001d2f0fe4ade3f",
       "date": "2026-11-22",
@@ -7962,7 +7972,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 646,
+    "total_commits_since_start": 648,
     "total_feature_rows": 100
   }
 }
