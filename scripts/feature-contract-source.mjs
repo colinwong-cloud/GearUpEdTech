@@ -651,11 +651,46 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-off-rules-264",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Soft #264 practice stamp off-period visibility and enrol rules",
+      evidence_commits: [],
+      checks: [
+        { type: "file_exists", path: "supabase_stamp_card_off_rules_264.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_stamp_card_off_rules_264.sql",
+          snippet: "stamp_program_show_stamp_card",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_stamp_card_off_rules_264.sql",
+          snippet: "program_closed_on_hkt_date",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "show_stamp_card",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldShowPracticeStampCard",
+        },
+        {
+          type: "file_exists",
+          path: "src/lib/practice-stamp-off-rules-264.test.ts",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-home-soft-hide-card-global-off",
       month: "2026-10",
       category: "engagement",
       priority: "medium",
-      title: "Practice stamp chrome: hide when program off without in-progress card",
+      title: "Practice stamp chrome: server show_stamp_card on home/result/account",
       evidence_commits: ["8ad89f2"],
       checks: [
         {
@@ -666,7 +701,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/practice-stamp-card-ui.ts",
-          snippet: "status.stamps_program_open || status.has_active_card",
+          snippet: "shouldShowPracticeStampCard",
         },
         {
           type: "file_contains",

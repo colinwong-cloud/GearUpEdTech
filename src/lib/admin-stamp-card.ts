@@ -8,7 +8,7 @@ import {
 } from "@/lib/practice-stamp-card";
 
 export const STAMP_PROGRAM_OFF_NOTE =
-  "關閉後不可新報名；進行中印花卡可繼續累積與換領";
+  "關閉當日（香港時間）23:59 前仍可新開始；已有印花的學生可繼續累積與換領；中斷連續日後不再顯示印花卡，直至再次開放計劃；換領後不會自動開始新一輪，直至計劃再次開放";
 
 /** Shown when program settings load but no toggle audit row exists yet. */
 export const STAMP_PROGRAM_AUDIT_EMPTY = "尚未有更新紀錄";

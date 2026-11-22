@@ -114,10 +114,12 @@ describe("practice stamp card UI", () => {
     expect(shouldRenderPracticeStampCardChrome(null, false)).toBe(true);
   });
 
-  it("hides stamp chrome when program is off and student has no active card", () => {
+  it("hides stamp chrome when program is off and student has no active card past switch-off day", () => {
     const notEnrolledOff = {
       has_active_card: false,
+      show_stamp_card: false,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 0,
       streak: 0,
@@ -127,15 +129,32 @@ describe("practice stamp card UI", () => {
     expect(shouldRenderPracticeStampCardChrome(notEnrolledOff, false)).toBe(false);
   });
 
+  it("shows stamp chrome on switch-off day for 0-stamp students without a card", () => {
+    const sameDayNewStart = {
+      has_active_card: false,
+      show_stamp_card: true,
+      stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
+      stamps_per_card: 20,
+      stamp_count: 0,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(shouldRenderPracticeStampHomeChrome(sameDayNewStart, false)).toBe(true);
+  });
+
   it("keeps stamp chrome when program is off but student has in-progress card", () => {
     const activeWhileClosed = {
       has_active_card: true,
+      show_stamp_card: true,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 2,
       streak: 2,
       stamped_today: false,
-      last_stamp_hkt_date: null,
+      last_stamp_hkt_date: "2026-12-01",
     };
     expect(shouldRenderPracticeStampCardChrome(activeWhileClosed, false)).toBe(true);
     expect(shouldRenderPracticeStampHomeChrome(activeWhileClosed, false)).toBe(true);
@@ -144,7 +163,9 @@ describe("practice stamp card UI", () => {
   it("hides stamp chrome when streak is broken and program is off", () => {
     const brokenOffProgram = {
       has_active_card: true,
+      show_stamp_card: false,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 4,
       streak: 0,

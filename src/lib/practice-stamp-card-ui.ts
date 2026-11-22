@@ -1,7 +1,7 @@
 import {
   PRACTICE_STAMP_CARD_SIZE,
-  isPracticeStampProgressStreakBroken,
   resolvePracticeStampFilledSlotCount,
+  resolvePracticeStampShowCard,
 } from "./practice-stamp-card";
 import { supabase } from "@/lib/supabase";
 
@@ -80,20 +80,36 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
   sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
 }
 
-/** Hide stamp chrome when streak is broken and the stamp program is not running (no active activity). */
-export function shouldHidePracticeStampCardForBrokenStreakWithoutActivity(
-  status: StudentStampCardStatus
-): boolean {
-  if (status.stamps_program_open) return false;
-  return isPracticeStampProgressStreakBroken({
+/** Server-first visibility; mirrors stamp_program_show_stamp_card before RPC is deployed. */
+export function shouldShowPracticeStampCard(status: StudentStampCardStatus): boolean {
+  if (typeof status.show_stamp_card === "boolean") {
+    return status.show_stamp_card;
+  }
+  return resolvePracticeStampShowCard({
+    programOpen: status.stamps_program_open,
+    programClosedOnHktDate: status.program_closed_on_hkt_date ?? null,
+    todayHkt: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
     hasActiveCard: status.has_active_card,
+    stampCount: status.stamp_count,
     effectiveStreak: status.streak,
     lastStampHktDate: status.last_stamp_hkt_date,
   });
 }
 
+/** @deprecated Legacy helper; prefer shouldShowPracticeStampCard. */
+export function shouldHidePracticeStampCardForBrokenStreakWithoutActivity(
+  status: StudentStampCardStatus
+): boolean {
+  return !shouldShowPracticeStampCard(status);
+}
+
 /**
- * Soft #2 (subject home): hide when program is off without an in-progress card.
+ * Soft #264 (subject home): trust show_stamp_card from status RPC when present.
  * Never paint while status is loading or unknown — avoids OFF-program flash of stamp branding.
  */
 export function shouldRenderPracticeStampHomeChrome(
@@ -101,19 +117,17 @@ export function shouldRenderPracticeStampHomeChrome(
   loading: boolean
 ): boolean {
   if (loading || !status) return false;
-  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
-  return status.stamps_program_open || status.has_active_card;
+  return shouldShowPracticeStampCard(status);
 }
 
-/** Result page only: fail-open while loading; hide when off without active card. */
+/** Result page only: fail-open while loading; hide per show_stamp_card when known. */
 export function shouldRenderPracticeStampCardChrome(
   status: StudentStampCardStatus | null,
   loading: boolean
 ): boolean {
   if (loading) return true;
   if (!status) return true;
-  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
-  return status.stamps_program_open || status.has_active_card;
+  return shouldShowPracticeStampCard(status);
 }
 
 /** Account menu, account progress, subject home — strict fail-closed while loading/null. */
@@ -155,7 +169,10 @@ export type PracticeStampFooterState =
 
 export type StudentStampCardStatus = {
   has_active_card: boolean;
+  /** Authoritative student visibility (Soft #264); falls back to legacy rules when omitted. */
+  show_stamp_card?: boolean;
   stamps_program_open: boolean;
+  program_closed_on_hkt_date?: string | null;
   stamps_per_card: number;
   stamp_count: number;
   streak: number;
@@ -245,7 +262,10 @@ export function parseStudentStampCardStatus(data: unknown): StudentStampCardStat
   const row = data as Record<string, unknown>;
   return {
     has_active_card: Boolean(row.has_active_card),
+    show_stamp_card: typeof row.show_stamp_card === "boolean" ? row.show_stamp_card : undefined,
     stamps_program_open: row.stamps_program_open !== false,
+    program_closed_on_hkt_date:
+      typeof row.program_closed_on_hkt_date === "string" ? row.program_closed_on_hkt_date : null,
     stamps_per_card:
       typeof row.stamps_per_card === "number" ? row.stamps_per_card : PRACTICE_STAMP_CARD_SIZE,
     stamp_count: typeof row.stamp_count === "number" ? row.stamp_count : 0,
