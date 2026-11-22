@@ -656,7 +656,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Soft #264 practice stamp off-period visibility and enrol rules",
-      evidence_commits: ["8d3e1f4"],
+      evidence_commits: ["8d3e1f4", "ddbe68e"],
       checks: [
         { type: "file_exists", path: "supabase_stamp_card_off_rules_264.sql" },
         {
