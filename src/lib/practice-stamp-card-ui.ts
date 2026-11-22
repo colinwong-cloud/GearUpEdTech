@@ -1,7 +1,8 @@
 import {
   PRACTICE_STAMP_CARD_SIZE,
-  isPracticeStampProgressStreakBroken,
+  getHktCalendarDate,
   resolvePracticeStampFilledSlotCount,
+  resolvePracticeStampShowCard,
 } from "./practice-stamp-card";
 import { supabase } from "@/lib/supabase";
 
@@ -80,20 +81,36 @@ export function clearPracticeStampCardHomeDismissForSession(): void {
   sessionStorage.removeItem(PRACTICE_STAMP_CARD_HOME_DISMISS_SESSION_KEY);
 }
 
-/** Hide stamp chrome when streak is broken and the stamp program is not running (no active activity). */
-export function shouldHidePracticeStampCardForBrokenStreakWithoutActivity(
-  status: StudentStampCardStatus
-): boolean {
-  if (status.stamps_program_open) return false;
-  return isPracticeStampProgressStreakBroken({
+/** Server-first visibility; mirrors stamp_program_show_stamp_card before RPC is deployed. */
+export function shouldShowPracticeStampCard(status: StudentStampCardStatus): boolean {
+  if (typeof status.show_stamp_card === "boolean") {
+    return status.show_stamp_card;
+  }
+  return resolvePracticeStampShowCard({
+    programOpen: status.stamps_program_open,
+    programClosedOnHktDate: status.program_closed_on_hkt_date ?? null,
+    todayHkt: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
     hasActiveCard: status.has_active_card,
+    stampCount: status.stamp_count,
     effectiveStreak: status.streak,
     lastStampHktDate: status.last_stamp_hkt_date,
   });
 }
 
+/** @deprecated Legacy helper; prefer shouldShowPracticeStampCard. */
+export function shouldHidePracticeStampCardForBrokenStreakWithoutActivity(
+  status: StudentStampCardStatus
+): boolean {
+  return !shouldShowPracticeStampCard(status);
+}
+
 /**
- * Soft #2 (subject home): hide when program is off without an in-progress card.
+ * Soft #264 (subject home): trust show_stamp_card from status RPC when present.
  * Never paint while status is loading or unknown — avoids OFF-program flash of stamp branding.
  */
 export function shouldRenderPracticeStampHomeChrome(
@@ -101,19 +118,17 @@ export function shouldRenderPracticeStampHomeChrome(
   loading: boolean
 ): boolean {
   if (loading || !status) return false;
-  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
-  return status.stamps_program_open || status.has_active_card;
+  return shouldShowPracticeStampCard(status);
 }
 
-/** Result page only: fail-open while loading; hide when off without active card. */
+/** Result page only: fail-open while loading; hide per show_stamp_card when known. */
 export function shouldRenderPracticeStampCardChrome(
   status: StudentStampCardStatus | null,
   loading: boolean
 ): boolean {
   if (loading) return true;
   if (!status) return true;
-  if (shouldHidePracticeStampCardForBrokenStreakWithoutActivity(status)) return false;
-  return status.stamps_program_open || status.has_active_card;
+  return shouldShowPracticeStampCard(status);
 }
 
 /** Account menu, account progress, subject home — strict fail-closed while loading/null. */
@@ -127,6 +142,14 @@ export function stampCardHeaderStreakLine(streak: number): string {
 export function resultPageStreakEncouragement(streak: number): string {
   return `已連續 ${streak} 日練習，繼續加油！`;
 }
+
+/** Soft #264 — switch-off HKT day, visible 0-stamp / new-start window (student). */
+export const STAMP_SWITCH_OFF_DAY_NEW_START =
+  "今日 23:59（香港時間）前完成一次練習（至少 10 題）即可開始蓋印。";
+
+/** Soft #264 — post-redeem when 印花計劃開放 is off (student). */
+export const STAMP_POST_REDEEM_WHILE_PROGRAM_OFF =
+  "計劃再次開放後，即可開始新一輪印花卡。";
 
 export const STAMP_FOOTER_COPY = {
   progressDaysRemaining: (days: number) => `再練習 ${days} 日可換領禮品`,
@@ -151,11 +174,15 @@ export type PracticeStampFooterState =
   | "program_closed_for_new"
   | "not_enrolled_open"
   | "not_enrolled_off"
+  | "switch_off_day_new_start"
   | "post_redeem";
 
 export type StudentStampCardStatus = {
   has_active_card: boolean;
+  /** Authoritative student visibility (Soft #264); falls back to legacy rules when omitted. */
+  show_stamp_card?: boolean;
   stamps_program_open: boolean;
+  program_closed_on_hkt_date?: string | null;
   stamps_per_card: number;
   stamp_count: number;
   streak: number;
@@ -245,7 +272,10 @@ export function parseStudentStampCardStatus(data: unknown): StudentStampCardStat
   const row = data as Record<string, unknown>;
   return {
     has_active_card: Boolean(row.has_active_card),
+    show_stamp_card: typeof row.show_stamp_card === "boolean" ? row.show_stamp_card : undefined,
     stamps_program_open: row.stamps_program_open !== false,
+    program_closed_on_hkt_date:
+      typeof row.program_closed_on_hkt_date === "string" ? row.program_closed_on_hkt_date : null,
     stamps_per_card:
       typeof row.stamps_per_card === "number" ? row.stamps_per_card : PRACTICE_STAMP_CARD_SIZE,
     stamp_count: typeof row.stamp_count === "number" ? row.stamp_count : 0,
@@ -279,6 +309,26 @@ export function buildStampGridSlotCount(stampsPerCard: number): number {
   return stampsPerCard;
 }
 
+/** True when the student may still start on the HKT calendar day the program was switched off. */
+export function isPracticeStampSwitchOffDayNewStart(
+  status: StudentStampCardStatus,
+  todayHkt: string = getHktCalendarDate()
+): boolean {
+  if (status.stamps_program_open) return false;
+  const closedOn = status.program_closed_on_hkt_date;
+  if (!closedOn || todayHkt !== closedOn) return false;
+  if (!status.has_active_card) return true;
+  return status.stamp_count === 0 && status.streak === 0;
+}
+
+export function resolvePracticeStampPostRedeemFollowUpCopy(programOpen: boolean): string {
+  return programOpen ? STAMP_FOOTER_COPY.postRedeemTomorrow : STAMP_POST_REDEEM_WHILE_PROGRAM_OFF;
+}
+
+export function resolvePracticeStampPostRedeemCycleCopy(programOpen: boolean): string {
+  return programOpen ? GROWTH_STAMP_COPY.afterRedeemNewCycle : STAMP_POST_REDEEM_WHILE_PROGRAM_OFF;
+}
+
 export function resolvePracticeStampFooterState(input: {
   status: StudentStampCardStatus | null;
   redeemUiPhase: PracticeStampRedeemUiPhase;
@@ -295,6 +345,9 @@ export function resolvePracticeStampFooterState(input: {
   if (!status) return "not_enrolled_open";
 
   if (!status.has_active_card) {
+    if (isPracticeStampSwitchOffDayNewStart(status)) {
+      return "switch_off_day_new_start";
+    }
     return status.stamps_program_open ? "not_enrolled_open" : "not_enrolled_off";
   }
 
@@ -337,6 +390,9 @@ export function resolveStudentStampCardFilledSlotCount(status: StudentStampCardS
 }
 
 export function progressFooterLine(status: StudentStampCardStatus): string {
+  if (isPracticeStampSwitchOffDayNewStart(status)) {
+    return STAMP_SWITCH_OFF_DAY_NEW_START;
+  }
   const goal = status.stamps_per_card || PRACTICE_STAMP_CARD_SIZE;
   const remaining = Math.max(0, goal - status.streak);
   if (!status.has_active_card && status.stamp_count === 0 && status.streak === 0) {

@@ -94,10 +94,11 @@ describe("practice stamp card earn rules", () => {
     ).toBe(1);
   });
 
-  it("blocks new enrolment when the program is closed but still earns for mid-card students", () => {
+  it("blocks new enrolment when off and past switch-off day but still earns for mid-card students", () => {
     const closedNew = evaluatePracticeStampAward({
       answeredCount: 10,
       programOpen: false,
+      programClosedOnHktDate: "2026-10-27",
       hasActiveCard: false,
       alreadyStampedToday: false,
       lastStampHktDate: null,
@@ -109,6 +110,7 @@ describe("practice stamp card earn rules", () => {
     const midCard = evaluatePracticeStampAward({
       answeredCount: 10,
       programOpen: false,
+      programClosedOnHktDate: "2026-10-27",
       hasActiveCard: true,
       alreadyStampedToday: false,
       lastStampHktDate: previousHktCalendarDate(awardDate),

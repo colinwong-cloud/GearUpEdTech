@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
+import { getHktCalendarDate, PRACTICE_STAMP_CARD_SIZE } from "./practice-stamp-card";
 import {
   GROWTH_STAMP_COPY,
   STAMP_EARN_FEEDBACK,
@@ -25,6 +25,11 @@ import {
   shouldHidePracticeStampCardForBrokenStreakWithoutActivity,
   resolveStudentStampCardFilledSlotCount,
   progressFooterLine,
+  resolvePracticeStampFooterState,
+  resolvePracticeStampPostRedeemCycleCopy,
+  resolvePracticeStampPostRedeemFollowUpCopy,
+  STAMP_POST_REDEEM_WHILE_PROGRAM_OFF,
+  STAMP_SWITCH_OFF_DAY_NEW_START,
 } from "./practice-stamp-card-ui";
 
 describe("practice stamp card UI", () => {
@@ -114,10 +119,12 @@ describe("practice stamp card UI", () => {
     expect(shouldRenderPracticeStampCardChrome(null, false)).toBe(true);
   });
 
-  it("hides stamp chrome when program is off and student has no active card", () => {
+  it("hides stamp chrome when program is off and student has no active card past switch-off day", () => {
     const notEnrolledOff = {
       has_active_card: false,
+      show_stamp_card: false,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 0,
       streak: 0,
@@ -127,15 +134,32 @@ describe("practice stamp card UI", () => {
     expect(shouldRenderPracticeStampCardChrome(notEnrolledOff, false)).toBe(false);
   });
 
+  it("shows stamp chrome on switch-off day for 0-stamp students without a card", () => {
+    const sameDayNewStart = {
+      has_active_card: false,
+      show_stamp_card: true,
+      stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
+      stamps_per_card: 20,
+      stamp_count: 0,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(shouldRenderPracticeStampHomeChrome(sameDayNewStart, false)).toBe(true);
+  });
+
   it("keeps stamp chrome when program is off but student has in-progress card", () => {
     const activeWhileClosed = {
       has_active_card: true,
+      show_stamp_card: true,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 2,
       streak: 2,
       stamped_today: false,
-      last_stamp_hkt_date: null,
+      last_stamp_hkt_date: "2026-12-01",
     };
     expect(shouldRenderPracticeStampCardChrome(activeWhileClosed, false)).toBe(true);
     expect(shouldRenderPracticeStampHomeChrome(activeWhileClosed, false)).toBe(true);
@@ -144,7 +168,9 @@ describe("practice stamp card UI", () => {
   it("hides stamp chrome when streak is broken and program is off", () => {
     const brokenOffProgram = {
       has_active_card: true,
+      show_stamp_card: false,
       stamps_program_open: false,
+      program_closed_on_hkt_date: "2026-11-30",
       stamps_per_card: 20,
       stamp_count: 4,
       streak: 0,
@@ -274,6 +300,54 @@ describe("practice stamp card UI", () => {
     expect(formatStampRedeemDateHkt("2026-10-28")).toBe("2026/10/28");
     expect(formatStampRedeemDateHkt("2026-10-28 08:13:00")).toBe("2026/10/28 08:13");
     expect(formatStampRedeemDateHkt("2026-10-28T00:13:00.000Z")).toBe("2026/10/28 08:13");
+  });
+
+  it("locks Soft #264 switch-off-day new-start copy instead of 活動暫停新報名", () => {
+    const todayHkt = getHktCalendarDate();
+    const switchOffDay = {
+      has_active_card: false,
+      show_stamp_card: true,
+      stamps_program_open: false,
+      program_closed_on_hkt_date: todayHkt,
+      stamps_per_card: 20,
+      stamp_count: 0,
+      streak: 0,
+      stamped_today: false,
+      last_stamp_hkt_date: null,
+    };
+    expect(
+      resolvePracticeStampFooterState({
+        status: switchOffDay,
+        redeemUiPhase: "idle",
+        postRedeemMessage: false,
+        giftWindowOpen: true,
+        giftInStock: true,
+      })
+    ).toBe("switch_off_day_new_start");
+    expect(progressFooterLine(switchOffDay)).toBe(STAMP_SWITCH_OFF_DAY_NEW_START);
+    const cardSrc = readFileSync(
+      resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
+      "utf8"
+    );
+    expect(cardSrc).toContain('footerState === "switch_off_day_new_start"');
+    expect(cardSrc).toContain("STAMP_SWITCH_OFF_DAY_NEW_START");
+  });
+
+  it("locks post-redeem copy while program off vs campaign on", () => {
+    expect(resolvePracticeStampPostRedeemCycleCopy(false)).toBe(
+      STAMP_POST_REDEEM_WHILE_PROGRAM_OFF
+    );
+    expect(resolvePracticeStampPostRedeemFollowUpCopy(false)).toBe(
+      STAMP_POST_REDEEM_WHILE_PROGRAM_OFF
+    );
+    expect(resolvePracticeStampPostRedeemCycleCopy(true)).toBe(GROWTH_STAMP_COPY.afterRedeemNewCycle);
+    expect(resolvePracticeStampPostRedeemFollowUpCopy(true)).toBe(STAMP_FOOTER_COPY.postRedeemTomorrow);
+    const cardSrc = readFileSync(
+      resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
+      "utf8"
+    );
+    expect(cardSrc).toContain("resolvePracticeStampPostRedeemCycleCopy");
+    expect(cardSrc).toContain("resolvePracticeStampPostRedeemFollowUpCopy");
   });
 
   it("uses a self-contained stamp seal SVG safe for img tags", () => {

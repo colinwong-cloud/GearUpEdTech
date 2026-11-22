@@ -12,6 +12,16 @@ export type PracticeStampAwardReason =
   | "enrolment_closed"
   | "session_not_found";
 
+export type PracticeStampOffRulesInput = {
+  programOpen: boolean;
+  programClosedOnHktDate: string | null;
+  todayHkt: string;
+  hasActiveCard: boolean;
+  stampCount: number;
+  effectiveStreak: number;
+  lastStampHktDate: string | null;
+};
+
 export type PracticeStampAwardEvaluation = {
   awarded: boolean;
   reason?: PracticeStampAwardReason;
@@ -116,9 +126,54 @@ export function computePracticeStampStreakAfterAward(
   return 1;
 }
 
+/** Mirrors stamp_program_allows_new_enrol (Soft #264). */
+export function stampProgramAllowsNewEnrol(
+  programOpen: boolean,
+  programClosedOnHktDate: string | null,
+  hktDate: string
+): boolean {
+  if (programOpen) return true;
+  if (!programClosedOnHktDate) return false;
+  return hktDate === programClosedOnHktDate;
+}
+
+/** Mirrors stamp_program_show_stamp_card (Soft #264). */
+export function resolvePracticeStampShowCard(input: PracticeStampOffRulesInput): boolean {
+  if (input.programOpen) return true;
+
+  if (!input.hasActiveCard) {
+    if (input.programClosedOnHktDate && input.todayHkt === input.programClosedOnHktDate) {
+      return true;
+    }
+    return false;
+  }
+
+  const yesterday = previousHktCalendarDate(input.todayHkt);
+
+  if (
+    input.effectiveStreak <= 0 &&
+    input.lastStampHktDate !== null &&
+    input.lastStampHktDate !== input.todayHkt &&
+    input.lastStampHktDate !== yesterday
+  ) {
+    return false;
+  }
+
+  if (
+    input.stampCount <= 0 &&
+    input.programClosedOnHktDate &&
+    input.todayHkt > input.programClosedOnHktDate
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export function evaluatePracticeStampAward(input: {
   answeredCount: number;
   programOpen: boolean;
+  programClosedOnHktDate?: string | null;
   hasActiveCard: boolean;
   alreadyStampedToday: boolean;
   lastStampHktDate: string | null;
@@ -131,9 +186,23 @@ export function evaluatePracticeStampAward(input: {
   if (input.alreadyStampedToday) {
     return { awarded: false, reason: "already_stamped_today" };
   }
-  if (!input.hasActiveCard && !input.programOpen) {
+
+  const closedOn = input.programClosedOnHktDate ?? null;
+  const allowsNewEnrol = stampProgramAllowsNewEnrol(input.programOpen, closedOn, input.awardHktDate);
+
+  if (!input.hasActiveCard && !allowsNewEnrol) {
     return { awarded: false, reason: "enrolment_closed" };
   }
+
+  if (input.hasActiveCard && input.lastStampHktDate && !input.programOpen) {
+    const yesterday = previousHktCalendarDate(input.awardHktDate);
+    const gapDay =
+      input.lastStampHktDate !== input.awardHktDate && input.lastStampHktDate !== yesterday;
+    if (gapDay) {
+      return { awarded: false, reason: "enrolment_closed" };
+    }
+  }
+
   const enrolsNewCard = !input.hasActiveCard;
   const newStreak = computePracticeStampStreakAfterAward(
     input.lastStampHktDate,

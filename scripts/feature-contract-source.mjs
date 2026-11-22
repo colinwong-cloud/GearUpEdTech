@@ -414,7 +414,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/admin-stamp-card.ts",
-          snippet: "關閉後不可新報名；進行中印花卡可繼續累積與換領",
+          snippet: "關閉當日（香港時間）23:59 前仍可新開始",
         },
         {
           type: "file_contains",
@@ -651,11 +651,56 @@ export const FEATURE_CONTRACT_BASE = {
       ],
     },
     {
+      id: "practice-stamp-off-rules-264",
+      month: "2026-11",
+      category: "growth",
+      priority: "high",
+      title: "Soft #264 practice stamp off-period visibility and enrol rules",
+      evidence_commits: ["8d3e1f4", "ddbe68e"],
+      checks: [
+        { type: "file_exists", path: "supabase_stamp_card_off_rules_264.sql" },
+        {
+          type: "file_contains",
+          path: "supabase_stamp_card_off_rules_264.sql",
+          snippet: "stamp_program_show_stamp_card",
+        },
+        {
+          type: "file_contains",
+          path: "supabase_stamp_card_off_rules_264.sql",
+          snippet: "program_closed_on_hkt_date",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "show_stamp_card",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "shouldShowPracticeStampCard",
+        },
+        {
+          type: "file_exists",
+          path: "src/lib/practice-stamp-off-rules-264.test.ts",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_SWITCH_OFF_DAY_NEW_START",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_POST_REDEEM_WHILE_PROGRAM_OFF",
+        },
+      ],
+    },
+    {
       id: "practice-stamp-home-soft-hide-card-global-off",
       month: "2026-10",
       category: "engagement",
       priority: "medium",
-      title: "Practice stamp chrome: hide when program off without in-progress card",
+      title: "Practice stamp chrome: server show_stamp_card on home/result/account",
       evidence_commits: ["8ad89f2"],
       checks: [
         {
@@ -666,7 +711,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/practice-stamp-card-ui.ts",
-          snippet: "status.stamps_program_open || status.has_active_card",
+          snippet: "shouldShowPracticeStampCard",
         },
         {
           type: "file_contains",
@@ -1235,7 +1280,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Soft #253 — 呈分試 guide P3 copy + /guides/IA + redirects + og",
-      evidence_commits: ["314ac21"],
+      evidence_commits: ["15d3c43"],
       checks: [
         {
           type: "file_contains",
@@ -2727,7 +2772,7 @@ export const FEATURE_CONTRACT_BASE = {
       priority: "high",
       title:
         "Soft #262 — pending paper_rank default A + approve coercion (CONDITIONAL/HOLD until supabase_pending_paper_rank_rpc_default_262.sql applied)",
-      evidence_commits: ["84c6d66"],
+      evidence_commits: ["6b7454a"],
       checks: [
         { type: "file_exists", path: "supabase_pending_paper_rank_rpc_default_262.sql" },
         {
