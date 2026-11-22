@@ -414,7 +414,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/lib/admin-stamp-card.ts",
-          snippet: "關閉後不可新報名；進行中印花卡可繼續累積與換領",
+          snippet: "關閉當日（香港時間）23:59 前仍可新開始",
         },
         {
           type: "file_contains",
