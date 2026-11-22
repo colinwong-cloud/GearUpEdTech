@@ -1,5 +1,6 @@
 import {
   PRACTICE_STAMP_CARD_SIZE,
+  getHktCalendarDate,
   resolvePracticeStampFilledSlotCount,
   resolvePracticeStampShowCard,
 } from "./practice-stamp-card";
@@ -142,6 +143,14 @@ export function resultPageStreakEncouragement(streak: number): string {
   return `已連續 ${streak} 日練習，繼續加油！`;
 }
 
+/** Soft #264 — switch-off HKT day, visible 0-stamp / new-start window (student). */
+export const STAMP_SWITCH_OFF_DAY_NEW_START =
+  "今日 23:59（香港時間）前完成一次練習（至少 10 題）即可開始蓋印。";
+
+/** Soft #264 — post-redeem when 印花計劃開放 is off (student). */
+export const STAMP_POST_REDEEM_WHILE_PROGRAM_OFF =
+  "計劃再次開放後，即可開始新一輪印花卡。";
+
 export const STAMP_FOOTER_COPY = {
   progressDaysRemaining: (days: number) => `再練習 ${days} 日可換領禮品`,
   redeemCta: "立即換領",
@@ -165,6 +174,7 @@ export type PracticeStampFooterState =
   | "program_closed_for_new"
   | "not_enrolled_open"
   | "not_enrolled_off"
+  | "switch_off_day_new_start"
   | "post_redeem";
 
 export type StudentStampCardStatus = {
@@ -299,6 +309,26 @@ export function buildStampGridSlotCount(stampsPerCard: number): number {
   return stampsPerCard;
 }
 
+/** True when the student may still start on the HKT calendar day the program was switched off. */
+export function isPracticeStampSwitchOffDayNewStart(
+  status: StudentStampCardStatus,
+  todayHkt: string = getHktCalendarDate()
+): boolean {
+  if (status.stamps_program_open) return false;
+  const closedOn = status.program_closed_on_hkt_date;
+  if (!closedOn || todayHkt !== closedOn) return false;
+  if (!status.has_active_card) return true;
+  return status.stamp_count === 0 && status.streak === 0;
+}
+
+export function resolvePracticeStampPostRedeemFollowUpCopy(programOpen: boolean): string {
+  return programOpen ? STAMP_FOOTER_COPY.postRedeemTomorrow : STAMP_POST_REDEEM_WHILE_PROGRAM_OFF;
+}
+
+export function resolvePracticeStampPostRedeemCycleCopy(programOpen: boolean): string {
+  return programOpen ? GROWTH_STAMP_COPY.afterRedeemNewCycle : STAMP_POST_REDEEM_WHILE_PROGRAM_OFF;
+}
+
 export function resolvePracticeStampFooterState(input: {
   status: StudentStampCardStatus | null;
   redeemUiPhase: PracticeStampRedeemUiPhase;
@@ -315,6 +345,9 @@ export function resolvePracticeStampFooterState(input: {
   if (!status) return "not_enrolled_open";
 
   if (!status.has_active_card) {
+    if (isPracticeStampSwitchOffDayNewStart(status)) {
+      return "switch_off_day_new_start";
+    }
     return status.stamps_program_open ? "not_enrolled_open" : "not_enrolled_off";
   }
 
@@ -357,6 +390,9 @@ export function resolveStudentStampCardFilledSlotCount(status: StudentStampCardS
 }
 
 export function progressFooterLine(status: StudentStampCardStatus): string {
+  if (isPracticeStampSwitchOffDayNewStart(status)) {
+    return STAMP_SWITCH_OFF_DAY_NEW_START;
+  }
   const goal = status.stamps_per_card || PRACTICE_STAMP_CARD_SIZE;
   const remaining = Math.max(0, goal - status.streak);
   if (!status.has_active_card && status.stamp_count === 0 && status.streak === 0) {

@@ -8,6 +8,7 @@ import {
   STAMP_CARD_HEADER_TITLE,
   STAMP_FOOTER_COPY,
   STAMP_HOME_REOPEN_LABEL,
+  STAMP_SWITCH_OFF_DAY_NEW_START,
   clearPracticeStampCardHomeDismissForSession,
   formatStampGiftWindowEndLabel,
   isPracticeStampCardHomeDismissedForSession,
@@ -17,6 +18,8 @@ import {
   progressFooterLine,
   requestPracticeStampRedeem,
   resolvePracticeStampFooterState,
+  resolvePracticeStampPostRedeemCycleCopy,
+  resolvePracticeStampPostRedeemFollowUpCopy,
   resolveStudentStampCardFilledSlotCount,
   setPracticeStampCardHomeDismissedForSession,
   shouldRenderPracticeStampCardChrome,
@@ -310,6 +313,9 @@ export function PracticeStampCard({
             {footerState === "not_enrolled_open" && (
               <p>{GROWTH_STAMP_COPY.blank}</p>
             )}
+            {footerState === "switch_off_day_new_start" && (
+              <p>{STAMP_SWITCH_OFF_DAY_NEW_START}</p>
+            )}
             {footerState === "not_enrolled_off" && (
               <p>{STAMP_FOOTER_COPY.programClosedForNew}</p>
             )}
@@ -321,7 +327,9 @@ export function PracticeStampCard({
             {footerState === "redeeming" && <p>{STAMP_FOOTER_COPY.redeeming}</p>}
             {footerState === "error" && <p>{STAMP_FOOTER_COPY.redeemError}</p>}
             {footerState === "post_redeem" && (
-              <p>{GROWTH_STAMP_COPY.afterRedeemNewCycle}</p>
+              <p>
+                {resolvePracticeStampPostRedeemCycleCopy(status?.stamps_program_open ?? true)}
+              </p>
             )}
             {footerState === "success" && (
               <div className="relative z-[1] mb-2 space-y-2 rounded-xl border border-emerald-200 bg-white/90 p-3 shadow-sm">
@@ -338,7 +346,9 @@ export function PracticeStampCard({
                     </button>
                   </div>
                 )}
-                <p className="text-xs text-amber-900/85">{STAMP_FOOTER_COPY.postRedeemTomorrow}</p>
+                <p className="text-xs text-amber-900/85">
+                  {resolvePracticeStampPostRedeemFollowUpCopy(status?.stamps_program_open ?? true)}
+                </p>
               </div>
             )}
           </div>

@@ -683,6 +683,16 @@ export const FEATURE_CONTRACT_BASE = {
           type: "file_exists",
           path: "src/lib/practice-stamp-off-rules-264.test.ts",
         },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_SWITCH_OFF_DAY_NEW_START",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/practice-stamp-card-ui.ts",
+          snippet: "STAMP_POST_REDEEM_WHILE_PROGRAM_OFF",
+        },
       ],
     },
     {
