@@ -329,8 +329,8 @@ describe("practice stamp card UI", () => {
       resolve(process.cwd(), "src/components/practice-stamp-card.tsx"),
       "utf8"
     );
-    expect(cardSrc).toContain("switch_off_day_new_start");
-    expect(cardSrc).toContain(STAMP_SWITCH_OFF_DAY_NEW_START);
+    expect(cardSrc).toContain('footerState === "switch_off_day_new_start"');
+    expect(cardSrc).toContain("STAMP_SWITCH_OFF_DAY_NEW_START");
   });
 
   it("locks post-redeem copy while program off vs campaign on", () => {
