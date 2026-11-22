@@ -250,10 +250,10 @@
     },
     {
       "id": "quiz-star-progress-ltr-grid",
-      "month": "2026-07",
+      "month": "2026-11",
       "category": "quiz-core",
       "priority": "critical",
-      "title": "Quiz star progress: answered yellow star, unanswered plain circle (LTR grid)",
+      "title": "Quiz star progress: per-question visited / answered / skipped / current ring (LTR grid)",
       "evidence_commits": [
         "5d0cea8",
         "22c0654"
@@ -264,9 +264,13 @@
           "path": "src/components/student-quiz-experience.tsx"
         },
         {
+          "type": "file_exists",
+          "path": "src/lib/student-practice-ux.ts"
+        },
+        {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-answered-circle-v2\""
+          "snippet": "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-per-question-v3\""
         },
         {
           "type": "file_contains",
@@ -281,7 +285,7 @@
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "marker_rule: \"answered-yellow-unanswered-circle\""
+          "snippet": "marker_rule: \"per-question-visited-answered-skipped-current-ring\""
         },
         {
           "type": "file_contains",
@@ -296,12 +300,17 @@
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />"
+          "snippet": "buildQuestionProgressMarkers"
         },
         {
           "type": "file_contains",
           "path": "src/components/student-quiz-experience.tsx",
-          "snippet": "scale-100 text-slate-400"
+          "snippet": "data-star-progress-interactive=\"false\""
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/student-practice-ux.ts",
+          "snippet": "buildQuestionProgressMarkers"
         }
       ]
     },
@@ -4679,7 +4688,7 @@
       ]
     }
   ],
-  "generated_at": "2026-11-17T23:58:22.350Z",
+  "generated_at": "2026-11-22T02:50:44.207Z",
   "commit_inventory": [
     {
       "sha": "145e9e7649961070dfec17e4a956732eaba12040",
@@ -7890,10 +7899,30 @@
       "sha": "f3e2e4a76e56dff9ec459d48895943a47004d72b",
       "date": "2026-11-17",
       "summary": "chore: refresh feature-contract.json inventory (Soft #262)"
+    },
+    {
+      "sha": "9988ad5b5689eeaeab6a89a2d52a674456446b23",
+      "date": "Sun Nov 22 02:49:38 2026 +0000",
+      "summary": "feat(Soft #263): per-question star progress markers in practice"
+    },
+    {
+      "sha": "4d079982a58c7f88eda97acb1d2e12b9d19cb904",
+      "date": "Sun Nov 22 02:49:39 2026 +0000",
+      "summary": "chore: refresh feature contract for Soft #263 star progress"
+    },
+    {
+      "sha": "787bac8df02e32f2ed663b166d9877faa97094d4",
+      "date": "Sun Nov 22 02:50:22 2026 +0000",
+      "summary": "chore: sync feature contract inventory after fetch"
+    },
+    {
+      "sha": "6b7454a38d618a5c1d0674183194f579efe04f3c",
+      "date": "Wed Nov 18 08:08:30 2026 +0800",
+      "summary": "Soft #262 — pending paper_rank default/RPC fix (#261)"
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 642,
+    "total_commits_since_start": 646,
     "total_feature_rows": 99
   }
 }

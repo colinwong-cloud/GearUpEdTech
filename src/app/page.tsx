@@ -66,7 +66,9 @@ import {
 import {
   canUsePracticeNext,
   canUsePracticePrev,
-  countSessionAnswers,
+  clearPracticeSkippedForIndex,
+  createInitialPracticeVisitState,
+  onPracticeNavigateAway,
   practiceFinishEnabled,
   showPracticeFinishButton,
   summarizeCollapsedQuestionTypes,
@@ -870,6 +872,12 @@ export default function QuizApp() {
   const [textAnswer, setTextAnswer] = useState("");
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [sessionChoices, setSessionChoices] = useState<Record<number, string>>({});
+  const [practiceVisited, setPracticeVisited] = useState<Record<number, boolean>>(
+    () => createInitialPracticeVisitState()
+  );
+  const [practiceSkipped, setPracticeSkipped] = useState<Record<number, boolean>>(
+    {}
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1642,6 +1650,8 @@ export default function QuizApp() {
     setTextAnswer("");
     setAnswers([]);
     setSessionChoices({});
+    setPracticeVisited(createInitialPracticeVisitState());
+    setPracticeSkipped({});
     startTimeRef.current = Date.now();
     setShowSpeedReminder(false);
     speedReminderShownRef.current = false;
@@ -1931,8 +1941,8 @@ export default function QuizApp() {
 
   const syncChoiceForCurrentIndex = useCallback(
     (value: string) => {
+      const trimmed = value.trim();
       setSessionChoices((prev) => {
-        const trimmed = value.trim();
         if (!trimmed) {
           if (!(currentIndex in prev)) return prev;
           const next = { ...prev };
@@ -1942,6 +1952,9 @@ export default function QuizApp() {
         if (prev[currentIndex] === trimmed) return prev;
         return { ...prev, [currentIndex]: trimmed };
       });
+      if (trimmed) {
+        setPracticeSkipped((prev) => clearPracticeSkippedForIndex(prev, currentIndex));
+      }
     },
     [currentIndex]
   );
@@ -1959,12 +1972,22 @@ export default function QuizApp() {
     if (submitting) return;
     if (getQuizSoundEnabled()) playClickSound();
     setSessionChoices((prev) => ({ ...prev, [currentIndex]: label }));
+    setPracticeSkipped((prev) => clearPracticeSkippedForIndex(prev, currentIndex));
     noteAnswerSpeedIfNeeded();
   };
 
   const navigateToQuestionIndex = (nextIndex: number) => {
     if (submitting || nextIndex < 0 || nextIndex >= questions.length) return;
     const merged = mergeChoicesForCurrentQuestion(sessionChoices);
+    const visitPatch = onPracticeNavigateAway(
+      currentIndex,
+      nextIndex,
+      merged,
+      practiceVisited,
+      practiceSkipped
+    );
+    setPracticeVisited(visitPatch.visited);
+    setPracticeSkipped(visitPatch.skipped);
     setSessionChoices(merged);
     setCurrentIndex(nextIndex);
     setTextAnswer(merged[nextIndex] ?? "");
@@ -2114,6 +2137,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionChoices({});
+    setPracticeVisited(createInitialPracticeVisitState());
+    setPracticeSkipped({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2128,6 +2153,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionChoices({});
+    setPracticeVisited(createInitialPracticeVisitState());
+    setPracticeSkipped({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2148,6 +2175,8 @@ export default function QuizApp() {
     setSessionId(null);
     setAnswers([]);
     setSessionChoices({});
+    setPracticeVisited(createInitialPracticeVisitState());
+    setPracticeSkipped({});
     setSessionPracticeSummary(null);
     priorPracticeSessionsRef.current = [];
     priorHistoryKnownRef.current = false;
@@ -2565,10 +2594,6 @@ export default function QuizApp() {
   const canSubmit =
     shortAnswer && textAnswer.trim().length > 0 && !submitting;
   const mergedSessionChoices = mergeChoicesForCurrentQuestion(sessionChoices);
-  const answeredQuestionCount = countSessionAnswers(
-    mergedSessionChoices,
-    questions.length
-  );
   const selectedMcqOption = shortAnswer
     ? null
     : mergedSessionChoices[currentIndex] ?? null;
@@ -2590,7 +2615,9 @@ export default function QuizApp() {
           currentQuestion={currentQuestion}
           currentIndex={currentIndex}
           totalQuestions={questions.length}
-          answeredQuestionCount={answeredQuestionCount}
+          practiceVisited={practiceVisited}
+          practiceSkipped={practiceSkipped}
+          sessionChoicesByIndex={mergedSessionChoices}
           shortAnswer={shortAnswer}
           hasImage={hasImage}
           getImageUrl={getImagePublicUrl}

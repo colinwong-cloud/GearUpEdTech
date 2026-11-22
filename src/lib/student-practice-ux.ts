@@ -59,3 +59,90 @@ export function practiceFinishEnabled(
 ): boolean {
   return everyQuestionAnswered(choicesByIndex, totalQuestions);
 }
+
+/** Soft #263 — per-question star row marker (progress display only). */
+export type PracticeProgressMarkerVisual =
+  | "unvisited-dot"
+  | "answered-star"
+  | "skipped-grey-star"
+  | "current-answered-star"
+  | "current-unanswered-star"
+  | "current-skipped-grey-star";
+
+export function questionHasSessionAnswer(
+  choicesByIndex: Record<number, string | undefined>,
+  questionIndex: number
+): boolean {
+  const v = choicesByIndex[questionIndex];
+  return v != null && String(v).trim().length > 0;
+}
+
+export function createInitialPracticeVisitState(): Record<number, boolean> {
+  return { 0: true };
+}
+
+/** Mark skip on leave-without-answer; mark next index visited. */
+export function onPracticeNavigateAway(
+  currentIndex: number,
+  nextIndex: number,
+  choicesByIndex: Record<number, string | undefined>,
+  visited: Record<number, boolean>,
+  skipped: Record<number, boolean>
+): { visited: Record<number, boolean>; skipped: Record<number, boolean> } {
+  const hasAnswer = questionHasSessionAnswer(choicesByIndex, currentIndex);
+  let nextSkipped = { ...skipped };
+  if (!hasAnswer) {
+    nextSkipped[currentIndex] = true;
+  } else if (currentIndex in nextSkipped) {
+    nextSkipped = { ...nextSkipped };
+    delete nextSkipped[currentIndex];
+  }
+  return {
+    visited: { ...visited, [currentIndex]: true, [nextIndex]: true },
+    skipped: nextSkipped,
+  };
+}
+
+export function clearPracticeSkippedForIndex(
+  skipped: Record<number, boolean>,
+  questionIndex: number
+): Record<number, boolean> {
+  if (!(questionIndex in skipped)) return skipped;
+  const next = { ...skipped };
+  delete next[questionIndex];
+  return next;
+}
+
+export function buildQuestionProgressMarkers(
+  totalQuestions: number,
+  currentIndex: number,
+  visited: Record<number, boolean>,
+  skipped: Record<number, boolean>,
+  choicesByIndex: Record<number, string | undefined>
+): PracticeProgressMarkerVisual[] {
+  const markers: PracticeProgressMarkerVisual[] = [];
+  const safeTotal = Math.max(0, Math.trunc(totalQuestions));
+  const safeCurrent = Math.min(
+    Math.max(0, Math.trunc(currentIndex)),
+    Math.max(safeTotal - 1, 0)
+  );
+  for (let i = 0; i < safeTotal; i++) {
+    const isCurrent = i === safeCurrent;
+    const hasAnswer = questionHasSessionAnswer(choicesByIndex, i);
+    const isVisited = Boolean(visited[i]);
+    const isSkipped = Boolean(skipped[i]) && !hasAnswer;
+
+    if (isCurrent) {
+      if (hasAnswer) markers.push("current-answered-star");
+      else if (isSkipped) markers.push("current-skipped-grey-star");
+      else markers.push("current-unanswered-star");
+    } else if (hasAnswer) {
+      markers.push("answered-star");
+    } else if (isSkipped || (isVisited && !hasAnswer)) {
+      markers.push("skipped-grey-star");
+    } else {
+      markers.push("unvisited-dot");
+    }
+  }
+  return markers;
+}

@@ -125,10 +125,10 @@ export const FEATURE_CONTRACT_BASE = {
     },
     {
       id: "quiz-star-progress-ltr-grid",
-      month: "2026-07",
+      month: "2026-11",
       category: "quiz-core",
       priority: "critical",
-      title: "Quiz star progress: answered yellow star, unanswered plain circle (LTR grid)",
+      title: "Quiz star progress: per-question visited / answered / skipped / current ring (LTR grid)",
       evidence_commits: ["5d0cea8", "22c0654"],
       checks: [
         {
@@ -136,9 +136,13 @@ export const FEATURE_CONTRACT_BASE = {
           path: "src/components/student-quiz-experience.tsx",
         },
         {
+          type: "file_exists",
+          path: "src/lib/student-practice-ux.ts",
+        },
+        {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-answered-circle-v2\"",
+          snippet: "STAR_PROGRESS_POLICY_VERSION = \"quiz-star-per-question-v3\"",
         },
         {
           type: "file_contains",
@@ -153,7 +157,7 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "marker_rule: \"answered-yellow-unanswered-circle\"",
+          snippet: "marker_rule: \"per-question-visited-answered-skipped-current-ring\"",
         },
         {
           type: "file_contains",
@@ -168,12 +172,17 @@ export const FEATURE_CONTRACT_BASE = {
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />",
+          snippet: "buildQuestionProgressMarkers",
         },
         {
           type: "file_contains",
           path: "src/components/student-quiz-experience.tsx",
-          snippet: "scale-100 text-slate-400",
+          snippet: "data-star-progress-interactive=\"false\"",
+        },
+        {
+          type: "file_contains",
+          path: "src/lib/student-practice-ux.ts",
+          snippet: "buildQuestionProgressMarkers",
         },
       ],
     },

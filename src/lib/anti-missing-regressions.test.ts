@@ -336,23 +336,22 @@ describe("anti-missing regression guards", () => {
     expect(callbackSource).toContain("尚未捕捉到自動續費授權");
   });
 
-  it("keeps quiz star progress answered=yellow and unanswered=circle", () => {
+  it("keeps quiz star progress per-question markers (Soft #263)", () => {
     const quizUiSource = readSource("src/components/student-quiz-experience.tsx");
     expect(quizUiSource).toContain(
-      'STAR_PROGRESS_POLICY_VERSION = "quiz-star-answered-circle-v2"'
+      'STAR_PROGRESS_POLICY_VERSION = "quiz-star-per-question-v3"'
     );
     expect(quizUiSource).toContain("STAR_PROGRESS_COLUMNS = 10");
     expect(quizUiSource).toContain("[anti-missing][quiz][star-progress]");
-    expect(quizUiSource).toContain('marker_rule: "answered-yellow-unanswered-circle"');
+    expect(quizUiSource).toContain(
+      "marker_rule: \"per-question-visited-answered-skipped-current-ring\""
+    );
     expect(quizUiSource).toContain(
       "gridTemplateColumns: `repeat(${STAR_PROGRESS_COLUMNS}, minmax(0, 1fr))`"
     );
     expect(quizUiSource).toContain("data-star-progress-policy={STAR_PROGRESS_POLICY_VERSION}");
-    expect(quizUiSource).toContain(
-      "<StarProgress answeredCount={answeredQuestionCount} total={totalQuestions} />"
-    );
-    expect(quizUiSource).toContain("scale-100 text-slate-400");
-    expect(quizUiSource).not.toContain("opacity-35 grayscale");
+    expect(quizUiSource).toContain("buildQuestionProgressMarkers");
+    expect(quizUiSource).toContain("data-star-progress-interactive=\"false\"");
     expect(quizUiSource).not.toContain("flex flex-wrap items-center justify-center gap-1.5");
   });
 
