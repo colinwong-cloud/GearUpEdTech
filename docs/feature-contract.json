@@ -711,7 +711,7 @@
         {
           "type": "file_contains",
           "path": "src/lib/admin-stamp-card.ts",
-          "snippet": "關閉後不可新報名；進行中印花卡可繼續累積與換領"
+          "snippet": "關閉當日（香港時間）23:59 前仍可新開始"
         },
         {
           "type": "file_contains",
@@ -4728,8 +4728,18 @@
       ]
     }
   ],
-  "generated_at": "2026-11-22T16:03:46.373Z",
+  "generated_at": "2026-11-22T16:03:52.204Z",
   "commit_inventory": [
+    {
+      "sha": "3d2a921de0fc973db4633e5f24af9bcd956e4f04",
+      "date": "2026-11-22",
+      "summary": "fix(feature-contract): admin off-note snippet for Soft #264"
+    },
+    {
+      "sha": "e0574109bb34f3d748d441a663c0d23e1e1f231c",
+      "date": "2026-11-22",
+      "summary": "chore: refresh feature-contract inventory"
+    },
     {
       "sha": "61ae7dd8a3ec2b124c101389d7684852adf007c7",
       "date": "2026-11-22",
@@ -7972,7 +7982,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 648,
+    "total_commits_since_start": 650,
     "total_feature_rows": 100
   }
 }
