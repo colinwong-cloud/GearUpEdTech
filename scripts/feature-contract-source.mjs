@@ -2762,7 +2762,7 @@ export const FEATURE_CONTRACT_BASE = {
       priority: "high",
       title:
         "Soft #262 — pending paper_rank default A + approve coercion (CONDITIONAL/HOLD until supabase_pending_paper_rank_rpc_default_262.sql applied)",
-      evidence_commits: ["84c6d66"],
+      evidence_commits: ["6b7454a"],
       checks: [
         { type: "file_exists", path: "supabase_pending_paper_rank_rpc_default_262.sql" },
         {
