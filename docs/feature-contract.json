@@ -976,7 +976,8 @@
       "priority": "high",
       "title": "Soft #264 practice stamp off-period visibility and enrol rules",
       "evidence_commits": [
-        "8d3e1f4"
+        "8d3e1f4",
+        "ddbe68e"
       ],
       "checks": [
         {
@@ -1006,6 +1007,16 @@
         {
           "type": "file_exists",
           "path": "src/lib/practice-stamp-off-rules-264.test.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "STAMP_SWITCH_OFF_DAY_NEW_START"
+        },
+        {
+          "type": "file_contains",
+          "path": "src/lib/practice-stamp-card-ui.ts",
+          "snippet": "STAMP_POST_REDEEM_WHILE_PROGRAM_OFF"
         }
       ]
     },
@@ -4728,8 +4739,28 @@
       ]
     }
   ],
-  "generated_at": "2026-11-22T16:03:52.204Z",
+  "generated_at": "2026-11-22T16:24:04.238Z",
   "commit_inventory": [
+    {
+      "sha": "a6f165a462a1fa41aad098a26840b88ea4e2ea24",
+      "date": "2026-11-22",
+      "summary": "chore(feature-contract): Soft #264 copy evidence commits"
+    },
+    {
+      "sha": "2b98b1fc0d88bd6721d30f4587238c624b7b1120",
+      "date": "2026-11-22",
+      "summary": "test(stamp): assert component wiring for Soft #264 copy"
+    },
+    {
+      "sha": "ddbe68edad235b839255bbfbe3196f5ffe3e9a67",
+      "date": "2026-11-22",
+      "summary": "fix(stamp): Soft #264 locked student copy for off-day start and post-redeem"
+    },
+    {
+      "sha": "078457c2d770f83486385d0ee1088e0fde5dec05",
+      "date": "2026-11-22",
+      "summary": "chore: refresh feature-contract inventory"
+    },
     {
       "sha": "3d2a921de0fc973db4633e5f24af9bcd956e4f04",
       "date": "2026-11-22",
@@ -7982,7 +8013,7 @@
     }
   ],
   "inventory_stats": {
-    "total_commits_since_start": 650,
+    "total_commits_since_start": 654,
     "total_feature_rows": 100
   }
 }
