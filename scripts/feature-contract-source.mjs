@@ -1270,7 +1270,7 @@ export const FEATURE_CONTRACT_BASE = {
       category: "growth",
       priority: "high",
       title: "Soft #253 — 呈分試 guide P3 copy + /guides/IA + redirects + og",
-      evidence_commits: ["314ac21"],
+      evidence_commits: ["15d3c43"],
       checks: [
         {
           type: "file_contains",
